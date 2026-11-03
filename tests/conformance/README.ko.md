@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 64bcb05122cb8a66aeb528a4c8d81fa00c9baea87011f52337e5dde54c6d8a23 -->
+<!-- source-sha256: eafb608ca23dd231d6fcbf008c24edeeabd77700ae27bc38d6604fe9971baf67 -->
 # Conformance
 
 conformance vector의 동작은 recipe
@@ -18,7 +18,7 @@ runner의 결과 helper도 실행한다.
 
 | 파일 | 역할 |
 |---|---|
-| `vectors.json`, `vectors.postgres.json`, `vectors.sqlite.json` | vector 이름과 chain, database마다 파일 하나 |
+| `vectors.json` | vector 이름과 그것이 시험하는 requirement. 각 이름은 recipe case이거나 고정 clock body다 |
 | `packages/go/internal/conformance/main.go` | Go runner(`packages/go/model`의 생성 모델) |
 | `packages/php/testing/conformance/runner.php` | PHP runner(PDO), `php-extension`에는 PHP extension을 적재해 쓴다 |
 | `packages/rust/tests/src/conformance.rs` | Rust runner(`polyspec-orm-build`의 모델, sqlx) |

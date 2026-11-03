@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dc380314e4fe3475b4bedef0ffff691fa993725b7ee09de28dd0d3d2c25cb9c3 -->
+<!-- source-sha256: 2ce1959e971fa90d2cd28010ebea034e73eb45d3329c5fe936b8c486136f5774 -->
 # 변경 이력
 
 ## Unreleased
 
+- conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
 - 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
 - CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
 - CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.

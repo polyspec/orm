@@ -1,5 +1,5 @@
-// Runs native conformance bodies of one language on one database and compares their output with data outside
-// tests/conformance/vectors*.json, so that a body and the recipe cannot disagree without a check failing.
+// Runs native conformance bodies of one language on one database and compares their output with the recipe
+// conformance_verification and fixed_clock.json, so that a body and the recipe cannot disagree without a check failing.
 //
 //   node tests/conformance/check/recipe_vectors.mts generated --language L --database D
 //     The bodies that call generated methods (T334-3-5-1), on a database that holds the fixture and the seed of the recipe
@@ -107,10 +107,6 @@ function unmasked(got: Json | undefined, want: Json | undefined): Json | undefin
 
 type Vector = { name: string; expect: { result?: Json; statements?: { [key: string]: Json }[] } };
 
-/** The vector file of a database (DIA-37). */
-export const vectorFile = (database: string): string =>
-  join(root, 'tests/conformance', database === 'mysql' ? 'vectors.json' : `vectors.${database}.json`);
-
 /** The vectors that no recipe case holds, each with where its expectation lives. */
 export const NO_RECIPE_CASE: Record<string, string> = {
   clock_truncate_write: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
@@ -118,48 +114,20 @@ export const NO_RECIPE_CASE: Record<string, string> = {
 };
 
 /**
- * The result of a vector built from the steps of its case: a body folds a step into a boolean, a size or a null for no
- * error, and the recipe holds what the runtime returns. Each value then compares with the vector.
+ * The result of a state contract built from the steps of its case: a body folds a step into a boolean, a size or a null
+ * for no error, and the recipe holds what the runtime returns. Each value then compares with the contract.
  */
 const RESULT_SHAPES: Record<string, (steps: Json[]) => Json> = {
   ...shapes,
   // The last expect of the case is the count that shows the connection still works after the refusals.
   errors: steps => steps.filter(step => typeof step === 'string') as Json,
-  contains_null: ([count]) => ({ code: null, count }) as Json,
-  audit_lazy: ([rolled, before, read, unchanged, written, after]) => ({ after, before, read, rolled_back: rolled === 'CALLBACK', unchanged, written }) as Json,
   transactions: ([first, second, count, rows, local, left]) => [first === 'CALLBACK', count, size(rows), local, second === 'CALLBACK', left] as Json,
-  // The first delete has no expect, so it passes only with no error, which the body writes as none.
-  delete_lock: ([users, members, refused, user, member]) => [[size(users), size(members), 'none'], [size(user), size(member), refused]] as Json,
-  expect_revision: ([_rolled, before, updated, update_mismatch, after_mismatch, delete_mismatch, kept, deleted, left]) => ({
-    after_mismatch, before, delete_match: null, delete_mismatch, deleted, kept, left, update_mismatch, updated,
-  }) as Json,
 };
 
-/**
- * The cases whose counts come from the seed of the recipe, not from the bench rows of the vector (T334-3-5). Their result
- * compares in shape and in every other value, and a number need only be a number: the recipe states its own.
- */
+/** The case whose counts come from the seed of the recipe: its result compares in shape, and a number need only be a number. */
 const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
-  conditions_values: steps => steps,
-  terminal_by: shapes.terminal_by as (steps: Json[]) => Json,
   terminal_reuse: shapes.terminal_reuse as (steps: Json[]) => Json,
-  expression_forms: ([count, rows, or_count]) => ({ count, or_count, rows }) as Json,
-  joins: ([rows, compared, modules]) => ({ compared, module: withoutKeys((modules as { module: Json }[])[0]?.module as Json, ['service_seq']), rows }) as Json,
-  subqueries: ([rows]) => (rows as { seq: Json; read_total: Json }[]).map(row => [row.seq, row.read_total]) as Json,
-  aggregates: ([sum, avg, groups, page]) => ({ avg, groups, page, sum }) as Json,
-  empty_reads: shapes.empty_reads as (steps: Json[]) => Json,
-  functions: ([a, b, c, d, months]) => ({ counts: [a, b, c, d], months: (months as { start_month: Json }[]).map(row => row.start_month) }) as Json,
-  column_pairs: ([col_i32_i64, col_text_varchar, in_i32_i64, join_i32_i64, relation, col_varchar_i64, col_decimal_i64, in_varchar_i64, join_varchar_i64, relation_varchar_i64]) => ({
-    col_decimal_i64, col_i32_i64, col_text_varchar, col_varchar_i64, in_i32_i64, in_varchar_i64, join_i32_i64, join_varchar_i64, relation_i32_i64: size(relation), relation_varchar_i64,
-  }) as Json,
-  aes_status: ([status]) => {
-    const { current, pending, versions } = status as { current: Json; pending: Json; versions: Record<string, Json> };
-    return { current, pending, versions: Object.entries(versions).map(([version, rows]) => `${version}:${String(rows)}`).join(',') };
-  },
 };
-
-const withoutKeys = (value: Json, names: string[]): Json =>
-  Object.fromEntries(Object.entries(value as Record<string, Json>).filter(([name]) => !names.includes(name)));
 
 const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value));
 
@@ -167,18 +135,16 @@ const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof 
 function resultDifferences(stated: Json, built: Json, loose: boolean, path = '$'): string[] {
   if (stated === '$SEQ' || stated === '$TS') return [];
   if (loose && isNumber(stated) && isNumber(built)) return [];
-  const version = (value: Json) => (typeof value === 'string' ? /^(\d+):\d+$/.exec(value)?.[1] : undefined);
-  if (loose && version(stated) !== undefined && version(stated) === version(built)) return [];
   if (Array.isArray(stated) && Array.isArray(built)) {
-    if (!loose && stated.length !== built.length) return [`${path}: ${stated.length} items in the vector, ${built.length} in the case`];
-    if (stated.length !== built.length && typeof stated[0] !== 'object') return [`${path}: ${stated.length} items in the vector, ${built.length} in the case`];
+    if (!loose && stated.length !== built.length) return [`${path}: ${stated.length} items in the contract, ${built.length} in the case`];
+    if (stated.length !== built.length && typeof stated[0] !== 'object') return [`${path}: ${stated.length} items in the contract, ${built.length} in the case`];
     return stated.flatMap((item, index) => (index < built.length ? resultDifferences(item, built[index] as Json, loose, `${path}[${index}]`) : []));
   }
   if (stated !== null && built !== null && typeof stated === 'object' && typeof built === 'object') {
     const names = new Set([...Object.keys(stated), ...Object.keys(built)]);
     return [...names].flatMap(name => resultDifferences((stated as Record<string, Json>)[name] ?? null, (built as Record<string, Json>)[name] ?? null, loose, `${path}.${name}`));
   }
-  return JSON.stringify(stated) === JSON.stringify(built) ? [] : [`${path}: ${JSON.stringify(stated)} in the vector, ${JSON.stringify(built)} in the case`];
+  return JSON.stringify(stated) === JSON.stringify(built) ? [] : [`${path}: ${JSON.stringify(stated)} in the contract, ${JSON.stringify(built)} in the case`];
 }
 
 function unwrapped(value: Json): Json {
@@ -198,36 +164,6 @@ const stepsOf = (steps: Step[]): Step[] =>
   steps.flatMap(step => [step, ...stepsOf((step as { steps?: Step[] }).steps ?? [])]);
 
 const MASKED = new Set(['$SEQ', '$TS', '$AES', '$NOW'].map(text => JSON.stringify(text)));
-
-/**
- * What a vector states and its recipe case does not, on one database. Statements compare field by field, `$SEQ` being any
- * integer. A result value is held when an expect of the case holds it; an error message is held by its code and suffix.
- */
-export function vectorDifferences(vector: Vector, recipeCase: Case, database: string): string[] {
-  const out: string[] = [];
-  const steps = stepsOf(recipeCase.steps);
-  const captured = steps.find(step => step.op === 'events.captured');
-  const events = captured?.expect?.[database] as { value?: Json } | undefined;
-  const got = (events === undefined ? [] : unwrapped(events.value ?? null)) as { [key: string]: Json }[];
-  const want = vector.expect.statements ?? [];
-  if (got.length !== want.length) out.push(`${want.length} statements in the vector, ${got.length} in the case`);
-  else {
-    for (const [index, statement] of want.entries()) {
-      for (const [field, value] of Object.entries(statement)) {
-        if (field === 'binds') continue;
-        if (JSON.stringify(got[index]?.[field]) !== JSON.stringify(value)) out.push(`statement ${index} ${field}: ${JSON.stringify(value)} in the vector, ${JSON.stringify(got[index]?.[field])} in the case`);
-      }
-      const binds = statement.binds as Json[];
-      const held = got[index]?.binds as Json[];
-      if (binds.length !== held.length) out.push(`statement ${index} has ${binds.length} binds in the vector, ${held.length} in the case`);
-      for (const [position, bind] of binds.entries()) {
-        const same = bind === '$SEQ' ? Number.isInteger(held[position]) : JSON.stringify(bind) === JSON.stringify(held[position]);
-        if (!same) out.push(`statement ${index} bind ${position}: ${JSON.stringify(bind)} in the vector, ${JSON.stringify(held[position])} in the case`);
-      }
-    }
-  }
-  return [...out, ...resultValueDifferences(vector.name, vector.expect.result ?? null, recipeCase, database)];
-}
 
 /** What a stated result holds and the expects of its recipe case do not, on one database. */
 function resultValueDifferences(name: string, result: Json, recipeCase: Case, database: string): string[] {
@@ -253,12 +189,12 @@ function resultValueDifferences(name: string, result: Json, recipeCase: Case, da
   for (const leaf of leaves(result).filter(item => !MASKED.has(item))) {
     const message = /^"([A-Z][A-Z0-9_]*): (.*)"$/.exec(leaf);
     if (message !== null) {
-      if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the vector is in no expect of the case`);
-      if (!suffixes.some(suffix => (message[2] as string).endsWith(suffix))) out.push(`the message ${leaf} of the vector has no message_suffix in the case`);
+      if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the contract is in no expect of the case`);
+      if (!suffixes.some(suffix => (message[2] as string).endsWith(suffix))) out.push(`the message ${leaf} of the contract has no message_suffix in the case`);
       continue;
     }
     const count = have.get(leaf) ?? 0;
-    if (count === 0) out.push(`the result value ${leaf} of the vector is in no expect of the case`);
+    if (count === 0) out.push(`the result value ${leaf} of the contract is in no expect of the case`);
     else have.set(leaf, count - 1);
   }
   return out;

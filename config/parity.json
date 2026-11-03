@@ -10892,7 +10892,7 @@
         "DBS-117",
         "CPX-3"
       ],
-      "file": "tests/conformance/vectors.postgres.json",
+      "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
       "bindings": [
         {
@@ -11105,7 +11105,7 @@
         "CPX-3",
         "DBS-115"
       ],
-      "file": "tests/conformance/vectors.sqlite.json",
+      "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
       "bindings": [
         {

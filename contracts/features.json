@@ -8292,8 +8292,6 @@
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
-        "tests/conformance/vectors.postgres.json",
-        "tests/conformance/vectors.sqlite.json",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -8456,11 +8454,6 @@
       ],
       "vector_contract": {
         "source": "tests/conformance/vectors.json",
-        "database_expectations": [
-          "tests/conformance/vectors.json",
-          "tests/conformance/vectors.postgres.json",
-          "tests/conformance/vectors.sqlite.json"
-        ],
         "required_databases": [
           "mysql",
           "postgres",
@@ -8478,11 +8471,6 @@
             "part": "packages/go/orm",
             "tests": [
               "packages/go/orm/recipe_conformance_verification_test.go"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json"
             ],
             "commands": {
               "mysql": [

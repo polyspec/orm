@@ -18,7 +18,7 @@ result helpers of the runners.
 
 | file | role |
 |---|---|
-| `vectors.json`, `vectors.postgres.json`, `vectors.sqlite.json` | the vector names and chains, one file for each database |
+| `vectors.json` | the vector names and the requirements they test; each name is a recipe case or a fixed-clock body |
 | `packages/go/internal/conformance/main.go` | Go runner (generated models in `packages/go/model`) |
 | `packages/php/testing/conformance/runner.php` | PHP runner (PDO); also used with the PHP extension loaded for `php-extension` |
 | `packages/rust/tests/src/conformance.rs` | Rust runner (models from `polyspec-orm-build`, sqlx) |
