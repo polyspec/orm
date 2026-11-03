@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 2a45ce2dc14d2556fab30b441dc2ed255fef9299f5c71c127c1a3701f58a1b8d -->
+<!-- source-sha256: 2f314d13013f2ab85d4eedae301e832a3ec057b2050d03af77eb8ca33ec30c73 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -48,7 +48,7 @@
   - `parameter-slot-validation-vectors`(PRT-67, DIA-31)는 tests/bind/vectors.json에서 recipe가 담지 못하는 것에 대해 native로 남는다: `bind`는 date 객체 같은 runtime의 native host 값으로 JSON recipe가 쓸 수 없고, `compile_refused`는 Go와 Rust의 typed API가 compile 시점에 거부하는 case로, 그 내부 검사에는 이들의 native만 닿는다. 그 파일의 나머지 case는 모두 tests/bind/messages.json 또는 tests/bind/messages-dynamic.json의 case다.
   - Go `TestParseReturnsModel`, `TestStateMachineSetting`, `TestMarkdownSetting`, `TestMarkdownStorageSetting`, `TestStateMachineKeywordStates`는 FCV-2 binding surface로 native에 남는다. Go `Document`의 field를 읽는데, FCV-4의 어떤 op도 그 field를 돌려주지 않는다. 그 text는 tests/dbspec/rules.json의 case다.
   - `coverage-schema-definition-dbspec-analyze-tokens`(DBS-134, DBS-135)의 Go `TestAnalyzeInvalidByte`와 PHP, PHP extension case `analyze/invalid-byte-stop-line`은 native에 남는다. JSON recipe의 line 형식으로는 byte 0xFF를 쓸 수 없기 때문이다.
-  - `ts-dbspec-plan`과 `ts-dbspec-render-dialect`(DBS-174)는 다섯 runtime에서 tests/dbspec/dialect-refusal.json의 case다. Rust는 dialect를 enum 타입으로 받으므로 어떤 호출도 모르는 이름을 넘길 수 없고, compile fixture `dbs174-plan-unknown-dialect-e0308`과 `dbs174-render-unknown-dialect-e0308`이 FCV-2 compile-fail fixture로 native에 남는다.
+  - `ts-dbspec-plan`과 `ts-dbspec-render-dialect`(DBS-174)는 Rust에서 native로 남는다: Rust는 dialect를 enum 타입으로 받으므로 어떤 호출도 모르는 이름을 넘길 수 없고, compile fixture `dbs174-plan-unknown-dialect-e0308`과 `dbs174-render-unknown-dialect-e0308`이 FCV-2 compile-fail fixture로 거부를 맡는다. 나머지 다섯 runtime에서는 tests/dbspec/dialect-refusal.json의 case다.
   - `packages/ts/tests/codec-aes-errors.test.mjs`의 fault injection은 TypeScript에 native로 남는다. FCV-2의 runtime 고유 테스트다: `node:crypto`의 decipher를 각 단계에서 throw하도록 바꾸고 그 오류가 유지되는지 확인하며, recipe 값으로는 runtime의 crypto library를 실패시킬 수 없다.
   - Go `TestHostAESDecodesByStoredVersion`은 Go에 native로 남는다. FCV-2의 runtime 고유 테스트다: 버전을 받는 host decode는 Go에만 있는 public 함수다.
   - `tests/planner/compile.json`, `tests/ir/validate.json` 곁에 FCV-2의 runtime 고유 테스트로 native로 남는 것: 검증 뒤 planner가 찾지 못한 열이 `INTERNAL`인 경우는 어떤 요청도 닿지 못한다(Go, TypeScript, Python, Rust). PHP codec 예외가 잇는 native cause, PHP extension validator가 해제하는 메모리, Rust의 private 연산자 표와 codec helper도 그렇다. 불러온 manifest를 고치던 Rust `upsert_conflict` 테스트는 없앴다. 요청은 `planner_rejects_upsert_*` 사례로 같은 거부에 닿는다.

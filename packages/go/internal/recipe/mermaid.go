@@ -15,7 +15,7 @@ import (
 // returns its plain JSON result: {mermaid, dropped} for an export; {document, dropped}, {dropped, same_skeleton} or {errors} for
 // an import. dir is the directory of the recipe, which the path and skeleton_of fields are relative to.
 func mermaidStep(s step, bound map[string]result, dir string) (map[string]any, error) {
-	if s.Op == "dbspec.export_mermaid" {
+	if s.k("op").Op == "dbspec.export_mermaid" {
 		return exportMermaid(s, dir)
 	}
 	return importMermaid(s, bound, dir)
@@ -24,13 +24,13 @@ func mermaidStep(s step, bound map[string]result, dir string) (map[string]any, e
 func exportMermaid(s step, dir string) (map[string]any, error) {
 	// The inline text and the other documents of its set, or the .dbs file document (FCV-4).
 	source, set := inlineDocument(s)
-	if s.Document != "" {
-		text, diagnostics, err := dbspec.ReadFile(filepath.Join(dir, s.Document))
+	if s.k("document").Document != "" {
+		text, diagnostics, err := dbspec.ReadFile(filepath.Join(dir, s.k("document").Document))
 		if err != nil {
 			return nil, err
 		}
 		if len(diagnostics) > 0 {
-			return nil, fmt.Errorf("read %s: %v", s.Document, diagnostics)
+			return nil, fmt.Errorf("read %s: %v", s.k("document").Document, diagnostics)
 		}
 		source, set = text, nil
 	}
@@ -43,11 +43,11 @@ func exportMermaid(s step, dir string) (map[string]any, error) {
 }
 
 func importMermaid(s step, bound map[string]result, dir string) (map[string]any, error) {
-	text, err := mermaidText(s.Mermaid, bound)
+	text, err := mermaidText(s.k("mermaid").Mermaid, bound)
 	if err != nil {
 		return nil, err
 	}
-	d, dropped, diagnostics := dbspec.ImportMermaid(text, s.Name)
+	d, dropped, diagnostics := dbspec.ImportMermaid(text, s.k("name").Name)
 	if len(diagnostics) > 0 {
 		errs := []any{}
 		for _, g := range diagnostics {
@@ -55,19 +55,19 @@ func importMermaid(s step, bound map[string]result, dir string) (map[string]any,
 		}
 		return map[string]any{"errors": errs}, nil
 	}
-	if s.SkeletonOf == "" {
+	if s.k("skeleton_of").SkeletonOf == "" {
 		return map[string]any{"document": dbspec.Emit(d), "dropped": dropsOf(dropped)}, nil
 	}
-	source, diagnostics2, err := dbspec.ReadFile(filepath.Join(dir, s.SkeletonOf))
+	source, diagnostics2, err := dbspec.ReadFile(filepath.Join(dir, s.k("skeleton_of").SkeletonOf))
 	if err != nil {
 		return nil, err
 	}
 	if len(diagnostics2) > 0 {
-		return nil, fmt.Errorf("read %s: %v", s.SkeletonOf, diagnostics2)
+		return nil, fmt.Errorf("read %s: %v", s.k("skeleton_of").SkeletonOf, diagnostics2)
 	}
 	original, _, diagnostics2 := dbspec.Parse(source, nil)
 	if len(diagnostics2) > 0 {
-		return nil, fmt.Errorf("parse %s: %v", s.SkeletonOf, diagnostics2)
+		return nil, fmt.Errorf("parse %s: %v", s.k("skeleton_of").SkeletonOf, diagnostics2)
 	}
 	same := slices.Equal(skeleton.Mermaid(original), skeleton.Mermaid(d))
 	return map[string]any{"dropped": dropsOf(dropped), "same_skeleton": same}, nil

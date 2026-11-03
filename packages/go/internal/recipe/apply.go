@@ -99,16 +99,16 @@ func applyPoolerDSN(c *databaseContext) (string, error) {
 
 // applyOp runs one op of applyOps.
 func applyOp(s databaseStep, c *databaseContext) (outcome, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "dbspec.plan":
-		plan, diagnostics := dbspec.ParsePlan(strings.Join(s.Lines, "\n") + "\n")
+		plan, diagnostics := dbspec.ParsePlan(strings.Join(s.k("lines").Lines, "\n") + "\n")
 		if plan == nil {
-			return outcome{}, fmt.Errorf("dbspec.plan %s: %v", s.As, diagnostics)
+			return outcome{}, fmt.Errorf("dbspec.plan %s: %v", s.k("as").As, diagnostics)
 		}
 		return outcome{api: plan}, nil
 	case "dbspec.connect":
 		dsn, err := applyDirectDSN(c, c.dsn)
-		if s.Through == "pooler" {
+		if s.k("through").Through == "pooler" {
 			dsn, err = applyPoolerDSN(c)
 		}
 		if err != nil {
@@ -119,7 +119,7 @@ func applyOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		c.closers = append(c.closers, closeConn)
-		if s.Through == "" {
+		if s.k("through").Through == "" {
 			for _, rule := range applyRules[c.database] {
 				if _, err := conn.ExecContext(c.ctx, rule); err != nil {
 					return outcome{}, err
@@ -151,8 +151,8 @@ func applyOp(s databaseStep, c *databaseContext) (outcome, error) {
 				return outcome{}, err
 			}
 		}
-		c.bound[s.As] = bound{api: conn}
-		return okOutcome(), runNested(s.Steps, c)
+		c.bound[s.k("as").As] = bound{api: conn}
+		return okOutcome(), runNested(s.k("steps").Steps, c)
 	}
 	return applyCommand(s, c)
 }
@@ -172,7 +172,7 @@ func applySession(name string, c *databaseContext) (*sql.Conn, error) {
 
 // applySchema introspects the database of the named connection; its value is the schema text of the manifest, empty with no table.
 func applySchema(s databaseStep, c *databaseContext) (outcome, error) {
-	conn, err := applySession(s.Connection, c)
+	conn, err := applySession(s.k("connection").Connection, c)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -193,11 +193,11 @@ func applySchema(s databaseStep, c *databaseContext) (outcome, error) {
 
 // applyExec runs the statement of dbspec.exec on its named connection, and its value is the rows with every cell as text.
 func applyExec(s databaseStep, c *databaseContext) (outcome, error) {
-	conn, err := applySession(s.Connection, c)
+	conn, err := applySession(s.k("connection").Connection, c)
 	if err != nil {
 		return outcome{}, err
 	}
-	statement, present, err := sqlExecText(s.SQL, c)
+	statement, present, err := sqlExecText(s.k("sql").SQL, c)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -246,12 +246,12 @@ func applyExec(s databaseStep, c *databaseContext) (outcome, error) {
 // applyCommand makes one call of Apply, Recover, Rollback or Finalize, and its value is the code of its failure, or ok, and
 // the number of events of the kind that count names. Steps of on run inside the event handler.
 func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
-	conn, err := applySession(s.Connection, c)
+	conn, err := applySession(s.k("connection").Connection, c)
 	if err != nil {
 		return outcome{}, err
 	}
 	plans := []*dbspec.Plan{}
-	for _, name := range s.Plans {
+	for _, name := range s.k("plans").Plans {
 		plan, ok := c.bound[name].api.(*dbspec.Plan)
 		if !ok {
 			return outcome{}, fmt.Errorf("plan %q is not bound", name)
@@ -262,25 +262,25 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 	handler := func(ev dbspec.ApplyEvent) error {
 		events++
 		kinds[ev.Kind]++
-		if s.On == nil || s.On.Event != ev.Kind || (ran && !s.On.Every) {
+		if s.k("on").On == nil || s.k("on").On.Event != ev.Kind || (ran && !s.k("on").On.Every) {
 			return nil
 		}
-		if (s.On.Plan != "" && s.On.Plan != ev.Plan) || (s.On.Step != nil && *s.On.Step != ev.Step) {
+		if (s.k("on").On.Plan != "" && s.k("on").On.Plan != ev.Plan) || (s.k("on").On.Step != nil && *s.k("on").On.Step != ev.Step) {
 			return nil
 		}
 		ran = true
 		c.applyStep = ev.Step
-		if err := runNested(s.On.Steps, c); err != nil {
+		if err := runNested(s.k("on").On.Steps, c); err != nil {
 			return err
 		}
-		if s.On.Stop {
+		if s.k("on").On.Stop {
 			return errApplyStop
 		}
 		return nil
 	}
 	started := time.Now()
 	dialect := applyDialects[c.database]
-	switch s.Op {
+	switch s.k("op").Op {
 	case "dbspec.apply":
 		var res dbspec.ApplyResult
 		res, err = dbspec.Apply(c.ctx, conn, dialect, plans, applyNow, handler)
@@ -305,23 +305,23 @@ func applyCommand(s databaseStep, c *databaseContext) (outcome, error) {
 			code = "stopped"
 		case errors.As(err, &failure):
 			code = failure.Code
-		case s.Message != "" && err.Error() == s.Message:
+		case s.k("message").Message != "" && err.Error() == s.k("message").Message:
 			code = "message"
 		default:
 			return outcome{}, err
 		}
-		if s.Detail != "" && !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(s.Detail)) {
-			return outcome{}, fmt.Errorf("the message %q does not hold %q", err.Error(), s.Detail)
+		if s.k("detail").Detail != "" && !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(s.k("detail").Detail)) {
+			return outcome{}, fmt.Errorf("the message %q does not hold %q", err.Error(), s.k("detail").Detail)
 		}
 	}
-	if s.Elapsed != nil && (elapsed < s.Elapsed.AtLeastMs || elapsed >= s.Elapsed.BelowMs) {
-		return outcome{}, fmt.Errorf("the command took %d ms, want at least %d and below %d", elapsed, s.Elapsed.AtLeastMs, s.Elapsed.BelowMs)
+	if s.k("elapsed").Elapsed != nil && (elapsed < s.k("elapsed").Elapsed.AtLeastMs || elapsed >= s.k("elapsed").Elapsed.BelowMs) {
+		return outcome{}, fmt.Errorf("the command took %d ms, want at least %d and below %d", elapsed, s.k("elapsed").Elapsed.AtLeastMs, s.k("elapsed").Elapsed.BelowMs)
 	}
 	members := []any{[]any{"code", map[string]any{"text": code}}}
-	if s.Count == nil {
+	if s.k("count").Count == nil {
 		members = append(members, []any{"events", map[string]any{"int": strconv.Itoa(events)}})
 	}
-	for _, kind := range s.Count {
+	for _, kind := range s.k("count").Count {
 		members = append(members, []any{kind, map[string]any{"int": strconv.Itoa(kinds[kind])}})
 	}
 	return outcome{fields: map[string]any{"value": map[string]any{"object": members}}}, nil

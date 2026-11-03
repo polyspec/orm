@@ -412,6 +412,7 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/RecipeStep.php",
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
@@ -738,6 +739,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_reads.mjs",
         "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_introspect.mjs",
         "packages/ts/tests/recipe_keys.mjs",
@@ -1016,6 +1018,7 @@
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_reads.py",
         "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_introspect.py",
         "packages/python/tests/recipe_keys.py",
@@ -1283,11 +1286,15 @@
         },
         {
           "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
-          "reason": "test: calls the private validate for its parser failure cause and its PostgreSQL operand limit; read_statements and read_only_grid_shapes hold the shapes"
+          "reason": "test: calls the private validate for the cause its parser failure keeps; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        },
+        {
+          "glob": "packages/rust/build/src/catalog/temporal.rs",
+          "reason": "test: calls the private is_temporal, fraction and precision with forms no server stores, such as datetime(7); temporal_write_and_limits and described_temporal_matrix hold what a server reaches"
         },
         {
           "glob": "packages/rust/orm/tests/unit/time_precision.rs",
@@ -16271,21 +16278,6 @@
           "id": "catalog_plain_values"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_temporal.rs",
-          "id": "temporal_grid_cells_follow_the_declared_precision"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -16294,6 +16286,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::temporal_write_and_limits"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "temporal_write_and_limits"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "temporal_write_and_limits"
         }
       ]
     },
