@@ -848,7 +848,10 @@
             "model.chain",
             "utils.lock",
             "utils.set_local",
-            "utils.local"
+            "utils.local",
+            "utils.was_inserted",
+            "utils.backend_waiting_for_lock",
+            "utils.groups"
           ]
         }
       },
@@ -1110,6 +1113,15 @@
         },
         {
           "$ref": "#/$defs/ops/utils.local"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.was_inserted"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.backend_waiting_for_lock"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.groups"
         }
       ]
     },
@@ -6126,6 +6138,76 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          }
+        }
+      },
+      "utils.was_inserted": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "table",
+          "sequence",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.was_inserted"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "table": {
+            "description": "The entity name of wasInserted (INT-52).",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "The generated key of wasInserted (INT-52).",
+            "type": "integer"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.backend_waiting_for_lock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.backend_waiting_for_lock"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.groups": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.groups"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },

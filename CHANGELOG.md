@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The statement runner runs in the recipe `statement_runner` alone in the six runtimes: its native and coverage tests are gone, except the refusals of FCV-2.
+- The utility groups, the local value of a transaction, `wasInserted` and the report with no waiter are the recipe `utils` in the six runtimes; the flow and disposal units and the waiter stay native, as FCV-2 states.
 - The inline form of the recipe op `dbspec.analyze` checks that the analysis holds the document, positions and diagnostics of `parse` (DBS-134), so Go, TypeScript, Python and PHP check it as Rust did, and Go `TestAnalyzeIsParse` is gone.
 - Go `runtimemodel.LoadSet` fails with the code `SCHEMA_INVALID` that SCH-12 states, as a `*SetLoadError`, and the recipe helper reads that code instead of translating diagnostics.
 - The canonical forms, state machine rules and markdown storage rules of the Go `rules_test.go` are cases of `tests/dbspec/rules.json`, so all six runtimes run them.
