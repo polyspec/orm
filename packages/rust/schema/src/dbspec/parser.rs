@@ -85,6 +85,8 @@ pub(crate) struct SettingWords {
 /// columns whose lines failed, so references to them report nothing more.
 pub(crate) struct Syntax {
     pub document: Document,
+    /// The words of the use lines that failed.
+    pub failed_uses: Vec<String>,
     /// The declarations of the document, in the order they were read; positions sorts them.
     pub declarations: Vec<Declaration>,
     pub unresolved: Vec<Vec<String>>,
@@ -198,6 +200,7 @@ struct Parser {
     declarations: Vec<Declaration>,
     pending: Vec<String>,
     document: Document,
+    failed_uses: Vec<String>,
     unresolved: Vec<Vec<String>>,
     typeless: Vec<Vec<(String, bool)>>,
     table_typeless: Vec<(String, bool)>,
@@ -321,6 +324,7 @@ pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
             trailing: Vec::new(),
             external: false,
         },
+        failed_uses: Vec::new(),
         unresolved: Vec::new(),
         typeless: Vec::new(),
         table_typeless: Vec::new(),
@@ -367,6 +371,7 @@ pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
     parser.finish();
     Ok(Syntax {
         document: parser.document,
+        failed_uses: parser.failed_uses,
         declarations: parser.declarations,
         unresolved: parser.unresolved,
         typeless: parser.typeless,
@@ -678,7 +683,12 @@ impl Parser {
                 if self.phase > 0 {
                     self.report(err(first.pos, "order", "'use' comes before tables and diagrams"));
                 }
+                let before = self.document.uses.len();
                 self.use_line(&mut cursor);
+                if self.document.uses.len() == before {
+                    // The words of a use line that fails are names of a failed line.
+                    self.failed_uses.extend(tokens.iter().skip(2).filter(|t| t.kind == Kind::Word).map(|t| t.text.to_owned()));
+                }
             }
             "table" if first.kind == Kind::Word => {
                 if self.phase > 1 {
@@ -691,12 +701,7 @@ impl Parser {
                 self.phase = 2;
                 self.open_diagram(&mut cursor);
             }
-            _ => {
-                self.syntax(&cursor);
-                if tokens.len() > 1 && tokens.last().is_some_and(|t| t.is("{")) {
-                    self.skip = 1;
-                }
-            }
+            _ => self.syntax(&cursor),
         }
     }
 
@@ -1006,7 +1011,7 @@ impl Parser {
     /// Reads a type with its parameters. The outer `None` abandons the line; the
     /// inner `None` is a type error that was reported.
     fn column_type(&mut self, cursor: &mut Cursor) -> Option<Option<Type>> {
-        let Some(word) = cursor.peek() else {
+        let Some(word) = cursor.peek().filter(|t| t.kind == Kind::Word) else {
             self.syntax(cursor);
             return None;
         };
