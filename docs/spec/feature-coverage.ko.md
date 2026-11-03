@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 180da1368c9a511282c63d7cc140d4d4c88aa8c6f65971d202ef5c3d2038bf33 -->
+<!-- source-sha256: ac0139f6f6e0237fa63e7018935c41be57f535d5cfb291ee8db8c4d3982eb6ea -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -14,6 +14,7 @@
   - `static-model-chain-generation`(INT-27), `dynamic-model-chain-resolution`(INT-28), `dynamic-vs-scanned-model-chain-dispatch`(PLN-40), `dynamic-model-new-output-name-rejects-stored-column`(DSL-160)은 native로 남는다. 각각 정적 또는 동적 runtime 쪽 동작이며 반대쪽에는 그 호출이 없다. `generator-orders-sets-by-imports`(DSL-157)는 Go만의 것이다.
   - `dsl-50-operator-value-shapes`와 `chain-null-on-a-non-null-column`(DSL-49, DSL-50)은 컴파일러가 거부하는 사용에 대해 Go, TypeScript, Rust에서 FCV-2의 compile-fail fixture로 native로 남는다. Go `TestChainArgumentTypes`, TypeScript `chain argument types`, Rust compiler fixture `dsl49-nonnull-null-e0277`과 `dsl50-ordering-list-e0277`이다. 실행되는 동작은 recipe `dsl`과 `dsl-dynamic`에 있다.
   - `statement-runner-non-text-statement`와 `statement-runner-frame-after-its-transaction-ended`(INT-150a, INT-150b)는 compiler가 거부하는 사용이므로 FCV-2에 따라 native로 남는다. 타입이 있는 Go와 Rust의 `run`은 텍스트가 아닌 statement를 받지 않고, Rust frame은 그것을 빌린 callback보다 오래 살 수 없다. 실행되는 동작은 recipe `statement_runner`에 있다.
+  - `statement-runner-python-active-frame`(INT-160)은 Python에서 FCV-2의 한 언어 표면으로 native로 남는다. `active_frame()`은 Python에서만 public이고, 다른 런타임에는 recipe op가 이름 붙일 호출이 없다.
   - `transaction-concurrent-use-and-flow-isolation`, `handle-disposal-abort-or-unwind-rolls-back`, `handle-disposal-abandoned-query-cancels-and-releases`(PLN-18, INT-67, CFG-9)는 모든 런타임에서 FCV-2의 언어 형태로 native로 남는다. 주제가 각 런타임의 flow나 disposal 형태(goroutine, fiber, thread, task; drop된 handle, 취소된 context, signal, close)이고, recipe의 step은 한 flow에서 실행되어 그중 어느 것도 적지 못한다. `utils-backend-waiting-for-lock`(INT-53)도 두 번째 flow이므로 native로 남는다. 기다리는 backend는 첫 flow가 쥔 행에서 막힌 문장을 필요로 하고, 그동안 첫 flow가 보고를 읽는다. recipe `utils`는 waiter가 없는 사례를 가진다.
   - `collection-parent-expansion-preserves-bare-dollar`(DSL-153)는 모든 runtime에서 FCV-2 driver 항목으로 native로 남는다: parent slot의 placeholder 번호 매기기는 generator가 쓰지 않는 statement를 받으므로 어떤 public op도 bare `$`를 줄 수 없다.
   - `collection-composite-key-encoding`(PRT-35)는 FCV-2 driver 항목으로 모든 runtime에서 native로 남습니다. composite key의 encoded text와 구성 요소의 타입은 driver 행에서 읽히며, 여섯 runtime이 모두 가진 public 호출 중 구성 요소를 받거나 그 text를 돌려주는 것은 없습니다.

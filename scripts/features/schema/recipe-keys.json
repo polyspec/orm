@@ -623,6 +623,7 @@
     ],
     "utils.set_local": [
       "connection",
+      "expect",
       "name",
       "op",
       "value"

@@ -6067,6 +6067,9 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },

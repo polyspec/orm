@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3836bf276cce8c4d3585bafb18700d5c2148999207f342b9eb5eab55b8b93773 -->
+<!-- source-sha256: 571383cbea36c000b559cff4e335c5fa129d905c310fec7a0814db0f982efa17 -->
 # 변경 이력
 
 ## Unreleased
 
+- Python의 `active_frame()`은 native 시험을 갖춘 명시된 요구사항(INT-160)이 되었고, recipe `utils`는 트랜잭션 밖의 `setLocal`을 거부하며, recipe `aes_rotation`은 여러 키 버전의 status 개수를 담는다.
 - `composite_keys`는 이제 recipe만으로 검증한다. 모든 runtime의 검사을 recipe와 비교한 뒤 여섯 native coverage 시험을 지웠다. group rows의 Rust 시험은 자기 SQLite case database를 쓰고 행을 직접 만든다. (#T334-3-4-17)
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 문 실행기는 여섯 런타임에서 recipe `statement_runner`로만 실행되며, FCV-2의 거부를 뺀 native 시험과 coverage 시험은 사라졌다.

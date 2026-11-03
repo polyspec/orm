@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `active_frame()` of Python is a stated requirement (INT-160) with its native test, the recipe `utils` refuses `setLocal` outside a transaction, and the recipe `aes_rotation` holds the status counts of several key versions.
 - `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - The statement runner runs in the recipe `statement_runner` alone in the six runtimes: its native and coverage tests are gone, except the refusals of FCV-2.
