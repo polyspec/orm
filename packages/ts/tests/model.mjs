@@ -162,47 +162,6 @@ async function conditions(db) {
   check(await code(new Author().name('alpha').gets()) === 'CONFIG', 'no connection');
 }
 
-// Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
-async function joinsAndRelations(db, dsn) {
-  const f = await seed(db);
-  const author = new User().on(u => u.neName('nobody')).name('kim');
-  const rows = await new Author().connect(db)
-    .leftJoinUserSeqWithSeq(author)
-    .serviceSeq(f.service.getSeq())
-    .and(q => q.name('delta').or(author))
-    .orderBySeqAsc().gets();
-  check(names(rows) === 'alpha,gamma,delta', `placed join conditions: ${names(rows)}`);
-  check(rows.first().getUserModel()?.getName() === 'kim', 'join result');
-  const member = new ServiceMember();
-  const cmp = await new Author().connect(db).joinServiceMemberSeqWithSeq(member).readCountGtSeq(member).getCount();
-  check(cmp === 3, `column comparison with a joined model: ${cmp}`);
-
-  const loaded = await new Author().connect(db)
-    .relation(new User().matchUserSeqWithSeq().aliasWriter())
-    .relations(new ServiceMember().matchServiceSeqWithServiceSeq().aliasMembers())
-    .relation(new ServiceRegion().matchServiceRegionSeqWithSeq())
-    .orderBySeqAsc().gets();
-  const b = loaded.first();
-  check(b.getWriter()?.getName() === 'kim', 'relation alias');
-  check(b.getMembers().length === 1 && b.getServiceRegionModel().getName() === 'module', 'relations');
-  const limited = await new User().connect(db)
-    .relations(new Author().matchSeqWithUserSeq().orderBySeqDesc().groupLimit(1))
-    .orderBySeqAsc().gets();
-  const got = limited.first().getAuthorModels();
-  check(got.length === 1 && got.first().getName() === 'gamma', `groupLimit: ${names(got)}`);
-  const other = await connect(dsn);
-  try {
-    const external = await new Author().connect(db)
-      .relation(new User().connect(other).matchUserSeqWithSeq().aliasOwner())
-      .getByName('beta');
-    check(external.getOwner()?.getName() === 'lee', 'relation on another connection');
-  } finally { await other.close(); }
-  check(await code(new Author().connect(db).joinUserSeqWithSeq(new User().connect(db)).gets()) === 'CONFIG', 'join child with connection');
-  check(await code(new Author().connect(db).name('a').or(new User()).gets()) === 'CONFIG', 'unjoined model placement');
-  const array = b.toArray();
-  check(array.writer !== null && array.writer !== undefined && array.name === 'alpha', `toArray: ${JSON.stringify(array)}`);
-}
-
 // Requirements: PLN-8, PLN-9, PLN-14.
 async function columnsAndSubqueries(db) {
   const f = await seed(db);
@@ -494,7 +453,7 @@ function documentModels(text) {
   return models;
 }
 
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
+const cases = { conditions, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
 
 /**
  * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a

@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: c10723955142a95c016a1b82d4d6413ff56729d931f03783bad89376c9037362 -->
+<!-- source-sha256: 219ae6ecf487c07e69b72111629aa1eef47cb9d7edcf635c49157039b26c2814 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -154,7 +154,7 @@
   - `model.query`의 `columns` 항목은 column 이름 또는 `{"expr": <expr>, "as": <name>}`이며, `<expr>`는 column, `{"sub": <subquery>}`(`where`, `order`, count 1의 `limit`과 선택적 aggregate를 가진 scalar subquery), `{"blind_index": {"value": <text>, "key": <key>}}`(COD-4의 blind index) 또는 `{"fn": ...}`다. API unit: coverage-model-scalar-subquery-column과 client-query-base.
   - `{"fn": <name>, "args": [<expr>, ...]}`(F5)의 name은 `year`, `month`, `day_of_week`, `days_ago`, `days_later`, `months_ago`, `months_later`, `seconds_ago`, `seconds_later`, `now` 중 하나다. API unit: clock-now-condition(DSL-137, DIA-56).
   - `model.query`의 `aggregate`는 `{"agg": "sum" | "avg" | "count", "column": <name>, "group_by": [<name>, ...]}`이며, 결과는 group마다 값 하나를 갖는다. API unit: client-model-terminal-read(INT-29).
-  - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). API unit: model-connection-and-join-methods.
+  - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). table path의 relation은 `connection`도 받으며, 이는 child가 연결할 bound connection이다(PLN-42). API unit: conformance_verification-sqlite.
   - `model.query`의 `relations`는 `[{"model": <name>, "match": [[<parent column>, <child column>], ...], "as": <name>, "group_limit": <정수>, "key_by": <column>, "possible": <predicate>, "parent_node": <boolean>, "flatten": <boolean>, "delete_lock": <boolean>}]`이며, 각각 root의 relation 하나다. API unit: client-query-relation(INT-87)과 DIA-167.
   - `model.get_by`, `model.query`, `model.delete`의 `lock`은 `"share"` 또는 `"update"`이며, transaction 안에서만 허용된다. API unit: client-utils-lock(INT-50).
   - `model.query`의 `compile: true`는 실행하지 않고 각 database에서 그 문장이 보낼 SQL 텍스트와 바인드 값을 돌려준다. 그 expect는 database마다 `{"value": {"text": <sql>, "binds": [<value>, ...]}}`다. API: DSL-65와 DSL-68(getQuery).
@@ -169,9 +169,9 @@
   - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
   - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).
   - `model.query`의 `expect`는 `{"page": {"total": <정수>, "pages": <정수>, "rows": [...]}}`일 수 있다. `getsPage`의 page 결과이며 전체 개수와 쪽 수를 담는다(`rows`는 선택 사항). API unit: client-page(INT-64).
-  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: model-connection-and-join-methods(DSL-90부터 DSL-93까지).
-  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: model-connection-and-join-methods(DSL-90, DSL-91).
-  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
+  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: conformance_verification-sqlite(DSL-90부터 DSL-93까지).
+  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: conformance_verification-sqlite(DSL-90, DSL-91).
+  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: conformance_verification-sqlite(DSL-91, DSL-92), client-utils-set-local(INT-51).
   - `in`과 `not_in` 목록은 비어 있을 수 있으며, 그 경우 case의 expect는 `{"error": "EMPTY_IN"}`이다. API: DSL-47과 PLN-28.
   - `{"sub": <subquery>}`는 `expr`이므로 predicate의 열 값이나 `in` 피연산자가 된다. subquery는 `model`을 지정하고 `where`, `order`, `limit`, `agg`를 지정할 수 있으며, `limit`은 호출이 지정할 때만 지정한다. API: coverage-model-scalar-subquery-column(DSL-74), DSL-53과 DSL-54.
   - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.
