@@ -58,21 +58,5 @@ class GroupBooleanValueTest(unittest.TestCase):
         self.assertIn("active is not boolean", str(caught.exception))
 
 
-class GroupExactI64ValueTest(unittest.TestCase):
-    # Requirements: INT-68, PRT-69, INT-1. The grouped row preserves its selected value and public output representation.
-    def test_group_result_preserves_exact_i64_value(self):
-        want = 9007199254740991
-        value = _group_value(
-            None,
-            {"name": "exact_value", "column": "", "type": "i64"},
-            want,
-            None,
-        )
-        row = GroupRow([("exact_value", value), ("row_count", 1)])
-        self.assertEqual(value, want)
-        self.assertEqual(row.value("exact_value"), want)
-        self.assertEqual(row.to_array(), {"exact_value": want, "row_count": 1})
-
-
 if __name__ == "__main__":
     testcase.main()

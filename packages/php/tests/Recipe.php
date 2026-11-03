@@ -124,6 +124,10 @@ final class Recipe
                     self::answerStep($step);
                     continue;
                 }
+                if ($step['op'] === 'collection.key') {
+                    self::collectionKeyStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'planner.compile') {
                     self::planStep($step, $path, $database);
                     continue;
@@ -524,6 +528,42 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its groups are,
+     * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
+     * PRT-35).
+     */
+    private static function collectionKeyStep(array $step, string $database): void
+    {
+        $got = ['groups' => [], 'types' => []];
+        $seen = [];
+        try {
+            foreach ($step['keys'] as $index => $entry) {
+                $value = match ($entry['type']) {
+                    'null' => null,
+                    'bytes' => new \Polyspec\Orm\Bytes(hex2bin($entry['hex'])),
+                    'datetime' => new \DateTime($entry['value']),
+                    default => $entry['value'],
+                };
+                $key = \Polyspec\Orm\Collection::keyOf($value);
+                Assert::assertSame($value, $key, 'a key changed its native value');
+                $identity = \Polyspec\Orm\Collection::identityOf($value);
+                $seen[$identity] ??= $index;
+                $got['groups'][] = $seen[$identity];
+                $got['types'][] = match (true) {
+                    is_string($key) => 'text',
+                    is_bool($key) => 'bool',
+                    is_int($key) => 'int',
+                    $key instanceof \Polyspec\Orm\Bytes => 'bytes',
+                    $key instanceof \DateTimeInterface => 'datetime',
+                };
+            }
+        } catch (OrmException $error) {
+            $got = ['error' => $error->code_, 'message' => $error->getMessage()];
+        }
+        Assert::assertSame($step['expect'][$database], $got);
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
@@ -1984,9 +2024,13 @@ final class Recipe
         }
     }
 
-    /** The value with the members of every object sorted by name. */
+    /** The value with the members of every object sorted by name and each integral number as an integer. */
     private static function sortedMembers(mixed $value): mixed
     {
+        if (is_float($value) && floor($value) === $value && abs($value) < 2 ** 53) {
+            // JSON has one number form, and getSum returns a binary64 (DSL-66) where the recipe writes 17540.
+            return (int) $value;
+        }
         if (!is_array($value)) {
             return $value;
         }
@@ -2293,14 +2337,27 @@ final class Recipe
                         static fn (array $member): bool => $member[0] === 'sql' || $member[0] === 'kind',
                     ))], $events);
                 }
+                if (($s['compare'] ?? '') === 'shape') {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
+                        $event['object'],
+                        static fn (array $member): bool => $member[0] === 'kind' || $member[0] === 'tables',
+                    ))], $events);
+                }
                 return ['value' => ['array' => $events]];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
                 // hook.install on the same connection replaces the hook.
                 $base = $context['hookBases'][$s['connection']] ?? self::connectionOf($s, $context);
                 $context['records'] = [];
+                $hooked = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                if (isset($s['as'])) {
+                    $context['hookBases'][$s['as']] = $base;
+                    return ['bind' => $hooked];
+                }
                 $context['hookBases'][$s['connection']] = $base;
-                $context['bound'][$s['connection']] = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                $context['bound'][$s['connection']] = $hooked;
                 return [];
             case 'hook.records':
                 $counts = [];
@@ -2310,6 +2367,7 @@ final class Recipe
                     $list[] = ['object' => [
                         ['kind', ['text' => $record['kind']]],
                         ['entity', ['text' => $record['entity']]],
+                        ...(isset($record['param']) ? [['param', $record['param']]] : []),
                     ]];
                 }
                 return ['value' => ['array' => $list], 'counts' => $counts];
@@ -2468,6 +2526,15 @@ final class Recipe
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
         generateModels($documents, "$work/source", "$work/models", $namespace, $external);
+        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a manifest.
+        $declarations = (string) file_get_contents("$work/models/schema_declarations.php");
+        if (preg_match("/^const MANIFEST_HASH = '([^']+)';$/m", $declarations, $match) !== 1) {
+            Assert::fail("the generated models of $setPath declare no manifest hash");
+        }
+        if (Registry::loaded($match[1])) {
+            $loaded = (new \ReflectionClass(array_values(Registry::models($match[1]))[0]))->getNamespaceName();
+            return self::$modelNamespaces[$key] = $loaded;
+        }
         requireGeneratedClasses("$work/models");
         require_once "$work/models/bootstrap.php";
         return self::$modelNamespaces[$key] = $namespace;
@@ -2541,11 +2608,35 @@ final class Recipe
                             $r->ir['rows'][$i][] = $r->param($a['value']);
                         }
                         break;
+                    case 'assign_first':
+                        array_unshift($r->ir['set'], ['column' => $a['column'], 'p' => $r->param($a['value'])]);
+                        break;
+                    case 'rewrite':
+                        foreach (array_keys($r->ir['set'] ?? []) as $i) {
+                            if ($r->ir['set'][$i]['column'] === $a['column']) {
+                                $r->ir['set'][$i]['p'] = $r->param($a['value']);
+                            }
+                        }
+                        break;
+                    case 'invalid_param':
+                        self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
+                        break;
                     case 'record':
                         $context['records'][] = [
                             'kind' => $r->ir['kind'],
                             'entity' => $r->ir['entity'] ?? '',
                         ];
+                        break;
+                    case 'record_param':
+                        foreach ($r->ir['set'] ?? [] as $assignment) {
+                            if ($assignment['column'] === $a['column']) {
+                                $context['records'][] = [
+                                    'kind' => $r->ir['kind'],
+                                    'entity' => $r->ir['entity'] ?? '',
+                                    'param' => self::plainWrapper($r->params[$assignment['p']], null),
+                                ];
+                            }
+                        }
                         break;
                     case 'fail':
                         throw new OrmException($a['code'], "request hook refused {$r->ir['kind']}");
@@ -2826,6 +2917,10 @@ final class Recipe
                     ), $rows);
                     self::chainCall($model, $conn, $key, [$values]);
                     return;
+                case 'fulltext_boolean':
+                    $key = 'FulltextBoolean' . implode('With', array_map(self::pascal(...), $value['columns']));
+                    self::chainCall($model, $conn, $key, [$value['text']]);
+                    return;
             }
         }
         if (isset($raw['expr'], $raw['cmp'])) {
@@ -3064,8 +3159,10 @@ final class Recipe
             $relation = $s['relation'];
             unset($relation['columns']);
             $child = self::chainRelation($relation, $build, $context);
-            // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-            $child->connect($db);
+            // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+            if (($relation['connect'] ?? false) === true) {
+                $child->connect($db);
+            }
             ($relation['many'] ?? false) === true ? $model->relations($child) : $model->relation($child);
         }
         return $model;
@@ -3101,6 +3198,18 @@ final class Recipe
             $out[$name] = $values[$name];
         }
         return $out;
+    }
+
+    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+    private static function derivedIntegers(array $row, array $names): array
+    {
+        foreach ($names as $name) {
+            if (is_string($row[$name])) {
+                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
+                $row[$name] = (int) $row[$name];
+            }
+        }
+        return $row;
     }
 
     /** The expect of the database of the case compares rows of wrappers. */
@@ -3302,6 +3411,16 @@ final class Recipe
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
         }
+        if (($s['plan'] ?? false) === true) {
+            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            return ['json' => array_map(static function (array $step) use ($s): array {
+                $count = [];
+                foreach ($s['plan_count'] as $text) {
+                    $count[$text] = substr_count(strtoupper($step['sql']), $text);
+                }
+                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+            }, $steps)];
+        }
         $aggregate = $s['aggregate'] ?? null;
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
@@ -3325,6 +3444,12 @@ final class Recipe
                 'per_page' => $page->perPage,
                 'keys' => $page->items->keys(),
             ], 'total' => $page->totalCount];
+            if (($s['items'] ?? false) === true) {
+                $fields['json']['items'] = [];
+                foreach ($page->items as $row) {
+                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                }
+            }
             if (self::chainWantsRows($s, $context)) {
                 $fields['rows'] = self::chainCells($page->items, $s);
             }
@@ -3338,7 +3463,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

@@ -94,10 +94,6 @@
           "reason": "harness: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
         },
         {
-          "glob": "packages/go/complexquery/complex_query_test.go",
-          "reason": "fixture: its standalone seed-and-database wrapper calls the same fixture and assertComplexSearch helper as the six-client complex-query-product-search owner case, so it adds no distinct shared behavior"
-        },
-        {
           "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
           "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
         },
@@ -686,7 +682,6 @@
         "packages/ts/tests/statement-events-run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
-        "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/was-inserted-child.mjs",
         "packages/ts/tests/coverage_performance_gate.mjs",
         "packages/ts/tests/parse_documents.mjs",
@@ -956,7 +951,6 @@
         "packages/python/tests/dbspec_vectors_reader.py",
         "packages/python/tests/testcase.py",
         "packages/python/tests/vector_case.py",
-        "packages/python/tests/complex_query_product.py",
         "packages/python/tests/runner_connect.py",
         "packages/python/tests/server_database.py",
         "packages/python/tests/was_inserted_child.py",
@@ -1216,7 +1210,7 @@
     }
   ],
   "suites": [
-    "contracts/fixtures/**/!(dbspec-set|complex_query|composite_key_collision).json",
+    "contracts/fixtures/**/!(dbspec-set|composite_key_collision).json",
     "tests/codec/*.json",
     "tests/collection/collection.json",
     "tests/conformance/*.json",
@@ -5010,7 +5004,12 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
         },
         {
@@ -5078,8 +5077,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_read_filter"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "read_filter"
         },
         {
           "implementation": "rust",
@@ -5145,8 +5144,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_invalid_param"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "invalid_param"
         },
         {
           "implementation": "rust",
@@ -5212,8 +5211,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_no_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_no_key"
         },
         {
           "implementation": "rust",
@@ -5279,8 +5278,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key"
         },
         {
           "implementation": "rust",
@@ -5346,8 +5345,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_hook_set_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_hook_set_key"
         },
         {
           "implementation": "rust",
@@ -5413,8 +5412,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key_set_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key_set_scope"
         },
         {
           "implementation": "rust",
@@ -5480,8 +5479,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_relation_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "relation_scope"
         },
         {
           "implementation": "rust",
@@ -5523,6 +5522,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5580,6 +5580,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5637,6 +5638,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5702,8 +5704,13 @@
         },
         {
           "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_reads_params"
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "rust",
@@ -9294,6 +9301,138 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/statement-runner.mjs",
           "id": "statement-runner/statement_runner_refusals/sqlite"
+        }
+      ]
+    },
+    {
+      "id": "complex_query-mysql",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "CPX-1",
+        "CPX-2",
+        "DSL-159"
+      ],
+      "file": "contracts/fixtures/complex_query/complex_query.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_complex_query_test.go",
+          "symbol": "TestRecipeComplexQueryMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ComplexQueryMysqlRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ComplexQueryMysqlRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex_query-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/complex_query_mysql.rs",
+          "symbol": "complex_query_mysql"
+        }
+      ]
+    },
+    {
+      "id": "complex_query-postgres",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "CPX-1",
+        "CPX-2",
+        "DSL-159"
+      ],
+      "file": "contracts/fixtures/complex_query/complex_query.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_complex_query_test.go",
+          "symbol": "TestRecipeComplexQueryPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ComplexQueryPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ComplexQueryPostgresRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex_query-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/complex_query_postgres.rs",
+          "symbol": "complex_query_postgres"
+        }
+      ]
+    },
+    {
+      "id": "complex_query-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "FCV-2",
+        "FCV-3",
+        "FCV-4",
+        "CPX-1",
+        "CPX-2",
+        "DSL-159"
+      ],
+      "file": "contracts/fixtures/complex_query/complex_query.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_complex_query_test.go",
+          "symbol": "TestRecipeComplexQuerySqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ComplexQuerySqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ComplexQuerySqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex_query-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+          "symbol": "complex_query_sqlite"
         }
       ]
     },
@@ -16086,46 +16225,6 @@
       ]
     },
     {
-      "id": "group-result-exact-i64",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountPreservesExactI64Value"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/exact_i64_preserved"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_result_preserves_exact_i64_value"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::exact_i64_tests::grouped_result_preserves_exact_i64_value"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -17276,6 +17375,85 @@
           "owner/php-extension"
         ]
       }
+    },
+    {
+      "id": "php-phpstan-finds-the-query-methods-in-both-php-modes",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
+          "id": "ModelMethodsTestExtensionTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
+        }
+      ]
+    },
+    {
+      "id": "generated-external-model-reads-its-table",
+      "kind": "feature",
+      "requirements": [
+        "DBS-110",
+        "DBS-173"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GeneratedExternalModelTest.php",
+          "id": "GeneratedExternalModelTest::testGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GeneratedExternalModelTestExtensionTest.php",
+          "id": "GeneratedExternalModelTestExtensionTest::testGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated external model reads its table"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_external_model_reads_its_table"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration_program/main.rs",
+          "id": "generated_external_model_reads_its_table",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration_program",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=generated_external_model_reads_its_table"
+          ]
+        }
+      ]
     },
     {
       "id": "php-internal-model-methods-phpstan-finds-every-query-method-of-a-generated-model",
@@ -23973,203 +24151,6 @@
       ]
     },
     {
-      "id": "parent-slot-padding-repeats-last-composite-key",
-      "kind": "feature",
-      "requirements": [
-        "PRT-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ParentSlotPaddingTest.php",
-          "id": "ParentSlotPaddingTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/parent-slot-expansion.mjs",
-          "id": "parent-slot-expansion/pads-composite-keys"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_query_methods.py",
-          "id": "test_tuple_predicate_pads_by_repeating_the_last_row"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::tuple_padding_tests::composite_tuple_padding_repeats_the_last_row"
-        }
-      ]
-    },
-    {
-      "id": "collection-identity-from-fixture",
-      "kind": "feature",
-      "requirements": [
-        "INT-11",
-        "INT-63",
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyIdentityFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testFixtureKeysKeepTheirNativeTypesAndLookupValue"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/identity-from-fixture"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_every_fixture_key_has_its_own_identity"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "every_fixture_key_has_its_own_identity"
-        }
-      ]
-    },
-    {
-      "id": "split-root-merge-rejects-sql-null-identity",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestSplitQueryRowKeyRejectsSQLNull"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/split-null.test.mjs",
-          "id": "split root merge rejects SQL NULL identity"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_split_null.py",
-          "id": "test_split_root_merge_rejects_sql_null_identity"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
-        }
-      ]
-    },
-    {
-      "id": "split-root-merge-retains-falsey-non-null-identities",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestSplitQueryRowKeyRejectsSQLNull"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/split-null.test.mjs",
-          "id": "split root merge retains falsey non-NULL identities"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_split_null.py",
-          "id": "test_split_root_merge_retains_falsey_non_null_identities"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
-        }
-      ]
-    },
-    {
-      "id": "collection-key-null-is-codec-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyNullIsCodecDecodeFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
-          "id": "CollectionIdentityTestExtensionTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/null-is-codec-decode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_a_null_key_is_codec_decode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "a_null_key_is_codec_decode"
-        }
-      ]
-    },
-    {
       "id": "collection-null-identity-from-physical-row",
       "kind": "feature",
       "requirements": [
@@ -25945,6 +25926,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -25985,6 +25967,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -26025,6 +26008,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -26078,131 +26062,6 @@
         "feature": "parameter_chunking",
         "part": "owner/php-extension"
       }
-    },
-    {
-      "id": "complex-query-product-search",
-      "kind": "feature",
-      "requirements": [
-        "CPX-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/complexquery/coverage_complex_query_test.go",
-          "id": "TestCoverageComplexQueryProductSearch",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=COMPLEX_QUERY_GO_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageComplexQueryProductSearch",
-            "FEATURE_PACKAGE=./complexquery"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ComplexQueryDbTest.php",
-          "id": "ComplexQueryDbTest::testFeatureProductSearchPage",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${COMPLEX_QUERY_PHP_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testFeatureProductSearchPage",
-            "tests/ComplexQueryDbTest.php"
-          ]
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-          "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels",
-          "command": [
-            "env",
-            "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${COMPLEX_QUERY_PHP_EXTENSION_SQLITE_DSN}",
-            "php",
-            "-d",
-            "extension=${ORM_PARITY_PHP_EXTENSION}",
-            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
-            "--teamcity",
-            "--configuration",
-            "phpunit.xml.dist",
-            "--filter",
-            "testFeatureProductSearchPageUsesNativePlannerAndModels",
-            "tests/ComplexQueryNativeTest.php"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_complex_query.mjs",
-          "id": "complex_query_product_search",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN}",
-            "node",
-            "--conditions=orm-test",
-            "--test",
-            "--test-reporter=${ORM_NODE_REPORTER}",
-            "tests/coverage_complex_query.mjs"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_complex_query.py",
-          "id": "test_complex_query_product_search",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${COMPLEX_QUERY_PYTHON_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_complex_query.ComplexQueryCoverageTest.test_complex_query_product_search"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "coverage_complex_query::coverage_complex_query_product_search",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=COMPLEX_QUERY_RUST_SQLITE_DSN",
-            "FEATURE_TEST=coverage_complex_query::coverage_complex_query_product_search"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query.mjs",
-          "id": "complex_query_product_search/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query.mjs",
-          "id": "complex_query_product_search/postgres"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query.mjs",
-          "id": "complex_query_product_search/sqlite"
-        }
-      ]
     },
     {
       "id": "connection-sqlite-concurrent-writers",
@@ -26525,8 +26384,43 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_events.py",
-          "id": "test_statement_events"
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "model_statements"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_savepoint"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "savepoint_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "failed_statement"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "subscriber_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "unsubscribe"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "install"
         },
         {
           "implementation": "python",
@@ -28410,9 +28304,6 @@
           "test": "packages/python/tests/coverage_performance_gate_mysql.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28517,9 +28408,6 @@
           "test": "packages/python/tests/coverage_performance_gate_postgres.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28624,9 +28512,6 @@
           "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -29325,51 +29210,6 @@
       ]
     },
     {
-      "id": "collection-get-fetched-value-typed-key",
-      "kind": "feature",
-      "requirements": [
-        "INT-80",
-        "INT-86"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionGetAndFetchedValueUseTypedKey"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection/get-fetched-value-use-typed-key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/collection_get_fetched.rs",
-          "id": "get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection.py",
-          "id": "test_get_has_and_fetched_read_the_stored_key"
-        }
-      ]
-    },
-    {
       "id": "get-page-plan-steps",
       "kind": "feature",
       "requirements": [
@@ -29405,45 +29245,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
           "id": "coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
-        }
-      ]
-    },
-    {
-      "id": "complex-query-public-semijoin-plan",
-      "kind": "feature",
-      "requirements": [
-        "CPX-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/complexquery/public_plan_test.go",
-          "id": "TestComplexQueryPublicPlan"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ComplexQueryDbTest.php",
-          "id": "ComplexQueryDbTest::testProductSearchPublicRequestCompilesAcrossDialects"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-          "id": "ComplexQueryNativeTest::testProductSearchPublicRequestCompilesAcrossDialects"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query-request.mjs",
-          "id": "public product search compiles as three semijoins and rejects SQLite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_public_semijoin_product_search_builds_page_plan"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "coverage_complex_query::full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite"
         }
       ]
     },
@@ -41359,8 +41160,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_runner.py",
-          "id": "test_statement_runner"
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "rust",
@@ -43595,11 +43406,20 @@
       "id": "collection-recipe",
       "kind": "suite",
       "requirements": [
+        "INT-1",
+        "INT-11",
+        "INT-62",
+        "INT-63",
         "INT-68",
         "INT-69",
         "INT-70",
         "INT-71",
+        "INT-80",
+        "INT-81",
+        "INT-84",
+        "INT-86",
         "INT-90",
+        "PRT-35",
         "PRT-69"
       ],
       "file": "tests/collection/collection.json",
@@ -43812,6 +43632,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_rules_recipe_none.rs",
           "symbol": "dbspec_rules_recipe_none"
+        }
+      ]
+    },
+    {
+      "id": "collection-composite-key-encoding",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_identity_test.go",
+          "id": "TestCompositeCollectionKeyTypedComponentsFromFixture"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionIdentityTest.php",
+          "id": "CollectionIdentityTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
+          "id": "CollectionIdentityTestExtensionTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/collection_identity.mjs",
+          "id": "collection-key/composite-typed-components"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection_identity.py",
+          "id": "test_composite_components_preserve_typed_identity_and_shared_encoding"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/collection_identity.rs",
+          "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
     }

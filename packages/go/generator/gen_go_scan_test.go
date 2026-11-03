@@ -233,6 +233,93 @@ func Title() string { return other.Product().Title() }
 	buildScannedModule(t)
 }
 
+// TestGeneratedExternalModelReadsItsTable checks at run time that the generated schema value carries the external text:
+// the generated connect registers a set that uses an external document, and the model of a used external table reads
+// a row of that table. Generating the same output also has to compile.
+// Requirements: DBS-110, DBS-173.
+func TestGeneratedExternalModelReadsItsTable(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	root, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(name string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(root, "contracts/fixtures/external", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	m, diagnostics := runtimemodel.LoadSet(read("member.dbs"), read("core.dbs"))
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	}
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import (
+	"github.com/polyspec/orm/packages/go/orm"
+
+	"example.com/ormexample/model"
+)
+
+// AccountName reads the name of the account seq through the generated model of the external table.
+func AccountName(db *orm.DB, seq int64) (string, error) {
+	row, err := model.ExtAccount().Connect(db).GetBySeq(seq)
+	if err != nil {
+		return "", err
+	}
+	return row.GetName()
+}
+`)
+	write("example/example_test.go", `package example
+
+import (
+	"database/sql"
+	"path/filepath"
+	"testing"
+
+	"github.com/polyspec/orm/packages/go/orm"
+	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+
+	"example.com/ormexample/model"
+)
+
+func TestAccountName(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "external.sqlite")
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	if _, err := raw.Exec("CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')"); err != nil {
+		t.Fatal(err)
+	}
+	db, err := model.Connect("sqlite://"+path, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	name, err := AccountName(db, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "kim" {
+		t.Fatalf("name = %q, want kim", name)
+	}
+}
+`)
+	if err := generateGo(m, "model", "", []string{"./example"}); err != nil {
+		t.Fatal(err)
+	}
+	buildScannedModule(t)
+	testScannedModule(t)
+}
+
 // readModelFile reads the file name of the generated model package; a failure fails the test.
 func readModelFile(t *testing.T, name string) string {
 	t.Helper()
