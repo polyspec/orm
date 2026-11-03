@@ -572,6 +572,9 @@ func subType(m *runtimemodel.Model, sub *ir.Sub) string {
 		return "f64"
 	}
 	if f := m.Entities[sub.Query.Entity].Field(sub.Column); f != nil {
+		if sub.Agg == "sum" && (f.Type == "i16" || f.Type == "i32") {
+			return "i64" // INT-160: a sum leaves the range of its column.
+		}
 		return f.Type
 	}
 	return "text"
@@ -906,7 +909,7 @@ func markdownLinks(row []any) (*mdLinks, error) {
 }
 
 // beginMessage is the begin control message of a transaction: a read-only transaction sends read_only true, any
-// other leaves the member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+// other leaves the member out (docs/spec/protocol.md §5 Session, the cases control_begin of tests/bind/messages.json).
 func beginMessage(readOnly bool) mdControl {
 	return mdControl{Op: "begin", ReadOnly: readOnly}
 }

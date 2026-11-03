@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 7a2a68905826a1e06dfa8a02c8d76579492aa4f62ec29fd397a2f98674e5d6b8 -->
+<!-- source-sha256: b56d289ba355482d107279a971c00ae586c0dee160b29ed071460f62dd4e5491 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -78,7 +78,7 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 | TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
 | Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `polyspec_orm_schema::dbspec::add_tables_and_columns_steps` |
 
-- **SCH-10** `install`은 set을 통째로만 만들고 일부 테이블만 있는 set에는 `CONFIG`를 반환한다. `addTablesAndColumns`는 그런 set을 새 version으로 올리고, 그 뒤 `install`은 아무것도 바꾸지 않는다.
+- **SCH-10** `install`은 set을 통째로만 만들고 일부 테이블만 있는 set에는 message가 `install found only some tables of the document set: <있는 table을 ", "로 이은 것>`인 `CONFIG`를, set과 다른 database에는 message가 `the database differs from the document set: <차이를 "; "로 이은 것>`인 `CONFIG`를 반환한다. `addTablesAndColumns`는 그런 set을 새 version으로 올리고, 그 뒤 `install`은 아무것도 바꾸지 않는다.
 
 ## 6. 스키마 등록 {#_6-schema-registration}
 

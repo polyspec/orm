@@ -994,6 +994,44 @@ class _PostgresConnection:
 
     def execute(self, sql: str, values):
         text, args = for_postgres(sql, values)
+        try:
+            return self._run(text, args)
+        except OrmError as error:
+            if not self._stale_plan_outside_transaction(error):
+                raise
+        # The transaction holds one server connection through PgBouncer, and DEALLOCATE ALL makes the server parse the statement
+        # after the change on it; psycopg forgets its names with it (CFG-28).
+        self._run("BEGIN", None)
+        try:
+            self._run("DEALLOCATE ALL", None)
+            result = self._run(text, args)
+        except OrmError:
+            self._run("ROLLBACK", None)
+            raise
+        self._run("COMMIT", None)
+        return result
+
+    def _stale_plan_outside_transaction(self, error: "OrmError") -> bool:
+        # An error that a named statement from before a schema change can raise: the result type changed (0A000), a parameter keeps
+        # its old type against the new column (42883, 42804), or a value is read as that old type (22P02, 22003, 22007, 22008). A
+        # statement outside a transaction that fails has changed nothing, so it can run again, and one that fails for another reason
+        # fails the same way the second time. Inside a transaction the server has aborted it, and psycopg then reports a transaction
+        # status that is not idle.
+        from psycopg.pq import TransactionStatus
+
+        cause = error.__cause__
+        code = getattr(cause, "sqlstate", None)
+        stale = (
+            "cached plan must not change result type" in str(cause)
+            if code == "0A000"
+            else code in ("42883", "42804", "22P02", "22003", "22007", "22008")
+        )
+        return (
+            stale
+            and self.connection.info.transaction_status == TransactionStatus.IDLE
+        )
+
+    def _run(self, text: str, args):
         cursor = None
         try:
             # psycopg refuses a cursor on a connection it marked closed, so that refusal is a driver error of the
@@ -1825,8 +1863,23 @@ class Db:
                 codes.DRIVER,
                 "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000",
             )
-        self._connection.execute(
-            "SELECT pg_notify($1, $2)", [channel, payload], self._cancellation
+        sql = "SELECT pg_notify($1, $2)"
+        values = [channel, payload]
+        frame = _active_for(self)
+        if frame is not None:
+            frame.run(sql, values)
+            return
+        self.events.send(
+            "utility",
+            (),
+            None,
+            values,
+            sql,
+            lambda: self._sent(
+                lambda: _execute_cancellable(
+                    self._connection, sql, values, self._cancellation
+                )
+            ),
         )
 
     def listen(self, channel: str) -> Subscription:

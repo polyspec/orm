@@ -74,21 +74,6 @@ function coverageDatabaseDrivers(): iterable
     }
 }
 
-/** Generates and loads models for one coverage fixture, and removes its temporary directory when the process ends. */
-function coverageGenerateFixtureModels(string $fixture, string $document, string $work, string $namespace): void
-{
-    register_shutdown_function(static function () use ($work): void {
-        exec('rm -rf ' . escapeshellarg($work), $output, $status);
-        if ($status !== 0) {
-            fwrite(STDERR, "cannot remove $work\n");
-            exit(1);
-        }
-    });
-    generateModels([$fixture => $document], "$work/source", "$work/gen", $namespace);
-    requireGeneratedClasses("$work/gen");
-    require_once "$work/gen/bootstrap.php";
-}
-
 /**
  * The coverage items of a test file from the feature resolver: one [database, dsn] per declared database by default,
  * or the exact ORM_FEATURE_DATABASE assigned to this owner run. A selected database uses its declared DSN variable.

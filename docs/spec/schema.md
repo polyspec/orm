@@ -77,7 +77,7 @@ The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/intro
 | TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
 | Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `polyspec_orm_schema::dbspec::add_tables_and_columns_steps` |
 
-- **SCH-10** `install` creates a set only whole and returns `CONFIG` for a set of which only some tables exist; `addTablesAndColumns` brings such a set to its new version, after which `install` changes nothing.
+- **SCH-10** `install` creates a set only whole and returns `CONFIG` for a set of which only some tables exist, with the message `install found only some tables of the document set: <the tables that exist, joined by ", ">`, and for a database that differs from the set with the message `the database differs from the document set: <the differences, joined by "; ">`; `addTablesAndColumns` brings such a set to its new version, after which `install` changes nothing.
 
 ## 6. Schema registration
 

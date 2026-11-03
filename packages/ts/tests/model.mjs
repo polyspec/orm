@@ -79,35 +79,6 @@ async function install(dsn) {
   } finally { await db.close(); }
 }
 
-/**
- * Checks schema().empty() on a new case database, with an empty PostgreSQL
- * schema other than public, and with the installed tables.
- * Requirements: DBS-108, INT-58, SCH-7.
- */
-// Requirements: DBS-108, INT-58, SCH-7.
-async function schemaEmpty(dialect, dsn) {
-  const db = await connect(dsn);
-  try {
-    check(await db.utils().schema().empty(), 'a database without tables');
-    if (dialect === 'postgres') {
-      await postgres(dsn, ['CREATE SCHEMA unowned_empty']);
-      try {
-        check(!(await db.utils().schema().empty()), 'an empty schema other than public');
-      } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
-      check(await db.utils().schema().empty(), 'the empty schema dropped');
-    }
-    await installBench(db);
-    check(!(await db.utils().schema().empty()), 'installed tables');
-  } finally { await db.close(); }
-}
-
-// Requirements: INT-57.
-async function schemaExistsUnderscore(db) {
-  await db.pool.execute('CREATE TABLE "fooXbar__schema_probe" (id INTEGER)', [], undefined, () => undefined);
-  check(!(await db.utils().schema().exists('foo_bar')), 'an underscore in a schema prefix is literal');
-  check(await db.utils().schema().exists('fooXbar'), 'the exact schema prefix exists');
-}
-
 // A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/spec/interfaces.md).
 const start = Date.UTC(2026, 0, 2, 3, 4, 5);
 const datetime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -453,9 +424,6 @@ async function transactions(db, dsn) {
     check(await new User().getCount() === 1, 'savepoint rollback');
     await new User().name('outer').forUpdate().gets();
     await db.utils().lock('users');
-    await db.utils().setLocal('ormtest.actor', 'tester');
-    check(await db.utils().local('ormtest.actor') === 'tester', 'local');
-    check(await code(db.utils().local('ormtest.missing')) === 'NO_ROWS', 'missing local');
     const concurrent = await Promise.allSettled([new User().getCount(), new User().getCount()]);
     check(concurrent.some(r => r.status === 'rejected' && r.reason instanceof OrmError && r.reason.code === 'CONFIG'), 'concurrent use of one transaction');
   }, { isolation: 'read_committed', retry: 0 });
@@ -683,9 +651,7 @@ const failureMessage = async promise => { try { await promise; return 'no error'
 // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
 const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
 
-modelCase('schemaEmpty', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, dsn => schemaEmpty(dialect, dsn)));
 for (const [name, fn] of Object.entries(cases)) modelCase(name, DIALECTS, installed(fn));
-modelCase('schemaExistsUnderscore', ['sqlite'], installed(schemaExistsUnderscore));
 // Requirements: CFG-9.
 modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   const fixture = await seed(db);

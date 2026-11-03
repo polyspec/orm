@@ -61,11 +61,12 @@ fn bind_vectors() {
     let raw = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../tests/bind/vectors.json")).unwrap();
     let vectors: Value = serde_json::from_str(&raw).unwrap();
     assert_eq!(vectors["zone"], "+00:00", "this runner checks in UTC");
-    let cases = vectors["bind"].as_array().unwrap();
+    // compile_refused holds the cases that the typed API of Rust refuses at compile time, so no recipe reaches them here.
+    let cases: Vec<&Value> = vectors["bind"].as_array().unwrap().iter().chain(vectors["compile_refused"].as_array().unwrap()).collect();
     assert!(!cases.is_empty(), "no bind cases");
     let mut failed = Vec::new();
     let mut no_host = Vec::new();
-    for c in cases {
+    for c in cases.iter().copied() {
         let name = c["name"].as_str().unwrap();
         match host_value(&c["value"]) {
             None => no_host.push(name.to_owned()),

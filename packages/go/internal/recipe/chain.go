@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"slices"
 	"strings"
 
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -35,6 +37,7 @@ type chainQuery struct {
 	Aggregate     *chainAggregate   `json:"aggregate"`
 	Joins         []chainJoin       `json:"joins"`
 	Relations     []chainRelation   `json:"relations"`
+	ForceIndex    string            `json:"force_index"`
 }
 
 type chainOrder struct {
@@ -113,6 +116,9 @@ type chainStep struct {
 	As              string                     `json:"as"`
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
+	KeyBy           string                     `json:"key_by"`
+	OrderedText     string                     `json:"ordered_text"`
+	GroupValue      string                     `json:"group_value"`
 	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
@@ -211,6 +217,48 @@ func chainValue(raw json.RawMessage, c *databaseContext) (any, error) {
 		}
 	}
 	return assignmentValue(raw, c)
+}
+
+// columnValue is the value of a column for a wrapper: a styled wrapper is the styled value of its value, and an object is
+// the styled value of the codec of its column, so that an ordered_json column keeps its member order and number text.
+func columnValue(core *orm.Core, column string, raw json.RawMessage, c *databaseContext) (any, error) {
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return chainValue(raw, c)
+	}
+	if styled, ok := entries["styled"]; ok && len(entries) == 1 {
+		value, err := chainPlain(styled, c)
+		if err != nil {
+			return nil, err
+		}
+		return orm.Value(value), nil
+	}
+	if _, ok := entries["object"]; ok && len(entries) == 1 {
+		model, err := c.schema.Model()
+		if err != nil {
+			return nil, err
+		}
+		if entity := model.Entities[core.Entity().Name]; entity != nil {
+			if field := entity.Field(column); field != nil && slices.Contains(field.Codec, "ordered_json") {
+				return styledArgument(raw, field.Codec, nil)
+			}
+		}
+	}
+	return chainValue(raw, c)
+}
+
+// orderedText is the text of the ordered-json value that a read holds in column, with its repeated members (DIA-26).
+func orderedText(row *tableRow, column string) (string, error) {
+	styled, ok := row.vals[column].(orm.StyledValue)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the column %s is a %T", column, row.vals[column])
+	}
+	data, _ := styled.Data()
+	value, ok := data.(*orderedjson.Value)
+	if !ok {
+		return "", fmt.Errorf("ordered_text: the value of %s is a %T", column, data)
+	}
+	return value.Raw(), nil
 }
 
 // chainPlain is a member of a styled object: the native value of its wrapper, without the styled-value wrapping.
@@ -714,6 +762,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 	if q.Lock != "" {
 		core.Lock(q.Lock)
 	}
+	if q.ForceIndex != "" {
+		core.ForceIndex(q.ForceIndex)
+	}
 	return nil
 }
 
@@ -810,27 +861,6 @@ func chainRows(rows []*tableRow, pick []string) ([]any, error) {
 	return out, nil
 }
 
-// derivedIntegers reads the named fields of each row as a derived integer (COD-45): the text of an integer is its number.
-func derivedIntegers(rows []any, names []string) error {
-	for _, row := range rows {
-		fields, ok := row.(map[string]any)
-		if !ok {
-			return fmt.Errorf("a row with a derived integer is %T", row)
-		}
-		for _, name := range names {
-			text, ok := fields[name].(string)
-			if !ok {
-				continue
-			}
-			if _, err := strconv.ParseInt(text, 10, 64); err != nil {
-				return fmt.Errorf("%s is an invalid derived integer: %w", name, err)
-			}
-			fields[name] = json.Number(text)
-		}
-	}
-	return nil
-}
-
 // jsonOutcome is the outcome of a step whose expect is {"json": <value>}.
 func jsonOutcome(value any) outcome {
 	return outcome{fields: map[string]any{"json": value}}
@@ -842,7 +872,11 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return outcome{}, err
 	}
-	var db *orm.DB
+	// A model op that names no connection and no row runs on the case connection (FCV-4).
+	db := c.db
+	if len(s.Row) > 0 {
+		db = nil
+	}
 	if s.Connection != "" {
 		bound, ok := c.bound[s.Connection]
 		if !ok {
@@ -883,6 +917,13 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		row, ok := m.(*tableRow)
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
+		}
+		if s.OrderedText != "" && row != nil {
+			text, err := orderedText(row, s.OrderedText)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(text), nil
 		}
 		value, err := chainRow(row, s.Pick)
 		if err != nil {
@@ -927,6 +968,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	build := &chainBuild{c: c, joined: map[string]*orm.Core{}}
 	if err := build.query(core, q); err != nil {
 		return nil, err
+	}
+	if s.KeyBy != "" {
+		core.KeyName(s.KeyBy)
 	}
 	if len(s.Relation) > 0 {
 		var r chainRelation
@@ -990,6 +1034,16 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
+		if s.GroupValue != "" {
+			for row := range groups.All() {
+				value, err := row.Value(s.GroupValue)
+				if err != nil {
+					return outcome{}, err
+				}
+				return jsonOutcome(value), nil
+			}
+			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.GroupValue)
+		}
 		return jsonOutcome(groups.ToArray()), nil
 	case s.Plan:
 		var limit chainLimit
@@ -1017,9 +1071,6 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	}
 	value, err := chainRows(rows.Slice(), s.Pick)
 	if err != nil {
-		return outcome{}, err
-	}
-	if err := derivedIntegers(value, s.DerivedIntegers); err != nil {
 		return outcome{}, err
 	}
 	out := jsonOutcome(value)
@@ -1221,7 +1272,7 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			}
 			continue
 		}
-		value, err := chainValue(member.value, c)
+		value, err := columnValue(core, member.key, member.value, c)
 		if err != nil {
 			return err
 		}
@@ -1455,7 +1506,12 @@ func chainAffected(db *orm.DB) outcome {
 	return outcome{fields: affectedFields(db)}
 }
 
-// utilsOp runs utils.lock, utils.set_local and utils.local on the connection of s (INT-50, INT-51).
+// boolOutcome is the value of an op that returns a boolean (FCV-4).
+func boolOutcome(value bool) outcome {
+	return outcome{fields: map[string]any{"value": map[string]any{"bool": value}}}
+}
+
+// utilsOp runs the utils ops on the connection of s (INT-50 to INT-53, INT-134).
 func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 	db, err := connectionOf(s, c)
 	if err != nil {
@@ -1474,6 +1530,36 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.Name, text)
+	case "utils.was_inserted":
+		inserted, err := db.Utils().WasInserted(s.Table, s.Sequence)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(inserted), nil
+	case "utils.backend_waiting_for_lock":
+		waiting, err := db.Utils().BackendWaitingForLock(c.ctx)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(waiting), nil
+	case "utils.groups":
+		// The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+		utils := db.Utils()
+		names := []any{}
+		for _, group := range []struct {
+			name string
+			held bool
+		}{
+			{"aes", utils.Aes() != nil},
+			{"privileges", utils.Privileges() != nil},
+			{"schema", utils.Schema() != nil},
+			{"stats", utils.Stats() != orm.DBStats{}},
+		} {
+			if group.held {
+				names = append(names, map[string]any{"text": group.name})
+			}
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": names}}}, nil
 	}
 	value, err := db.Utils().Local(s.Name)
 	if err != nil {

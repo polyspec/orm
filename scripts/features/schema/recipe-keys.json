@@ -109,8 +109,22 @@
     ],
     "ir.validate": [
       "expect",
+      "manifest_hash",
       "op",
       "request"
+    ],
+    "ir.param_uses": [
+      "expect",
+      "input",
+      "op",
+      "schema"
+    ],
+    "planner.columns": [
+      "expect",
+      "input",
+      "names",
+      "op",
+      "schema"
     ],
     "ir.answer": [
       "answer",
@@ -210,6 +224,21 @@
       "expect",
       "op",
       "schema"
+    ],
+    "schema.empty": [
+      "expect",
+      "op"
+    ],
+    "schema.exists": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.installed": [
+      "expect",
+      "op",
+      "schema",
+      "table"
     ],
     "schema.connect": [
       "expect",
@@ -334,6 +363,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
@@ -346,12 +376,14 @@
       "columns",
       "compile",
       "connection",
-      "derived_integers",
       "expect",
+      "expect_unnamed",
       "from",
+      "group_value",
       "items",
       "joins",
       "key",
+      "key_by",
       "limit",
       "lock",
       "model",
@@ -388,6 +420,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",
@@ -516,6 +549,12 @@
       "owned",
       "parsing"
     ],
+    "dbspec.load_set": [
+      "expect",
+      "external",
+      "op",
+      "owned"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -637,6 +676,29 @@
       "connection",
       "expect",
       "name",
+      "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
+    ],
+    "utils.was_inserted": [
+      "connection",
+      "expect",
+      "op",
+      "sequence",
+      "table"
+    ],
+    "utils.backend_waiting_for_lock": [
+      "connection",
+      "expect",
+      "op"
+    ],
+    "utils.groups": [
+      "connection",
+      "expect",
       "op"
     ]
   }

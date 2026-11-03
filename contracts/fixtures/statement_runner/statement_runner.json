@@ -4741,6 +4741,472 @@
           }
         }
       ]
+    },
+    {
+      "id": "retryable_error_of_the_function_runs_it_once",
+      "requirements": [
+        "INT-150",
+        "INT-48"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "conn",
+          "as": "recorder"
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "insert",
+              "tables": [
+                "event_probe"
+              ],
+              "sql": {
+                "mysql": "INSERT INTO event_probe (label) VALUES (?)",
+                "postgres": "INSERT INTO event_probe (label) VALUES ($1)",
+                "sqlite": "INSERT INTO event_probe (label) VALUES (?)"
+              },
+              "params": [
+                {
+                  "text": "a"
+                }
+              ]
+            }
+          ],
+          "conflict": "retryable",
+          "expect": {
+            "mysql": {
+              "error": "DEADLOCK"
+            },
+            "postgres": {
+              "error": "DEADLOCK"
+            },
+            "sqlite": {
+              "error": "DEADLOCK"
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "START TRANSACTION"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO event_probe (label) VALUES (?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO event_probe (label) VALUES ($1)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "BEGIN IMMEDIATE"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "begin"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "INSERT INTO event_probe (label) VALUES (?)"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "event_probe"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "ROLLBACK"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "rollback"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "int": "1"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

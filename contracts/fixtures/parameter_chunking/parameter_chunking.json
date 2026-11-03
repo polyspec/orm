@@ -3,7 +3,8 @@
   "requirements": [
     "PLN-44",
     "PRT-35",
-    "PRT-76"
+    "PRT-76",
+    "CFG-28"
   ],
   "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
   "cases": [
@@ -282,63 +283,39 @@
           },
           "expect": {
             "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             },
             "sqlite": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             }
           }
@@ -354,6 +331,8 @@
           "model": "ChunkPair",
           "columns": [
             "tenant_id",
+            "enabled",
+            "label",
             "batch_no"
           ],
           "where": {
@@ -370,21 +349,94 @@
           },
           "expect": {
             "mysql": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a row whose text the new column type reads",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (7, '7')"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
               "rows": [
                 [
                   {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
-                  }
-                ],
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "2"
+                    "int": "7"
                   }
                 ]
               ]
@@ -393,18 +445,7 @@
               "rows": [
                 [
                   {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
-                  }
-                ],
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "2"
+                    "int": "7"
                   }
                 ]
               ]
@@ -413,18 +454,60 @@
               "rows": [
                 [
                   {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
+                    "int": "7"
                   }
-                ],
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the type of the column the statement the model read prepared compares with its parameter",
+          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
                 [
                   {
-                    "int": "0"
-                  },
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
                   {
-                    "int": "2"
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
                   }
                 ]
               ]

@@ -478,7 +478,8 @@ def sub_type(m: RuntimeModel, sub: dict) -> str:
             codes.INTERNAL,
             f"{entity.name}.{column_name} is missing from a validated scalar subquery",
         )
-    return f.type
+    # INT-160: a sum leaves the range of its column.
+    return "i64" if sub.get("agg") == "sum" and f.type in ("i16", "i32") else f.type
 
 
 def answer_value(type_: str, raw, where: str):
@@ -593,7 +594,7 @@ def markdown_links(row: list) -> MdLinks:
 
 def begin_message(read_only: bool) -> dict:
     """The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-    member out (docs/spec/protocol.md section 5 Session, the control cases of tests/bind/vectors.json)."""
+    member out (docs/spec/protocol.md section 5 Session, the cases control_begin of tests/bind/messages.json)."""
     return {"op": "begin", "read_only": True} if read_only else {"op": "begin"}
 
 

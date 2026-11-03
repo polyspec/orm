@@ -9,7 +9,7 @@ from polyspec.orm.errors import OrmError
 from polyspec.orm.schema import Schema
 from . import testcase
 from .case_database import case_database
-from .test_schema_install import bench_shared
+from .test_sqlite import bench_shared
 from .test_sqlite import ROOT, generate, generate_document
 
 
