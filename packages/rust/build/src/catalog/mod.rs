@@ -77,21 +77,42 @@ impl CatalogConnection {
         &self.dialect
     }
     pub async fn current_namespace(&mut self) -> Result<String, String> {
-        metadata::current_namespace(&mut self.connection, &self.dialect).await
+        let mut connection = self.read_only_connection("SELECT 1").await?;
+        let result = metadata::current_namespace(&mut connection, &self.dialect).await;
+        finish_read_only(&mut connection, result).await
     }
     pub async fn describe_table(&mut self, table: &TableRef) -> Result<TableMetadata, String> {
-        metadata::describe(&mut self.connection, &self.dialect, table).await
+        let mut connection = self.read_only_connection("SELECT 1").await?;
+        let result = metadata::describe(&mut connection, &self.dialect, table).await;
+        finish_read_only(&mut connection, result).await
     }
     /// Reads one bounded table page; this does not authorize row mutations.
     pub async fn table_page(&mut self, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, String> {
         page::validate_request(table, limit, offset)?;
-        let (mut connection, _) = self.read_only_connection("SELECT 1").await?;
+        let mut connection = self.read_only_connection("SELECT 1").await?;
         let result = page::read(&mut connection, &self.dialect, table, limit, offset).await;
         finish_read_only(&mut connection, result).await
     }
     /// Executes one caller-authorized statement; this does not impose read-only isolation.
     pub async fn query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {
-        self.connection.query_result_bounded(sql, params, limits).await.map_err(|error| error.to_string())
+        let first = self.connection.query_result_bounded(sql, params, limits).await;
+        match first {
+            Err(error) if stale_plan(&error) => {
+                // The statement may be one that cannot run in a transaction, so only a statement that failed this way, which has
+                // changed nothing, runs in one (CFG-28).
+                self.connection.exec("BEGIN", &[]).await.map_err(|error| error.to_string())?;
+                self.connection.forget_statements().await.map_err(|error| error.to_string())?;
+                self.connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
+                match self.connection.query_result_bounded(sql, params, limits).await {
+                    Ok(result) => {
+                        self.connection.exec("COMMIT", &[]).await.map_err(|error| error.to_string())?;
+                        Ok(result)
+                    }
+                    Err(error) => finish_read_only(&mut self.connection, Err(error.to_string())).await,
+                }
+            }
+            result => result.map_err(|error| error.to_string()),
+        }
     }
     /// Validates read query structure and enforces a fresh database read-only scope.
     pub async fn read_only_query(
@@ -100,9 +121,12 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, String> {
-        let (mut connection, thread) = self.read_only_connection(sql).await?;
+        let mut connection = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
-        self.stop_limited_read(thread, &result).await;
+        if stopped_by_budget(&result) && self.dialect != "sqlite" {
+            connection.close_now();
+            return result;
+        }
         finish_read_only(&mut connection, result).await
     }
     /// A read_only_query whose limits are the counts that a caller gives: an absent count is the default, and a negative count
@@ -124,9 +148,12 @@ impl CatalogConnection {
         params: &[crate::tool_db::P],
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, String> {
-        let (mut connection, thread) = self.read_only_connection(sql).await?;
+        let mut connection = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
-        self.stop_limited_read(thread, &result).await;
+        if stopped_by_budget(&result) && self.dialect != "sqlite" {
+            connection.close_now();
+            return result;
+        }
         finish_read_only(&mut connection, result).await
     }
     /// A read_only_grid_query whose limits are the counts that a caller gives, refused as read_only_query_counted refuses them.
@@ -140,8 +167,8 @@ impl CatalogConnection {
         let limits = read_limits(max_rows, max_bytes)?;
         self.read_only_grid_query(sql, params, limits).await
     }
-    /// The read-only connection of a read, and on MySQL the thread id that a budget stop kills the read by.
-    async fn read_only_connection(&self, sql: &str) -> Result<(Conn, Option<u64>), String> {
+    /// The read-only connection of a read, which closes when it drops.
+    async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
         let mut connection = Conn::acquire(&self.pool).await.map_err(|error| error.to_string())?;
         connection.discard_on_drop();
@@ -154,28 +181,7 @@ impl CatalogConnection {
             _ => "BEGIN",
         };
         begin_session(&mut connection, begin).await?;
-        let thread = if matches!(connection, Conn::MySql(_)) {
-            let rows = connection.query("SELECT CONNECTION_ID()", &[]).await.map_err(|error| error.to_string())?;
-            match rows.as_slice() {
-                [row] if row.len() == 1 => Some(row[0].int().map_err(|error| error.to_string())? as u64),
-                _ => return Err("MySQL CONNECTION_ID of the read is not one value".into()),
-            }
-        } else {
-            None
-        };
-        Ok((connection, thread))
-    }
-    /// Ends a read that a budget stopped on the server. MySQL kills the running statement by its thread id on a connection of its
-    /// own, so the rollback that follows does not wait for the rest of the result. A PostgreSQL cursor ends with the rollback, and
-    /// a SQLite read stops with its handle. A failure here is not reported: the budget error is.
-    async fn stop_limited_read<T>(&self, thread: Option<u64>, result: &Result<T, String>) {
-        let (Some(thread), Err(error)) = (thread, result) else { return };
-        if !error.starts_with(polyspec_orm::codes::CATALOG_LIMIT) {
-            return;
-        }
-        if let Ok(mut killer) = Conn::acquire(&self.pool).await {
-            let _killed: Result<_, _> = killer.exec(&format!("KILL QUERY {thread}"), &[]).await;
-        }
+        Ok(connection)
     }
     pub async fn close(self) {
         let Self { connection, pool, .. } = self;
@@ -199,6 +205,26 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
         connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+/// An error that a statement named before a schema change can raise on PostgreSQL (CFG-28).
+fn stale_plan(error: &sqlx::Error) -> bool {
+    let Some(database) = error.as_database_error() else {
+        return false;
+    };
+    match database.code().as_deref() {
+        Some("0A000") => database.message().contains("cached plan must not change result type"),
+        Some("42883" | "42804" | "22P02" | "22003" | "22007" | "22008") => true,
+        _ => false,
+    }
+}
+
+/// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so on MySQL and
+/// PostgreSQL the read returns without one and closes its socket at once, and the server ends the statement and the transaction with
+/// it (CFG-35). The thread id of CONNECTION_ID cannot stop the statement instead: through ProxySQL, KILL QUERY names a session
+/// of ProxySQL and answers OK for any other id. SQLite stops the read with its handle, so it rolls back as usual.
+fn stopped_by_budget<T>(result: &Result<T, String>) -> bool {
+    matches!(result, Err(error) if error.starts_with(polyspec_orm::codes::CATALOG_LIMIT))
 }
 
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -> Result<T, String> {

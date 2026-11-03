@@ -605,9 +605,6 @@ class ModelTest extends TestCase
             self::check((new User())->getCount() === 1, 'savepoint rollback');
             (new User())->name('outer')->forUpdate()->gets();
             $db->utils()->lock('users');
-            $db->utils()->setLocal('ormtest.actor', 'tester');
-            self::check($db->utils()->local('ormtest.actor') === 'tester', 'local');
-            self::check(self::code(fn() => $db->utils()->local('ormtest.missing')) === Code::NO_ROWS, 'missing local');
             return 'done';
         }, isolation: 'read_committed', retry: 0);
         self::check($result === 'done', 'transaction result');

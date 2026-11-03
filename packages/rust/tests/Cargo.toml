@@ -122,6 +122,23 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a
+# case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "utils_recipe_mysql"
+path = "tests/utils_recipe_mysql.rs"
+harness = false
+
+[[test]]
+name = "utils_recipe_postgres"
+path = "tests/utils_recipe_postgres.rs"
+harness = false
+
+[[test]]
+name = "utils_recipe_sqlite"
+path = "tests/utils_recipe_sqlite.rs"
+harness = false
+
 # Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
 # statement_runner_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -588,6 +605,18 @@ harness = false
 [[test]]
 name = "dbspec_limits_none"
 path = "tests/dbspec_limits_none.rs"
+harness = false
+
+# Each case of The default select set, tests/planner/default-select-set.json, is the trial default_select_set_none::<case id> (FCV-3).
+[[test]]
+name = "default_select_set_none"
+path = "tests/default_select_set_none.rs"
+harness = false
+
+# Each case of The load of a document set, tests/dbspec/load-set.json, is the trial dbspec_load_set_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_load_set_none"
+path = "tests/dbspec_load_set_none.rs"
 harness = false
 
 # Each case of The rule diagnostics and canonical forms of tests/dbspec/rules.json, tests/dbspec/rules.json, is the trial dbspec_rules_recipe_none::<case id> (FCV-3).
