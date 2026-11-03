@@ -197,6 +197,11 @@ type databaseStep struct {
 	// The channel and payload of a db.notify (FCV-4).
 	Channel string `json:"channel"`
 	Payload string `json:"payload"`
+	// The channel and the payload repeated this many times, the deadline of a receive and whether it reads the payload size (FCV-4).
+	ChannelRepeat int  `json:"channel_repeat"`
+	PayloadRepeat int  `json:"payload_repeat"`
+	WithinMS      int  `json:"within_ms"`
+	PayloadBytes  bool `json:"payload_bytes"`
 }
 
 // eventMask replaces one bind of one captured event with a name, for a value that no recipe can fix (FCV-4).
@@ -351,6 +356,37 @@ func casePoolerDSN(caseDSN string) (string, error) {
 	return pooler.String(), nil
 }
 
+// caseReplicaDSN is the DSN of the case database on the replica of the environment, which replicates the database of the
+// primary under the same name (CFG-23).
+func caseReplicaDSN(database, caseDSN string) (string, error) {
+	variable := "ORM_TEST_" + strings.ToUpper(database) + "_REPLICA_DSN"
+	replica, err := url.Parse(os.Getenv(variable))
+	if err != nil || replica.Host == "" {
+		return "", fmt.Errorf("dsn case-replica: %s is required; database tests never skip", variable)
+	}
+	target, err := url.Parse(caseDSN)
+	if err != nil {
+		return "", err
+	}
+	replica.Path = target.Path
+	return replica.String(), nil
+}
+
+// caseServerDSN is the DSN of the case database on the server itself, not through a pooler: LISTEN is session state (DIA-194).
+func caseServerDSN(database, caseDSN string) (string, error) {
+	variable := "ORM_TEST_" + strings.ToUpper(database) + "_SERVER_DSN"
+	server, err := url.Parse(os.Getenv(variable))
+	if err != nil || server.Host == "" {
+		return "", fmt.Errorf("dsn case-server: %s is required; database tests never skip", variable)
+	}
+	target, err := url.Parse(caseDSN)
+	if err != nil {
+		return "", err
+	}
+	server.Path = target.Path
+	return server.String(), nil
+}
+
 // connectDSN resolves the DSN of a model.connect step (FCV-4): an absent DSN or "case" is the case database, "case-socket" is
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
@@ -366,6 +402,10 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 		return caseDSN, nil
 	case "case-pooler":
 		return casePoolerDSN(caseDSN)
+	case "case-replica":
+		return caseReplicaDSN(database, caseDSN)
+	case "case-server":
+		return caseServerDSN(database, caseDSN)
 	case "case-socket":
 		if database != "mysql" {
 			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
@@ -1168,6 +1208,20 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return okOutcome(), nil
 	case "transaction.writers":
 		return transactionWriters(s, c)
+	case "replica.await":
+		if err := awaitReplica(c); err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{}}, nil
+	case "database.read_only":
+		// The file of the case database becomes one that the process may only read (CFG-24).
+		path, _, _ := strings.Cut(strings.TrimPrefix(c.dsn, "sqlite://"), "?")
+		if err := os.Chmod(path, 0o444); err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{}}, nil
+	case "db.listen", "subscription.receive", "subscription.unlisten", "subscription.close", "session.end_listener":
+		return listenOp(s, c)
 	case "wait.start":
 		c.waitStart = time.Now()
 		return outcome{fields: map[string]any{}}, nil
@@ -1465,6 +1519,129 @@ func endSession(table string, c *databaseContext) error {
 	}
 	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
 	return err
+}
+
+// awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
+// PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits
+// after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on
+// the database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
+// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+func awaitReplica(c *databaseContext) error {
+	source := testdb.Open(c.t, c.database, c.dsn)
+	defer testcase.Close(c.t, source)
+	if c.database == "postgres" {
+		tx, err := source.Begin()
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
+		if _, err := tx.Exec("SET LOCAL synchronous_commit = remote_apply"); err != nil {
+			return err
+		}
+		var mode, message string
+		if err := tx.QueryRow("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')::text").Scan(&mode, &message); err != nil {
+			return err
+		}
+		if mode != "remote_apply" {
+			return fmt.Errorf("synchronous_commit of the barrier transaction is %s", mode)
+		}
+		return tx.Commit()
+	}
+	var file string
+	var position int64
+	var ignored [3]any
+	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
+		return err
+	}
+	replica := os.Getenv("ORM_TEST_MYSQL_REPLICA_DSN")
+	if replica == "" {
+		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+	}
+	target := testdb.Open(c.t, c.database, replica)
+	defer testcase.Close(c.t, target)
+	var waited *int64
+	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
+		return err
+	}
+	if waited == nil || *waited < 0 {
+		return fmt.Errorf("the replica did not reach %s:%d", file, position)
+	}
+	return nil
+}
+
+// recipeListener is the subscription of a db.listen with the cancellation of its handle, which a receive past its deadline
+// uses: the Go form of a receive with a deadline is a context that ends (DIA-195).
+type recipeListener struct {
+	subscription *orm.Subscription
+	cancel       context.CancelFunc
+}
+
+// repeated is the text of a channel or a payload with its repeat, which is absent for the text alone.
+func repeated(text string, times int) string {
+	if times == 0 {
+		return text
+	}
+	return strings.Repeat(text, times)
+}
+
+// listenOp runs the ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
+func listenOp(s databaseStep, c *databaseContext) (outcome, error) {
+	switch s.k("op").Op {
+	case "db.listen":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		subscription, err := db.WithContext(ctx).Listen(repeated(s.k("channel").Channel, s.k("channel_repeat").ChannelRepeat))
+		if err != nil {
+			cancel()
+			return outcome{}, err
+		}
+		c.closers = append(c.closers, func() error {
+			defer cancel()
+			return subscription.Close()
+		})
+		return outcome{api: &recipeListener{subscription: subscription, cancel: cancel}, fields: map[string]any{}}, nil
+	case "session.end_listener":
+		dsn, err := caseServerDSN(c.database, c.dsn)
+		if err != nil {
+			return outcome{}, err
+		}
+		raw := testdb.Open(c.t, c.database, dsn)
+		defer testcase.Close(c.t, raw)
+		var id int64
+		if err := raw.QueryRow(`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1`, `LISTEN "`+s.k("channel").Channel+`"`).Scan(&id); err != nil {
+			return outcome{}, fmt.Errorf("the listener session of %s: %w", s.Channel, err)
+		}
+		_, err = raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		return outcome{fields: map[string]any{}}, err
+	}
+	listener, err := boundAPI[*recipeListener](s.k("ref").Ref, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	switch s.Op {
+	case "subscription.receive":
+		within := s.k("within_ms").WithinMS
+		if within == 0 {
+			within = 10000
+		}
+		timer := time.AfterFunc(time.Duration(within)*time.Millisecond, listener.cancel)
+		defer timer.Stop()
+		notification, err := listener.subscription.Receive()
+		if err != nil {
+			return outcome{}, err
+		}
+		var payload any = notification.Payload
+		if s.k("payload_bytes").PayloadBytes {
+			payload = len(notification.Payload)
+		}
+		return outcome{fields: map[string]any{"json": []any{notification.Channel, payload}}}, nil
+	case "subscription.unlisten":
+		return outcome{fields: map[string]any{}}, listener.subscription.Unlisten(s.k("channel").Channel)
+	}
+	return outcome{fields: map[string]any{}}, listener.subscription.Close()
 }
 
 func runNested(raw []json.RawMessage, c *databaseContext) error {

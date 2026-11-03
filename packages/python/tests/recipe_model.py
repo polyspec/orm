@@ -37,6 +37,22 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
                 "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip"
             )
         return urlunsplit(urlsplit(pooler)._replace(path=urlsplit(case_dsn).path))
+    if dsn == "case-server":
+        variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
+        server = os.environ.get(variable)
+        if not server:
+            raise ValueError(
+                f"dsn case-server: {variable} is required; database tests never skip"
+            )
+        return urlunsplit(urlsplit(server)._replace(path=urlsplit(case_dsn).path))
+    if dsn == "case-replica":
+        variable = f"ORM_TEST_{database.upper()}_REPLICA_DSN"
+        replica = os.environ.get(variable)
+        if not replica:
+            raise ValueError(
+                f"dsn case-replica: {variable} is required; database tests never skip"
+            )
+        return urlunsplit(urlsplit(replica)._replace(path=urlsplit(case_dsn).path))
     if dsn != "case-socket":
         return dsn
     if database != "mysql":

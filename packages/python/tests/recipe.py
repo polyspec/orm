@@ -90,7 +90,7 @@ from .recipe_generator import check_generated_files, check_refused_generation, c
 from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
 from .server_database import with_database
 from .recipe_keys import check_keys
-from .recipe_model import model_ops
+from .recipe_model import connect_dsn, model_ops
 from .recipe_reads import ReadStep
 from .markdown_conformance import same
 from .test_sqlite import generate
@@ -2713,6 +2713,79 @@ def _op_transaction_writers(step: dict, context: dict) -> dict:
         db.close()
 
 
+def _op_replica_await(step: dict, context: dict) -> dict:
+    """Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
+    PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message,
+    commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of
+    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The 60
+    seconds are the deadline of the wait: the replica applies the writes of every client that runs in parallel."""
+    if context["database"] == "postgres":
+        with native_session("postgres", context["dsn"]) as run:
+            run("BEGIN")
+            run("SET LOCAL synchronous_commit = remote_apply")
+            mode = run(
+                "SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '') AS message"
+            )[0]["mode"]
+            run("COMMIT")
+        if mode != "remote_apply":
+            raise AssertionError(f"synchronous_commit of the barrier transaction is {mode}")
+        return {}
+    replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
+    if not replica:
+        raise AssertionError("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+    status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
+    file, position = status["File"], int(status["Position"])
+    waited = native_query("mysql", replica, [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"])[0][0]["waited"]
+    if waited is None or int(waited) < 0:
+        raise AssertionError(f"the replica did not reach {file}:{position}")
+    return {}
+
+
+def _op_database_read_only(step: dict, context: dict) -> dict:
+    """The file of the case database becomes one that the process may only read (CFG-24)."""
+    os.chmod(context["dsn"].removeprefix("sqlite://").split("?")[0], 0o444)
+    return {}
+
+
+def _op_db_listen(step: dict, context: dict) -> dict:
+    """A LISTEN subscription (FCV-4, DIA-194)."""
+    return {"bind": _connection_of(step, context).listen(step["channel"] * step.get("channel_repeat", 1))}
+
+
+def _op_subscription_receive(step: dict, context: dict) -> dict:
+    """The next notification, whose deadline is the timeout of the Python form of a receive (DIA-195)."""
+    notification = _bound_value(step["ref"], context).receive(step.get("within_ms", 10000) / 1000)
+    payload = notification.payload
+    return {"json": [notification.channel, len(payload.encode()) if step.get("payload_bytes") is True else payload]}
+
+
+def _op_subscription_unlisten(step: dict, context: dict) -> dict:
+    _bound_value(step["ref"], context).unlisten(step["channel"])
+    return {}
+
+
+def _op_subscription_close(step: dict, context: dict) -> dict:
+    _bound_value(step["ref"], context).close()
+    return {}
+
+
+def _op_session_end_listener(step: dict, context: dict) -> dict:
+    """Ends the server session that listens on the channel (DIA-194), through the server DSN."""
+    session = connect_dsn("case-server", context["database"], context["dsn"])
+    rows = native_query(
+        context["database"],
+        session,
+        [
+            "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() "
+            f"AND query = 'LISTEN \"{step['channel']}\"' LIMIT 1"
+        ],
+    )[0]
+    if len(rows) != 1:
+        raise AssertionError(f"the listener session of {step['channel']}: {rows}")
+    native_query(context["database"], session, [f"SELECT pg_terminate_backend({int(rows[0]['pid'])}, 5000)"])
+    return {}
+
+
 def _op_wait_start(step: dict, context: dict) -> dict:
     context["wait_start"] = time.monotonic()
     return {}
@@ -3503,6 +3576,12 @@ def _table_model_update(step: dict, context: dict) -> dict:
     return {}
 
 
+def _row_connect(step: dict, context: dict) -> dict:
+    """connect of a bound row (CFG-21): a later write of the row runs on that connection."""
+    _bound_value(step["row"], context).connect(_connection_of(step, context))
+    return {}
+
+
 def _collection_connect(step: dict, context: dict) -> dict:
     """connect of a bound collection (INT-85): true when it returns that collection."""
     rows = _bound_value(step["row"], context)
@@ -3555,7 +3634,10 @@ def _db_last_affected(step: dict, context: dict) -> dict:
 
 
 def _db_notify(step: dict, context: dict) -> dict:
-    _connection_of(step, context).notify(step["channel"], step["payload"])
+    _connection_of(step, context).notify(
+        step["channel"] * step.get("channel_repeat", 1),
+        step["payload"] * step.get("payload_repeat", 1),
+    )
     return {}
 
 
@@ -4052,6 +4134,13 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
+    "replica.await": _op_replica_await,
+    "database.read_only": _op_database_read_only,
+    "db.listen": _op_db_listen,
+    "subscription.receive": _op_subscription_receive,
+    "subscription.unlisten": _op_subscription_unlisten,
+    "subscription.close": _op_subscription_close,
+    "session.end_listener": _op_session_end_listener,
     "wait.start": _op_wait_start,
     "transaction.writers": _op_transaction_writers,
     "wait.at_least": _op_wait_at_least,
@@ -4605,6 +4694,7 @@ _TABLE_OPS = {
     "model.get_by": _table_model_get_by,
     "model.update": _table_model_update,
     "model.delete": _table_model_delete,
+    "row.connect": _row_connect,
     "collection.connect": _collection_connect,
     "model.count": _table_model_count,
     "model.creates": _table_model_creates,

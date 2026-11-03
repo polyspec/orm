@@ -567,6 +567,10 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - Six test files of the physical DDL behaviour and the IR validate recipe belonged to no feature, so the features check failed in six CI jobs. The physical DDL tests now belong to schema_definition and the IR validate tests to planner (CR54).
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - The drop step refuses a binary log purge that the replica did not apply, and names the replica SQL thread state and its last error; the start of the test servers no longer reuses a MySQL replica whose SQL thread stopped, and reports it with its last error (G5.55-2).
+- A primary and its replica connections run as a recipe case in the six runtimes, with the DSN `case-replica` and the ops `replica.await` and `row.connect`.
+- A write through a replica and to a read-only SQLite file run as recipe cases in the six runtimes, with the op `database.read_only`; the native replica tests are gone.
+- LISTEN and NOTIFY run as recipe cases in the six runtimes, with the DSN `case-server` and the ops `db.listen`, `subscription.receive`, `subscription.unlisten`, `subscription.close` and `session.end_listener`; the native tests are gone.
+- A process that ends inside a SQLite write transaction leaves no lock holder (CFG-43), tested in Go.
 
 ## 0.0.21
 

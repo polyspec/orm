@@ -2,7 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { chmodSync, appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -27,7 +27,7 @@ import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
-import { modelOps } from './recipe_model.mjs';
+import { connectDsn, modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
 import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
@@ -853,6 +853,65 @@ const OPS = {
     try {
       return { value: { int: String(await new Service().connect(db).getCount()) } };
     } finally { await db.close(); }
+  },
+  // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
+  // transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
+  // standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
+  // database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the
+  // deadline of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+  async 'replica.await'(s, context) {
+    if (context.database === 'postgres') {
+      const [, , [{ mode }]] = await nativeQuery('postgres', context.dsn, [
+        'BEGIN',
+        'SET LOCAL synchronous_commit = remote_apply',
+        "SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '') AS message",
+        'COMMIT',
+      ]);
+      if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
+      return {};
+    }
+    const replica = process.env.ORM_TEST_MYSQL_REPLICA_DSN;
+    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip');
+    const [[status]] = await nativeQuery('mysql', context.dsn, ['SHOW BINARY LOG STATUS']);
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT SOURCE_POS_WAIT('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
+    if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    return {};
+  },
+  // The file of the case database becomes one that the process may only read (CFG-24).
+  'database.read_only'(s, context) {
+    chmodSync(context.dsn.slice('sqlite://'.length).split('?')[0], 0o444);
+    return {};
+  },
+  // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195). The TypeScript form of a receive with a deadline is a signal
+  // that aborts, so each subscription listens on a handle with a signal of its own.
+  async 'db.listen'(s, context) {
+    const controller = new AbortController();
+    const subscription = await connectionOf(s, context).withSignal(controller.signal).listen(s.channel.repeat(s.channel_repeat ?? 1));
+    context.closers.push(() => subscription.close());
+    return { bind: { subscription, controller } };
+  },
+  async 'subscription.receive'(s, context) {
+    const { subscription, controller } = refOf(s.ref, context);
+    const deadline = setTimeout(() => controller.abort(), s.within_ms ?? 10000);
+    try {
+      const { channel, payload } = await subscription.receive();
+      return { json: [channel, s.payload_bytes === true ? Buffer.byteLength(payload) : payload] };
+    } finally { clearTimeout(deadline); }
+  },
+  async 'subscription.unlisten'(s, context) {
+    await refOf(s.ref, context).subscription.unlisten(s.channel);
+    return {};
+  },
+  async 'subscription.close'(s, context) {
+    await refOf(s.ref, context).subscription.close();
+    return {};
+  },
+  async 'session.end_listener'(s, context) {
+    const session = connectDsn('case-server', context.database, context.dsn);
+    const [rows] = await nativeQuery(context.database, session, [`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = 'LISTEN "${s.channel}"' LIMIT 1`]);
+    if (rows.length !== 1) throw new Error(`the listener session of ${s.channel}: ${rows.length} rows`);
+    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
+    return {};
   },
   'wait.start'(s, context) {
     context.waitStart = performance.now();
@@ -2032,6 +2091,11 @@ const TABLE_OPS = {
     await m.update(s.optimistic === true);
     return {};
   },
+  // connect of a bound row (CFG-21): a later write of the row runs on that connection.
+  'row.connect': (s, context) => {
+    refOf(s.row, context).connect(connectionOf(s, context));
+    return {};
+  },
   // connect of a bound collection (INT-85): true when it returns that collection.
   'collection.connect': (s, context) => {
     const rows = refOf(s.row, context);
@@ -2053,7 +2117,7 @@ const TABLE_OPS = {
   },
   'db.last_affected': (s, context) => ({ value: { int: String(lastAffected(connectionOf(s, context))) } }),
   async 'db.notify'(s, context) {
-    await connectionOf(s, context).notify(s.channel, s.payload);
+    await connectionOf(s, context).notify(s.channel.repeat(s.channel_repeat ?? 1), s.payload.repeat(s.payload_repeat ?? 1));
     return {};
   },
   async 'utils.lock'(s, context) {

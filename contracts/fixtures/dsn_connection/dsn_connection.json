@@ -2593,6 +2593,951 @@
           }
         }
       ]
+    },
+    {
+      "id": "primary_and_replica_use_their_own_connections",
+      "requirements": [
+        "CFG-21",
+        "CFG-22",
+        "CFG-23",
+        "CFG-25"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "primary"
+        },
+        {
+          "op": "model.create",
+          "connection": "primary",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-replica",
+          "as": "replica"
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "as": "read"
+        },
+        {
+          "op": "row.connect",
+          "connection": "primary",
+          "row": "read"
+        },
+        {
+          "op": "model.update",
+          "row": "read",
+          "set": {
+            "name": {
+              "text": "renamed"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "primary",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "primary",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "in_transaction"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "primary",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "in_transaction"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": 1
+                },
+                "postgres": {
+                  "json": 1
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "replica",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "in_transaction"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": 0
+                },
+                "postgres": {
+                  "json": 0
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "renamed"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "in_transaction"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "replica_rejects_a_write",
+      "requirements": [
+        "CFG-24"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "primary"
+        },
+        {
+          "op": "model.create",
+          "connection": "primary",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case-replica",
+          "as": "replica"
+        },
+        {
+          "op": "model.create",
+          "connection": "replica",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "refused"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
+            },
+            "postgres": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "primary",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "refused"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_read_only_file_rejects_a_write",
+      "requirements": [
+        "CFG-24"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "writable"
+        },
+        {
+          "op": "model.create",
+          "connection": "writable",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "database.read_only"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "read_only"
+        },
+        {
+          "op": "model.count",
+          "connection": "read_only",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "read_only",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "refused"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "READ_ONLY",
+              "message_holds": "readonly database"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "channel_outside_its_range_is_config",
+      "requirements": [
+        "DIA-192"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-server",
+          "as": "db"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "",
+          "payload": "invalid channel",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "",
+          "as": "never",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "x",
+          "payload": "invalid channel",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          },
+          "channel_repeat": 64
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "x",
+          "as": "never",
+          "channel_repeat": 64,
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "é",
+          "payload": "invalid channel",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          },
+          "channel_repeat": 32
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "é",
+          "as": "never",
+          "channel_repeat": 32,
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "bad\u0000channel",
+          "payload": "invalid channel",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "bad\u0000channel",
+          "as": "never",
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "é",
+          "payload": "valid 62-byte channel",
+          "channel_repeat": 31
+        }
+      ]
+    },
+    {
+      "id": "payload_outside_its_range_is_driver",
+      "requirements": [
+        "DIA-193"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-server",
+          "as": "db"
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "events",
+          "as": "events"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "x",
+          "expect": {
+            "postgres": {
+              "error": "DRIVER"
+            }
+          },
+          "payload_repeat": 8000
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "x",
+          "expect": {
+            "postgres": {
+              "error": "DRIVER"
+            }
+          },
+          "payload_repeat": 8001
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "é",
+          "expect": {
+            "postgres": {
+              "error": "DRIVER"
+            }
+          },
+          "payload_repeat": 4000
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "é",
+          "expect": {
+            "postgres": {
+              "error": "DRIVER"
+            }
+          },
+          "payload_repeat": 4001
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "bad\u0000payload",
+          "expect": {
+            "postgres": {
+              "error": "DRIVER"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "x",
+          "payload_repeat": 7999
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "payload_bytes": true,
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                7999
+              ]
+            }
+          }
+        },
+        {
+          "op": "subscription.close",
+          "ref": "events"
+        }
+      ]
+    },
+    {
+      "id": "notification_arrives_with_its_commit_in_order",
+      "requirements": [
+        "DIA-193",
+        "DIA-194",
+        "PRT-74"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-server",
+          "as": "db"
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "events",
+          "as": "events"
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "steps": [
+            {
+              "op": "db.notify",
+              "connection": "db",
+              "channel": "events",
+              "payload": "committed"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "committed"
+              ]
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "buffer-1"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "buffer-2"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "buffer-3"
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "buffer-1"
+              ]
+            }
+          }
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "buffer-2"
+              ]
+            }
+          }
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "buffer-3"
+              ]
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "db",
+          "fail": true,
+          "steps": [
+            {
+              "op": "db.notify",
+              "connection": "db",
+              "channel": "events",
+              "payload": "rolled back"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "outside"
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "outside"
+              ]
+            }
+          }
+        },
+        {
+          "op": "subscription.close",
+          "ref": "events"
+        }
+      ]
+    },
+    {
+      "id": "unlisten_stops_delivery_and_a_receive_past_its_deadline_closes",
+      "requirements": [
+        "DIA-195"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-server",
+          "as": "db"
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "events",
+          "as": "events"
+        },
+        {
+          "op": "subscription.unlisten",
+          "ref": "events",
+          "channel": "events"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "must not arrive"
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "within_ms": 50,
+          "expect": {
+            "postgres": {
+              "error": "CANCELED"
+            }
+          }
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "events",
+          "within_ms": 50,
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "subscription.close",
+          "ref": "events"
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "events",
+          "as": "again"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "after a cancel"
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "again",
+          "expect": {
+            "postgres": {
+              "json": [
+                "events",
+                "after a cancel"
+              ]
+            }
+          }
+        },
+        {
+          "op": "subscription.unlisten",
+          "ref": "again",
+          "channel": "events"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "after unlisten"
+        },
+        {
+          "op": "subscription.close",
+          "ref": "again"
+        }
+      ]
+    },
+    {
+      "id": "lost_listener_connection_ends_the_subscription",
+      "requirements": [
+        "DIA-194"
+      ],
+      "only": [
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-server",
+          "as": "db"
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "lost",
+          "as": "lost_listener"
+        },
+        {
+          "op": "session.end_listener",
+          "channel": "lost"
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "lost_listener",
+          "within_ms": 5000,
+          "expect": {
+            "postgres": {
+              "error": "CONNECTION_LOST"
+            }
+          }
+        },
+        {
+          "op": "subscription.receive",
+          "ref": "lost_listener",
+          "within_ms": 50,
+          "expect": {
+            "postgres": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "subscription.close",
+          "ref": "lost_listener"
+        }
+      ]
+    },
+    {
+      "id": "other_databases_refuse_notify_and_listen",
+      "requirements": [
+        "DIA-196",
+        "PRT-74"
+      ],
+      "only": [
+        "mysql",
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "db.notify",
+          "connection": "db",
+          "channel": "events",
+          "payload": "x",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "db.listen",
+          "connection": "db",
+          "channel": "events",
+          "as": "never",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        }
+      ]
     }
   ]
 }

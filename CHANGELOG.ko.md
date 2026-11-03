@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e3d9404262aff52b08fa7dba96d033aea27ebefba1680a8c22fb906784cd2493 -->
+<!-- source-sha256: b7ca6a43a22894db2013e5182a10ef595a4eba7d5291e54d166d3958c4a2a7c0 -->
 # 변경 이력
 
 ## Unreleased
@@ -562,6 +562,10 @@
 - repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
+- primary와 replica 연결을 여섯 runtime의 recipe case로 실행하고, DSN `case-replica`와 op `replica.await`, `row.connect`를 둔다.
+- replica를 통한 쓰기와 읽기 전용 SQLite 파일에 대한 쓰기를 여섯 runtime의 recipe case로 실행하고, op `database.read_only`를 두며, native replica 시험은 없앤다.
+- LISTEN과 NOTIFY를 여섯 runtime의 recipe case로 실행하고, DSN `case-server`와 op `db.listen`, `subscription.receive`, `subscription.unlisten`, `subscription.close`, `session.end_listener`를 두며, native 시험은 없앤다.
+- SQLite 쓰기 transaction 안에서 끝나는 process는 잠금 보유자를 남기지 않으며(CFG-43), Go에서 시험한다.
 
 ## 0.0.21
 

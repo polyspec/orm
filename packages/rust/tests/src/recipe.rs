@@ -135,6 +135,22 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
             Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
         }
+        Some("case-server") => {
+            let variable = format!("ORM_TEST_{}_SERVER_DSN", database.to_uppercase());
+            let server = std::env::var(&variable).map_err(|_| format!("dsn case-server: {variable} is required; database tests never skip"))?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = server.split_once('?').unwrap_or((&server, ""));
+            let (base, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-server: {server} names no database"))?;
+            Ok(if query.is_empty() { format!("{base}/{name}") } else { format!("{base}/{name}?{query}") })
+        }
+        Some("case-replica") => {
+            let variable = format!("ORM_TEST_{}_REPLICA_DSN", database.to_uppercase());
+            let replica = std::env::var(&variable).map_err(|_| format!("dsn case-replica: {variable} is required; database tests never skip"))?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = replica.split_once('?').unwrap_or((&replica, ""));
+            let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-replica: {replica} names no database"))?;
+            Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
@@ -2708,6 +2724,8 @@ mod database {
         apply: crate::recipe_apply::ApplyOps,
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
+        /// The LISTEN subscriptions of the case, by the name of their step (FCV-4).
+        listeners: HashMap<String, polyspec_orm::listen::Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
         /// The callback runs of the transaction step that ended last (transaction.attempts).
         attempts: u64,
@@ -2954,7 +2972,7 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), listeners: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3187,6 +3205,7 @@ mod database {
         "utils.was_inserted",
         "utils.privilege",
         "collection.connect",
+        "row.connect",
         "utils.backend_waiting_for_lock",
         "utils.groups",
         "utils.stats",
@@ -3835,6 +3854,52 @@ mod database {
                 let writes = crate::recipe_reads::read(step, "writes")["writes"].as_u64().unwrap_or_default();
                 let count = transaction_writers(&context.dsn, writers, writes).await.map_err(fault)?;
                 Output::fields(json!({ "value": { "int": count.to_string() } }))
+            }
+            "replica.await" => {
+                await_replica(context).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
+            "database.read_only" => {
+                // The file of the case database becomes one that the process may only read (CFG-24).
+                let path = context.dsn.strip_prefix("sqlite://").unwrap_or(&context.dsn).split('?').next().unwrap_or_default().to_owned();
+                let mut permissions = std::fs::metadata(&path).map_err(|e| fault(format!("{path}: {e}")))?.permissions();
+                permissions.set_readonly(true);
+                std::fs::set_permissions(&path, permissions).map_err(|e| fault(format!("{path}: {e}")))?;
+                Output::fields(json!({}))
+            }
+            // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
+            "db.listen" => {
+                let name = bound_name(step).map_err(fault)?;
+                let db = connection_db(step, context).map_err(fault)?;
+                let times = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
+                let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(times).unwrap_or(1));
+                let listener = db.listen(&channel).await.map_err(orm)?;
+                context.listeners.insert(name, listener);
+                Output::fields(json!({}))
+            }
+            "subscription.receive" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.get_mut(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                let within = crate::recipe_reads::read(step, "within_ms")["within_ms"].as_u64().unwrap_or(10000);
+                let notification = listener.receive_within(std::time::Duration::from_millis(within)).await.map_err(orm)?;
+                let payload = if crate::recipe_reads::read(step, "payload_bytes")["payload_bytes"].as_bool() == Some(true) { json!(notification.payload.len()) } else { json!(notification.payload) };
+                Output::fields(json!({ "json": [notification.channel, payload] }))
+            }
+            "subscription.unlisten" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.get_mut(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                listener.unlisten(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
+            "subscription.close" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.remove(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                listener.close().await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
+            "session.end_listener" => {
+                end_listener(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                Output::fields(json!({}))
             }
             "wait.start" => {
                 *super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
@@ -4499,6 +4564,72 @@ mod database {
     /// Runs DDL or DML through the native driver on one connection of its own.
     /// Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
     /// handle KILL on its own. The test connection is a client connection, so it sends no parameter a pooler rejects.
+    /// Ends the server session that listens on the channel (DIA-194), through the server DSN.
+    async fn end_listener(channel: &str, context: &Context<'_>) -> Result<(), String> {
+        let session = super::connect_dsn(Some("case-server"), context.database, &context.dsn, None)?;
+        let pool = sqlx::PgPool::connect(&session).await.map_err(|e| e.to_string())?;
+        let pid: Result<i32, _> = sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1")
+            .bind(format!("LISTEN \"{channel}\""))
+            .fetch_one(&pool)
+            .await;
+        let ended = match pid {
+            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
+            Err(error) => Err(format!("the listener session of {channel}: {error}")),
+        };
+        pool.close().await;
+        ended
+    }
+
+    /// Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
+    /// transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
+    /// standby has applied it; the case connection opens on the server DSN, since a raw SQLx connection sends a startup parameter
+    /// that PgBouncer rejects. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
+    /// database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
+    /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+    async fn await_replica(context: &Context<'_>) -> Result<(), String> {
+        let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
+        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
+        let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
+        let source = Db::connect(&polyspec_orm_case_database::with_database(&server, name), 1, Config::default()).await.map_err(|e| e.to_string())?;
+        let awaited = match source.pool() {
+            Pool::Postgres(pool) => postgres_barrier(pool).await,
+            Pool::MySql(pool) => mysql_replica_wait(pool).await,
+            Pool::Sqlite(_) | Pool::Markdown(_) => Err("replica.await runs on a server database".to_owned()),
+        };
+        source.close().await;
+        awaited
+    }
+
+    /// The barrier transaction of `await_replica` on PostgreSQL.
+    async fn postgres_barrier(pool: &sqlx::PgPool) -> Result<(), String> {
+        let mut tx = pool.begin().await.map_err(|e| format!("barrier begin: {e}"))?;
+        sqlx::raw_sql("SET LOCAL synchronous_commit = remote_apply").execute(&mut *tx).await.map_err(|e| format!("barrier mode: {e}"))?;
+        let mode: String = sqlx::query_scalar("SELECT current_setting('synchronous_commit') FROM (SELECT pg_logical_emit_message(true, 'orm-test-barrier', '')) AS barrier")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| format!("barrier message: {e}"))?;
+        if mode != "remote_apply" {
+            return Err(format!("synchronous_commit of the barrier transaction is {mode}"));
+        }
+        tx.commit().await.map_err(|e| format!("barrier commit: {e}"))
+    }
+
+    /// The wait of `await_replica` on MySQL.
+    async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
+        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|_| "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip".to_owned())?;
+        let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
+        let file: String = sqlx::Row::get(&row, 0);
+        let position: u64 = sqlx::Row::get(&row, 1);
+        let target = sqlx::MySqlPool::connect(&replica).await.map_err(|e| format!("replica wait connection: {e}"))?;
+        let waited: Result<Option<i64>, _> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(&target).await;
+        target.close().await;
+        match waited.map_err(|e| format!("replica wait: {e}"))? {
+            Some(n) if n >= 0 => Ok(()),
+            other => Err(format!("the replica did not reach {file}:{position}: {other:?}")),
+        }
+    }
+
     async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
         let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
@@ -5812,7 +5943,11 @@ mod tables {
                     Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
-                    db.notify(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    let channel_repeat = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
+                    let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64().unwrap_or(1);
+                    let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(channel_repeat).unwrap_or(1));
+                    let payload = crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default().repeat(usize::try_from(payload_repeat).unwrap_or(1));
+                    db.notify(&channel, &payload).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.lock" => {
@@ -5826,6 +5961,12 @@ mod tables {
                 }
                 "utils.local" => Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? })),
                 // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
+                "row.connect" => {
+                    // connect of a bound row (CFG-21): a later write of the row runs on that connection.
+                    let name = row_name(step)?;
+                    self.rows.get_mut(name).ok_or_else(|| format!("row.connect: {name} is not a bound row"))?.core.connect(&db);
+                    Ok(json!({}))
+                }
                 "collection.connect" => {
                     let name = row_name(step)?.to_owned();
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;

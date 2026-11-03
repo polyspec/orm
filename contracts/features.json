@@ -79,7 +79,8 @@
         "dsn-reject-checked",
         "dsn-reject-parameters",
         "connection-driver-from-dsn",
-        "connection-catalog-session-through-a-pooler"
+        "connection-catalog-session-through-a-pooler",
+        "connection-sqlite-crashed-holder"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -94,9 +95,6 @@
       "tests": [
         "packages/go/orm/dsn_test.go",
         "packages/go/orm/timezone_test.go",
-        "packages/go/model/replica_test.go",
-        "packages/ts/tests/replica.mjs",
-        "packages/rust/tests/tests/replica.rs",
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
@@ -131,7 +129,6 @@
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
         "packages/python/tests/connection_config.py",
-        "packages/python/tests/replica.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -193,7 +190,8 @@
         "packages/python/tests/test_connection_pool_sqlite.py",
         "packages/rust/tests/tests/connection_pool_mysql.rs",
         "packages/rust/tests/tests/connection_pool_postgres.rs",
-        "packages/rust/tests/tests/connection_pool_sqlite.rs"
+        "packages/rust/tests/tests/connection_pool_sqlite.rs",
+        "packages/go/orm/sqlite_crashed_holder_test.go"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -409,14 +407,6 @@
           ]
         },
         {
-          "id": "replica-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^(TestPrimaryAndReplica|TestReadOnlySQLite)$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/replica_test.go"
-          ]
-        },
-        {
           "id": "example-dsn-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts example-dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test example_dsn",
           "shard": "rust",
@@ -480,32 +470,6 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/connection_config.py",
-            "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "replica-typescript",
-          "command": "node packages/ts/tests/replica.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/replica.mjs"
-          ]
-        },
-        {
-          "id": "replica-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts replica-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test replica",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/replica.rs",
-            "contracts/fixtures/rollback.dbs"
-          ]
-        },
-        {
-          "id": "replica-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.replica",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/replica.py",
             "packages/python/src/polyspec/orm/database.py"
           ]
         },
@@ -607,6 +571,14 @@
             "packages/ts/src/bind_check.ts",
             "tests/bind/vectors.json"
           ]
+        },
+        {
+          "id": "connection-sqlite-crashed-holder-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestSQLiteCrashedHolderLeavesNoLock$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/sqlite_crashed_holder_test.go"
+          ]
         }
       ],
       "coverage": {
@@ -616,7 +588,8 @@
             "part": "packages/go/orm",
             "tests": [
               "packages/go/orm/recipe_dsn_connection_test.go",
-              "packages/go/orm/recipe_connection_pool_test.go"
+              "packages/go/orm/recipe_connection_pool_test.go",
+              "packages/go/orm/sqlite_crashed_holder_test.go"
             ],
             "commands": {
               "mysql": [
@@ -7339,8 +7312,7 @@
         "contracts/interfaces.json",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py",
-        "packages/php/tests/ListenNotifyCases.php"
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/engine/interface_test.go",
@@ -7369,14 +7341,9 @@
         "packages/python/tests/test_python_natives.py",
         "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
         "packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
-        "packages/go/orm/listen_notify_test.go",
         "packages/go/orm/package_entry_test.go",
-        "packages/php/tests/ListenNotifyTest.php",
         "packages/php/tests/PackageEntryPointTest.php",
-        "packages/ts/tests/listen-notify.mjs",
-        "packages/rust/orm/tests/listen_notify.rs",
         "packages/rust/orm/tests/package_entry.rs",
-        "packages/python/tests/listen_notify.py",
         "packages/python/tests/test_package_entry.py",
         "packages/python/tests/test_orm_gen.py",
         "packages/python/tests/test_driver_cells.py",
@@ -7386,7 +7353,6 @@
         "packages/python/tests/identity_load.py",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/python/tests/test_rollback_fault.py",
-        "packages/php-ext/tests/ListenNotifyNativeTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",
