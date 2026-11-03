@@ -2296,7 +2296,7 @@ mod database {
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::sync::{Arc, Mutex};
 
-    use polyspec_orm::db::{parse_dsn, ConnectOptions};
+    use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, Val, P};
@@ -2885,6 +2885,9 @@ mod database {
         "utils.groups",
     ];
 
+    /// The start of the failure of a nested step whose public call returned an error that the step does not expect.
+    const UNEXPECTED_ERROR: &str = "unexpected error ";
+
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
         let expected = match step.get("expect") {
             None => None,
@@ -2907,11 +2910,18 @@ mod database {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
-                let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
+                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
                 let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
                 let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                // The transaction op composes this message from the callback error and the rollback error it returns.
+                if let Some(rollback) = expected.as_ref().and_then(|e| e.get("rollback")).and_then(Value::as_str) {
+                    let kept = message.rsplit_once("and rollback failed (").map(|(_, text)| text).and_then(error_code);
+                    if kept != Some(rollback) {
+                        return Err(format!("error message {message:?} keeps the rollback error {kept:?}, want code {rollback}"));
+                    }
+                }
                 let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
@@ -3125,8 +3135,16 @@ mod database {
                 context.attempts = ran.load(std::sync::atomic::Ordering::SeqCst);
                 result.map_err(|e| match e {
                     TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
-                    TransactionOnceError::Callback(message) => Failure::Step(message),
+                    TransactionOnceError::Callback(message) => match message.strip_prefix(UNEXPECTED_ERROR) {
+                        // The error of a public call reaches the transaction as the call returned it.
+                        Some(called) => Failure::Call(called.to_owned()),
+                        None => Failure::Step(message),
+                    },
                     TransactionOnceError::Orm(error) => orm(error),
+                    TransactionOnceError::Rollback { callback, rollback } if callback.starts_with(UNEXPECTED_ERROR) || callback == CALLBACK_FAILED => {
+                        let callback = callback.strip_prefix(UNEXPECTED_ERROR).unwrap_or(&callback);
+                        Failure::Call(format!("ROLLBACK: transaction failed ({callback}) and rollback failed ({rollback})"))
+                    }
                     TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
                 })?;
                 Output::fields(ok_value())
@@ -3373,6 +3391,10 @@ mod database {
                 Output::fields(json!({}))
             }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
+            "session.end" => {
+                end_session(step["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
@@ -3811,6 +3833,36 @@ mod database {
     }
 
     /// Runs DDL or DML through the native driver on one connection of its own.
+    /// Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+    /// handle KILL on its own. The test connection is a client connection, so it sends no parameter a pooler rejects.
+    async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
+        let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
+        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
+        let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
+        let session = polyspec_orm_case_database::with_database(&server, name);
+        let admin = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
+        let ended = match admin.pool() {
+            Pool::Postgres(pool) => {
+                let query = format!("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1");
+                match sqlx::query_scalar::<_, i32>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
+                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.map(|_| ()),
+                    Err(error) => Err(error),
+                }
+            }
+            Pool::MySql(pool) => {
+                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1");
+                match sqlx::query_scalar::<_, u64>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
+                    Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
+                    Err(error) => Err(error),
+                }
+            }
+            Pool::Sqlite(_) | Pool::Markdown(_) => return Err("session.end runs on a server database".into()),
+        };
+        admin.close().await;
+        ended.map_err(|e| format!("the transaction session holds a lock on {table}: {e}"))
+    }
+
     async fn native_exec(dsn: &str, sql: &str) -> Result<(), String> {
         use sqlx::ConnectOptions as _;
         match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
