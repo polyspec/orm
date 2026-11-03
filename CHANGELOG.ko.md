@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e84b8f29df3343dd89830c2196b9a0e6a4f664bb1eb87fa98f4c39a1f371288f -->
+<!-- source-sha256: 166507b10b6b4481e3a37bfedbd5d5c1e75d48a48f33fc22b8e52ebf6c3aef1b -->
 # 변경 이력
 
 ## Unreleased
 
+- PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - apply와 rollback의 검증 오류는 각 runtime의 native 시험 대신 op `dbspec.apply_fault`를 쓰는 recipe `tests/dbspec/apply-verification-errors.json`이며 여섯 runtime에서 돈다. 실제 drift에서 rollback하는 case도 이제 모든 runtime에서 돈다(PLN-92, PLN-93, PLN-96).
 - `contracts/fixtures/dbspec-set.json`의 decimal document set은 각 runtime의 native 시험 대신 recipe `tests/dbspec/set-decimal.json`이며, 여섯 runtime과 세 database에서 set을 설치하고 두 금액을 정확히 만들고 읽는다(DBS-108, SCH-7).

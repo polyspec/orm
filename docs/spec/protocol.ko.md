@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 9dcd6a47688fcf03ed33e11c9c682115f5c0a48ce4edf4b47762f16ffa1fc030 -->
+<!-- source-sha256: d53ec37464a67adf1db5e621cde30c8609ff09ae031e432cceb812fc4701e7ce -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -60,7 +60,7 @@ Columns = {
 }
 ```
 
-- **PRT-9** `mode`가 `""`이면 default select set, 즉 `select explicit`의 컬럼을 뺀 모든 컬럼을 선택한다([runtime model](dbspec.ko.md#runtime-model)). `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다.
+- **PRT-9** `mode`가 `""`이면 default select set, 즉 `select explicit`의 컬럼을 뺀 모든 컬럼을 선택한다([runtime model](dbspec.ko.md#runtime-model)). `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다. select는 이들을 테이블의 컬럼 순서로, 각각 `<alias>.<column> AS <alias>__<column>` 형태로 나열하며, 문장의 root table의 alias는 `a`다.
 - **PRT-10** `fn`, `sub`는 이름이 있는 출력을 추가한다. 출력 명칭은 엔티티의 컬럼 명칭과 같을 수 없다.
 - **PRT-11** 기본 키와 관계가 바인드하는 키는 항상 선택한다.
 
@@ -178,7 +178,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 ### 2.1 관계 단계
 
-- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`의 단계 순서는 본문, 관계, 개수다.
+- **PRT-38** 관계마다 부모 단계 뒤에 `relation` 단계가 하나 있다. 중첩 관계도 같은 규칙을 따르며, `paginate`는 단계를 main, count, relation 순서로 둔다. count 단계는 main 단계 다음에 오며, main의 조건과 join을 그대로 갖되 order와 page limit은 갖지 않는다.
 - **PRT-39** 클라이언트는 모든 부모 행의 키를 순서대로 읽고, 키가 null인 행과 중복을 제거한다. 남은 키가 없으면 문장을 실행하지 않는다. `if_parent`가 있으면 컬럼 값이 매개변수와 같은 부모만 사용한다.
 - **PRT-40** `parent` 슬롯은 클라이언트가 키 목록으로 확장하는 자리표시자 하나다. 목록은 마지막 키를 반복해 2의 거듭제곱 길이로 맞추므로 크기 구간마다 준비된 문장 하나를 사용한다. 드라이버 바인드 한도보다 긴 목록은 나누어 실행한다.
 - **PRT-40a** `polyspec/orm-php-ext` package의 PHP extension은 composite relation의 `parent` slot을 native class에서 펼치고, 각 행의 두 key 구성 요소를 bind한다(PRT-40).
