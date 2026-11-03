@@ -1511,6 +1511,58 @@
             {
               "kind": "utility",
               "tables": [],
+              "sql": "SELECT set_config('orm_test.server_connection', 'first', false)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "first"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('orm_test.server_connection')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "first"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
               "sql": "SELECT current_setting('statement_timeout')"
             }
           ],
@@ -2096,6 +2148,58 @@
             {
               "kind": "utility",
               "tables": [],
+              "sql": "SELECT set_config('orm_test.server_connection', 'second', false)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('orm_test.server_connection')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "plain",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
               "sql": "SELECT current_setting('statement_timeout')"
             }
           ],
@@ -2107,6 +2211,32 @@
                     "array": [
                       {
                         "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "bounded",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SELECT current_setting('statement_timeout')"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "200ms"
                       }
                     ]
                   }
