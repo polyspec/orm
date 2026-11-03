@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: the first eight cases cover connectors, groups, chain reuse, joins, relations, a write cycle, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)

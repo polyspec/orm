@@ -237,6 +237,11 @@ impl Val {
             Val::F64(x) if x.is_finite() && x.fract() == 0.0 && *x >= i64::MIN as f64 && *x < 9_223_372_036_854_775_808.0 => Ok(*x as i64),
             Val::Bool(b) => Ok(i64::from(*b)),
             Val::Str(s) => s.parse().map_err(|error| decode_value(format!("invalid i64: {s:?}: {error}"))),
+            // MySQL returns the text of a character column as bytes when the column was not declared as text.
+            Val::Bytes(bytes) => {
+                let text = std::str::from_utf8(bytes).map_err(|error| decode_value(format!("invalid i64: {bytes:?}: {error}")))?;
+                text.parse().map_err(|error| decode_value(format!("invalid i64: {text:?}: {error}")))
+            }
             other => Err(decode_value(format!("expected i64, received {other:?}"))),
         }
     }
