@@ -104,7 +104,7 @@ const generatedFixture = "contracts/fixtures/bench/dbspec-set.json"
 
 // statementOp runs the statement-event ops of FCV-4 (events.*). It reports whether s is one of them.
 func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "events.subscribe":
 		db, err := connectionOf(s, c)
 		if err != nil {
@@ -121,7 +121,7 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		if err != nil {
 			return outcome{}, true, err
 		}
-		kind := s.Kind
+		kind := s.k("kind").Kind
 		refusal := errors.New("subscriber refused the event")
 		if s.Refusal != nil {
 			refusal = &ir.Error{Code: s.Refusal.Code, Msg: s.Refusal.Message}
@@ -137,7 +137,7 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		}
 		return outcome{api: &subscription{stop: stop}, fields: map[string]any{}}, true, nil
 	case "events.stop_failing", "events.unsubscribe":
-		sub, err := boundAPI[*subscription](s.Ref, c)
+		sub, err := boundAPI[*subscription](s.k("ref").Ref, c)
 		if err != nil {
 			return outcome{}, true, err
 		}
@@ -147,7 +147,7 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		result, err := runFrame(s, c)
 		return result, true, err
 	case "events.captured":
-		sub, err := boundAPI[*subscription](s.Ref, c)
+		sub, err := boundAPI[*subscription](s.k("ref").Ref, c)
 		if err != nil {
 			return outcome{}, true, err
 		}
@@ -157,11 +157,11 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		if sub.rec.negative {
 			return outcome{}, true, fmt.Errorf("an event has a negative elapsed time")
 		}
-		events, err := capturedEvents(sub.rec.events, s.Compare, c)
+		events, err := capturedEvents(sub.rec.events, s.k("compare").Compare, c)
 		if err != nil {
 			return outcome{}, true, err
 		}
-		if err := applyMasks(events, s.Masks, c.database); err != nil {
+		if err := applyMasks(events, s.k("masks").Masks, c.database); err != nil {
 			return outcome{}, true, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": events}}}, true, nil
@@ -186,7 +186,7 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	var rows [][]any
 	err = db.Utils().Run(func(frame *orm.TxFrame) error {
-		for _, statement := range s.Statements {
+		for _, statement := range s.k("statements").Statements {
 			text, present, err := sqlExecText(statement.SQL, c)
 			if err != nil {
 				return err
@@ -208,8 +208,8 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			rows = result.Rows
 		}
-		if s.Conflict != "" {
-			return orm.TransactionConflict(s.Conflict)
+		if s.k("conflict").Conflict != "" {
+			return orm.TransactionConflict(s.k("conflict").Conflict)
 		}
 		return nil
 	})

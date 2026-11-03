@@ -27,6 +27,8 @@ var chainOps = map[string]bool{
 
 // chainQuery holds the fields of a query at any depth: a step, a join, a relation or a subquery.
 type chainQuery struct {
+	// reads records the keys that the run reads (FCV-4); a query nested in a step has none.
+	reads         *stepReads
 	Model         string            `json:"model"`
 	Key           json.RawMessage   `json:"key"`
 	Where         json.RawMessage   `json:"where"`
@@ -681,16 +683,16 @@ func (b *chainBuild) columnEntry(core *orm.Core, raw json.RawMessage) error {
 // query applies the fields of q to core, in the order that a chain writes them: the projection, the joins and relations,
 // the conditions, the order, the limit and the lock.
 func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
-	if len(q.Columns) > 0 {
+	if len(q.k("columns").Columns) > 0 {
 		var all string
-		if err := json.Unmarshal(q.Columns, &all); err == nil {
+		if err := json.Unmarshal(q.k("columns").Columns, &all); err == nil {
 			if all != "all" {
 				return fmt.Errorf("columns %q is neither a list nor all", all)
 			}
 			core.AddAllColumns()
 		} else {
 			var entries []json.RawMessage
-			if err := json.Unmarshal(q.Columns, &entries); err != nil {
+			if err := json.Unmarshal(q.k("columns").Columns, &entries); err != nil {
 				return err
 			}
 			core.RemoveAllColumns()
@@ -701,23 +703,23 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 			}
 		}
 	}
-	for _, entry := range q.AddColumns {
+	for _, entry := range q.k("add_columns").AddColumns {
 		if err := b.columnEntry(core, entry); err != nil {
 			return err
 		}
 	}
-	for _, column := range q.RemoveColumns {
+	for _, column := range q.k("remove_columns").RemoveColumns {
 		core.RemoveColumn(column)
 	}
-	if q.Aggregate != nil {
-		if q.Aggregate.Column != "" {
-			core.Aggregate(q.Aggregate.Agg, q.Aggregate.Column)
+	if q.k("aggregate").Aggregate != nil {
+		if q.k("aggregate").Aggregate.Column != "" {
+			core.Aggregate(q.k("aggregate").Aggregate.Agg, q.k("aggregate").Aggregate.Column)
 		}
-		for _, column := range q.Aggregate.GroupBy {
+		for _, column := range q.k("aggregate").Aggregate.GroupBy {
 			core.GroupBy(column)
 		}
 	}
-	for _, j := range q.Joins {
+	for _, j := range q.k("joins").Joins {
 		child := chainCore(j.Model, b.c)
 		inner := &chainBuild{c: b.c, joined: map[string]*orm.Core{}, outer: b.outer}
 		if j.Alias != "" {
@@ -746,19 +748,19 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 			b.joined[j.As] = child
 		}
 	}
-	for _, r := range q.Relations {
+	for _, r := range q.k("relations").Relations {
 		child, err := b.relation(r)
 		if err != nil {
 			return err
 		}
 		core.Relation(r.Many, child.Self())
 	}
-	if len(q.Where) > 0 {
-		if err := b.predicate(core, "", q.Where); err != nil {
+	if len(q.k("where").Where) > 0 {
+		if err := b.predicate(core, "", q.k("where").Where); err != nil {
 			return err
 		}
 	}
-	for _, o := range q.Order {
+	for _, o := range q.k("order").Order {
 		var fn []orm.Func
 		column := o.Column
 		if o.Fn != nil {
@@ -773,14 +775,14 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 		}
 		core.OrderBy(column, o.Dir == "desc", fn)
 	}
-	if q.Limit != nil {
-		core.Limit(q.Limit.Offset, q.Limit.Count)
+	if q.k("limit").Limit != nil {
+		core.Limit(q.k("limit").Limit.Offset, q.k("limit").Limit.Count)
 	}
-	if q.Lock != "" {
-		core.Lock(q.Lock)
+	if q.k("lock").Lock != "" {
+		core.Lock(q.k("lock").Lock)
 	}
-	if q.ForceIndex != "" {
-		core.ForceIndex(q.ForceIndex)
+	if q.k("force_index").ForceIndex != "" {
+		core.ForceIndex(q.k("force_index").ForceIndex)
 	}
 	return nil
 }
@@ -884,26 +886,27 @@ func jsonOutcome(value any) outcome {
 }
 
 // chainOp runs a model op of the table path.
-func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
+func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome, error) {
 	var s chainStep
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return outcome{}, err
 	}
+	s.reads = reads
 	// A model op that names no connection and no row runs on the case connection (FCV-4).
 	db := c.db
-	if len(s.Row) > 0 {
+	if len(s.k("row").Row) > 0 {
 		db = nil
 	}
-	if s.Connection != "" {
-		bound, ok := c.bound[s.Connection]
+	if s.k("connection").Connection != "" {
+		bound, ok := c.bound[s.k("connection").Connection]
 		if !ok {
-			return outcome{}, fmt.Errorf("%s: connection %q is not bound", s.Op, s.Connection)
+			return outcome{}, fmt.Errorf("%s: connection %q is not bound", s.k("op").Op, s.k("connection").Connection)
 		}
 		if db, ok = bound.api.(*orm.DB); !ok {
-			return outcome{}, fmt.Errorf("%s: connection %q is not bound by model.connect", s.Op, s.Connection)
+			return outcome{}, fmt.Errorf("%s: connection %q is not bound by model.connect", s.k("op").Op, s.k("connection").Connection)
 		}
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	case "model.chain":
 		core, err := chainBuilt(s, db, c)
 		if err != nil {
@@ -935,14 +938,14 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
 		}
-		if s.OrderedText != "" && row != nil {
-			text, err := orderedText(row, s.OrderedText)
+		if s.k("ordered_text").OrderedText != "" && row != nil {
+			text, err := orderedText(row, s.k("ordered_text").OrderedText)
 			if err != nil {
 				return outcome{}, err
 			}
 			return jsonOutcome(text), nil
 		}
-		value, err := chainRow(row, s.Pick)
+		value, err := chainRow(row, s.k("pick").Pick)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -960,40 +963,40 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 	case "model.delete":
 		return chainDelete(s, db, c)
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
 // chainBuilt is the core of a read: the fields of the step applied, then the key of a terminal by.
 func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) {
-	if s.From != "" {
+	if s.k("from").From != "" {
 		// A bound chain is read again: a terminal leaves it as it was (DSL-69), and a terminal with a key reads a clone of it.
-		core, ok := c.bound[s.From].api.(*orm.Core)
+		core, ok := c.bound[s.k("from").From].api.(*orm.Core)
 		if !ok {
-			return nil, fmt.Errorf("from %s names no bound chain", s.From)
+			return nil, fmt.Errorf("from %s names no bound chain", s.k("from").From)
 		}
 		return chainByKey(core, s, c)
 	}
-	core := chainCore(s.Model, c)
-	if !s.Unconnected {
+	core := chainCore(s.k("model").Model, c)
+	if !s.k("unconnected").Unconnected {
 		core.Connect(db)
 	}
 	q := s.chainQuery
-	if q.Limit != nil && s.Offset > 0 {
-		q.Limit = &chainLimit{Offset: s.Offset, Count: q.Limit.Count}
+	if q.k("limit").Limit != nil && s.k("offset").Offset > 0 {
+		q.Limit = &chainLimit{Offset: s.k("offset").Offset, Count: q.k("limit").Limit.Count}
 	}
-	if s.Page {
+	if s.k("page").Page {
 		q.Limit = nil
 	}
 	build := &chainBuild{c: c, joined: map[string]*orm.Core{}, db: db}
 	if err := build.query(core, q); err != nil {
 		return nil, err
 	}
-	if s.KeyBy != "" {
-		core.KeyName(s.KeyBy)
+	if s.k("key_by").KeyBy != "" {
+		core.KeyName(s.k("key_by").KeyBy)
 	}
-	if len(s.Relation) > 0 {
+	if len(s.k("relation").Relation) > 0 {
 		var r chainRelation
-		if err := json.Unmarshal(s.Relation, &r); err != nil {
+		if err := json.Unmarshal(s.k("relation").Relation, &r); err != nil {
 			return nil, err
 		}
 		// The columns of this relation are read of each child row; they do not narrow its statement.
@@ -1013,10 +1016,10 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 
 // chainByKey adds the key of the step to the chain, as the By form of a terminal.
 func chainByKey(core *orm.Core, s chainStep, c *databaseContext) (*orm.Core, error) {
-	if len(s.Key) == 0 {
+	if len(s.k("key").Key) == 0 {
 		return core, nil
 	}
-	keys, args, err := chainKeyArgs(s.Key, c)
+	keys, args, err := chainKeyArgs(s.k("key").Key, c)
 	if err != nil {
 		return nil, err
 	}
@@ -1030,48 +1033,48 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		return outcome{}, err
 	}
 	switch {
-	case s.Compile:
+	case s.k("compile").Compile:
 		statement, err := core.GetQuery()
 		if err != nil {
 			return outcome{}, err
 		}
 		return jsonOutcome(map[string]any{"sql": statement.SQL, "binds": statement.Binds}), nil
-	case s.Aggregate != nil && s.Aggregate.Agg == "sum":
+	case s.k("aggregate").Aggregate != nil && s.k("aggregate").Aggregate.Agg == "sum":
 		sum, err := core.GetSum()
 		if err != nil {
 			return outcome{}, err
 		}
 		return jsonOutcome(sum), nil
-	case s.Aggregate != nil && s.Aggregate.Agg == "avg":
+	case s.k("aggregate").Aggregate != nil && s.k("aggregate").Aggregate.Agg == "avg":
 		avg, err := core.GetAvg()
 		if err != nil {
 			return outcome{}, err
 		}
 		return jsonOutcome(avg), nil
-	case s.Aggregate != nil:
+	case s.k("aggregate").Aggregate != nil:
 		groups, err := orm.GetsCount(core)
 		if err != nil {
 			return outcome{}, err
 		}
-		if s.GroupValue != "" {
+		if s.k("group_value").GroupValue != "" {
 			for row := range groups.All() {
-				value, err := row.Value(s.GroupValue)
+				value, err := row.Value(s.k("group_value").GroupValue)
 				if err != nil {
 					return outcome{}, err
 				}
 				return jsonOutcome(value), nil
 			}
-			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.GroupValue)
+			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.k("group_value").GroupValue)
 		}
 		return jsonOutcome(groups.ToArray()), nil
-	case s.Plan:
+	case s.k("plan").Plan:
 		var page chainPlanPage
-		if s.PlanPage != nil {
-			page = *s.PlanPage
+		if s.k("plan_page").PlanPage != nil {
+			page = *s.k("plan_page").PlanPage
 		} else {
 			var limit chainLimit
-			if s.Limit != nil {
-				limit = *s.Limit
+			if s.k("limit").Limit != nil {
+				limit = *s.k("limit").Limit
 			}
 			if limit.Count <= 0 {
 				return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
@@ -1082,21 +1085,21 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return jsonOutcome(chainPlanSteps(steps, s.PlanCount, s.PlanSQL)), nil
-	case s.Page:
+		return jsonOutcome(chainPlanSteps(steps, s.k("plan_count").PlanCount, s.k("plan_sql").PlanSQL)), nil
+	case s.k("page").Page:
 		var limit chainLimit
-		if s.Limit != nil {
-			limit = chainLimit{Offset: limit.Offset + s.Offset + s.Limit.Offset, Count: s.Limit.Count}
+		if s.k("limit").Limit != nil {
+			limit = chainLimit{Offset: limit.Offset + s.k("offset").Offset + s.k("limit").Limit.Offset, Count: s.k("limit").Limit.Count}
 		}
 		return chainPage(s, core, limit.Offset/max(limit.Count, 1)+1, limit.Count, c)
-	case s.PlanPage != nil:
-		return chainPage(s, core, s.PlanPage.Page, s.PlanPage.PerPage, c)
+	case s.k("plan_page").PlanPage != nil:
+		return chainPage(s, core, s.k("plan_page").PlanPage.Page, s.k("plan_page").PlanPage.PerPage, c)
 	}
 	rows, err := orm.Gets[*tableRow](core)
 	if err != nil {
 		return outcome{}, err
 	}
-	value, err := chainRows(rows.Slice(), s.Pick)
+	value, err := chainRows(rows.Slice(), s.k("pick").Pick)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -1115,7 +1118,7 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 // wantsRows reports whether the expect of the database of the case compares rows of wrappers.
 func wantsRows(s chainStep, c *databaseContext) bool {
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(s.Expect[c.database], &fields); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[c.database], &fields); err != nil {
 		return false
 	}
 	_, ok := fields["rows"]
@@ -1126,13 +1129,13 @@ func wantsRows(s chainStep, c *databaseContext) bool {
 // relation; a parent without a child gives no row.
 func chainCells(parents []*tableRow, s chainStep) ([]any, error) {
 	var names []string
-	if err := json.Unmarshal(s.Columns, &names); err != nil {
+	if err := json.Unmarshal(s.k("columns").Columns, &names); err != nil {
 		return nil, fmt.Errorf("a rows expect needs a list of column names: %w", err)
 	}
 	var rel *tableRelation
-	if len(s.Relation) > 0 {
+	if len(s.k("relation").Relation) > 0 {
 		rel = &tableRelation{}
-		if err := json.Unmarshal(s.Relation, rel); err != nil {
+		if err := json.Unmarshal(s.k("relation").Relation, rel); err != nil {
 			return nil, err
 		}
 	}
@@ -1245,7 +1248,7 @@ func chainPlanSteps(steps []orm.QueryPlanStep, texts []string, withSQL bool) []a
 
 // chainPage runs GetsPage: the keys and the counts of the page, and the rows and total of a rows expect.
 func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContext) (outcome, error) {
-	if count <= 0 && s.PlanPage == nil {
+	if count <= 0 && s.k("plan_page").PlanPage == nil {
 		return outcome{}, fmt.Errorf("a page needs a limit count above 0")
 	}
 	page, err := orm.GetsPage[*tableRow](core, number, count)
@@ -1261,8 +1264,8 @@ func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContex
 		keys = append(keys, value)
 	}
 	fields := map[string]any{"keys": keys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage}
-	if s.Items {
-		items, err := chainRows(page.Items.Slice(), s.Pick)
+	if s.k("items").Items {
+		items, err := chainRows(page.Items.Slice(), s.k("pick").Pick)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1325,13 +1328,13 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its
 // terminal. The written model is bound with as, and its toArray is the result.
 func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
-	core := chainCore(s.Model, c)
+	core := chainCore(s.k("model").Model, c)
 	core.Connect(db)
-	if err := chainAssign(core, s.Values, c); err != nil {
+	if err := chainAssign(core, s.k("values").Values, c); err != nil {
 		return outcome{}, err
 	}
-	if len(s.Attached) > 0 {
-		members, err := orderedMembers(s.Attached)
+	if len(s.k("attached").Attached) > 0 {
+		members, err := orderedMembers(s.k("attached").Attached)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1343,9 +1346,9 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 			core.New(member.key, value)
 		}
 	}
-	if len(s.Duplication) > 0 {
-		duplicate := chainCore(s.Model, c)
-		if err := chainAssign(duplicate, s.Duplication, c); err != nil {
+	if len(s.k("duplication").Duplication) > 0 {
+		duplicate := chainCore(s.k("model").Model, c)
+		if err := chainAssign(duplicate, s.k("duplication").Duplication, c); err != nil {
 			return outcome{}, err
 		}
 		core.Duplication(duplicate.Self())
@@ -1353,11 +1356,11 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	var m orm.Model
 	var err error
 	switch {
-	case s.Op == "model.save":
+	case s.k("op").Op == "model.save":
 		m, err = core.Save()
-	case s.Op == "model.restore":
+	case s.k("op").Op == "model.restore":
 		m, err = core.Restore()
-	case s.RestoreOrCreate:
+	case s.k("restore_or_create").RestoreOrCreate:
 		m, err = core.RestoreOrCreate()
 	default:
 		m, err = core.Create()
@@ -1367,16 +1370,16 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	}
 	row, ok := m.(*tableRow)
 	if !ok {
-		return outcome{}, fmt.Errorf("%s returned a %T", s.Op, m)
+		return outcome{}, fmt.Errorf("%s returned a %T", s.k("op").Op, m)
 	}
-	value, err := chainRow(row, s.Pick)
+	value, err := chainRow(row, s.k("pick").Pick)
 	if err != nil {
 		return outcome{}, err
 	}
 	out := jsonOutcome(value)
 	out.api = row
 	// With columns, the rows expect compares the row that the write returns (INT-38).
-	if len(s.Columns) > 0 {
+	if len(s.k("columns").Columns) > 0 {
 		cells, err := chainCells([]*tableRow{row}, s)
 		if err != nil {
 			return outcome{}, err
@@ -1389,33 +1392,33 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 // chainCreates runs model.creates on the rows of rows or rows_sequence.
 func chainCreates(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	models := []orm.Model{}
-	if s.RowsSequence != nil {
-		for i := 0; i < s.RowsSequence.Count; i++ {
-			row := chainCore(s.Model, c)
-			row.Set(s.RowsSequence.Column, s.RowsSequence.From+int64(i))
-			if err := chainAssign(row, s.RowsSequence.Values, c); err != nil {
+	if s.k("rows_sequence").RowsSequence != nil {
+		for i := 0; i < s.k("rows_sequence").RowsSequence.Count; i++ {
+			row := chainCore(s.k("model").Model, c)
+			row.Set(s.k("rows_sequence").RowsSequence.Column, s.k("rows_sequence").RowsSequence.From+int64(i))
+			if err := chainAssign(row, s.k("rows_sequence").RowsSequence.Values, c); err != nil {
 				return outcome{}, err
 			}
 			models = append(models, row.Self())
 		}
 	} else {
 		var rows []json.RawMessage
-		if err := json.Unmarshal(s.Rows, &rows); err != nil {
+		if err := json.Unmarshal(s.k("rows").Rows, &rows); err != nil {
 			return outcome{}, err
 		}
 		for _, raw := range rows {
-			row := chainCore(s.Model, c)
+			row := chainCore(s.k("model").Model, c)
 			if err := chainAssign(row, raw, c); err != nil {
 				return outcome{}, err
 			}
 			models = append(models, row.Self())
 		}
 	}
-	batch := s.Batch
-	if s.RowsSequence != nil && batch == 0 {
+	batch := s.k("batch").Batch
+	if s.k("rows_sequence").RowsSequence != nil && batch == 0 {
 		batch = len(models)
 	}
-	core := chainCore(s.Model, c)
+	core := chainCore(s.k("model").Model, c)
 	core.Connect(db)
 	n, err := orm.Creates(core, models, batch)
 	if err != nil {
@@ -1434,25 +1437,25 @@ func countOutcome(n int64) outcome {
 // chainTarget is the model that an update or a delete writes through: the bound row, or a new model set from values, which
 // writes with no read.
 func chainTarget(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) {
-	if len(s.Row) > 0 {
-		name := refName(s.Row)
+	if len(s.k("row").Row) > 0 {
+		name := refName(s.k("row").Row)
 		b, ok := c.bound[name]
 		if !ok {
-			return nil, fmt.Errorf("%s names row %q, which no bound row holds", s.Op, name)
+			return nil, fmt.Errorf("%s names row %q, which no bound row holds", s.k("op").Op, name)
 		}
 		row, ok := b.api.(*tableRow)
 		if !ok {
-			return nil, fmt.Errorf("%s: row %q is a %T", s.Op, name, b.api)
+			return nil, fmt.Errorf("%s: row %q is a %T", s.k("op").Op, name, b.api)
 		}
 		return row.m, nil
 	}
-	core := chainCore(s.Model, c)
+	core := chainCore(s.k("model").Model, c)
 	core.Connect(db)
 	// The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
-	if len(s.Key) > 0 {
-		return core, chainAssign(core, s.Key, c)
+	if len(s.k("key").Key) > 0 {
+		return core, chainAssign(core, s.k("key").Key, c)
 	}
-	return core, chainAssign(core, s.Values, c)
+	return core, chainAssign(core, s.k("values").Values, c)
 }
 
 // chainRevisionOf reads the guard of a write.
@@ -1478,14 +1481,14 @@ func chainUpdate(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	if err := chainAssign(core, s.Set, c); err != nil {
+	if err := chainAssign(core, s.k("set").Set, c); err != nil {
 		return outcome{}, err
 	}
-	if err := chainRevisionOf(core, s.Revision, c); err != nil {
+	if err := chainRevisionOf(core, s.k("revision").Revision, c); err != nil {
 		return outcome{}, err
 	}
 	var optimistic []bool
-	if s.Optimistic {
+	if s.k("optimistic").Optimistic {
 		optimistic = []bool{true}
 	}
 	if err := core.Update(optimistic); err != nil {
@@ -1496,12 +1499,12 @@ func chainUpdate(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 
 // chainDelete runs model.delete on a bound row, a bound collection, or a new model set from values.
 func chainDelete(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
-	if len(s.Row) > 0 {
-		if collection, ok := c.bound[refName(s.Row)].api.(*orm.Collection[*tableRow]); ok {
-			return outcome{fields: map[string]any{}}, collection.Delete(s.Recursive)
+	if len(s.k("row").Row) > 0 {
+		if collection, ok := c.bound[refName(s.k("row").Row)].api.(*orm.Collection[*tableRow]); ok {
+			return outcome{fields: map[string]any{}}, collection.Delete(s.k("recursive").Recursive)
 		}
 	}
-	if len(s.Where) > 0 {
+	if len(s.k("where").Where) > 0 {
 		// A delete by where loads the rows and deletes each one (FCV-4).
 		core, err := chainBuilt(s, db, c)
 		if err != nil {
@@ -1522,11 +1525,11 @@ func chainDelete(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	if err := chainRevisionOf(core, s.Revision, c); err != nil {
+	if err := chainRevisionOf(core, s.k("revision").Revision, c); err != nil {
 		return outcome{}, err
 	}
 	var recursive []bool
-	if s.Recursive {
+	if s.k("recursive").Recursive {
 		recursive = []bool{true}
 	}
 	if err := core.Delete(recursive); err != nil {
@@ -1554,21 +1557,21 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 	if err != nil {
 		return outcome{}, err
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	case "utils.lock":
-		return outcome{fields: map[string]any{}}, db.Utils().Lock(s.Name)
+		return outcome{fields: map[string]any{}}, db.Utils().Lock(s.k("name").Name)
 	case "utils.set_local":
-		value, err := assignmentValue(s.Value, c)
+		value, err := assignmentValue(s.k("value").Value, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		text, err := stringOf(value, s.Name)
+		text, err := stringOf(value, s.k("name").Name)
 		if err != nil {
 			return outcome{}, err
 		}
-		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.Name, text)
+		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.k("name").Name, text)
 	case "utils.was_inserted":
-		inserted, err := db.Utils().WasInserted(s.Table, s.Sequence)
+		inserted, err := db.Utils().WasInserted(s.k("table").Table, s.k("sequence").Sequence)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1598,7 +1601,7 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": names}}}, nil
 	}
-	value, err := db.Utils().Local(s.Name)
+	value, err := db.Utils().Local(s.k("name").Name)
 	if err != nil {
 		return outcome{}, err
 	}

@@ -58,7 +58,7 @@ type generatorExpect struct {
 
 // checkGenerator runs one generator.generate step of the Go runtime and checks it against the expect of database.
 func checkGenerator(t *testing.T, dir string, s step, database string) error {
-	raw, ok := s.Expect[database]
+	raw, ok := s.k("expect").Expect[database]
 	if !ok {
 		return fmt.Errorf("generator.generate has no expect for %s", database)
 	}
@@ -67,12 +67,12 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 		return fmt.Errorf("generator.generate expect: %w", err)
 	}
 	var o generatorOptions
-	if len(s.Options) > 0 {
-		if err := json.Unmarshal(s.Options, &o); err != nil {
+	if len(s.k("options").Options) > 0 {
+		if err := json.Unmarshal(s.k("options").Options, &o); err != nil {
 			return fmt.Errorf("generator.generate options: %w", err)
 		}
 	}
-	names, text, err := generateScanned(t, dir, s.Schema, o)
+	names, text, err := generateScanned(t, dir, s.k("schema").Schema, o)
 	if want.Error != "" {
 		if err == nil {
 			return fmt.Errorf("generation succeeded, want error %s", want.Error)
@@ -347,7 +347,7 @@ func checkGeneratedFiles(dir string, s step) error {
 		return errors.New("generator.check: no source path")
 	}
 	module := filepath.Join(filepath.Dir(source), "..", "..")
-	set, err := filepath.Abs(filepath.Join(dir, s.GenSet))
+	set, err := filepath.Abs(filepath.Join(dir, s.k("document_set").GenSet))
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func checkGeneratedFiles(dir string, s step) error {
 	if output, code, err := gen(); err != nil || code != 0 {
 		return fmt.Errorf("generator.check: generate exit %d: %s: %w", code, output, err)
 	}
-	if err := expect(s.Same, ""); err != nil {
+	if err := expect(s.k("unchanged").Same, ""); err != nil {
 		return err
 	}
 	entries, err := os.ReadDir(out)
@@ -408,7 +408,7 @@ func checkGeneratedFiles(dir string, s step) error {
 		if err := os.WriteFile(file, text, 0o600); err != nil {
 			return err
 		}
-		if err := expect(s.Diff, file); err != nil {
+		if err := expect(s.k("changed").Diff, file); err != nil {
 			return err
 		}
 		after, err := os.ReadFile(file)
