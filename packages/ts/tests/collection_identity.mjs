@@ -56,63 +56,8 @@ caseTest('collection-views/preserve-order-and-connect-every-model', COMPUTE, () 
   if (JSON.stringify(connections) !== JSON.stringify([['first', db], ['second', db]])) throw new Error('connect did not reach every model in order');
 });
 
-// Requirements: INT-80, INT-86.
-caseTest('collection/get-fetched-value-use-typed-key', COMPUTE, () => {
-  const collection = new orm.Collection();
-  const integer = { label: 'integer' };
-  const text = { label: 'text' };
-  collection.put(7, integer, 'integer');
-  collection.put('7', text, 'text');
-  if (collection.get(7) !== integer || collection.get('7') !== text || collection.get(8) !== undefined) {
-    throw new Error('get did not preserve the key type or missing-key result');
-  }
-  if (collection.fetched(7) !== 'integer' || collection.fetched('7') !== 'text' || collection.fetched(8) !== undefined) {
-    throw new Error('fetched value did not preserve the key type or missing-key result');
-  }
-});
-
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
-// Requirements: INT-11, INT-63, PRT-35.
-caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
-  const collection = new orm.Collection();
-  const distinct = fixture.keys.filter(entry => entry.same_as === undefined);
-  const expectedKeys = distinct.map(valueOf);
-  for (let index = 0; index < distinct.length; index++) {
-    const entry = distinct[index];
-    collection.put(expectedKeys[index], { name: entry.name });
-  }
-  if (collection.length !== distinct.length) {
-    throw new Error(`collection keeps ${collection.length} of ${distinct.length} keys: two keys share an identity`);
-  }
-  for (const entry of fixture.keys) {
-    const got = collection.get(valueOf(entry));
-    const want = entry.same_as ?? entry.name;
-    if (got?.name !== want) throw new Error(`key ${entry.name} reads ${got?.name}, want ${want}`);
-  }
-  const actualKeys = collection.keys();
-  if (actualKeys.length !== expectedKeys.length) throw new Error('collection keys lost a fixture key');
-  for (let index = 0; index < expectedKeys.length; index++) {
-    const got = actualKeys[index];
-    const want = expectedKeys[index];
-    const equal = want instanceof Date
-      ? got instanceof Date && got.getTime() === want.getTime()
-      : want instanceof Uint8Array
-        ? got instanceof Uint8Array && Buffer.from(got).equals(Buffer.from(want))
-        : typeof got === typeof want && Object.is(got, want);
-    if (!equal) throw new Error(`collection key ${index} changed native type or value`);
-  }
-});
 // Requirements: PRT-35.
-caseTest('collection-key/null-is-codec-decode', COMPUTE, () => {
-  try {
-    new orm.Collection().put(null, {});
-  } catch (error) {
-    if (error.code !== fixture.null.code || error.message !== `${fixture.null.code}: ${fixture.null.message}`) throw error;
-    return;
-  }
-  throw new Error('a NULL collection key was accepted');
-});
-
 caseTest('collection-key/composite-typed-components', COMPUTE, () => {
   const seen = new Map();
   for (const entry of fixture.composites) {

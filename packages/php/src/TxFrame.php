@@ -102,6 +102,9 @@ final class TxFrame
         if (!is_string($sql)) {
             throw new OrmException(Code::CONFIG, 'a statement must be text');
         }
+        if ($this->finished) {
+            throw new OrmException(Code::CONFIG, 'transaction already finished');
+        }
         return $this->db->fetch($kind, $tables, $this->number, $sql, $params);
     }
 }

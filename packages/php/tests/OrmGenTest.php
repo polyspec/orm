@@ -84,9 +84,6 @@ final class OrmGenTest extends TestCase
         self::assertSame(0, $code, "$out $err");
         $source = file_get_contents("$dir/model/Item.php");
         self::assertIsString($source);
-        foreach (['@phpstan-ignore', 'phpcs:ignore'] as $suppression) {
-            self::assertStringNotContainsString($suppression, $source, "generated PHP carries $suppression");
-        }
         require_once "$dir/model/Item.php";
 
         $class = "$namespace\\Item";

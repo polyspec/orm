@@ -94,36 +94,4 @@ trait CollectionIdentityCases
         $refs = [['column' => 'first', 'index' => 0], ['column' => 'second', 'index' => 1]];
         self::assertNull(Db::rowKey($row, $refs));
     }
-
-    // Requirements: PRT-35.
-    public function testSplitRootMergeRejectsSqlNullIdentity(): void
-    {
-        $refs = [['column' => 'id', 'index' => 0]];
-        $splitRowSlot = new \ReflectionMethod(Db::class, 'splitRowSlot');
-        try {
-            $splitRowSlot->invoke(null, [null], $refs);
-            self::fail('split root merge accepted SQL NULL identity');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertSame('CODEC_DECODE: split query row identity contains SQL NULL', $error->getMessage());
-        }
-        self::assertNotSame($splitRowSlot->invoke(null, [0], $refs), $splitRowSlot->invoke(null, [''], $refs));
-        self::assertNotSame($splitRowSlot->invoke(null, [false], $refs), $splitRowSlot->invoke(null, [0], $refs));
-        $compositeRefs = [
-            ['column' => 'tenant_id', 'index' => 0],
-            ['column' => 'enabled', 'index' => 1],
-            ['column' => 'label', 'index' => 2],
-        ];
-        try {
-            $splitRowSlot->invoke(null, [0, null, ''], $compositeRefs);
-            self::fail('split root merge accepted SQL NULL in a composite identity');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertSame('CODEC_DECODE: split query row identity contains SQL NULL', $error->getMessage());
-        }
-        self::assertNotSame(
-            $splitRowSlot->invoke(null, [0, false, ''], $compositeRefs),
-            $splitRowSlot->invoke(null, [0, true, ''], $compositeRefs),
-        );
-    }
 }

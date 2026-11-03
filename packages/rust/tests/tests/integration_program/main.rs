@@ -66,6 +66,23 @@ fn external_relation_getter_returns_the_external_entity_model() {
     assert!(audit.expect("a row without a related row reads no error").is_none());
 }
 
+/// The generated schema value carries the external text at run time: the generated connect registers a set that uses an
+/// external document, and the model of a used external table reads a row of that table.
+#[tokio::test]
+// Requirements: DBS-110, DBS-173.
+async fn generated_external_model_reads_its_table() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let database = CaseDatabase::create("sqlite").await;
+    let db = external_member::connect(database.dsn(), TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("connect: {e}"));
+    let Pool::Sqlite(pool) = db.pool() else { unreachable!("the DSN selects SQLite") };
+    sqlx::query("CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)").execute(pool).await.or_panic(|e| format!("create: {e}"));
+    sqlx::query("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')").execute(pool).await.or_panic(|e| format!("insert: {e}"));
+    let row = external_member::ExtAccount::new().connect(&db).get_by_seq(1).await.or_panic(|e| format!("read: {e}")).expect("a row");
+    assert_eq!(row.get_name().unwrap(), "kim");
+    db.close().await;
+    database.drop().await;
+}
+
 #[test]
 // Requirements: COD-20, COD-25.
 fn generated_nonnull_styled_setter_rejects_sql_null() {

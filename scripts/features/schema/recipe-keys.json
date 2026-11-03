@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dsn.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -26,11 +31,6 @@
     ],
     "markdown.builder": [
       "calls",
-      "expect",
-      "op"
-    ],
-    "dsn.connect": [
-      "dsn",
       "expect",
       "op"
     ],
@@ -77,6 +77,11 @@
       "key",
       "op",
       "value"
+    ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
     ],
     "sql.exec": [
       "only",
@@ -340,6 +345,7 @@
       "columns",
       "compile",
       "connection",
+      "derived_integers",
       "expect",
       "from",
       "joins",
@@ -376,6 +382,12 @@
     "events.unsubscribe": [
       "op",
       "ref"
+    ],
+    "utils.run": [
+      "connection",
+      "expect",
+      "op",
+      "statements"
     ],
     "events.captured": [
       "compare",
@@ -449,6 +461,7 @@
       "op"
     ],
     "dbspec.render": [
+      "dialect",
       "documents",
       "expect",
       "op"
@@ -551,6 +564,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

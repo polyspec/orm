@@ -2,7 +2,7 @@
 # FCV-11, FCV-12, FCV-13, FCV-14 (docs/spec/feature-coverage.md).
 # The suite unit request_hook-postgres (docs/spec/feature-coverage.md FCV-3): the recipe
 # contracts/fixtures/request_hook/request_hook.json on PostgreSQL.
-# Requirements: INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
+# Requirements: INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38, PRT-65.
 from .recipe import recipe_tests
 from . import testcase
 
