@@ -1,12 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d1347eafcbbf7e184190719216c7a88d247a9e48eb10f9c504ad4fc895c6978 -->
+<!-- source-sha256: d7007ba712ddb553cc46f80b838ef1cc9f62f3a26037d1f6c034d057c0c18cf8 -->
 # 변경 이력
 
 ## Unreleased
 
+- apply chain, history와 state, lock 범위, finalize, stress plan, pooler는 여섯 런타임의 recipe `dbspec_apply`이며, 각 명령은 이름 있는 연결에서 공개 apply API를 한 번 호출하고, 그 native 시험은 사라졌다.
 - CR15-F: 공유되는 행 변경 결과(충돌, unique, 강제 변환, 생성 열, 스키마 변경, 외래 키, insert 형태)는 recipe case `row_mutation_lifecycle`이 맡고, Rust 시험은 INT-106a의 phase, 취소, 버려진 커밋만 남긴다.
 - introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
-- transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
+- commit에서 연결을 잃은 PHP catalog가 이후 계속 `CONNECTION_LOST`로 실패하지 않고 다음 호출에 새 연결로 읽는다(INT-118). `catalog_connection` recipe case `row_commit_outcomes`가 commit을 거부하는 PostgreSQL deferred trigger와 commit 중 backend를 끝내는 trigger로 이를 담는다.
 - 어떤 시간 형식으로도 읽히지 않는 text를 모델에 쓰면 PHP와 PHP extension은 PRT-67대로 `CODEC_ENCODE`를 돌려준다. 예전에는 `CODEC_DECODE`였다. temporal column의 저장 형식과 그 거부는 recipe `conformance_verification`에서 돌고, PRT-67a는 Go에만 있는 setter 형식을 정한다.
 - 수정 시각과 soft delete의 microsecond, now 조건을 모든 runtime에서 recipe `conformance_verification`의 `clock_cell`과 `soft_record`로 돌린다. native 시험은 없앴고 recipe 함수 `seconds_later`를 더했다. TypeScript는 자기 clock source인 `wallMicros`의 시험을 지킨다.
 - rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
