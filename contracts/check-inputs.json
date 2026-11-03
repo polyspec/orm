@@ -1080,18 +1080,6 @@
         "packages/rust/orm/tests/unit/temporal_args.rs"
       ]
     },
-    "rust-upsert-conflict-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/src/engine/planner.rs"
-      ]
-    },
     "scalar-subquery-column-check": {
       "scope": "owner",
       "needs": [

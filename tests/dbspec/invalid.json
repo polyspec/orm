@@ -177948,6 +177948,171 @@
               ]
             }
           }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 secret",
+            "",
+            "table secret_config {",
+            "  seq i64 identity",
+            "  config bytes",
+            "  primary key (seq)",
+            "  settings {",
+            "    codec config ordered_json aes",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  15,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  19,
+                  "name"
+                ],
+                [
+                  3,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  5,
+                  "name"
+                ],
+                [
+                  4,
+                  6,
+                  9,
+                  "type"
+                ],
+                [
+                  4,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  8,
+                  "name"
+                ],
+                [
+                  5,
+                  9,
+                  14,
+                  "type"
+                ],
+                [
+                  6,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  6,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  6,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  15,
+                  18,
+                  "name"
+                ],
+                [
+                  6,
+                  18,
+                  19,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  7,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  8,
+                  10,
+                  16,
+                  "name"
+                ],
+                [
+                  8,
+                  17,
+                  29,
+                  "keyword"
+                ],
+                [
+                  8,
+                  30,
+                  33,
+                  "keyword"
+                ],
+                [
+                  9,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  10,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
         }
       ]
     },
@@ -177982,6 +178147,197 @@
                   "line": 9,
                   "column": 11
                 }
+              ]
+            }
+          }
+        },
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 secret",
+            "",
+            "table secret_config {",
+            "  seq i64 identity",
+            "  aes_key_version i32",
+            "  config text",
+            "  primary key (seq)",
+            "  settings {",
+            "    codec config ordered_json aes",
+            "    aes_version aes_key_version",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  15,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  19,
+                  "name"
+                ],
+                [
+                  3,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  5,
+                  "name"
+                ],
+                [
+                  4,
+                  6,
+                  9,
+                  "type"
+                ],
+                [
+                  4,
+                  10,
+                  18,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  18,
+                  21,
+                  "type"
+                ],
+                [
+                  6,
+                  2,
+                  8,
+                  "name"
+                ],
+                [
+                  6,
+                  9,
+                  13,
+                  "type"
+                ],
+                [
+                  7,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  7,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  7,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  15,
+                  18,
+                  "name"
+                ],
+                [
+                  7,
+                  18,
+                  19,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  8,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  9,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  9,
+                  10,
+                  16,
+                  "name"
+                ],
+                [
+                  9,
+                  17,
+                  29,
+                  "keyword"
+                ],
+                [
+                  9,
+                  30,
+                  33,
+                  "keyword"
+                ],
+                [
+                  10,
+                  4,
+                  15,
+                  "setting"
+                ],
+                [
+                  10,
+                  16,
+                  31,
+                  "name"
+                ],
+                [
+                  11,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  12,
+                  0,
+                  1,
+                  "punctuation"
+                ]
               ]
             }
           }
