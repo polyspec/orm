@@ -38,5 +38,7 @@ fn main() {
         .into_iter()
         .map(|fixture| polyspec_orm_testcase::trial(format!("compiler_fixtures::{}", fixture.id), PROCESS, move || run_fixture(&fixture.id)))
         .collect();
-    polyspec_orm_testcase::run(trials);
+    // Each case holds the exclusive lease of the cargo target for its whole compile, so cases run at once only wait on it, and that wait
+    // spends the deadline of the case.
+    polyspec_orm_testcase::run_in_order(trials);
 }

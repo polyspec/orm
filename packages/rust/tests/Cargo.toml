@@ -235,8 +235,8 @@ name = "dbspec_mermaid_none"
 path = "tests/dbspec_mermaid_none.rs"
 harness = false
 
-# markdown_conformance runs in the workspace test of the rust lane, which gets FLOWMARK (make client-pooler-check), as
-# markdown-conformance-check/rust gets it. Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
+# markdown_conformance runs in markdown-conformance-check/rust, which passes FLOWMARK; the workspace test of the rust lane skips its
+# cases (scripts/client-db-test.mts). Each case of tests/markdown/cases.json is a libtest-mimic trial named by its id (polyspec_orm_testcase::trial).
 [[test]]
 name = "markdown_conformance"
 path = "tests/markdown_conformance.rs"

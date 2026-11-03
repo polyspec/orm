@@ -144,13 +144,29 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
   return [...testSymbols].sort().flatMap(symbol => ['--skip', symbol]);
 }
 
+/**
+ * Returns the exact Rust symbols that a target other than the feature matrix owns, for the generic client test run to skip: the
+ * cases that a binding of config/parity.json runs through feature-rust-database, which sets the database they need
+ * (T334-3-28), and the markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server.
+ */
+export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
+  const parity = JSON.parse(readFileSync(resolve(repository, 'config/parity.json'), 'utf8')) as { units: { bindings?: { implementation: string; command?: string[] }[] }[] };
+  const featureTests = parity.units
+    .flatMap(unit => unit.bindings ?? [])
+    .filter(binding => binding.implementation === 'rust' && binding.command?.includes('feature-rust-database'))
+    .flatMap(binding => (binding.command ?? []).filter(part => part.startsWith('FEATURE_TEST=')).map(part => part.slice('FEATURE_TEST='.length)));
+  const markdown = JSON.parse(readFileSync(resolve(repository, 'tests/markdown/cases.json'), 'utf8')) as { cases: { id: string }[] };
+  const symbols = new Set([...featureTests, ...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`)]);
+  return [...symbols].sort().flatMap(symbol => ['--skip', symbol]);
+}
+
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no
 // deadline, copies them into the directory of one run and runs the copies.
 const RUST_TESTS: Command = {
   program: 'node',
   args: [
     '../../tests/cargo-test.mts', 'workspace-tests', '--', 'cargo', 'test', '--locked', '--workspace', '--features', variable('ORM_RUST_TEST_FEATURES'), '--',
-    ...rustDatabaseCoverageSkipArguments(readFeatures(root), root), '--exact',
+    ...rustDatabaseCoverageSkipArguments(readFeatures(root), root), ...rustOwnedElsewhereSkipArguments(root), '--exact',
     // The pooler lane keeps PROXYSQL_BACKEND_CONNECTIONS server connections, so its Rust tests run no more pools at once than that (T343-1).
     ...(process.env['ORM_CLIENT_DB_POOLER'] === '1' ? rustPoolerThreadArguments(PROXYSQL_BACKEND_CONNECTIONS, rustTargetPoolSize(root)) : []),
   ],

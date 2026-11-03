@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { dirname, relative, resolve } from 'node:path';
-import { GO_LANE_PACKAGES, GO_LANE_SKIP, rustDatabaseCoverageSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, rustDatabaseCoverageSkipArguments, rustOwnedElsewhereSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
@@ -72,6 +72,13 @@ caseTest('model_writes declares the repeated member name case on every owner and
     }
   }
   assert.ok(rustDatabaseCoverageSkipArguments(manifest, root).includes(symbols.rust ?? ''), 'the generic Rust run skips the case');
+});
+
+// A case that needs what another target passes (the database of feature-rust-database, the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
+caseTest('the Rust lane skips the cases that parity bindings and markdown-conformance-check own', COMPUTE, () => {
+  const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
+  assert.ok(skipped.includes('coverage_transactions::coverage_transaction_deadlock_retry'), 'the parity binding of the deadlock retry');
+  assert.ok(skipped.includes('markdown_conformance::insert_one'), 'a markdown conformance case');
 });
 
 // The packages of go-test-check, which builds and exports what their cross-runtime tests need (T334-3-27).

@@ -15,7 +15,6 @@ import { writeTextIfChanged } from '../dist/generate/typescript.js';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
-const work = await mkdtemp(join(tmpdir(), 'orm-ts-gen-'));
 let failures = 0;
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
@@ -59,6 +58,7 @@ async function setOf(dir, documents, external = []) {
 // Requirements: DBS-121, DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
 // Requirements: DSL-154.
 caseTest('generate', PROCESS, async () => {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-gen-'));
   try {
     const usage = join(work, 'usage.ts');
     // The names are interpolated so that scans of this file do not see them.
