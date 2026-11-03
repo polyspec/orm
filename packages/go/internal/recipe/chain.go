@@ -310,6 +310,8 @@ func chainFunc(f *chainFn) (orm.Func, error) {
 		return orm.MonthsLater(n), nil
 	case "seconds_ago":
 		return orm.SecondsAgo(n), nil
+	case "seconds_later":
+		return orm.SecondsLater(n), nil
 	}
 	return orm.Func{}, fmt.Errorf("function %s has no recipe entry", f.Fn)
 }
