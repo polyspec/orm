@@ -313,7 +313,6 @@
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
         "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/CoverageCompositeKeysCase.php",
         "packages/php/tests/CoverageModelQueriesCase.php",
         "packages/php/tests/CoverageModelWritesCase.php",
         "packages/php/tests/Cpx5DuplicateRelationCases.php",
@@ -24241,6 +24240,11 @@
           "id": "ModelNativeTest::testTuplePredicatePadsByRepeatingTheLastRow"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysNativeTest.php",
+          "id": "CompositeKeysNativeTest::test_composite_relation_binds_and_assembles_both_key_components"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/parent-slot-expansion.mjs",
           "id": "parent-slot-expansion/pads-composite-keys"
@@ -26170,76 +26174,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_interface_contract.mjs",
           "id": "interface_symbols"
-        }
-      ]
-    },
-    {
-      "id": "coverage-composite-keys-composite-key-rows",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12",
-        "INT-87",
-        "PRT-40",
-        "DSL-82"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_composite_keys_test.go",
-          "id": "TestCoverageCompositeKeyRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCompositeKeyRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-          "id": "CoverageCompositeKeysTest::testCompositeKeyRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-          "id": "CoverageCompositeKeysExtensionTest::test_composite_key_rows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CompositeKeysNativeTest.php",
-          "id": "CompositeKeysNativeTest::test_composite_relation_binds_and_assembles_both_key_components"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_composite_keys.mjs",
-          "id": "composite_key_rows"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_composite_keys.py",
-          "id": "test_composite_key_rows"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-          "id": "coverage_composite_keys::coverage_composite_key_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_composite_keys::coverage_composite_key_rows"
-          ]
         }
       ]
     },

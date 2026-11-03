@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
 - The refusal of an immutable table is the recipe `immutable_write` (DBS-84): an update and a delete fail with `DRIVER`, the message holds `table refused_row is immutable`, the driver cause stays, and a later read gives the stored value. The outcome of an op takes `message_holds` and `driver_cause`. The delete was not checked in any runtime before. (#T334-3-4-16)
 - The recipe `schema_install` holds the difference an install names: the outcome of every op takes `message_suffix`, and `install_external_drift` expects the message to end with `column user.coverage_missing does not exist`. The three tests of `CoverageSchemaInstallNativeTest` that read `coverageItemsOf` are gone; that recipe and `SchemaSetTest` hold them. (#T334-3-4-15)
 - The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.
