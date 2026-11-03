@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 42fbd56af2b01f1bedba881176d5482d627dfa245f0115abe6ba1416793d148a -->
+<!-- source-sha256: d72ae40e0191c919c50f4386771624a8b3e5582e2c0cf98ac9d1ace32037d314 -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.
 - Python과 PHP(library, extension)가 `docs/spec/interfaces.md`의 catalog grid 절대로 유한하지 않은 PostgreSQL numeric grid 칸을 `CATALOG_VALUE`로 거부한다. 지금까지 `NaN`을 decimal 칸으로 돌려주었다. recipe case `grid_decimal_values`가 이를 담는다.
@@ -26,6 +27,10 @@
 - 행이 없는 effect 질의는 모든 runtime에서 `<query> returned no row`이고(Rust는 `returned 0 rows; want one`이었다), `dbspec.apply_fault` recipe가 그것을 시험하며, native 시험은 없앴다 (#T334-3-18).
 - transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
 - - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
+- Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)
 - feature checker는 Go owner를 일반 go test의 tag로 build하므로, 일반 실행이 담는 시험을 정확한 이름으로 읽는다 (#T334-3-6-2)
@@ -36,7 +41,6 @@
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
-- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
@@ -61,10 +65,8 @@
 - 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
 - PHP, TypeScript, Go의 runtime model native를 값별로 비교해 없앴다. recipe에 외부 문서가 있는 bench set, 주석과 diagram이 없는 manifest text, select explicit 표시, i16 조건, 삽입 행별 clock, 할당된 `default now` 컬럼, rule로 거부되는 반복 문서와 빈 text를 더했다. PRT-81에 PRT-33의 `default now` 예외를 적었다.
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
-- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
-- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).

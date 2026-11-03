@@ -886,6 +886,7 @@
             "model.read_bind_cell",
             "generator.generate",
             "generator.check",
+            "generator.refused",
             "dbspec.export_mermaid",
             "dbspec.import_mermaid",
             "hook.install",
@@ -1199,6 +1200,9 @@
         },
         {
           "$ref": "#/$defs/ops/generator.check"
+        },
+        {
+          "$ref": "#/$defs/ops/generator.refused"
         },
         {
           "$ref": "#/$defs/ops/dbspec.export_mermaid"
@@ -6606,7 +6610,8 @@
           "op",
           "document_set",
           "unchanged",
-          "changed"
+          "changed",
+          "removed"
         ],
         "additionalProperties": false,
         "properties": {
@@ -6627,6 +6632,70 @@
           "changed": {
             "description": "The lines of the check after one byte of one generated file changed; <file> is that file as the runtime names it.",
             "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removed": {
+            "description": "The lines of the check after that file was removed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "generator.refused": {
+        "type": "object",
+        "required": [
+          "op",
+          "files",
+          "parts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.refused"
+          },
+          "files": {
+            "description": "The tree of the generation, with dbspec-set.json at its root: a name to its text, or to the path of a file to copy, relative to the recipe file.",
+            "type": "object",
+            "required": [
+              "dbspec-set.json"
+            ],
+            "properties": {
+              "dbspec-set.json": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "check": {
+            "description": "True runs the check of the generated files in place of the generation.",
+            "type": "boolean"
+          },
+          "parts": {
+            "description": "The texts that the output of the refusal holds, each after the one before it.",
+            "type": "array",
+            "minItems": 1,
             "items": {
               "type": "string"
             }

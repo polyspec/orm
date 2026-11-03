@@ -687,6 +687,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "generator.check" => return recipe_generator::check_files(step, dir),
+        "generator.refused" => return recipe_generator::check_refused(step, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)

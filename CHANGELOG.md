@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
 - The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
 - Python and PHP, library and extension, refuse a nonfinite PostgreSQL numeric grid cell with `CATALOG_VALUE`, as the catalog grid section of `docs/spec/interfaces.md` states; they returned `NaN` as a decimal cell. The recipe case `grid_decimal_values` holds it.
@@ -25,6 +26,10 @@
 - An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
 - The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
+- The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
+- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
+- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
+- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)
 - The feature checker builds a Go owner with the tags of the normal go test, so it reads by exact name a test that the normal run holds (#T334-3-6-2)
@@ -35,7 +40,6 @@
 - The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
 - The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
 - The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
-- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.
@@ -60,10 +64,8 @@
 - A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.
 - Go, PHP and the PHP extension refuse a SQLite `busy_timeout` that is not a whole number, and Go refuses a malformed `_pragma` and the SQLite path `/`, each with `CONFIG` (CFG-11, CFG-12), and PHP names the path in that refusal. An unreadable MySQL `ssl-ca` reads `is not a readable file` in every client that checks it, and the Python refusal of a negative timeout reads `statement timeout must not be negative`. A DSN that returns `CONFIG` creates no file. The refused DSN and configuration forms of CFG-36 and CFG-37 are recipe cases, with their messages, and the native tests they replace are gone.
 - The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
-- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
-- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).

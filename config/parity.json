@@ -14931,95 +14931,6 @@
       ]
     },
     {
-      "id": "generator-rejects-a-document-without-the-signature",
-      "kind": "feature",
-      "requirements": [
-        "DBS-4",
-        "DBS-155"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationCommandReportsSetErrors/file_diagnostics"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadFilesRejectsFileWithoutSignature"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAFileWithoutTheDbspecSignature"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenRejectsAFileWithoutTheDbspecSignature"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_document_diagnostics_print_every_diagnostic_and_write_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_a_file_without_the_signature"
-        }
-      ]
-    },
-    {
-      "id": "generator-set-errors-print-every-error-and-write-nothing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-27"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationCommandReportsSetErrors/set_errors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_set_errors_print_every_error_and_write_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "reports_every_error_of_the_set_and_writes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_an_invalid_document"
-        }
-      ]
-    },
-    {
       "id": "rust-relation-getters-report-a-mismatched-relation-value",
       "kind": "feature",
       "requirements": [
@@ -17782,10 +17693,10 @@
       }
     },
     {
-      "id": "generator-check-compares-without-writing",
+      "id": "generator-check-reports-an-extra-generated-file-go",
       "kind": "feature",
       "requirements": [
-        "DBS-175"
+        "DBS-182"
       ],
       "bindings": [
         {
@@ -17796,44 +17707,33 @@
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_check_test.go",
-          "id": "TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_check_test.go",
           "id": "TestGoGenerationCheckKeepsOutputOnGenerationError"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_check_test.go",
-          "id": "TestGoGenerationCheckCommandReportsDifferences"
-        },
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "generator-check-reports-an-extra-generated-file-php",
+      "kind": "feature",
+      "requirements": [
+        "DBS-183"
+      ],
+      "bindings": [
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenCheckComparesTheModelsWithoutWriting"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenCheckComparesTheModelsWithoutWriting"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_check_reports_a_missing_or_differing_file"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "check_reports_differences_without_writing"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-gen-writes-the-same-models-however-the-paths-are-written",
@@ -43043,7 +42943,18 @@
         "DBS-173",
         "INT-66",
         "PLN-1",
-        "PLN-22"
+        "PLN-22",
+        "DBS-4",
+        "DBS-14",
+        "DBS-15",
+        "DBS-17",
+        "DBS-18",
+        "DBS-19",
+        "DBS-25",
+        "DBS-26",
+        "DBS-27",
+        "DBS-155",
+        "DBS-175"
       ],
       "file": "contracts/fixtures/generator/generator.json",
       "cases": "$.cases[*].id",

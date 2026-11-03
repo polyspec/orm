@@ -86,7 +86,7 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
-from .recipe_generator import check_generated_files, check_generator
+from .recipe_generator import check_generated_files, check_refused_generation, check_generator
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -187,6 +187,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "generator.check":
                     check_generated_files(step, ROOT / Path(path).parent)
+                    continue
+                if step["op"] == "generator.refused":
+                    check_refused_generation(step, ROOT / Path(path).parent)
                     continue
                 if step["op"] in _DBSPEC_OPS:
                     _dbspec(step, bound, database)

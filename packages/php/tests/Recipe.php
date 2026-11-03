@@ -159,6 +159,10 @@ final class Recipe
                     RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
                     continue;
                 }
+                if ($step['op'] === 'generator.refused') {
+                    RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
