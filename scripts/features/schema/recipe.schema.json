@@ -3942,6 +3942,9 @@
           "values": {
             "$ref": "#/$defs/assignments"
           },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
           "expect": {
             "type": "object",
             "minProperties": 1,
