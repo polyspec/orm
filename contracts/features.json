@@ -11582,7 +11582,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11595,7 +11595,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11608,7 +11608,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

@@ -5063,11 +5063,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_generated_model_connection_sqlite"
           ]
         },
@@ -13110,18 +13108,16 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector",
+          "id": "coverage_conformance_vector_sqlite",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_conformance_vector"
+            "FEATURE_TEST=coverage_conformance_vector_sqlite"
           ]
         }
       ]
@@ -13361,11 +13357,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=conditions"
           ]
         },
@@ -13413,11 +13407,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=conditions"
           ]
         },
@@ -13466,11 +13458,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=columns_and_subqueries"
           ]
         },
@@ -13577,11 +13567,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=writes"
           ]
         }
@@ -18065,11 +18053,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=generated_external_model_reads_its_table"
           ]
         }
@@ -27283,18 +27269,16 @@
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector",
+          "id": "coverage_conformance_vector_sqlite",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_conformance_vector"
+            "FEATURE_TEST=coverage_conformance_vector_sqlite"
           ]
         },
         {
@@ -28489,11 +28473,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=joins_and_relations"
           ]
         },
@@ -28971,11 +28953,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
             "FEATURE_TEST=coverage_hot_path_gate_mysql"
           ]
         }
@@ -29075,11 +29055,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
             "FEATURE_TEST=coverage_hot_path_gate_postgres"
           ]
         }
@@ -29179,11 +29157,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test coverage_performance_gate",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_hot_path_gate_sqlite"
           ]
         }
@@ -30129,11 +30105,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=transactions"
           ]
         }
@@ -30710,11 +30684,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=joins_and_relations"
           ]
         }
@@ -31344,11 +31316,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=transactions"
           ]
         }

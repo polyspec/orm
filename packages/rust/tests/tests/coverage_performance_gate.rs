@@ -1,4 +1,5 @@
-//! Runs the Rust client's diagnostic hot-path measurements against the exact feature database.
+//! Runs the Rust client's diagnostic hot-path measurements against the seeded bench database of each entry (PERF-1).
+//! These stay native, as timing: the recipe performance_gate holds the rows, binds and projection, and no case can time them.
 use std::time::Instant;
 
 use polyspec_orm::{Param, Val};
@@ -15,7 +16,7 @@ const ITERATIONS: usize = 1000;
 fn required(variable: &str) -> String {
     match std::env::var(variable) {
         Ok(value) if !value.is_empty() => value,
-        _ => panic!("{variable} is required; coverage cases never skip; run this through make feature-check"),
+        _ => panic!("{variable} is required; coverage cases never skip; run this through its make target"),
     }
 }
 
@@ -246,16 +247,15 @@ impl Native {
 }
 
 async fn coverage_hot_path_gate_for(expected: &str) {
-    let database = required("ORM_FEATURE_DATABASE");
-    assert_eq!(database, expected, "coverage entrypoint database");
-    let dsn = required("ORM_FEATURE_DSN");
+    // PERF-1: the entry names the database, and reads the seeded bench database of that name.
+    let dsn = required(&format!("BENCH_{}_DSN", expected.to_uppercase()));
     let scheme = match expected {
         "mysql" => "mysql:",
         "postgres" => "postgres:",
         "sqlite" => "sqlite:",
         _ => panic!("unsupported performance database {expected}"),
     };
-    assert!(dsn.starts_with(scheme), "ORM_FEATURE_DSN scheme differs from {expected}");
+    assert!(dsn.starts_with(scheme), "the bench DSN scheme differs from {expected}");
 
     let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = model::connect(&dsn, 1, config).await.expect("client connection");
