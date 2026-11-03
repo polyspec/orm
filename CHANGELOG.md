@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.
 - A value of a read-only query that is not valid UTF-8 is its bytes in all six runtimes, and a binary cell in a grid query, including a SQLite text.
 - A read-only query of any length or nesting answers in all six runtimes, and Rust reads a query by its tokens as the others do.
@@ -10,6 +11,9 @@
 - CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
 - CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
 - Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
+- The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
+- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
+- The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
 - `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
@@ -53,6 +57,7 @@ Docs: FCV-2 states each public-surface unit of `interface_contract` with its own
 
 - The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - A connection that the server refuses is `DRIVER` in every client; PHP and its extension reported `CONFIG`, and the Rust catalog an uncoded text.
 - A catalog retries a connection that `max_user_connections` refuses only within 2 s of closing one of its own, and a budget stop in Go reports `CATALOG_LIMIT` alone, with no rollback attempted.
 - The case `a_rollback_fault_is_consumed_by_the_next_failed_rollback` of the recipe transactions states INT-72 in every runtime through the new op `fault.next_rollback`: the fault outlives a committed transaction, the next failed callback reports ROLLBACK carrying FAULT, and the transaction after it reports only the callback error.
