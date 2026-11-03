@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
@@ -34,7 +34,10 @@ async function readerSeesBuild(): Promise<number> {
   const mark = join(dir, 'building');
   const old = process.env.TS_LEASE_SHAPE === 'old';
   try {
-    const { program, directory } = typescriptLeaseProgram(process.env);
+    // The directory of this case: the leases of the repository are held by whatever else runs, and this builder would wait for them.
+    const { program } = typescriptLeaseProgram(process.env);
+    const directory = join(dir, 'leases');
+    mkdirSync(directory);
     const buildCheck = { command: 'npm run typescript:build' };
     const readCheck = { command: 'node packages/ts/tests/dsn.mjs' };
     const under = (check: { command: string }) => {
