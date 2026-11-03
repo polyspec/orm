@@ -22,6 +22,7 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
+import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
@@ -79,6 +80,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
+          else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
@@ -145,6 +147,32 @@ async function checkMarkdownConnect(step, database) {
     await server.close();
   }
   if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
+// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+async function checkMarkdownSession(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).on('line', line => {
+      received.push(line);
+      if (received.length <= step.replies.length) socket.write(`${step.replies[received.length - 1]}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  let failure;
+  try {
+    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+    await db.transaction(() => undefined).catch(error => { failure = error; });
+  } finally {
+    await db.close();
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, step.messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(step.messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
   if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
 }
@@ -505,6 +533,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -539,6 +568,9 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {
@@ -667,8 +699,13 @@ const OPS = {
     await context.catalog.close();
     return {};
   },
-  async 'catalog.reconnect'(_, context) {
-    context.catalog = await connectCatalog(context.dsn);
+  async 'catalog.reconnect'(s, context) {
+    let dsn = context.dsn;
+    if (s.user_from_database !== undefined) {
+      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    }
+    context.catalog = await connectCatalog(dsn);
     context.closed = false;
     context.namespace = await context.catalog.currentNamespace();
     return {};
@@ -712,7 +749,7 @@ const OPS = {
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
-    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
@@ -1149,8 +1186,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }
@@ -1541,8 +1580,11 @@ function chainValue(raw, context) {
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
   if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
+  const field = m[CORE].ent.entity.fields.find(entry => entry.name === column);
+  // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+  if ('null' in raw && field !== undefined && styledField(field)) return StyledValue.sqlNull();
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
+  return styledArgument(raw, field?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1795,7 +1837,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
@@ -2443,12 +2486,37 @@ async function withProcessZone(zone, work) {
   }
 }
 
+// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+function refusedSurface(surface, db) {
+  const empty = () => undefined;
+  const calls = {
+    audit: () => db.transaction(empty, { audit: { actor: 'tester' } }),
+    isolation: () => db.transaction(empty, { isolation: 'serializable' }),
+    timeout_ms: () => db.transaction(empty, { timeoutMs: 100 }),
+    get_query: () => new Slots().connect(db).getQuery(),
+    subscribe: async () => db.subscribe(empty),
+    lock: () => db.utils().lock('k'),
+    set_local: () => db.utils().setLocal('k', 'v'),
+    local: () => db.utils().local('k'),
+    backend_waiting_for_lock: () => db.utils().backendWaitingForLock(),
+    privileges: () => db.utils().privileges().inspectTable('public.items'),
+    aes_status: () => db.utils().aes().status(null, null),
+    aes_rotate: () => db.utils().aes().rotate(null, null),
+    schema_install: () => db.utils().schema().install(null),
+    schema_evolution: () => db.utils().schema().addTablesAndColumns(null),
+    schema_exists: () => db.utils().schema().exists('orm'),
+  };
+  if (calls[surface] === undefined) throw new Error(`markdown.send surface ${surface} has no call in the TypeScript cases`);
+  return calls[surface]();
+}
+
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
   await checkFirst(async db => {
-    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    if (step.surface !== undefined) await refusedSurface(step.surface, db);
+    else if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
 }
@@ -2480,6 +2548,7 @@ async function checkApplyFault(step, bound, database) {
   let failAt = 0;
   let cause;
   let fail = new Map();
+  let noRow = [];
   const connection = {
     exec(sql) {
       if (fail.has(sql)) throw fail.get(sql);
@@ -2490,6 +2559,7 @@ async function checkApplyFault(step, bound, database) {
         reads++;
         if (reads === failAt) throw cause;
       }
+      if (noRow.includes(sql)) return { all: () => [], get: () => undefined, setReturnArrays: () => undefined };
       return db.prepare(sql);
     },
   };
@@ -2500,6 +2570,7 @@ async function checkApplyFault(step, bound, database) {
       cause = new Error('catalog read failed');
       failAt = reads + step.fail_catalog_read;
     }
+    noRow = step.no_row_queries ?? [];
     fail = new Map((step.fail_statements ?? []).map(f => [
       f.statement,
       Object.assign(new Error(f.message), f.sqlite_result === undefined ? {} : { errcode: f.sqlite_result }),

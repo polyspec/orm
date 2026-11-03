@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: cb9d1d18b4ce93438e64f302d60a4b81c1aab69c7351ec1048c67a25aec7b085 -->
+<!-- source-sha256: 44b85139207524cbd4e118e684030fbc29ee2e3dc73decc03995996e57beceed -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -102,7 +102,7 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## Statement event
 
-`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. `subscribe`는 `Result`를 돌려준다: markdown 연결은 statement를 보내지 않으므로 subscriber를 `CAPABILITY_UNSUPPORTED`로 거절한다. 모든 client의 event는 [docs/operations/usage.ko.md](../../docs/operations/usage.ko.md#statement-events)가 적는다.
+`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. `subscribe`는 `Result`를 돌려준다: markdown 연결은 statement를 보내지 않으므로 subscriber를 `CAPABILITY_UNSUPPORTED`로 거절한다. 모든 client의 event는 [docs/operations/usage.ko.md](../../docs/operations/usage.ko.md#statement-events)가 적는다.
 
 ## 빌드와 테스트
 

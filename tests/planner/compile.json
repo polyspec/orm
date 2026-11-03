@@ -12337,7 +12337,8 @@
      },
      "expect": {
       "none": {
-       "error": "COLUMN_ALIAS_CONFLICT"
+       "error": "COLUMN_ALIAS_CONFLICT",
+       "message": "COLUMN_ALIAS_CONFLICT: author.first_author is already a row name"
       }
      }
     }

@@ -18,6 +18,7 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time as datetime_time, timedelta, timezone
+from time import monotonic as _monotonic, sleep as _sleep
 from typing import Callable, TypeVar
 
 from polyspec.orm import codes
@@ -892,7 +893,8 @@ def _check_write_precision(
 def _changes(metadata: CatalogTableMetadata, values, code: str, dialect: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
-    if not values or len(values) > len(metadata.columns):
+    # A key of defaults alone takes no assignment (INT-123).
+    if (not values and code != codes.ROW_INSERT_INVALID) or len(values) > len(metadata.columns):
         raise _error(code, "invalid column assignments")
     normalized = _params([value for _, value in values])
     seen = set()
@@ -1170,6 +1172,7 @@ class _Session:
         self.dialect = dialect
         self.wrapper = wrapper
         self.raw = wrapper.connection
+        self.abandoned = False
 
     def run(
         self,
@@ -1322,7 +1325,9 @@ class _Session:
             lost = self.dialect == "postgres" and bool(self.raw.closed)
             _raise_driver_error(self.dialect, error, lost)
         finally:
-            if stopped:
+            if self.abandoned:
+                pass
+            elif stopped:
                 # The budget error is the one reported: a cursor that the stop has ended may fail to close.
                 with contextlib.suppress(*_driver_errors(self.dialect)):
                     cursor.close()
@@ -1336,7 +1341,17 @@ class _Session:
         is. Any other error is raised."""
         with contextlib.suppress(*_driver_errors(self.dialect)):
             if self.dialect == "mysql":
-                self.wrapper.cancel_query()
+                try:
+                    self.wrapper.cancel_query()
+                except _driver_errors(self.dialect):
+                    # Closing the cursor would read the rest of the result; closing the socket does not, and the
+                    # server then ends the statement on its failed write (INT-157).
+                    self.abandoned = True
+                    self.wrapper.close()
+                    # The cursor and its result would read the rest when they are collected, from a closed socket.
+                    if self.raw._result is not None:
+                        self.raw._result.unbuffered_active = False
+                    cursor.connection = None
             elif cursor_name is not None:
                 cursor.execute(f"CLOSE {cursor_name}")
 
@@ -1558,7 +1573,19 @@ class CatalogConnection:
         if self._dialect == "sqlite":
             wrapper = _SqliteConnection(self._parsed)
         elif self._dialect == "mysql":
-            wrapper = _MysqlConnection(self._parsed)
+            # The socket that a budget stop closed holds its place in max_user_connections until the server ends that
+            # thread, which it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of
+            # CFG-35 at most.
+            deadline = _monotonic() + 2.0
+            while True:
+                try:
+                    wrapper = _MysqlConnection(self._parsed)
+                    break
+                except OrmError as error:
+                    refused = getattr(error.__cause__, "args", (None,))[:1] == (1226,)
+                    if not refused or _monotonic() >= deadline:
+                        raise
+                    _sleep(0.01)
         else:
             wrapper = _PostgresConnection(self._parsed)
         session = _Session(self._dialect, wrapper)
@@ -1592,7 +1619,12 @@ class CatalogConnection:
     def _end(self, session: _Session, error: BaseException | None) -> None:
         """Rolls the session back and closes it. A failed rollback is reported with the error that ended the session. SQLite
         rolls a transaction back by itself after some errors, such as RAISE(ROLLBACK) or an I/O error; then no ROLLBACK is
-        sent, so the error is the one that ended the session (INT-155)."""
+        sent, so the error is the one that ended the session (INT-155). A session that a stop abandoned has
+        no connection left to roll back."""
+        if session.abandoned:
+            if error is not None:
+                raise error
+            return
         try:
             if self._dialect != "sqlite" or session.raw.in_transaction:
                 session.run("ROLLBACK")

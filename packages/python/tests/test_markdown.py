@@ -1,5 +1,5 @@
-# The markdown IR executor's DSN, connect and control messages, error lines, and the surfaces it rejects (docs/spec/protocol.md §5,
-# docs/spec/dialects.md "Markdown IR executor"). Uses a fake server that records the messages of one connection instead of the flowmark server.
+# The markdown bind cases of tests/bind/vectors.json (docs/spec/protocol.md §5), and the fake server that records the messages
+# of one connection in place of the flowmark server, which the tests of a markdown connection share.
 import queue
 import socket
 import threading
@@ -7,14 +7,10 @@ import math
 import unittest
 
 
-from polyspec.orm.database import Db
 from polyspec.orm.errors import OrmError
 from . import testcase
 
 TOKEN = "0123456789abcdef0123456789abcdef"
-CONNECT_LINE = (
-    '{"op":"connect","corpus":"tracker","token":"0123456789abcdef0123456789abcdef"}'
-)
 
 
 class MarkdownTestServer:
@@ -57,82 +53,6 @@ class MarkdownTestServer:
     def close(self) -> None:
         self.listener.close()
         self.thread.join(10)
-
-
-def raised(run):
-    try:
-        run()
-    except BaseException as error:  # noqa: BLE001 - the probe returns any exception the run raises
-        return error
-    return None
-
-
-class MarkdownTest(unittest.TestCase):
-    def test_markdown_session_messages(self):
-        # Requirements: PRT-64.
-        server = MarkdownTestServer(
-            self,
-            '{"ok":true}',
-            '{"ok":true}',
-            '{"ok":true}',
-            '{"ok":true}',
-            '{"ok":true}',
-            '{"ok":true}',
-            '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it '
-            'was read"}}',
-        )
-        db = Db.connect(server.dsn())
-        self.addCleanup(db.close)
-        db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
-        error = raised(lambda: db.transaction(lambda: None))
-        self.assertIsInstance(error, OrmError)
-        self.assertEqual(error.code, "WRITE_CONFLICT")
-        self.assertEqual(
-            str(error), "WRITE_CONFLICT: people.flowmark.md:3 changed since it was read"
-        )
-        db.close()
-        self.assertEqual(
-            server.received_messages(),
-            [
-                CONNECT_LINE,
-                '{"op":"begin","read_only":true}',
-                '{"op":"savepoint","name":"orm_sp_1"}',
-                '{"op":"release","name":"orm_sp_1"}',
-                '{"op":"commit"}',
-                '{"op":"begin"}',
-                '{"op":"commit"}',
-            ],
-        )
-
-    def test_markdown_rejected_surfaces(self):
-        # Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
-        server = MarkdownTestServer(self, '{"ok":true}')
-        db = Db.connect(server.dsn())
-        self.addCleanup(db.close)
-        dbutils = db.utils()
-        for name, run in {
-            "audit": lambda: db.transaction(
-                lambda: None, {"audit": {"actor": "tester"}}
-            ),
-            "isolation": lambda: db.transaction(
-                lambda: None, {"isolation": "serializable"}
-            ),
-            "timeoutMs": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
-            "lock": lambda: dbutils.lock("k"),
-            "setLocal": lambda: dbutils.set_local("k", "v"),
-            "local": lambda: dbutils.local("k"),
-            "backendWaitingForLock": lambda: dbutils.backend_waiting_for_lock(),
-            "subscribe": lambda: db.subscribe(lambda event: None),
-            "privileges": lambda: dbutils.privileges().inspect_table("public.items"),
-            "AES rotation": lambda: dbutils.aes().rotate(None, None),
-            "schema install": lambda: dbutils.schema().install(None),
-            "schema evolution": lambda: dbutils.schema().add_tables_and_columns(None),
-        }.items():
-            error = raised(run)
-            self.assertIsInstance(error, OrmError, name)
-            self.assertEqual(error.code, "CAPABILITY_UNSUPPORTED", f"{name}: {error}")
-        db.close()
-        self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
 
 def vector_value(value):

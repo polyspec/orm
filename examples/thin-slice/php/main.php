@@ -25,7 +25,7 @@ $db = \Polyspec\Orm\Tests\Model\connect(dsn(), new Config(
 ));
 $db->subscribe(static function (StatementEvent $e) use (&$lastSql, &$lastArgs): void {
     $lastSql = $e->sql;
-    $lastArgs = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? AES_KEY : $v, $e->binds);
+    $lastArgs = $e->binds;
 });
 $now = '2026-09-11 00:00:00';
 
