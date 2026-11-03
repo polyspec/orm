@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: c71d870164e2007b2b59ec464535ccc626686bfb35fc26dc50e6fdcb4b8fe4f5 -->
+<!-- source-sha256: e2404d4b2ed92eb198f850b25aeb3093d10e08361f4c023e63cf3c26e27235fa -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -18,7 +18,7 @@
   - `request-hook-params-are-read-only`(INT-78)는 Go, TypeScript, Python, PHP, PHP extension에서 native로 남는다. hook이 바인딩 값을 바꾸지 못하게 하는 방식은 언어마다 달라 frozen 배열, tuple, 복사본으로 적으므로 recipe 값으로 적을 수 없고, Rust는 hook에 읽기와 추가만 주므로 거부할 쓰기가 없어 recipe의 `reads_params` case에 묶는다.
   - `dynamic-vs-scanned-model-chain-dispatch`(PLN-40)는 모든 runtime에서 native로 남는다. model의 메서드는 각 언어 source의 scan과 그 dispatch에서 오며 recipe 값이 닿지 않는다.
   - `native-public-package-entry`(INT-138)는 모든 runtime에서 native로 남는다. package 진입점은 그 언어의 packaging, 곧 import 경로와 내보낸 이름이며 FCV-2는 이를 runtime 고유로 다룬다.
-  - 생성 메서드를 호출하는 conformance 본문(`terminal_by`, `terminal_reuse`, `relation_empty`, `aes_values`, `hex_malformed`, `empty_reads`)은 모든 runtime에서 native로 남는다. 생성 메서드는 언어의 source이고 recipe step은 일반 builder를 호출하기 때문이다. `conformance-generated-methods-check`는 recipe `conformance_verification`의 fixture와 seed에서 이 본문을 실행하고 출력을 같은 이름의 case expect와 비교하므로 두 경로가 어긋날 수 없다.
+  - 생성 메서드를 호출하는 conformance 본문(`terminal_by`, `terminal_reuse`, `relation_empty`, `aes_values`, `hex_malformed`, `empty_reads`, `now_defaults`, `delete_recursive`, `affected_counts`)은 모든 runtime에서 native로 남는다. 생성 메서드는 언어의 source이고 recipe step은 일반 builder를 호출하기 때문이다. `conformance-generated-methods-check`는 recipe `conformance_verification`의 fixture와 seed에서 이 본문을 실행하고 출력을 같은 이름의 case expect와 비교하므로 두 경로가 어긋날 수 없다.
   - 고정 시계 본문 `clock_truncate_write`와 `clock_compare_six_digits`는 모든 runtime에서 native로 남는다. FixClock이 시험 진입점이기 때문이다(PRT-53). `conformance-fixed-clock-check`는 이 본문을 `tests/conformance/check/fixed_clock.json`과 비교하며, 이 파일은 client가 쓰는 곳의 정확한 시계를 적는다. 시간 창 형식(F16)은 대신할 수 없다. 그 형식은 database 시계에 가까운 시간임을 확인할 뿐 여섯 자리 값과 그 절삭을 확인하지 않는다.
   - `static-model-chain-generation`(INT-27), `dynamic-model-chain-resolution`(INT-28), `dynamic-vs-scanned-model-chain-dispatch`(PLN-40), `dynamic-model-new-output-name-rejects-stored-column`(DSL-160)은 native로 남는다. 각각 정적 또는 동적 runtime 쪽 동작이며 반대쪽에는 그 호출이 없다. `generator-orders-sets-by-imports`(DSL-157)는 Go만의 것이다.
   - `dsl-50-operator-value-shapes`와 `chain-null-on-a-non-null-column`(DSL-49, DSL-50)은 컴파일러가 거부하는 사용에 대해 Go, TypeScript, Rust에서 FCV-2의 compile-fail fixture로 native로 남는다. Go `TestChainArgumentTypes`, TypeScript `chain argument types`, Rust compiler fixture `dsl49-nonnull-null-e0277`과 `dsl50-ordering-list-e0277`이다. 실행되는 동작은 recipe `dsl`과 `dsl-dynamic`에 있다.
