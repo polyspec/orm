@@ -1025,9 +1025,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/mysql"
                   },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "case_database": true
                 }
               ],
               "postgres": [
@@ -1038,9 +1038,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/postgres"
                   },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "case_database": true
                 }
               ],
               "sqlite": [
@@ -1051,9 +1051,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/sqlite"
                   },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "case_database": true
                 }
               ]
             }
