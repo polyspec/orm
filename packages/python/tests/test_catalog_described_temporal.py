@@ -96,8 +96,6 @@ class CatalogDescribedTemporalTest(unittest.TestCase):
         ):
             with self.subTest(stored=stored, requested=requested):
                 self.assertEqual(_same_row([stored], [requested]), want)
-if __name__ == "__main__":
-    testcase.main()
 
     def test_described_temporal_text(self):
         from polyspec.orm.catalog import _described_temporal
@@ -172,14 +170,6 @@ if __name__ == "__main__":
                 "12:34:56.000000",
             ),
             ("NULL", None, "datetime(3)", "mysql", None),
-            ("not a dbspec type", aware, "timestamp with time zone", "postgres", aware),
-            (
-                "MySQL TIMESTAMP is not a dbspec type",
-                whole,
-                "timestamp",
-                "mysql",
-                whole,
-            ),
             (
                 "SQLite text of its CHECK precision",
                 "12:34:56.500",
@@ -207,6 +197,20 @@ if __name__ == "__main__":
                 )
                 self.assertEqual(_described_temporal(value, column, dialect), want)
         refused = [
+            (
+                "a zoned PostgreSQL value",
+                aware,
+                "timestamp with time zone",
+                "postgres",
+                codes.CATALOG_VALUE,
+            ),
+            (
+                "a MySQL TIMESTAMP",
+                whole,
+                "timestamp",
+                "mysql",
+                codes.CATALOG_VALUE,
+            ),
             (
                 "digit past the declared precision",
                 stamp,
@@ -313,3 +317,7 @@ if __name__ == "__main__":
                 with self.assertRaises(OrmError) as raised:
                     _described_temporal(value, column, dialect)
                 self.assertEqual(raised.exception.code, code)
+
+
+if __name__ == "__main__":
+    testcase.main()
