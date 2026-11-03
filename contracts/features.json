@@ -5996,7 +5996,6 @@
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
-        "packages/python/tests/test_schema_install_uses.py",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
         "packages/python/tests/schema_inspection.py",
@@ -6077,7 +6076,7 @@
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|SeveralSchemas|UnregisteredSchema|EditedManifest)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|EditedManifest)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -6090,7 +6089,7 @@
         },
         {
           "id": "install-register-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement external_documents",
+          "command": "node packages/ts/tests/schema-set.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
@@ -6101,7 +6100,7 @@
         },
         {
           "id": "install-schema-set-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs several_schemas unregistered_schema edited_manifest external_documents",
+          "command": "node packages/ts/tests/schema-set.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
@@ -6143,10 +6142,9 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_schema_install_uses.py",
             "packages/python/tests/test_installed_differences.py",
             "packages/python/tests/test_schema_inspection.py",
             "packages/python/tests/test_schema_utils.py",
@@ -6197,7 +6195,7 @@
         },
         {
           "id": "install-schema-set-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSet(MySQL|Postgres|SQLite)|TestSchemaSetUnregistered(MySQL|Postgres|SQLite)|TestSchemaSetEditedManifest(MySQL|Postgres|SQLite))$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifest(MySQL|Postgres|SQLite))$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/decimalmodel/schema_set_test.go",

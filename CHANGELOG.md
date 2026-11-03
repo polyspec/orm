@@ -220,6 +220,8 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- CR15-2: several sets on a connection, an unregistered set and an edited manifest are cases of the statement_events recipe, and a model op with no connection runs on the case connection in every runtime.
+- CR15-2: `sqlite-row-lock-restoration` stays native as an FCV-2 entry, since no public call makes `PRAGMA busy_timeout` fail.
 - CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.
 - CR15-2: `install` over some tables of a set has one message in every runtime: Go, PHP, the PHP extension and Rust each had their own text, and SCH-10 states it and that of a differing database.
 - CR15-2: the add tables and columns behaviour is five cases of the schema_install recipe, `dbspec.add_tables_steps` is a recipe of its own, the native tests are gone, and a refusal case can check its message with `message_contains`.

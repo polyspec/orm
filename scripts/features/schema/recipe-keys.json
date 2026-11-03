@@ -377,6 +377,7 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
       "group_value",
       "items",
