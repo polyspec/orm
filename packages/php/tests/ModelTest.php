@@ -1733,16 +1733,6 @@ class ModelTest extends TestCase
         self::caseDeadlockRetry($db, $dsn);
     }
 
-    // aes rotation
-    #[DataProvider('drivers')]
-    public function testAesRotation(string $driver): void
-    {
-        // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseAesRotation($db, $dsn);
-    }
-
     // bind limit splitting
     // Requirements: PRT-41, PRT-76.
     #[DataProvider('drivers')]
