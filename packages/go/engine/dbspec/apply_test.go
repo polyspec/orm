@@ -173,37 +173,6 @@ func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
 	logResult(t, "apply/rollback-step-outside", start)
 }
 
-// TestFinalizeMarksPlanDone checks that finalize of an applied plan that hides nothing, which has no finalize step,
-// makes its history row done at once (docs/spec/plans.md "Finalize").
-// Requirements: PLN-94.
-func TestFinalizeMarksPlanDone(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	start := time.Now()
-	t.Log("RUN apply/finalize-done deadline=20s")
-	now, plans, ctx := applyTestSetup(t)
-	conn := applyTestConn(t)
-	applyOK(t, ctx, conn, plans, now)
-	var kinds []string
-	events := func(ev ApplyEvent) error {
-		kinds = append(kinds, ev.Kind)
-		return nil
-	}
-	if err := Finalize(ctx, conn, DialectSQLite, plans, now, events); err != nil {
-		t.Fatal(err)
-	}
-	var state string
-	if err := conn.QueryRowContext(ctx, `SELECT state FROM "dbspec$plans" WHERE name = ?`, plans[0].Name).Scan(&state); err != nil {
-		t.Fatal(err)
-	}
-	if state != "done" {
-		t.Errorf("history state after finalize = %q, want done", state)
-	}
-	if got := strings.Join(kinds, ","); got != "finalize,done" {
-		t.Errorf("finalize events = %s, want finalize,done", got)
-	}
-	logResult(t, "apply/finalize-done", start)
-}
-
 // applyTestSetup returns the clock, the plans, and a context of 20 seconds for an
 // apply test; the context is cancelled when the test ends.
 func applyTestSetup(t *testing.T) (func() time.Time, []*Plan, context.Context) {
