@@ -50,128 +50,6 @@ func block(lines ...string) []string { return lines }
 
 var core = map[string][]string{"core": {"dbspec 1 core", "", "table accounts {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_accounts_code (code)", "}"}}
 
-var ruleCases = []ruleCase{
-	// header, encoding, limit
-	{id: "empty-document", lines: nil, errors: errs(1, 1, RuleHeader)},
-	{id: "header-version", lines: []string{"dbspec 2 shop"}, errors: errs(1, 8, RuleHeader)},
-	{id: "header-extra-token", lines: []string{"dbspec 1 shop extra"}, errors: errs(1, 14, RuleHeader)},
-	{id: "header-missing-name", lines: []string{"dbspec 1"}, errors: errs(1, 9, RuleHeader)},
-	{id: "header-name-format", lines: []string{"dbspec 1 Shop"}, errors: errs(1, 10, RuleNameFormat)},
-	{id: "header-stops-parsing", lines: []string{"dbspec 1", "table Users {", "}"}, errors: errs(1, 9, RuleHeader)},
-
-	// syntax and order
-	{id: "unknown-top-level", lines: with(block("view v {")), errors: errs(3, 1, RuleSyntax)},
-	{id: "unclosed-table", lines: with(block("table users {", "  id i64 identity", "  primary key (id)")), errors: errs(3, 13, RuleSyntax)},
-	{id: "unterminated-string", lines: with(block("table users {", "  id i64 identity", "  name varchar(8) default 'x", "  primary key (id)", "}")), errors: errs(5, 27, RuleSyntax)},
-	{id: "bad-character", lines: with(block("table users {", "  id i64 identity;", "  primary key (id)", "}")), errors: errs(4, 18, RuleSyntax)},
-	{id: "tab-is-not-space", lines: with(block("table users {", "\tid i64 identity", "  primary key (id)", "}")), errors: errs(4, 1, RuleSyntax)},
-	{id: "modifier-order", lines: with(block("table users {", "  id i64 identity null", "  primary key (id)", "}")), errors: errs(4, 19, RuleSyntax)},
-	{id: "empty-key-list", lines: with(block("table users {", "  id i64 identity", "  primary key ()", "}")), errors: errs(5, 16, RuleSyntax)},
-	{id: "use-after-table", lines: with(users, block("", "use core { accounts }")), set: core, errors: errs(8, 1, RuleOrder)},
-	{id: "table-after-diagram", lines: with(block("diagram d {", "}", ""), users), errors: errs(6, 1, RuleOrder)},
-	{id: "column-after-key", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  name varchar(8)", "}")), errors: errs(6, 3, RuleOrder)},
-	{id: "key-after-settings", lines: with(block("table users {", "  id i64 identity", "  settings {", "    immutable", "  }", "  primary key (id)", "}")), errors: errs(8, 3, RuleOrder)},
-	{id: "second-settings", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "  }", "  settings {", "  }", "}")), errors: errs(8, 3, RuleOrder)},
-
-	// names
-	{id: "name-primary", lines: with(block("table primary {", "  id i64 identity", "  primary key (id)", "}")), errors: errs(3, 7, RuleNameFormat)},
-	{id: "name-leading-digit", lines: with(block("table users {", "  id i64 identity", "  9lives i32", "  primary key (id)", "}")), errors: errs(5, 3, RuleNameFormat)},
-	{id: "name-qualified", lines: with(block("table core.users {", "  id i64 identity", "  primary key (id)", "}")), errors: errs(3, 7, RuleNameFormat)},
-	{id: "duplicate-column", lines: with(block("table users {", "  id i64 identity", "  id i32", "  primary key (id)", "}")), errors: errs(5, 3, RuleNameDuplicate)},
-	{id: "duplicate-table", lines: with(users, block(""), users), errors: errs(8, 7, RuleNameDuplicate)},
-	{id: "duplicate-diagram", lines: with(users, block("", "diagram d {", "}", "diagram d {", "}")), errors: errs(10, 9, RuleNameDuplicate)},
-	{id: "duplicate-index-and-check", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  index x_id (id)", "  check x_id (id > 0)", "}")), errors: errs(7, 9, RuleNameDuplicate)},
-	{id: "duplicate-name-with-used-document", lines: with(block("use core { accounts }", "", "table users {", "  id i64 identity", "  primary key (id)", "  index uq_accounts_code (id)", "}")), set: core, errors: errs(8, 9, RuleNameDuplicate)},
-	{id: "local-table-shadows-used-table", lines: with(block("use core { accounts }", ""), block("table accounts {", "  id i64 identity", "  primary key (id)", "}")), set: core, errors: errs(5, 7, RuleNameDuplicate)},
-
-	// types
-	{id: "varchar-zero", lines: with(block("table users {", "  id i64 identity", "  name varchar(0)", "  primary key (id)", "}")), errors: errs(5, 8, RuleType)},
-	{id: "varchar-too-long", lines: with(block("table users {", "  id i64 identity", "  name varchar(16384)", "  primary key (id)", "}")), errors: errs(5, 8, RuleType)},
-	{id: "time-without-precision", lines: with(block("table users {", "  id i64 identity", "  at time", "  primary key (id)", "}")), errors: errs(5, 6, RuleType)},
-	{id: "datetime-precision-7", lines: with(block("table users {", "  id i64 identity", "  at datetime(7)", "  primary key (id)", "}")), errors: errs(5, 6, RuleType)},
-	{id: "decimal-scale-above-precision", lines: with(block("table users {", "  id i64 identity", "  n decimal(4,5)", "  primary key (id)", "}")), errors: errs(5, 5, RuleType)},
-	{id: "parameter-on-plain-type", lines: with(block("table users {", "  id i64 identity", "  n i32(4)", "  primary key (id)", "}")), errors: errs(5, 5, RuleType)},
-	{id: "unsupported-types", lines: with(block("table users {", "  id i64 identity", "  a f32", "  b char(4)", "  c json", "  primary key (id)", "}")), errors: errs(5, 5, RuleType, 6, 5, RuleType, 7, 5, RuleType)},
-
-	// columns
-	{id: "null-identity", lines: with(block("table users {", "  id i64 null identity", "  primary key (id)", "}")), errors: errs(4, 15, RuleColumn, 5, 16, RuleKey)},
-	{id: "identity-default", lines: with(block("table users {", "  id i64 identity default 1", "  primary key (id)", "}")), errors: errs(4, 19, RuleColumn)},
-	{id: "identity-not-sole-key", lines: with(block("table users {", "  id i64 identity", "  n i32", "  primary key (id, n)", "}")), errors: errs(4, 10, RuleColumn)},
-	{id: "identity-twice", lines: with(block("table users {", "  id i64 identity", "  other i64 identity", "  primary key (id)", "}")), errors: errs(5, 13, RuleColumn)},
-	{id: "text-default", lines: with(block("table users {", "  id i64 identity", "  body text default 'x'", "  primary key (id)", "}")), errors: errs(5, 13, RuleColumn)},
-	{id: "default-out-of-range", lines: with(block("table users {", "  id i64 identity",
-		"  a i16 default 32768", "  b i32 default -2147483649", "  c bool default 1", "  d decimal(3,1) default 100", "  e decimal(3,1) default 1.25",
-		"  f varchar(2) default 'abc'", "  g uuid default 'x'", "  h date default '2026-02-30'", "  i time(0) default '24:00:00'",
-		"  j datetime(0) default '2026-01-01T00:00:00'", "  k i32 default now", "  l i32 default '1'", "  m varchar(4) default null",
-		"  primary key (id)", "}")),
-		errors: errs(5, 17, RuleColumn, 6, 17, RuleColumn, 7, 18, RuleColumn, 8, 26, RuleColumn, 9, 26, RuleColumn, 10, 24, RuleColumn,
-			11, 18, RuleColumn, 12, 18, RuleColumn, 13, 21, RuleColumn, 14, 25, RuleColumn, 15, 17, RuleColumn, 16, 17, RuleColumn, 17, 24, RuleColumn)},
-
-	// keys
-	{id: "two-primary-keys", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  primary key (id)", "}")), errors: errs(6, 3, RuleKey)},
-	{id: "nullable-key-column", lines: with(block("table users {", "  id i64", "  n i32 null", "  primary key (id, n)", "}")), errors: errs(6, 20, RuleKey)},
-	{id: "unknown-and-repeated-key-column", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  index ix_a (id, id, nope)", "}")), errors: errs(6, 19, RuleKey, 6, 23, RuleKey)},
-	{id: "bytes-in-unique", lines: with(block("table users {", "  id i64 identity", "  b bytes", "  primary key (id)", "  unique uq_b (b)", "}")), errors: errs(7, 16, RuleKey)},
-	{id: "seventeen-columns", lines: with(seventeenColumns()), errors: errs(21, 3, RuleKey)},
-	{id: "varchar-over-640", lines: with(block("table users {", "  id i64 identity", "  a varchar(320)", "  b varchar(320)", "  c varchar(1)", "  primary key (id)", "  index ix_abc (a, b, c)", "}")), errors: errs(9, 9, RuleKey)},
-
-	// foreign keys
-	{id: "unknown-target", lines: with(block("table users {", "  id i64 identity", "  t_id i64", "  primary key (id)", "  index ix_t (t_id)", "  foreign key fk_t (t_id) references teams (id)", "}")), errors: errs(8, 38, RuleForeignKey)},
-	{id: "unlisted-used-table", lines: with(block("use core { accounts }", "", "table users {", "  id i64 identity", "  t_id i64", "  primary key (id)", "  index ix_t (t_id)", "  foreign key fk_t (t_id) references teams (id)", "}")), set: core, errors: errs(10, 38, RuleForeignKey)},
-	{id: "type-mismatch", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i32", "  primary key (id)", "  index ix_u (user_id)", "  foreign key fk_u (user_id) references users (id)", "}")), errors: errs(13, 15, RuleForeignKey)},
-	{id: "arity-mismatch", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i64", "  primary key (id)", "  index ix_u (user_id, id)", "  foreign key fk_u (user_id, id) references users (id)", "}")), errors: errs(13, 15, RuleForeignKey)},
-	{id: "reference-not-a-key", lines: with(block("table users {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "}", "", "table orders {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  index ix_c (code)", "  foreign key fk_c (code) references users (code)", "}")), errors: errs(14, 15, RuleForeignKey)},
-	{id: "unknown-action-and-columns", lines: with(users, block("", "table orders {", "  id i64 identity", "  primary key (id)", "  foreign key fk_u (nope) references users (missing) on delete no_action", "}")), errors: errs(11, 21, RuleForeignKey, 11, 45, RuleForeignKey, 11, 64, RuleForeignKey)},
-	{id: "index-order-matters", lines: with(block("table pairs {", "  a i64", "  b i64", "  primary key (a, b)", "}", "", "table refs {", "  id i64 identity", "  a i64", "  b i64", "  primary key (id)", "  index ix_ba (b, a)", "  foreign key fk_ab (a, b) references pairs (a, b)", "}")), errors: errs(15, 15, RuleForeignKey)},
-
-	// checks
-	{id: "check-unknown-column", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  check ck_x (x > 0)", "}")), errors: errs(6, 15, RuleCheck)},
-	{id: "check-set-null-on-update", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i64 null", "  primary key (id)", "  index ix_u (user_id)", "  foreign key fk_u (user_id) references users (id) on update set_null", "  check ck_u (user_id is not null or id > 0)", "}")), errors: errs(14, 15, RuleCheck)},
-	{id: "check-outside-neutral-set", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  check ck_a (id like 1)", "  check ck_b (id > -id)", "  check ck_c (id AND 1)", "  check ck_d (id in (id))", "  check ck_e ((id > 0)", "}")),
-		errors: errs(6, 18, RuleCheck, 7, 20, RuleCheck, 8, 18, RuleCheck, 9, 22, RuleCheck, 10, 22, RuleCheck)},
-	{id: "check-typed-operands", lines: with(block("table users {", "  id i64 identity", "  on bool", "  t0 time(0)", "  t3 time(3)", "  primary key (id)",
-		"  check ck_a (on between true and false)", "  check ck_b (t0 < t3)", "  check ck_c (1 is null)", "  check ck_d (id = 1 and on > false)", "}")),
-		errors: errs(9, 18, RuleCheck, 10, 20, RuleCheck, 11, 15, RuleCheck, 12, 29, RuleCheck)},
-
-	// settings
-	{id: "setting-repeats", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    entity user", "    entity person", "  }", "}")), errors: errs(8, 5, RuleSetting)},
-	{id: "setting-unknown-column", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    select explicit id nope id", "  }", "}")), errors: errs(7, 24, RuleSetting, 7, 29, RuleSetting)},
-	{id: "setting-column-types", lines: with(block("table users {", "  id i64 identity", "  at date", "  gone datetime(6)", "  v i32 null", "  n i32", "  primary key (id)", "  settings {", "    updated at", "    soft_delete gone", "    codec n gz", "    aes_version v", "  }", "}")),
-		errors: errs(11, 13, RuleSetting, 12, 17, RuleSetting, 13, 11, RuleSetting, 14, 5, RuleSetting, 14, 17, RuleSetting)},
-	{id: "codec-companions", lines: with(block("table users {", "  id i64 identity", "  secret bytes", "  token varchar(64)", "  plain varchar(64)", "  primary key (id)", "  index ix_token (token)", "  settings {", "    codec secret aes zip", "    blind_index plain token", "  }", "}")),
-		errors: errs(11, 5, RuleSetting, 11, 22, RuleSetting, 12, 5, RuleSetting)},
-	{id: "blind-index-not-indexed", lines: with(block("table users {", "  id i64 identity", "  secret bytes", "  token varchar(64)", "  v i32", "  primary key (id)", "  settings {", "    codec secret aes", "    aes_version v", "    blind_index secret token", "  }", "}")), errors: errs(12, 24, RuleSetting)},
-	{id: "navigation-unknown-key", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    navigation fk_nope Owner owned", "  }", "}")), errors: errs(7, 16, RuleSetting, 7, 24, RuleNameFormat)},
-	{id: "immutable-on-cascade-child", lines: with(users, block("", "table orders {", "  id i64 identity", "  user_id i64", "  primary key (id)", "  index ix_u (user_id)", "  foreign key fk_u (user_id) references users (id) on delete cascade", "  settings {", "    immutable", "  }", "}")), errors: errs(15, 5, RuleSetting)},
-	{id: "audit-bad-history", lines: with(block("table service {", "  id i64 identity", "  audit_seq i32", "  primary key (id)", "  index ix_service_audit (audit_seq)", "  foreign key fk_service_audit (audit_seq) references audit (seq) on delete restrict on update restrict", "  settings {", "    audit into service_history column audit_seq references audit action change previous previous_audit_seq", "  }", "}", "",
-		"table service_history {", "  history_id i64", "  change varchar(16)", "  previous_audit_seq i64", "  id i64", "  extra i32", "  primary key (history_id)", "}", "", "table audit {", "  seq i32", "  primary key (seq)", "}")),
-		errors: errs(10, 16, RuleSetting, 10, 16, RuleSetting, 10, 16, RuleSetting, 10, 16, RuleSetting, 10, 73, RuleSetting, 10, 89, RuleSetting)},
-	{id: "audit-history-audited", lines: with(block("table a {", "  id i64 identity", "  op i64", "  gone datetime(6) null", "  primary key (id)", "  index ix_a_op (op)", "  foreign key fk_a_op (op) references r (id) on delete restrict on update restrict", "  settings {", "    soft_delete gone", "    audit into a column op references r action act previous prev", "  }", "}", "", "table r {", "  id i64 identity", "  primary key (id)", "}")), errors: errs(12, 16, RuleSetting)},
-
-	// use and diagrams
-	{id: "use-undefined-table", lines: with(block("use core { accounts, teams }"), users), set: core, errors: errs(3, 22, RuleUse)},
-	{id: "use-invalid-document", lines: with(block("use core { accounts }"), users), set: map[string][]string{"core": {"dbspec 1 core", "", "table accounts {", "  id i64 identity", "}"}}, errors: errs(3, 5, RuleUse)},
-	{id: "use-mismatched-name", lines: with(block("use core { accounts }"), users), set: map[string][]string{"core": {"dbspec 1 other", "", "table accounts {", "  id i64 identity", "  primary key (id)", "}"}}, errors: errs(3, 5, RuleUse)},
-	{id: "use-own-document", lines: with(block("use shop { users }", ""), users), errors: errs(3, 5, RuleUse)},
-	{id: "decimal-and-time-extra-zero-digits", lines: with(block("table users {", "  id i64 identity", "  d decimal(4,0) default 12.0", "  t time(0) default '12:00:00.0'", "  primary key (id)", "}")), errors: errs(5, 26, RuleColumn, 6, 21, RuleColumn)},
-	{id: "reserved-word-and-tie-order", lines: with(block("table users {", "  id i64 identity", "  Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa i32", "  primary key (id)", "  index identity (id)", "}")), errors: errs(5, 3, RuleNameFormat, 5, 3, RuleNameLength, 7, 9, RuleNameFormat)},
-	{id: "malformed-reference", lines: with(block("table users {", "  id i64 identity", "  primary key (Id)", "  index ix_x (id, Nope)", "}")), errors: errs(5, 16, RuleNameFormat, 6, 19, RuleNameFormat)},
-	{id: "reference-to-failed-table", lines: with(block("table teams { x", "  id i64 identity", "  primary key (id)", "}", "", "table users {", "  id i64 identity", "  team_id i64", "  primary key (id)", "  index ix_team (team_id)", "  foreign key fk_team (team_id) references teams (missing)", "}")), errors: errs(3, 15, RuleSyntax)},
-	{id: "varchar-640-in-primary-key", lines: with(block("table users {", "  a varchar(400)", "  b varchar(400)", "  primary key (a, b)", "}")), errors: errs(6, 3, RuleKey)},
-	{id: "constraint-named-like-used-table", lines: with(block("use core { accounts }", "", "table users {", "  id i64 identity", "  primary key (id)", "  index accounts (id)", "}")), set: core, errors: errs(8, 9, RuleNameDuplicate)},
-	{id: "used-documents-repeat-constraint", lines: with(block("use core { accounts }", "use extra { teams }"), users), set: map[string][]string{"core": core["core"], "extra": {"dbspec 1 extra", "", "table teams {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_accounts_code (code)", "}"}}, errors: errs(4, 5, RuleNameDuplicate)},
-	{id: "use-cycle-in-set", lines: with(block("use core { accounts }"), users), set: map[string][]string{"core": {"dbspec 1 core", "", "use extra { teams }", "", "table accounts {", "  id i64 identity", "  primary key (id)", "}"}, "extra": {"dbspec 1 extra", "", "use core { accounts }", "", "table teams {", "  id i64 identity", "  primary key (id)", "}"}}, errors: errs(3, 5, RuleUse)},
-	{id: "codec-storage-and-order", lines: with(block("table users {", "  id i64 identity", "  a bytes", "  b text", "  c varchar(64)", "  primary key (id)", "  settings {", "    codec a gz base64", "    codec b gz", "    codec c hex ordered_json", "  }", "}")), errors: errs(10, 11, RuleSetting, 11, 11, RuleSetting, 12, 17, RuleSetting)},
-	{id: "blind-index-rules", lines: with(block("table users {", "  id i64 identity", "  s1 bytes", "  s2 bytes null", "  s3 bytes", "  s4 bytes", "  h1 varchar(32)", "  h2 varchar(64)", "  v i32", "  primary key (id)", "  index ix_h1 (h1)", "  index ix_h2 (h2, id)", "  settings {", "    codec s1 aes", "    codec s2 aes", "    codec s3 aes", "    codec s4 aes", "    aes_version v", "    blind_index s1 h1", "    blind_index s2 h2", "    blind_index s3 s1", "    blind_index s3 h2", "    blind_index s4 h2", "  }", "}")),
-		errors: errs(21, 20, RuleSetting, 22, 20, RuleSetting, 23, 20, RuleSetting, 24, 5, RuleSetting, 25, 20, RuleSetting)},
-	{id: "blind-index-bytes", lines: with(block("table users {", "  id i64 identity", "  s bytes", "  h varchar(64)", "  b bytes", "  v i32", "  primary key (id)", "  unique uq_h (h)", "  settings {", "    codec s aes", "    aes_version v", "    blind_index s b", "  }", "}")), errors: errs(14, 19, RuleSetting)},
-	{id: "check-first-diagnostic-only", lines: with(block("table users {", "  id i64 identity", "  primary key (id)", "  check ck_x (x > 0 and y > 0)", "}")), errors: errs(6, 15, RuleCheck)},
-	{id: "header-exact-spacing", lines: []string{"dbspec  1 shop"}, errors: errs(1, 8, RuleHeader)},
-	{id: "header-tab", lines: []string{"dbspec 1\tshop"}, errors: errs(1, 9, RuleHeader)},
-	{id: "audit-action-nullable", lines: with(block("table a {", "  id i64 identity", "  op i64", "  gone datetime(6) null", "  primary key (id)", "  index ix_a_op (op)", "  foreign key fk_a_op (op) references r (id) on delete restrict on update restrict", "  settings {", "    soft_delete gone", "    audit into h column op references r action act previous prev", "  }", "}", "", "table h {", "  hid i64 identity", "  act varchar(8) null", "  prev i64 null", "  id i64", "  op i64", "  gone datetime(6) null", "  primary key (hid)", "}", "", "table r {", "  id i64 identity", "  primary key (id)", "}")), errors: errs(12, 48, RuleSetting)},
-	{id: "coordinate-i32-bounds", lines: with(users, block("", "diagram main {", "  users at -2147483648 2147483647", "}", "diagram other {", "  users at -2147483649 0", "}")), errors: errs(12, 12, RuleDiagram)},
-	{id: "diagram-repeat-and-coordinates", lines: with(users, block("", "diagram main {", "  users at 1.5 x", "  users at 0 0", "}")), errors: errs(9, 12, RuleDiagram, 9, 16, RuleDiagram, 10, 3, RuleDiagram)},
-}
 
 func seventeenColumns() []string {
 	lines := []string{"table wide {"}
@@ -184,23 +62,7 @@ func seventeenColumns() []string {
 	return append(lines, "  primary key ("+strings.Join(names, ", ")+")", "}")
 }
 
-// Requirements: DBS-32, DBS-36, DBS-38, DBS-39, DBS-42, DBS-43, DBS-46, DBS-48, DBS-50, DBS-58, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168.
-func TestRuleDiagnostics(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, c := range ruleCases {
-		t.Run(c.id, func(t *testing.T) {
-			runTimed(t, c.id, 5*time.Second, func() error {
-				text := ""
-				if c.lines != nil {
-					text = joinLines(c.lines, false)
-				}
-				return expectDiagnostics(text, docSet(c.set), c.errors)
-			})
-		})
-	}
-}
-
-// TestEncodingDiagnostics holds the texts that are not a sequence of Unicode scalar values, which a JSON recipe cannot write (FCV-2).
+// TestEncodingDiagnostics holds the texts that the line form of a JSON recipe cannot write: an empty text and one that is not a sequence of Unicode scalar values (FCV-2).
 // Requirements: DBS-144.
 func TestEncodingDiagnostics(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -209,6 +71,7 @@ func TestEncodingDiagnostics(t *testing.T) {
 		text string
 		want []vectorError
 	}{
+		{"empty-document", "", errs(1, 1, RuleHeader)},
 		{"invalid-utf8", "dbspec 1 shop\n# caf\xe9\n", errs(2, 6, RuleEncoding)},
 		{"encoding-after-earlier-errors", "dbspec 1 shop\ntable T {\n  id i64 identity\n  bad\xff i32\n", errs(2, 7, RuleNameFormat, 4, 6, RuleEncoding)},
 	}
