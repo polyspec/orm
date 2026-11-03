@@ -709,7 +709,6 @@
         "packages/ts/src/engine/dialect.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query-request.mjs",
         "packages/ts/tests/complex-query-request.types.ts",
         "packages/ts/tests/complex-query-request-types.mjs"
       ]

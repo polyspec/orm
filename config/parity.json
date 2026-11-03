@@ -321,7 +321,6 @@
         "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/CollectionWeakTypedKeyCases.php",
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
-        "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
         "packages/php/tests/DatabaseTestAssertions.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
@@ -29339,45 +29338,6 @@
       ]
     },
     {
-      "id": "get-page-plan-steps",
-      "kind": "feature",
-      "requirements": [
-        "DSL-159"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/complexquery/page_plan_steps_test.go",
-          "id": "TestGetPagePlanSteps"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ComplexQueryDbTest.php",
-          "id": "ComplexQueryDbTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-          "id": "ComplexQueryNativeTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query-request.mjs",
-          "id": "getPagePlanSteps gives the steps of the plan that getsPage runs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
-          "id": "complex_query_sqlite::page_plan_steps"
-        }
-      ]
-    },
-    {
       "id": "dbspec-sqlite-lock-result-and-session-restoration",
       "kind": "feature",
       "requirements": [
@@ -43393,6 +43353,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_fulltext_search_recipe_mysql.py",
           "id": "chain_fulltext"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
         },
         {
           "implementation": "rust",
