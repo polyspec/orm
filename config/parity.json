@@ -10830,8 +10830,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "symbol": "conformance_verification_mysql"
         }
       ]
     },
@@ -11042,8 +11042,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "symbol": "conformance_verification_postgres"
         }
       ]
     },
@@ -11255,8 +11255,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "symbol": "conformance_verification_sqlite"
         }
       ]
     },
@@ -14633,18 +14633,18 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_p0_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::time_p3_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_precision_rejected"
         }
       ]
     },
@@ -14732,18 +14732,18 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_p0_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::time_p3_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_precision_rejected"
         }
       ]
     },
@@ -14831,18 +14831,18 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_p0_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::time_p3_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_precision_rejected"
         },
         {
           "implementation": "go",
@@ -26950,18 +26950,23 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_TEST=coverage_conformance_vector_sqlite"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::conditions_values"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::relations"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::functions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::creates_and_save"
         },
         {
           "implementation": "php",

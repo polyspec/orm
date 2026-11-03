@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3e5eb3904a9f4ac3b1d19b416f4fe990d92e4da2a4a74aad8bcd958ff5811217 -->
+<!-- source-sha256: 0e16c45cdccb2d46a3b5090a0466374da3e5f32c1c262ab2b5b470890b2a9bc0 -->
 # 변경 이력
 
 ## Unreleased
 
+- `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
 - vector 파일을 읽던 PHP와 PHP extension 시험을, 그 시험만 쓰던 coverage helper와 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
 - vector 파일을 읽던 Python conformance module을 target `conformance-check/python`과 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
 - vector 파일을 읽던 TypeScript conformance 시험을 없앴다. 각 vector는 recipe `conformance_verification`의 case이고, 그 unit의 TypeScript binding은 그 recipe 시험을 가리킨다.
