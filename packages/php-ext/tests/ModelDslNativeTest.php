@@ -42,8 +42,7 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-49.
-    public function testConditionArityAndNullabilityUseSourceErrors(): void
+    public function testConditionArityUsesSourceErrors(): void
     {
         try {
             (new DslFixture())->name();
@@ -51,35 +50,6 @@ final class ModelDslNativeTest extends TestCase
         } catch (OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
             self::assertSame('CONFIG: the condition expects 1 values', $error->getMessage());
-        }
-        try {
-            (new DslFixture())->id(null);
-            self::fail('A non-nullable column must reject null.');
-        } catch (OrmException $error) {
-            self::assertSame('CONFIG', $error->code_);
-            self::assertSame('CONFIG: dsl_fixture.id is not nullable', $error->getMessage());
-        }
-    }
-
-    // Requirements: DSL-50, PLN-4.
-    public function testUnsupportedOperatorValuesAreRejectedInsteadOfConverted(): void
-    {
-        $model = new DslFixture();
-        self::assertSame($model, $model->age([18, 30])->eqAge([18, 30])->neAge([18, 30]));
-
-        foreach (
-            [
-            [[18, 30], 'a list is not accepted by the gt operator'],
-            [null, 'null is not accepted by the gt operator'],
-            ] as [$value, $message]
-        ) {
-            try {
-                (new DslFixture())->gtAge($value);
-                self::fail('The gt operator must not convert a list or null value.');
-            } catch (OrmException $error) {
-                self::assertSame('CONFIG', $error->code_);
-                self::assertSame('CONFIG: ' . $message, $error->getMessage());
-            }
         }
     }
 

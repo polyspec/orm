@@ -70,6 +70,12 @@ final class Recipe
         'HookUpsert' => 'hook_upsert',
         'RotRow' => 'rot_row',
         'ChunkAuthor' => 'chunk_author',
+        'Item' => 'item',
+        'Card' => 'card',
+        'Tag' => 'tag',
+        'Membership' => 'membership',
+        'Label' => 'label',
+        'Audit' => 'audit',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -1233,10 +1239,11 @@ final class Recipe
         if (is_array($params) && $params === []) {
             return [];
         }
-        if (!is_array($params) || count($params) !== 1) {
-            Assert::fail("the statement message $text holds no single parameter");
+        if (!is_array($params)) {
+            Assert::fail("the statement message $text holds no parameters");
         }
-        return $params[0];
+        // A list of several parameters (a list condition, DSL-50) is compared as the list.
+        return count($params) === 1 ? $params[0] : $params;
     }
 
     /**
@@ -1249,7 +1256,12 @@ final class Recipe
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
-        if ($step['operator'] === 'like_contains') {
+        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
+        if ($operatorPrefix !== null) {
+            // A chain method of an operator (DSL-50), which __call dispatches.
+            $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]
+                ?? Assert::fail("the column $column has no typed filter in the PHP cases"));
+        } elseif ($step['operator'] === 'like_contains') {
             // The contains condition of the text column is the lk operator of the generated model, which __call
             // dispatches (DSL-29).
             if ($column !== 'slots.text_value') {
@@ -1881,6 +1893,7 @@ final class Recipe
                     isolation: $s['isolation'] ?? '',
                     readOnly: ($s['read_only'] ?? false) === true,
                     retry: 0,
+                    audit: isset($s['audit']) ? self::mapAssignments($s['audit'], $context) : null,
                 );
                 return ['value' => ['bool' => true]];
             case 'catalog.connect':
@@ -2573,6 +2586,16 @@ final class Recipe
                     'row' => self::rowRecord($s, $context),
                 ];
             case 'model.update':
+                // The key form sets the key and the assignments on a new model, with no read before it, so a key
+                // that names no row is an update that matches none (FCV-4).
+                if (isset($s['key'])) {
+                    $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+                    self::setColumns(
+                        self::setValues($model, $s['key'], $context),
+                        self::mapAssignments($s['set'], $context),
+                    )->update();
+                    return [];
+                }
                 self::setColumns(self::boundValue($s['row'], $context), self::mapAssignments($s['set'], $context))
                     ->update();
                 return [];
@@ -2614,8 +2637,9 @@ final class Recipe
                 return [];
             case 'model.restore':
                 $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
-                self::setValues($model, $s['values'], $context)->restore();
-                return [];
+                $restored = self::setValues($model, $s['values'], $context)->restore();
+                // With columns, the rows expect compares the row that restore returns (INT-38).
+                return isset($s['columns']) ? ['rows' => [self::project($restored, $s['columns'])]] : [];
             case 'model.query':
                 return self::queryOp($s, $context);
         }

@@ -860,6 +860,22 @@ def _send(step: dict, call=None) -> None:
         )
 
 
+# The chain method prefix of each operator of markdown.send (DSL-50).
+OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
+
+
+def _chain_value(wrapper: dict):
+    """The Python value of a wrapper for a chain method: an int, a nil, or a list of ints."""
+    ((kind, value),) = wrapper.items()
+    if kind == "int":
+        return int(value)
+    if kind == "nil":
+        return None
+    if kind == "array":
+        return [_chain_value(item) for item in value]
+    raise AssertionError(f"the parameter {json.dumps(wrapper)} has no chain value")
+
+
 def _query_slot(models, db, step: dict) -> None:
     """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
     text form of the value (DBS-121); a host-value column's filter (HOST_FILTERS) takes the Python value of its wrapper: an int
@@ -867,6 +883,18 @@ def _query_slot(models, db, step: dict) -> None:
     path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
     itself. A column or operator without a typed filter here is a defect of the recipe."""
     table, _, name = step["column"].partition(".")
+    if (
+        step["operator"] in OPERATOR_METHODS
+        or list(step["params"][0]) == ["array"]
+        or (list(step["params"][0]) == ["nil"] and name in HOST_FILTERS)
+    ):
+        # A chain method of an operator (DSL-50), or a list: the value goes to the dynamic attribute of the generated model, so
+        # the chain refuses what its operator does not take.
+        prefix = OPERATOR_METHODS.get(step["operator"], "")
+        getattr(models.Slots().connect(db), f"{prefix}{name}")(
+            _chain_value(step["params"][0])
+        ).gets()
+        return
     if step["operator"] == "like_contains":
         # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
         # The wrapper's value goes unchanged, and a nil wrapper is the SQL NULL that the contains condition binds.
@@ -958,9 +986,10 @@ def _message_value(text: str):
     # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
     if params == []:
         return []
-    if not isinstance(params, list) or len(params) != 1:
-        raise AssertionError(f"the statement message {text} holds no single parameter")
-    return params[0]
+    if not isinstance(params, list):
+        raise AssertionError(f"the statement message {text} holds no parameters")
+    # A list of several parameters (a list condition, DSL-50) is compared as the list.
+    return params[0] if len(params) == 1 else params
 
 
 def _validation_model(schema: Path):
@@ -1877,6 +1906,12 @@ TABLE_MODELS = {
     "HookUpsert": "hook_upsert",
     "RotRow": "rot_row",
     "ChunkAuthor": "chunk_author",
+    "Item": "item",
+    "Card": "card",
+    "Tag": "tag",
+    "Membership": "membership",
+    "Label": "label",
+    "Audit": "audit",
 }
 
 
@@ -1964,6 +1999,16 @@ def _table_model_get_by(step: dict, context: dict) -> dict:
 
 
 def _table_model_update(step: dict, context: dict) -> dict:
+    # The key form sets the key and the assignments on a new model, with no read before it, so a key that names no row
+    # is an update that matches none (FCV-4).
+    if "key" in step:
+        db = _connection_of(step, context)
+        row = _new_row(context, db, _table_of(step["model"]))
+        _set_columns(
+            row,
+            _assignments(step["key"], context) + _assignments(step["set"], context),
+        ).update()
+        return {}
     # A bound row carries the connection it was bound on, so the step names no connection.
     row = _bound_value(step["row"], context)
     _set_columns(row, _assignments(step["set"], context)).update()
@@ -2021,11 +2066,12 @@ def _table_model_duplicate_create(step: dict, context: dict) -> dict:
 
 def _table_model_restore(step: dict, context: dict) -> dict:
     db = _connection_of(step, context)
-    _set_columns(
+    restored = _set_columns(
         _new_row(context, db, _table_of(step["model"])),
         _assignments(step["values"], context),
     ).restore()
-    return {}
+    # With columns, the rows expect compares the row that restore returns (INT-38).
+    return {"rows": [_project(restored, step["columns"])]} if "columns" in step else {}
 
 
 def _table_model_query(step: dict, context: dict) -> dict:
@@ -2676,11 +2722,29 @@ def _op_transaction(step: dict, context: dict) -> dict:
         options["isolation"] = step["isolation"]
     if step.get("read_only") is True:
         options["readOnly"] = True
+    if "audit" in step:
+        options["audit"] = dict(_assignments(step["audit"], context))
     _connection_of(step, context).transaction(run, options)
     return {"value": {"bool": True}}
 
 
-_MODEL_OPS = model_ops(_native, _database_value, _step_argument)
+def _audit_source_of(step: dict, context: dict) -> dict:
+    """The connect option of the audit_source of a model.connect (FCV-4, CFG-8): the source returns its values or fails
+    with its own error."""
+    spec = step.get("audit_source")
+    if spec is None:
+        return {}
+    if spec.get("fail"):
+
+        def failing() -> dict:
+            raise CallbackError("the audit source failed")
+
+        return {"auditSource": failing}
+    values = dict(_assignments(spec["values"], context))
+    return {"auditSource": lambda: values}
+
+
+_MODEL_OPS = model_ops(_native, _database_value, _step_argument, _audit_source_of)
 _TABLE_OPS = {
     "model.create": _table_model_create,
     "model.get_by": _table_model_get_by,

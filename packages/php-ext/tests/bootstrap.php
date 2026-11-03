@@ -25,8 +25,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageConformanceVerificationTe
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageConstraintsAndRelationsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageDsnTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageTransactionsTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditTriggersTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditColumnsTest.php';
 require_once __DIR__ . '/NativeMethodAssertions.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 // The library tests that the extension tests extend or call, and the helper classes of the extension tests, one
@@ -67,8 +65,11 @@ require_once dirname(__DIR__, 2) . '/php/tests/ModelQueriesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConstraintsAndRelationsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AuditTriggersRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DslRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DslDynamicRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookPostgresRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookSqliteRecipeTest.php';

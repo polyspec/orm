@@ -164,6 +164,8 @@ A terminal without a connection outside a transaction returns `CONFIG`. A connec
 - **INT-42** `timeoutMs`: positive integer; PostgreSQL applies `statement_timeout`, MySQL and SQLite return `CAPABILITY_UNSUPPORTED`
 - **INT-43** `retry`: deadlock retry count, default `3`; each retry runs the complete callback again, and `0` disables retry
 - **INT-44** `audit`: column name to value of the unit of work's audit record; the transaction inserts the values of the connection's audit source with these values (a value wins) into the audit record table right before its first write of an audited table, in every attempt, so a transaction that writes no audited row inserts none, and every audited write in the transaction writes the record's key ([usage](../operations/usage.md#audited-writes))
+- **INT-44a** The `polyspec-orm` crate takes `audit` on each of its transaction forms, `transaction`, `transaction_send` and `transaction_once`, and refuses it with `CONFIG` on a nested `transaction_once`.
+- **INT-44b** The `polyspec/orm-php-ext` package's PHP extension runs the audit calls `transaction`, `get`, `update`, `delete` and `restore` as internal methods of its native classes.
 
 The connection configuration takes `auditSource`, a function that returns the audit values of the current request ([configuration](config.md)). A transaction with `audit` on a connection without a source, a value that is not a column of the audit record table, and an audited write without `audit` fail with `CONFIG`; an error of the source fails the transaction; a nested transaction keeps the outer audit and does not take `audit`.
 

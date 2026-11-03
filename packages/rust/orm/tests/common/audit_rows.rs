@@ -3,7 +3,6 @@
 //! both use them.
 
 use crate::or_panic::OrPanic;
-use crate::pool_exec;
 use polyspec_orm_test_support::model_row;
 
 #[path = "map_rows.rs"]
@@ -55,32 +54,6 @@ pub async fn audit_db(dsn: &str, config: polyspec_orm::Config) -> Db {
     db
 }
 
-/// Runs a statement and returns its result.
-pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
-    pool_exec::exec(db, statement).await
-}
-
-// Only coverage_audit_triggers.rs uses this. audit.rs drops its whole case database.
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub async fn exec(db: &Db, statement: &str) {
-    try_exec(db, statement).await.or_panic(|e| format!("{statement}: {e}"));
-}
-
-/// Drops the fixture's tables and, on PostgreSQL, the trigger functions that are not dropped with the tables.
-/// Only coverage_audit_triggers.rs uses this.
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub async fn drop_tables(db: &Db, driver: &str) {
-    let q = |name: &str| if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") };
-    for table in ["item_history", "item", "audit"] {
-        exec(db, &format!("DROP TABLE IF EXISTS {}", q(table))).await;
-    }
-    if driver == "postgres" {
-        for event in ["audit_insert", "audit_update", "audit_delete"] {
-            exec(db, &format!("DROP FUNCTION IF EXISTS {}()", q(&format!("item${event}")))).await;
-        }
-    }
-}
-
 pub fn new_item(title: &str) -> Item {
     let mut row: Item = model();
     row.core_mut().set("title", Param::from(title));
@@ -129,90 +102,6 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
         }};
     }
     map_rows::for_sql_pools!(db.pool(), read)
-}
-
-/// Checks the writes of a transaction that received an audit record (in the same order as auditCase in
-/// packages/go/orm/audit_transaction_test.go). The db has audit.dbs installed and its tables are empty. It checks:
-///   - the transaction inserts, before the callback, one record combining the values from the connection setting's audit source and the transaction's audit values,
-///     into the references table of the audit setting (for the same column, the transaction value wins), and
-///     inserts, updates, and soft deletes write the
-///     primary key to the audit column. The trigger keeps each version in the history table, and previous is the
-///     audit key of the previous version.
-///   - an audit transaction on a connection with no audit source, or a value that is not a column of the audit record table (a transaction or
-///     source value) is CONFIG, and a source's error is the transaction's error.
-///   - a nested transaction uses the outer audit and does not receive its own audit (CONFIG).
-///   - an audit table write without audit is CONFIG. A raw write that points to a missing audit record is
-///     rejected by its foreign key.
-///   - if the callback fails, the audit record is also rolled back.
-#[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
-pub async fn audit_case(driver: &str, dsn: &str) {
-    let adb = audit_db(dsn, audit_config("default")).await;
-    let db = &adb;
-    let mut outside = new_item("outside");
-    outside.core_mut().connect(db);
-    assert_eq!(code(polyspec_orm::model::create(&mut outside).await), polyspec_orm::codes::CONFIG, "{driver}: insert without an audit");
-    let no_column: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("reason".to_owned(), Param::from("x"))]));
-    for (name, config) in [
-        ("without an audit source", polyspec_orm::Config::default()),
-        ("with a source value that is no column", polyspec_orm::Config { audit_source: Some(no_column), ..Default::default() }),
-    ] {
-        let other = audit_db(dsn, config).await;
-        let failed = other.transaction(async || Ok(())).audit([("actor", "x")]).await;
-        other.close().await;
-        assert_eq!(code(failed), polyspec_orm::codes::CONFIG, "{driver}: an audit transaction of a connection {name}");
-    }
-    let unavailable: polyspec_orm::AuditSource =
-        std::sync::Arc::new(|| Err(polyspec_orm::Error::Engine { code: "UNAVAILABLE".into(), msg: "no request".into() }));
-    let failing = audit_db(dsn, polyspec_orm::Config { audit_source: Some(unavailable), ..Default::default() }).await;
-    let failed = failing.transaction(async || Ok(())).audit(NO_VALUES).await;
-    failing.close().await;
-    assert!(
-        matches!(&failed, Err(polyspec_orm::Error::Engine { code, msg }) if code == "UNAVAILABLE" && msg == "no request"),
-        "{driver}: an audit transaction whose source fails: {failed:?}"
-    );
-    let unknown = adb.transaction(async || Ok(())).audit([("reason", "x")]).await;
-    assert_eq!(code(unknown), polyspec_orm::codes::CONFIG, "{driver}: an audit value that is no column");
-    let seq = adb
-        .transaction(async || {
-            let seq = polyspec_orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64()?;
-            let nested = adb.transaction(async || Ok(())).audit([("actor", "nested")]).await;
-            assert_eq!(code(nested), polyspec_orm::codes::CONFIG, "{driver}: a nested transaction with an audit");
-            // The nested transaction uses the outer audit.
-            db.transaction(async || polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await).retry(0).await?;
-            Ok(seq)
-        })
-        .audit([("actor", "create")])
-        .retry(0)
-        .await
-        .or_panic(|e| format!("{driver}: create: {e}"));
-    let mut titled = changed_item(seq, "third");
-    titled.core_mut().connect(db);
-    assert_eq!(code(polyspec_orm::model::update(&mut titled, false).await), polyspec_orm::codes::CONFIG, "{driver}: update without an audit");
-    // An audit transaction with no values records only defaults.
-    adb.transaction(async || polyspec_orm::model::delete(&changed_item(seq, "second"), false).await)
-        .audit(NO_VALUES)
-        .retry(0)
-        .await
-        .or_panic(|e| format!("{driver}: delete: {e}"));
-    let failed = adb.transaction(async || Err::<(), _>(polyspec_orm::Error::Config("callback failed".into()))).audit([("actor", "rolled back")]).retry(0).await;
-    assert!(matches!(&failed, Err(polyspec_orm::Error::Config(m)) if m == "callback failed"), "{driver}: failed callback = {failed:?}");
-
-    assert!(
-        try_exec(db, "INSERT INTO item (title, audit_seq) VALUES ('raw', 999)").await.is_err(),
-        "{driver}: the foreign key rejects a raw insert that names no audit record"
-    );
-    let records = audit_records(db).await;
-    assert_eq!(records, [("1".to_owned(), "create".to_owned()), ("2".to_owned(), "default".to_owned())], "{driver}: audit records");
-    assert_eq!(
-        history_summary(db).await,
-        [
-            ("insert".to_owned(), None, seq, "first".to_owned(), 1, false),
-            ("update".to_owned(), Some(1), seq, "second".to_owned(), 1, false),
-            ("update".to_owned(), Some(1), seq, "second".to_owned(), 2, true),
-        ],
-        "{driver}: history rows"
-    );
-    adb.close().await;
 }
 
 /// Every transaction entry point takes audit values: transaction, transaction_send, and transaction_once take the connection's audit

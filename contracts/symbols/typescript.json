@@ -10655,6 +10655,22 @@
     "exported": true,
     "signature": "class Slots"
   },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.andEqI64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.andGtI64Value": {
+    "exported": true,
+    "signature": "(v0: number | ValueFunction) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.andGtVarcharNullValue": {
+    "exported": true,
+    "signature": "(v0: string | ValueFunction) =\u003e this"
+  },
+  "packages/ts/src/models/bind_fixture/models.ts::Slots#field.andNeI64Value": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
   "packages/ts/src/models/bind_fixture/models.ts::Slots#field.boolValue": {
     "exported": true,
     "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"

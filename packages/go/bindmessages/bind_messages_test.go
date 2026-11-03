@@ -1,5 +1,3 @@
-//go:build markdown
-
 package bindmessages_test
 
 import (
@@ -58,6 +56,8 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 			return queryColumn(t, db, column, params[0])
 		case "like_contains":
 			return likeColumn(t, db, column, params[0])
+		case "eq_method", "ne_method", "gt_method":
+			return operatorChain(t, db, operator, column, params[0])
 		default:
 			t.Fatalf("operator %s has no typed filter in the Go cases", operator)
 		}
@@ -126,16 +126,67 @@ func messageValue(t *testing.T, msg json.RawMessage) json.RawMessage {
 	if len(m.Params) == 0 {
 		return json.RawMessage("[]")
 	}
-	if len(m.Params) != 1 {
-		t.Fatalf("the statement message %s holds %d parameters, want one", msg, len(m.Params))
+	if len(m.Params) == 1 {
+		return m.Params[0]
 	}
-	return m.Params[0]
+	// A list of several parameters (a list condition, DSL-50) is compared as the list.
+	list, err := json.Marshal(m.Params)
+	if err != nil {
+		t.Fatalf("the parameters of %s: %v", msg, err)
+	}
+	return list
+}
+
+// operatorChain runs the chain method of an operator on the integer column of the DSL-50 cases, with the value or the list of its
+// wrapper. A use that the method types refuse is no case of the Go binding: the compiler refuses it (TestChainArgumentTypes).
+func operatorChain(t *testing.T, db *orm.DB, operator, column string, value json.RawMessage) error {
+	t.Helper()
+	if column != "slots.i64_value" {
+		t.Fatalf("the column %s has no operator chain in the Go cases", column)
+	}
+	list, isList := integerList(t, value)
+	switch {
+	case operator == "eq_method" && isList:
+		_, err := bindmodel.Slots().Connect(db).EqI64Value(list).Gets()
+		return err
+	case operator == "ne_method" && isList:
+		_, err := bindmodel.Slots().Connect(db).NeI64Value(list).Gets()
+		return err
+	case operator == "gt_method" && !isList:
+		_, err := bindmodel.Slots().Connect(db).GtI64Value(integer[int64](t, value, 64)).Gets()
+		return err
+	}
+	t.Fatalf("the operator %s has no typed chain for %s in the Go cases", operator, value)
+	return nil
+}
+
+// integerList is the list of an array wrapper of int wrappers, and false for any other wrapper.
+func integerList(t *testing.T, value json.RawMessage) ([]int64, bool) {
+	t.Helper()
+	var w struct {
+		Array []json.RawMessage `json:"array"`
+	}
+	if err := json.Unmarshal(value, &w); err != nil || w.Array == nil {
+		return nil, false
+	}
+	list := make([]int64, 0, len(w.Array))
+	for _, item := range w.Array {
+		list = append(list, integer[int64](t, item, 64))
+	}
+	return list, true
 }
 
 // queryColumn reads the slot column through its typed filter with the host value of the wrapper. The declared type of the
 // column decides the filter: the typed filter of each slot takes the text of its wrapper (DBS-121).
 func queryColumn(t *testing.T, db *orm.DB, column string, value json.RawMessage) error {
 	t.Helper()
+	if list, ok := integerList(t, value); ok {
+		if column != "slots.i64_value" {
+			t.Fatalf("the column %s has no list filter in the Go cases", column)
+		}
+		_, err := bindmodel.Slots().Connect(db).I64Value(list).Gets()
+		return err
+	}
 	switch column {
 	case "slots.time0_value":
 		_, err := bindmodel.Slots().Connect(db).GetsByTime0Value(text(t, value))
