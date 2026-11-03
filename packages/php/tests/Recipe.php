@@ -766,8 +766,9 @@ final class Recipe
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
         $message = '';
+        $port = parse_url($server[2], PHP_URL_PORT);
         try {
-            self::connectDriver($server[2]);
+            self::connectDriver("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}");
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
@@ -3946,6 +3947,9 @@ final class Recipe
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
             } elseif (isset($value['styled'])) {
                 $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
+            } elseif (array_key_exists('null', $value) && RuntimeModel::styled($model::meta()['columns'][$column] ?? ['codec' => []])) {
+                // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+                $model->{'set' . $name}(StyledValue::sqlNull());
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));

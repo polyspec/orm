@@ -795,8 +795,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if connection != nil {
 			closeErr = connection.Close()
 		}
-		if _, statErr := os.Stat(path); statErr == nil {
-			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
+		var want struct {
+			FileCreated bool `json:"file_created"`
+		}
+		if raw, ok := s.Expect[c.database]; ok {
+			if err := json.Unmarshal(raw, &want); err != nil {
+				return outcome{}, closeFirst(err, closeErr)
+			}
+		}
+		_, statErr := os.Stat(path)
+		if created := statErr == nil; created != want.FileCreated {
+			return outcome{}, closeFirst(fmt.Errorf("file_created of %s is %v, want %v", path, created, want.FileCreated), closeErr)
 		}
 		if err == nil {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
