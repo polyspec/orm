@@ -1240,7 +1240,6 @@
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/engine/engine_test.go",
         "packages/go/engine/compile_bench_test.go",
-        "packages/go/orm/jsontext_order_test.go",
         "packages/rust/orm/tests/model_output.rs",
         "packages/rust/orm/tests/value_decode.rs",
         "packages/go/internal/conformance/main_test.go",
@@ -1677,7 +1676,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeInvalidCellsFailTypedReads|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeInvalidCellsFailTypedReads|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1686,7 +1685,6 @@
             "packages/go/orm/related_test.go",
             "packages/go/orm/shape_test.go",
             "packages/go/orm/shape_internal_test.go",
-            "packages/go/orm/jsontext_order_test.go",
             "packages/go/orm/value_types_test.go",
             "packages/go/orm/styled_state_test.go",
             "packages/go/orm/styled_state_physical_test.go",

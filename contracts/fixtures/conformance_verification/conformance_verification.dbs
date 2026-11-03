@@ -262,3 +262,32 @@ table audited_note_history {
   audit_seq i64
   primary key (history_id)
 }
+
+table typed_value {
+  seq i64 identity
+  small i16
+  wide i64
+  ratio f64 default 1.25
+  active bool
+  ref uuid
+  clock time(3)
+  day date
+  label varchar(32) default 'none'
+  address bytes null
+  packed bytes null
+  payload text null
+  note text
+  primary key (seq)
+  settings {
+    codec address ip
+    codec packed gz
+    codec payload ordered_json
+  }
+}
+
+table decimal_value {
+  seq i64 identity
+  amount decimal(13,4)
+  large decimal(16,0)
+  primary key (seq)
+}

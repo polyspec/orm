@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 35ee070b49e4113f3b2907c01dadcb794612ce4192649d7b18b38773ff13175e -->
+<!-- source-sha256: 94c2680132a375bb6d7c58a0e2f2a14bd06ee094995880938564dbb6e53cfcd0 -->
 # 변경 이력
 
 ## Unreleased
@@ -361,6 +361,7 @@
 - PRT-63의 markdown DSN 거부는 `dsn_reject`의 case이고, DSL-60, DSL-115, DSL-155, CPX-5, DSL-128은 새 case `core_conditions`, `core_columns_and_pages`, `core_writes`, `core_duplicate_relation`과 함께 `conformance_verification`이 담으며, 그 native unit은 없어졌다. FCV-2는 model core unit 네 개가 native로 남는 이유를 밝힌다.
 - `IN` 목록 채움(CPX-4)은 값 1개부터 5개까지의 문을 세 데이터베이스에서 읽는 case `core_in_list_padding`과 `composite_key_rows`의 채워진 tuple이다. runtime의 native 채움 시험은 없어졌다. PHP extension의 native `Request::padIn`은 CPX-6이다.
 - hot path 읽기의 projection, bind, 행(PRT-2, PRT-34)은 세 데이터베이스에서 `conformance_verification`의 case `core_projected_reads`이고, 그 native 시험은 없어졌다.
+- 타입 값, styled null, decimal 값은 새 표 `typed_value`와 `decimal_value`의 새 case `core_value_types`, `core_styled_null`, `core_decimal_values`이고, 중첩된 ordered JSON 값은 `model_writes_chain`의 case이다. Go의 native ordered JSON 시험은 없어졌다. FCV-2는 native value unit 세 개가 남는 이유를 적는다. Go recipe 읽기의 temporal cell은 다른 runtime처럼 value model 텍스트이고, 범위를 벗어난 `i16`은 쓰기에 닿아 `CODEC_ENCODE`로 거부된다.
 
 ## 0.0.21
 
