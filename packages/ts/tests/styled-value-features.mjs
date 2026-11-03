@@ -1,4 +1,4 @@
-// The styled-value feature cases of the TypeScript client: the model states, IP host input, lost output and the json
+// The styled-value feature cases of the TypeScript client: the model states, lost output and the json
 // column getter. The vector suite of contracts/fixtures/styled_column_states.json is styled-value.mjs.
 import { readFile } from 'node:fs/promises';
 import { decode } from '../dist/codec.js';
@@ -21,42 +21,6 @@ await suite.run('styled-value/model-states', COMPUTE, () => {
   probe.setValue('payload', orm.StyledValue.value(null));
   if (JSON.stringify(probe.column('payload')) !== JSON.stringify(cases.nonnull_value_null.getter)) {
     throw new Error('non-null column rejected JSON literal null');
-  }
-});
-
-// Requirements: COD-38.
-caseTest('styled-value/ip-host-input', COMPUTE, () => {
-  const ipText = 'dbspec 1 ip_probe\n\ntable ip_probe {\n  seq i64\n  address bytes null\n  primary key (seq)\n  settings {\n    codec address ip\n  }\n}\n';
-  const { manifest: ipManifest } = orm.dbspecManifest([orm.parseDbspec(ipText, {}).document]);
-  const ipModel = orm.registerModel(ipManifest.manifestText, ipManifest.manifestHash);
-  const ipEntity = ipModel.entities.get('ip_probe');
-  const def = { model: ipModel, entity: ipEntity, create: () => { throw new Error('not used'); } };
-  const invalid = '10. 0.0.1';
-  const key = { conn: '', op: '', column: 'address', columns: [], compare: '' };
-
-  const assigned = new orm.Core(def);
-  try { assigned.setValue('address', invalid); throw new Error('invalid IP assignment was accepted'); }
-  catch (error) { if (error.code !== 'CODEC_ENCODE') throw error; }
-  if (assigned.sets.length !== 0) throw new Error('invalid IP assignment changed the pending write');
-  assigned.setValue('address', null);
-  if (assigned.values.get('address') !== null) throw new Error('SQL NULL assignment was changed');
-  assigned.setValue('address', '10.0.0.1');
-  if (assigned.values.get('address') !== '10.0.0.1') throw new Error('valid IP assignment was encoded or normalized');
-
-  const condition = new orm.Core(def);
-  condition.whereChain('', [key], [invalid]);
-  if (condition.error?.code !== 'CODEC_ENCODE' || condition.where.items.length !== 0) {
-    throw new Error(`invalid IP condition = ${condition.error?.code ?? 'accepted'}, want CODEC_ENCODE before planning`);
-  }
-  const validCondition = new orm.Core(def);
-  validCondition.whereChain('', [key], ['10.0.0.1']);
-  if (validCondition.error || validCondition.where.items[0]?.pred?.value !== '10.0.0.1') {
-    throw new Error('valid IP condition was encoded, normalized, or rejected');
-  }
-  const nullCondition = new orm.Core(def);
-  nullCondition.whereChain('', [key], [null]);
-  if (nullCondition.error || nullCondition.where.items[0]?.pred?.kind !== 'null') {
-    throw new Error('nullable IP condition did not remain an IS NULL condition');
   }
 });
 

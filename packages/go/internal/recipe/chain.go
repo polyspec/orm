@@ -46,6 +46,7 @@ type chainOrder struct {
 	Column string   `json:"column"`
 	Fn     *chainFn `json:"fn"`
 	Dir    string   `json:"dir"`
+	Random bool     `json:"random"`
 }
 
 // UnmarshalJSON reads an order entry: an object, or a column name that is descending when it begins with "-" (FCV-4).
@@ -759,6 +760,10 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 		}
 	}
 	for _, o := range q.Order {
+		if o.Random {
+			core.OrderByRandom()
+			continue
+		}
 		var fn []orm.Func
 		column := o.Column
 		if o.Fn != nil {

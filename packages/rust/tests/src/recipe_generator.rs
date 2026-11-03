@@ -38,10 +38,6 @@ fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
     };
     let check = || polyspec_orm_build::Builder::set(set).out_dir(out).check();
     polyspec_orm_build::Builder::set(set).out_dir(out).try_generate()?;
-    let got = check()?;
-    if got != lines("unchanged", "") {
-        return Err(format!("generator.check: the unchanged files give {got:?}"));
-    }
     let mut names: Vec<PathBuf> = std::fs::read_dir(out)
         .map_err(|e| format!("{}: {e}", out.display()))?
         .map(|entry| entry.map(|entry| entry.path()).map_err(|e| e.to_string()))
@@ -51,6 +47,12 @@ fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
         .into_iter()
         .find(|path| std::fs::metadata(path).is_ok_and(|meta| meta.is_file() && meta.len() > 0))
         .ok_or_else(|| format!("{} holds no generated file", out.display()))?;
+    // A file that the generation does not write is not compared.
+    std::fs::write(out.join("zz_notes.rs"), "// notes\n").map_err(|e| format!("{}: {e}", out.display()))?;
+    let got = check()?;
+    if got != lines("unchanged", "") {
+        return Err(format!("generator.check: the unchanged files give {got:?}"));
+    }
     let mut text = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     text[0] ^= 1;
     std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -61,6 +63,59 @@ fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
     }
     if std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))? != text {
         return Err(format!("generator.check: the check wrote {}", path.display()));
+    }
+    std::fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let got = check()?;
+    if got != lines("removed", &file) {
+        return Err(format!("generator.check: the removed file gives {got:?}"));
+    }
+    if path.exists() {
+        return Err(format!("generator.check: the check wrote {}", path.display()));
+    }
+    Ok(())
+}
+
+/// Runs one generator.refused step (FCV-4, DBS-27) through `Builder::try_generate`, or `Builder::check` when the
+/// step says `check`.
+pub fn check_refused(step: &Value, dir: &Path) -> Result<(), String> {
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!("orm-recipe-generator-refused-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&root).map_err(|e| format!("{}: {e}", root.display()))?;
+    let result = check_refused_in(step, dir, &root);
+    std::fs::remove_dir_all(&root).map_err(|e| format!("remove {}: {e}", root.display()))?;
+    result
+}
+
+fn check_refused_in(step: &Value, dir: &Path, root: &Path) -> Result<(), String> {
+    for (name, entry) in step["files"].as_object().into_iter().flatten() {
+        let body = match entry.as_str() {
+            Some(text) => text.as_bytes().to_vec(),
+            None => {
+                let from = dir.join(entry["path"].as_str().unwrap_or_default());
+                std::fs::read(&from).map_err(|e| format!("{}: {e}", from.display()))?
+            }
+        };
+        std::fs::write(root.join(name), body).map_err(|e| format!("{name}: {e}"))?;
+    }
+    let out = root.join("model");
+    let builder = polyspec_orm_build::Builder::set(root.join("dbspec-set.json")).out_dir(&out);
+    let refused = if step["check"].as_bool().unwrap_or(false) {
+        builder.check().map(|_| ())
+    } else {
+        builder.try_generate().map(|_| ())
+    };
+    let output = match refused {
+        Ok(()) => return Err("generator.refused: the generation succeeded".to_owned()),
+        Err(message) => message,
+    };
+    let mut rest = output.as_str();
+    for part in step["parts"].as_array().into_iter().flatten() {
+        let part = part.as_str().unwrap_or_default();
+        let at = rest.find(part).ok_or_else(|| format!("generator.refused: the output lacks {part} in order: {output}"))?;
+        rest = &rest[at + part.len()..];
+    }
+    if out.exists() {
+        return Err(format!("generator.refused: the generation wrote {}", out.display()));
     }
     Ok(())
 }

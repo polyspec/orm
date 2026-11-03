@@ -4,6 +4,7 @@
 //! SCH-6a.
 //! Requirements: DBS-113, INT-34, INT-102, INT-106, INT-108, INT-110, INT-112, SCH-5.
 //! Requirements: SCH-3.
+//! Requirements: INT-97.
 
 use polyspec_orm_tests::recipe;
 
