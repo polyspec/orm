@@ -46,6 +46,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanChainsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanParseTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanComparisonsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DsnRejectRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/PublicInterfaceRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/PublicInterfaceSignedRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaDefinitionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecCanonicalRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecNormalizeRecipeTest.php';

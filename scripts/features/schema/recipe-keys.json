@@ -19,6 +19,16 @@
     "steps"
   ],
   "step": {
+    "keyring.versions": [
+      "expect",
+      "keyring",
+      "op"
+    ],
+    "markdown.builder": [
+      "calls",
+      "expect",
+      "op"
+    ],
     "dsn.connect": [
       "dsn",
       "expect",

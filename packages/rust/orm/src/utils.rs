@@ -877,16 +877,6 @@ mod keyring_tests {
     use crate::value::Val;
     use std::collections::BTreeMap;
 
-    #[test]
-    // Requirements: INT-74, INT-130.
-    fn versions_lists_the_declared_versions_in_ascending_order() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let keys = BTreeMap::from([(3, "c".to_owned()), (1, "a".to_owned()), (2, "b".to_owned())]);
-        let keyring = AesKeyring::new(keys, 2).unwrap();
-        assert_eq!(keyring.versions(), vec![1, 2, 3]);
-        assert_eq!(keyring.current(), 2);
-    }
-
     // Requirements: COD-55. Rotation requires every selected AES column in its row.
     // FCV-2: the row lacks a selected column, an input that no recipe value can hold; it stays native.
     #[test]

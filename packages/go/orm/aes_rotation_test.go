@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
@@ -44,18 +43,6 @@ func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 	}
 	if as[string](t, row["aes_hex_phone"]) == as[string](t, rotated["aes_hex_phone"]) {
 		t.Fatal("phone was not re-encrypted")
-	}
-}
-
-// Requirements: INT-74, INT-130.
-func TestAESKeyringExposesCurrentVersionAndSortedVersions(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	keyring := mustAESKeyring(t, map[int32]string{3: "third", 1: "first", 2: "second"}, 2)
-	if keyring.CurrentAESVersion() != 2 {
-		t.Fatalf("current AES version = %d, want 2", keyring.CurrentAESVersion())
-	}
-	if got := keyring.AESVersions(); !reflect.DeepEqual(got, []int32{1, 2, 3}) {
-		t.Fatalf("AES versions = %#v, want ascending [1 2 3]", got)
 	}
 }
 

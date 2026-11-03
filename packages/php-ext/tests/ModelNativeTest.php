@@ -264,27 +264,6 @@ final class ModelNativeTest extends TestCase
         self::assertSame($model, $model->limit(0, 4)->addAllColumns()->forUpdate());
     }
 
-    // Requirements: INT-88, INT-89.
-    public function testTerminalReturnsTheFirstRecordedBuilderError(): void
-    {
-        require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';
-
-        $model = new \Polyspec\Orm\Tests\Model\Author();
-        self::assertTrue((new \ReflectionMethod(Model::class, 'getCount'))->isInternal());
-        self::assertSame($model, $model->limit(-1, 1)->limit(0, 0));
-        self::assertNull($model->connection(), 'the terminal must fail before resolving a connection');
-        try {
-            $model->getCount();
-            self::fail('the terminal must return the recorded builder error before issuing SQL');
-        } catch (OrmException $error) {
-            self::assertSame('CONFIG', $error->code_);
-            self::assertSame(
-                'CONFIG: limit requires a non-negative offset and a positive count',
-                $error->getMessage()
-            );
-        }
-    }
-
     public function testWeakScalarNullArgumentsKeepUserlandTypeErrors(): void
     {
         $model = new NativeModelFixture();

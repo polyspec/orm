@@ -28,6 +28,55 @@ func TestRecipeBindMessagesNone(t *testing.T) {
 	recipe.Run(t, "../../../tests/bind/messages.json", recipe.None, recipe.WithMarkdownSend(markdownSend), recipe.WithModelAssign(modelAssign))
 }
 
+// TestRecipePublicInterfaceNone runs the public interface recipe, contracts/fixtures/public_interface/public_interface.json,
+// without a database (FCV-3, FCV-4).
+// Requirements: INT-74, INT-88, INT-89, INT-130.
+func TestRecipePublicInterfaceNone(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../contracts/fixtures/public_interface/public_interface.json", recipe.None, recipe.WithMarkdownBuilder(markdownBuilder))
+}
+
+// markdownBuilder runs one markdown.builder step: the builder calls on the slots model, then GetCount, on a connection to the
+// listener of sendFirst. A message that reaches the listener fails the test, since the terminal returns the error before it.
+func markdownBuilder(t *testing.T, calls []string) (string, string) {
+	t.Helper()
+	testcase.Start(t, testcase.Compute)
+	first := make(chan json.RawMessage, 1)
+	db, err := bindmodel.Connect(startMarkdownSendListener(t, first), orm.Config{})
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
+	model := bindmodel.Slots().Connect(db)
+	for _, call := range calls {
+		switch call {
+		case "limit_zero_count":
+			model = model.Limit(0, 0)
+		case "empty_i64_list":
+			model = model.I64Value([]int64{})
+		case "empty_varchar_list":
+			model = model.VarcharValue([]string{})
+		default:
+			t.Fatalf("markdown.builder call %s has no builder call in the Go cases", call)
+		}
+	}
+	_, callErr := model.GetCount()
+	select {
+	case msg := <-first:
+		t.Fatalf("the terminal sent %s before its error", msg)
+	default:
+	}
+	var e *ir.Error
+	if !errors.As(callErr, &e) {
+		t.Fatalf("the terminal returned %v, want an orm error", callErr)
+	}
+	return e.Code, e.Error()
+}
+
 // markdownSend runs one markdown.send step. It returns the first message that the listener receives, the message of a begin or
 // the parameter of a statement, or the code of the error that the call returns before it sends a message. A non-empty processZone
 // is the process default zone for the step, restored afterward.
