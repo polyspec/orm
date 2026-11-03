@@ -3616,6 +3616,10 @@ final class Recipe
                     });
                     return;
                 case 'placed':
+                    if (is_array($value)) {
+                        $model->{$conn === '' ? 'and' : $conn}(self::chainModel($value['model'], $context));
+                        return;
+                    }
                     if (!isset($build->joined[$value])) {
                         Assert::fail("placed $value names no join");
                     }
@@ -3711,7 +3715,7 @@ final class Recipe
     /** The state of building one query. */
     private static function chainState(?Model $outer = null): object
     {
-        return (object) ['joined' => [], 'outer' => $outer];
+        return (object) ['joined' => [], 'outer' => $outer, 'db' => null];
     }
 
     /** One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name. */
@@ -3780,6 +3784,9 @@ final class Recipe
                 });
             }
             self::chainQuery($child, $join, $inner, $context);
+            if (($join['connect'] ?? false) === true) {
+                $child->connect($build->db);
+            }
             $method = (($join['kind'] ?? 'inner') === 'left' ? 'leftJoin' : 'join')
                 . self::pascal($join['match'][0]) . 'With' . self::pascal($join['match'][1]);
             $model->$method($child);
@@ -3870,6 +3877,7 @@ final class Recipe
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
+        $build->db = $db;
         $paged = ($s['page'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
         if (!$paged && isset($s['offset'], $s['limit'])) {
@@ -4183,14 +4191,16 @@ final class Recipe
                 default => $model->getsCount()->toArray(),
             }];
         }
-        if (($s['page'] ?? false) === true) {
+        if (($s['page'] ?? false) === true || isset($s['plan_page'])) {
             $limit = $s['limit'] ?? 0;
             $count = is_int($limit) ? $limit : $limit['count'];
-            if ($count <= 0) {
+            if ($count <= 0 && !isset($s['plan_page'])) {
                 Assert::fail('a page needs a limit count above 0');
             }
             $offset = ($s['offset'] ?? 0) + (is_array($limit) ? ($limit['offset'] ?? 0) : 0);
-            $page = $model->getsPage(intdiv($offset, $count) + 1, $count);
+            $page = isset($s['plan_page'])
+                ? $model->getsPage($s['plan_page']['page'], $s['plan_page']['per_page'])
+                : $model->getsPage(intdiv($offset, $count) + 1, $count);
             $fields = ['json' => [
                 'total' => $page->totalCount,
                 'pages' => $page->totalPages,

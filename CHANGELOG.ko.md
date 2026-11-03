@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bed664aba9b775fc0c1c5c4cf8bd492276f29640fc71e4714b76b87926ef5708 -->
+<!-- source-sha256: a734b6b5f304ec0b7eac3f25abb0d599a1e402448229b705ff14ed0305796a5a -->
 # 변경 이력
 
 ## Unreleased
@@ -8,6 +8,7 @@
 - Python과 PHP(library, extension)가 `docs/spec/interfaces.md`의 catalog grid 절대로 유한하지 않은 PostgreSQL numeric grid 칸을 `CATALOG_VALUE`로 거부한다. 지금까지 `NaN`을 decimal 칸으로 돌려주었다. recipe case `grid_decimal_values`가 이를 담는다.
 - 행 baseline과 native update 검증이 여섯 runtime, 세 데이터베이스의 `catalog_connection` recipe case `row_update_verification`, `row_baseline_key_order`, `row_baseline_rejected`가 되었고, op `catalog.revision_compare`와 `page_with`의 대체가 늘었다. Rust 시험은 사라졌고 Rust 형식만 담는 부분(`rust-row-snapshot-cell-forms`)만 남는다. TypeScript는 SQLite view를 정의 text가 하나가 아닌 table로 거부하지 않는다.
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
+- `errors` vector의 거부 아홉 가지(연결자 누락·끊긴 연결자, 빈 목록, 연결 없음, transaction 밖 lock, 연결된 join child, limit 있는 page, limit 있는 relation, join하지 않은 model 배치)가 recipe conformance_verification의 `errors` case로 여섯 runtime 모두에서 돌며, 빈 event 목록이 요청이 나가지 않았다는 증거다. recipe는 join의 `connect`, relation의 `limit`, `{"placed": {"model": <name>}}`, `plan` 없는 `plan_page`(`getsPage`)를 받는다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
 - schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).
@@ -26,6 +27,7 @@
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.
+- Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
 - 함수와 subquery가 같은 output 이름을 쓰면 COLUMN_ALIAS_CONFLICT로 답한다는 것을 모든 runtime의 compile case `planner_function_and_subquery_share_an_output_name`이 시험한다. scalar aggregate 타입의 사본과 확장의 native planner 시험은 사라졌고, 확장의 planner target은 compile recipe를 실행한다 (#T334-3-6-2)
 - PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
