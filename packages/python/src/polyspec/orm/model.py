@@ -179,7 +179,7 @@ def _column_type(core, name: str) -> str:
 
 
 def _temporal_output(column_type: str, value):
-    """A time or datetime value of the array form has six fraction digits, zeros past the column
+    """A time or datetime value of the array and JSON forms has six fraction digits, zeros past the column
     precision, as docs/spec/protocol.md section 5 (Read) states for every column precision."""
     if column_type not in ("time", "datetime") or not isinstance(value, str):
         return value
@@ -559,7 +559,7 @@ class Model:
         return (
             "{"
             + ",".join(
-                f"{_string_text(name)}:{_json_text(value)}"
+                f"{_string_text(name)}:{_json_text(_temporal_output(_column_type(self.core, name), value))}"
                 for name, value in _pairs(self.core)
             )
             + "}"

@@ -3794,7 +3794,13 @@ final class Recipe
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
             } else {
-                $model->{'set' . $name}(self::chainValue($value, $context));
+                $argument = self::chainValue($value, $context);
+                if ($argument === null && !(new \ReflectionMethod($model, 'set' . $name))->getParameters()[0]->allowsNull()) {
+                    // The typed setter of a non-null column takes no NULL, so the row writes it through the column writer.
+                    (new \ReflectionMethod($model, 'writeColumn'))->invoke($model, $column, null);
+                } else {
+                    $model->{'set' . $name}($argument);
+                }
             }
         }
         return $model;
