@@ -1115,8 +1115,11 @@ class _FaultConnection:
         self.cause: Exception | None = None
         self.fail_at = 0
         self.reads = 0
+        self.fail: dict[str, Exception] = {}
 
     def execute(self, sql: str, args: Any) -> dict:
+        if sql in self.fail:
+            raise self.fail[sql]
         if sql.startswith("SELECT type, name, tbl_name"):
             self.reads += 1
             if self.cause is not None and self.reads == self.fail_at:
@@ -1143,17 +1146,39 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         if "fail_catalog_read" in step:
             fault.cause = RuntimeError("catalog read failed")
             fault.fail_at = fault.reads + step["fail_catalog_read"]
+        for f in step.get("fail_statements", []):
+            injected = sqlite3.OperationalError(f["message"])
+            if "sqlite_result" in f:
+                injected.sqlite_errorcode = f["sqlite_result"]
+            fault.fail[f["statement"]] = injected
         kinds: list[str] = []
+
+        def events(event: dict) -> None:
+            kinds.append(event["kind"])
+            if "stop_on_applied" in step and event["kind"] == "applied":
+                raise RuntimeError(step["stop_on_applied"])
+
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
-            call(fault, "sqlite", plans, now, lambda event: kinds.append(event["kind"]))
-        except DbspecApplyError as error:
-            if error.code != expect["code"]:
-                raise AssertionError(f"the call raised {error.code}, want {expect['code']}") from error
+            call(fault, "sqlite", plans, now, events)
+        except Exception as error:  # noqa: BLE001 - the expect states the failure of any type
+            if "code" in expect and getattr(error, "code", None) != expect["code"]:
+                raise AssertionError(f"the call raised {error!r}, want {expect['code']}") from error
+            if "failure" in expect:
+                _expect_equal(str(error), expect["failure"], "failure")
+            if not str(error).endswith(expect.get("failure_ends_with", "")):
+                raise AssertionError(f"the failure {error} does not end with {expect['failure_ends_with']}")
+            # The failure holds a note for each cleanup error, in order (PLN-101, PLN-106).
+            if "cleanup" in expect:
+                _expect_equal(
+                    getattr(error, "__notes__", []),
+                    [f"cleanup failed: {message}" for message in expect["cleanup"]],
+                    "cleanup",
+                )
             if fault.cause is not None and error.cause is not fault.cause:
                 raise AssertionError(f"the error {error} does not hold the catalog read error") from error
         else:
-            raise AssertionError(f"the call succeeded, want {expect['code']}")
+            raise AssertionError(f"the call succeeded, want {expect}")
         if "history_state" in expect:
             state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
             if state != expect["history_state"]:

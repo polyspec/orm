@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The cleanup errors of apply (PLN-97 to PLN-101, PLN-106) and a rollback of a recorded step outside the plan are cases of the `dbspec.apply_fault` recipe in every runtime, through injected statements; the native tests are gone (#T334-3-18).
 - A load of a schema value (SCH-12) reports every diagnostic in one form in every runtime, `<line>:<column> <rule>: <message>` joined by `; `, with lines counted from the document, and the `dbspec.load_set` recipe compares them (#T334-3-18).
 - Tests: `make repo-check` passes again: the check `schema-set.mjs` reports through `caseTest`, the `param-uses-typescript` row runs the tracked `coverage_planner.mjs`, the two conformance targets of T334-3-5 are in `CHECK_TARGETS` and the `conformance` CI group, and two failure messages state their fix (#T334-3-18).
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.

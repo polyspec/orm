@@ -431,6 +431,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "reason": "test: injects a close failure and an empty effect row into the private effect query of PlanApply, and calls the recover and finalize entry points that no recipe op reaches; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+        },
+        {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
           "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
         },
@@ -632,6 +636,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the private effect query and the recover and finalize entry points of PlanApply"
+        },
+        {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
@@ -739,6 +747,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/dbspec-apply-cleanup.mjs",
+          "reason": "test: reads the private EFFECT_QUERIES and dbspecEffectHolds of apply.js on a scripted connection; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+        },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
           "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
@@ -1112,6 +1124,10 @@
         "pattern": "^pub const (\\w+): &str = \"\\w+\";$"
       },
       "internal": [
+        {
+          "glob": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
+          "reason": "test: the effect_holds of a scripted MySQL connection, whose row count message is the form of Rust; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+        },
         {
           "glob": "packages/rust/schema/tests/dbspec_runtime.rs",
           "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
@@ -3165,33 +3181,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestApplyReportsCleanupErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-cleanup.mjs",
-          "id": "apply/cleanup-errors/release"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_cleanup_errors"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_cleanup_failure_notes"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "id": "TestRecipeDbspecApplyVerificationErrorsNone/cleanup-the-failure-then-every-cleanup-error-in-order"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "id": "DbspecApplyCleanupTestExtensionTest::testCleanupErrorsRelease"
+          "test": "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTestExtensionTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ]
     },
@@ -3201,7 +3217,8 @@
       "requirements": [
         "PLN-92",
         "PLN-93",
-        "PLN-96"
+        "PLN-96",
+        "PLN-106"
       ],
       "file": "tests/dbspec/apply-verification-errors.json",
       "cases": "$.cases[*].id",
@@ -29835,8 +29852,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestApplyReportsCleanupErrors"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "id": "TestRecipeDbspecApplyVerificationErrorsNone/cleanup-the-failure-then-every-cleanup-error-in-order"
         },
         {
           "implementation": "go",
@@ -29859,8 +29876,8 @@
       "bindings": [
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-cleanup.mjs",
-          "id": "apply/cleanup-errors/release"
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29878,8 +29895,8 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_cleanup_errors"
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29897,8 +29914,8 @@
       "bindings": [
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_cleanup_failure_notes"
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29916,13 +29933,8 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsBeginRestore"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
         }
       ],
       "owner": {

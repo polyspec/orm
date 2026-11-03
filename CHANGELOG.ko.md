@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- apply의 cleanup error(PLN-97~PLN-101, PLN-106)와 plan 밖의 기록된 step rollback은 주입한 statement로 모든 runtime에서 `dbspec.apply_fault` recipe의 case이고, native 시험은 없앴다 (#T334-3-18).
 - schema 값 읽기(SCH-12)는 모든 runtime에서 모든 diagnostic을 한 형식 `<line>:<column> <rule>: <message>`로 `; `로 이어 보고하고, 줄은 문서부터 세며, `dbspec.load_set` recipe가 그것을 비교한다 (#T334-3-18).
 - Tests: `make repo-check`가 다시 통과한다: `schema-set.mjs`는 `caseTest`로 보고하고, `param-uses-typescript` 줄은 추적되는 `coverage_planner.mjs`를 돌리고, T334-3-5의 두 conformance target은 `CHECK_TARGETS`와 CI `conformance` group에 있고, 두 실패 message는 고칠 방법을 적는다 (#T334-3-18).
 - recipe `transactions`가 native transaction 시험이 담던 것을 담는다: 연결 없는 model, 네 row lock, 모든 isolation level, read-only 쓰기, `timeoutMs`, retry 횟수, 기본 retry, retry 0, 실제 두 흐름 deadlock, SQLite busy writer.
