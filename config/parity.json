@@ -26199,28 +26199,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesCheckConstraint"
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "id": "TestRecipeConstraintsAndRelationsMysql/constraint_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_duplicate_unique_key_is_duplicate_key"
+          "test": "packages/python/tests/test_constraints_and_relations_mysql.py",
+          "id": "constraint_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_postgres"
+          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "id": "constraints_and_relations_mysql::constraint_errors"
         },
         {
           "implementation": "php",
@@ -26247,6 +26237,11 @@
       ],
       "bindings": [
         {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "id": "immutable_write_sqlite::immutable_write"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_immutable_write_test.go",
           "id": "TestRecipeImmutableWriteSqlite/immutable_write"
@@ -26270,21 +26265,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_immutable_write_sqlite.py",
           "id": "immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_postgres"
         }
       ]
     },
