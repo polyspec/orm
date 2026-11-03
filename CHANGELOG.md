@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python conformance modules that read the vector files are gone with the target `conformance-check/python`: the bindings of their units name the recipe test `conformance_verification` of each database.
 - The TypeScript conformance tests that read the vector files are gone: each vector is a case of the recipe `conformance_verification`, and the TypeScript bindings of its units name that recipe test.
 - The recipe form F16 `within` is removed: no runner or fixture used it.
 - A test states that every conformance vector equals its recipe case on each database, field by field for statements, until the vector files lose their expect.

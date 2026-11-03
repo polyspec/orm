@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 98b9031dab806436f7a1d019f1fc33c7060eb74c32a8c59f5d5c395dc41f8b36 -->
+<!-- source-sha256: 4a2725f1dc21334d1788799b23352b934fe090bcaeef28f4189b0f6dee887ee6 -->
 # 변경 이력
 
 ## Unreleased
 
+- vector 파일을 읽던 Python conformance module을 target `conformance-check/python`과 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
 - vector 파일을 읽던 TypeScript conformance 시험을 없앴다. 각 vector는 recipe `conformance_verification`의 case이고, 그 unit의 TypeScript binding은 그 recipe 시험을 가리킨다.
 - recipe 형식 F16 `within`을 제거했다. 어떤 runner도 fixture도 쓰지 않았다.
 - vector 파일에서 expect가 빠지기 전까지, 모든 conformance vector가 데이터베이스별로 recipe case와 같음을 시험이 확인한다. statement는 필드별로 비교한다.

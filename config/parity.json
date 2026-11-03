@@ -1005,7 +1005,6 @@
         "packages/python/tests/models/__init__.py",
         "packages/python/tests/bench_set.py",
         "packages/python/tests/case_database.py",
-        "packages/python/tests/conformance_case.py",
         "packages/python/tests/coverage_case.py",
         "packages/python/tests/dbspec_apply_runner.py",
         "packages/python/tests/dbspec_introspect_runner.py",
@@ -10768,7 +10767,7 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py"
+          "test": "packages/python/tests/test_conformance_verification_mysql.py"
         },
         {
           "implementation": "rust",
@@ -10980,7 +10979,7 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py"
+          "test": "packages/python/tests/test_conformance_verification_postgres.py"
         },
         {
           "implementation": "rust",
@@ -11193,7 +11192,7 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py"
         },
         {
           "implementation": "rust",
@@ -14460,8 +14459,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
@@ -14469,19 +14478,9 @@
           "id": "conformance_mysql::datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_mysql::time_p3_roundtrip"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
@@ -14539,8 +14538,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
@@ -14548,19 +14557,9 @@
           "id": "conformance_postgres::datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_postgres::time_p3_roundtrip"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
@@ -14618,8 +14617,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
@@ -14627,19 +14636,9 @@
           "id": "conformance_sqlite::datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_sqlite::time_p3_roundtrip"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",

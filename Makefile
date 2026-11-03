@@ -2035,16 +2035,10 @@ CONFORMANCE_RUN = node tests/conformance/check/main.mts run --out $(RUN_DIR)/out
 .PHONY: conformance-check/run
 # With RECORD set, the run records the new vectors before the result checks, which then check the recorded dialect files.
 ifneq ($(RECORD),)
-conformance-check: conformance-counter-check conformance-check/run conformance-result-check conformance-result-physical-check conformance-check/python
+conformance-check: conformance-counter-check conformance-check/run conformance-result-check conformance-result-physical-check
 else
-conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run conformance-check/python
+conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
 endif
-# conformance-check/python runs the vectors of each database as the Python unittest cases of the language-parity check
-# (config/parity.json, conformance-mysql, conformance-postgres, conformance-sqlite): one case for each vector, named by the
-# vector name, on the bench database of the run (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN).
-.PHONY: conformance-check/python
-conformance-check/python: lease-tool python-venv-check conformance-python-models
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.conformance_mysql packages.python.tests.conformance_postgres packages.python.tests.conformance_sqlite
 conformance-check/run: lease-tool conformance-python-models php-vendor-check orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
