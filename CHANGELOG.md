@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
 - AES rotation of every AES column, of the rows not at the current version, its status, and the write with the key of the current version are cases of the aes_rotation recipe in all six runtimes, and the native rotation tests are gone.
 - The refusal of a markdown connect (PRT-64) is a recipe case, `markdown.connect`, on a listener each runtime runs, and the native tests it replaces are gone. A refused TLS connection in Rust names no database in its message (CFG-16).
 - A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.

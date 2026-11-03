@@ -1,0 +1,12 @@
+dbspec 1 accounts
+
+# Comments and diagrams do not remain in the manifest text.
+table tenant {
+  id i64 identity
+  name varchar(50)
+  primary key (id)
+}
+
+diagram main {
+  tenant at 0 0
+}

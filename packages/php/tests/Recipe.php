@@ -1033,6 +1033,9 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    if (array_key_exists('rule', $expect)) {
+                        Assert::assertStringContainsString($expect['rule'], $error->getMessage());
+                    }
                     return;
                 }
                 Assert::assertSame(
@@ -1045,9 +1048,18 @@ final class Recipe
                 }
                 return;
             case 'dbspec.runtime_model':
-                $texts = array_map(static fn(string $path): string => self::dbspecFile($dir, $path), $step['documents']);
-                $model = RuntimeModel::build(RuntimeModel::parse($texts));
+                $read = static fn(array $paths): array => array_map(
+                    static fn(string $path): string => self::dbspecFile($dir, $path),
+                    $paths,
+                );
+                $model = RuntimeModel::build(RuntimeModel::parseSet($read($step['documents']), $read($step['external'] ?? [])));
                 Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
+                if (array_key_exists('manifest_text', $expect)) {
+                    Assert::assertSame(implode("\n", $expect['manifest_text']) . "\n", $model->manifestText, 'manifest text');
+                }
+                if (array_key_exists('manifest_hash', $expect)) {
+                    Assert::assertSame($expect['manifest_hash'], $model->manifestHash, 'manifest hash');
+                }
                 $named = static function (array $have, array $want) use (&$named): array {
                     $out = [];
                     foreach ($want as $key => $value) {
@@ -1064,6 +1076,7 @@ final class Recipe
                             'nullable' => $column['nullable'],
                             'default' => $column['default'],
                             'default_now' => $column['default_now'],
+                            'select_explicit' => !$column['select'],
                             'codec' => $column['codec'],
                             'blind_index' => $column['blind_index'],
                             'primary_key' => $column['pk'],

@@ -2195,6 +2195,7 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');
@@ -2203,9 +2204,11 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.runtime_model': {
-      const texts = await Promise.all(step.documents.map(path => readFile(resolve(dir, path), 'utf8')));
-      const model = modelOfDocuments(parseDocumentSet(texts));
+      const read = paths => Promise.all(paths.map(path => readFile(resolve(dir, path), 'utf8')));
+      const model = modelOfDocuments(parseDocumentSet(await read(step.documents), await read(step.external ?? [])));
       assert.deepEqual([...model.entities.keys()], expect.entities, 'entities');
+      if (expect.manifest_text !== undefined) assert.equal(model.manifestText, `${expect.manifest_text.join('\n')}\n`, 'manifest text');
+      if (expect.manifest_hash !== undefined) assert.equal(model.manifestHash, expect.manifest_hash, 'manifest hash');
       for (const [name, values] of Object.entries(expect.models ?? {})) {
         const entity = model.entities.get(name);
         const got = {
@@ -2213,7 +2216,7 @@ async function checkDbspecFiles(step, dir, database) {
           aes_version: entity.aesVersion, audit_column: entity.auditColumn, audit_record: entity.auditRecord,
           key_names: [...entity.indexes].sort(),
           fields: Object.fromEntries(entity.fields.map(f => [f.name, {
-            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, codec: [...f.stages],
+            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, select_explicit: !f.selected, codec: [...f.stages],
             blind_index: f.blindIndex, primary_key: f.primary, foreign_key: f.foreign,
           }])),
         };

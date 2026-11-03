@@ -5204,6 +5204,9 @@
                       }
                     }
                   },
+                  "rule": {
+                    "type": "string"
+                  },
                   "manifest_hash": {
                     "type": "string"
                   },
@@ -5451,6 +5454,14 @@
             },
             "description": "The documents of one set, relative to the recipe file."
           },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The external documents of the set, relative to the recipe file."
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -5465,6 +5476,15 @@
                 ],
                 "additionalProperties": false,
                 "properties": {
+                  "manifest_text": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
                   "entities": {
                     "type": "array",
                     "items": {
@@ -5477,7 +5497,7 @@
                     "additionalProperties": {
                       "type": "object"
                     },
-                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, codec, blind_index, primary_key and foreign_key."
+                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, select_explicit, codec, blind_index, primary_key and foreign_key."
                   }
                 }
               }
