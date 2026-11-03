@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3618cb077a5737cda52b69c2f1821d2b4859630867582ae9c299cfe8a5d40748 -->
+<!-- source-sha256: b9cfc9ccb1a1af36180cbb729f23c6f7070678f2c16a529143bbe23602955cc6 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
 - INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
 - vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)

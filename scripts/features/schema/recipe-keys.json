@@ -93,6 +93,7 @@
       "audit_source",
       "dsn",
       "op",
+      "pool_idle_size",
       "pool_size"
     ],
     "codec.decode": [
@@ -819,6 +820,13 @@
       "connection",
       "expect",
       "op"
+    ],
+    "pool.transactions": [
+      "connection",
+      "expect",
+      "hold",
+      "op",
+      "transactions"
     ],
     "utils.stats": [
       "connection",

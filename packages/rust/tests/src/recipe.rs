@@ -3107,6 +3107,7 @@ mod database {
         "utils.backend_waiting_for_lock",
         "utils.groups",
         "utils.stats",
+        "pool.transactions",
     ];
 
     /// The start of the failure of a nested step whose public call returned an error that the step does not expect.
@@ -3785,6 +3786,13 @@ mod database {
                 std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
+            if let Some(idle) = step["pool_idle_size"].as_u64() {
+                // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
+                let options = polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
+                let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
+                context.models.adopt(name, db);
+                return Ok(Output::fields(json!({})));
+            }
             match (step.get("aes_keyring"), step.get("audit_source")) {
                 (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
                 (None, Some(source)) => {
@@ -5456,6 +5464,51 @@ mod tables {
                     Ok(json!({ "value": { "bool": waiting } }))
                 }
                 // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
+                "pool.transactions" => {
+                    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool
+                    // shows the connections that they take at once (CFG-4, CFG-5). A transaction future is not Send, so
+                    // the tasks run on a LocalSet.
+                    use std::sync::atomic::{AtomicU32, Ordering};
+                    use std::sync::Arc;
+                    let count = step["transactions"].as_u64().unwrap_or(0);
+                    let hold = u32::try_from(step["hold"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+                    let (active, peak, open, begun) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
+                    let gate = Arc::new(tokio::sync::watch::channel(false).0);
+                    let local = tokio::task::LocalSet::new();
+                    let mut tasks = Vec::new();
+                    for _ in 0..count {
+                        let (db, active, peak, open, begun, gate) = (db.clone(), active.clone(), peak.clone(), open.clone(), begun.clone(), gate.clone());
+                        tasks.push(local.spawn_local(async move {
+                            db.transaction(async || {
+                                let now = active.fetch_add(1, Ordering::SeqCst) + 1;
+                                peak.fetch_max(now, Ordering::SeqCst);
+                                open.fetch_max(db.stats().open_connections, Ordering::SeqCst);
+                                if begun.fetch_add(1, Ordering::SeqCst) + 1 >= hold {
+                                    gate.send_replace(true);
+                                } else {
+                                    let _ = gate.subscribe().wait_for(|opened| *opened).await;
+                                }
+                                active.fetch_sub(1, Ordering::SeqCst);
+                                Ok(())
+                            })
+                            .await
+                        }));
+                    }
+                    let mut failure = None;
+                    local
+                        .run_until(async {
+                            for task in tasks {
+                                if let Ok(Err(error)) = task.await {
+                                    failure = Some(error);
+                                }
+                            }
+                        })
+                        .await;
+                    if let Some(error) = failure {
+                        return Err(orm(error));
+                    }
+                    Ok(json!({ "json": { "peak": peak.load(Ordering::SeqCst), "open": open.load(Ordering::SeqCst) } }))
+                }
                 "utils.stats" => {
                     // The pool counts of the connection (INT-79).
                     let stats = db.utils().stats();

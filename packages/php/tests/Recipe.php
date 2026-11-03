@@ -76,6 +76,7 @@ final class Recipe
         'utils.backend_waiting_for_lock',
         'utils.groups',
         'utils.stats',
+        'pool.transactions',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -4224,6 +4225,9 @@ final class Recipe
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
             case 'utils.backend_waiting_for_lock':
                 return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'pool.transactions':
+                // PHP keeps no pool (CFG-4), so the recipe connection_pool has no PHP binding and this op never runs here.
+                throw new \RuntimeException(sprintf('PHP keeps no pool for %d transactions holding %d', $s['transactions'], $s['hold']));
             case 'utils.stats':
                 // The pool counts of the connection (INT-79).
                 $stats = self::connectionOf($s, $context)->utils()->stats();

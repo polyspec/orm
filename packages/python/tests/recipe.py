@@ -3453,6 +3453,44 @@ def _utils_groups(step: dict, context: dict) -> dict:
     return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
 
 
+def _pool_transactions(step: dict, context: dict) -> dict:
+    """Count transactions in threads of their own: the first hold of them stay open until hold have
+    begun, so the pool shows the connections that they take at once (CFG-4, CFG-5)."""
+    db = _connection_of(step, context)
+    lock = threading.Lock()
+    gate = threading.Event()
+    state = {"active": 0, "peak": 0, "open": 0, "begun": 0}
+    failures = []
+
+    def body():
+        with lock:
+            state["active"] += 1
+            state["peak"] = max(state["peak"], state["active"])
+            state["open"] = max(state["open"], db.stats().open_connections)
+            state["begun"] += 1
+            if state["begun"] == step["hold"]:
+                gate.set()
+        if not gate.wait(30):
+            raise AssertionError("the transactions did not begin")
+        with lock:
+            state["active"] -= 1
+
+    def flow():
+        try:
+            db.transaction(body, {"retry": 0})
+        except BaseException as failure:
+            failures.append(failure)
+
+    threads = [threading.Thread(target=flow) for _ in range(step["transactions"])]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if failures:
+        raise failures[0]
+    return {"json": {"peak": state["peak"], "open": state["open"]}}
+
+
 def _utils_stats(step: dict, context: dict) -> dict:
     """The pool counts of the connection (INT-79)."""
     stats = _connection_of(step, context).utils().stats()
@@ -4404,6 +4442,7 @@ _TABLE_OPS = {
     "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
     "utils.groups": _utils_groups,
     "utils.stats": _utils_stats,
+    "pool.transactions": _pool_transactions,
 }
 
 # The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).
