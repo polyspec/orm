@@ -46,3 +46,29 @@ table audit {
   actor varchar(64)
   primary key (seq)
 }
+
+table stamped {
+  seq i64 identity
+  title varchar(191)
+  touched_at datetime(6) default now
+  audit_seq i64
+  primary key (seq)
+  index ix_stamped_audit (audit_seq)
+  foreign key fk_stamped_audit (audit_seq) references audit (seq) on delete restrict on update restrict
+  settings {
+    updated touched_at
+    audit into stamped_history column audit_seq references audit action change previous previous_audit_seq
+  }
+}
+
+table stamped_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  title varchar(191)
+  touched_at datetime(6)
+  audit_seq i64
+  primary key (history_id)
+  index ix_stamped_history_row (seq)
+}

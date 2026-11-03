@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// planner feature coverage: the param_uses cases in contracts/fixtures/planner.json, whose uses of each parameter are
-// compared with the fixture. The compile cases are the recipe tests/planner/compile.json (PlannerCompileTest.php).
+// The invariants of the planner that the compile recipe tests/planner/compile.json (PlannerCompileTest.php) does not state.
 
 
 use Polyspec\Orm\Engine;
@@ -15,7 +14,6 @@ use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -28,15 +26,6 @@ function plannerFixtureCase(string $root, string $id): array
     return $found[0]['steps'][0];
 }
 
-/** @return iterable<string, array{string}> The planner fixture's exact named case ids. */
-function plannerFixtureCases(string $root): iterable
-{
-    $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-    foreach ($fixture['cases'] as $case) {
-        yield $case['id'] => [$case['id']];
-    }
-}
-
 function plannerScalarColumnSubqueryRequest(string $root): array
 {
     $case = plannerFixtureCase($root, 'planner_scalar_column_subquery');
@@ -44,7 +33,7 @@ function plannerScalarColumnSubqueryRequest(string $root): array
     return [$model, ['manifest_hash' => $model->manifestHash] + $case['input']];
 }
 
-/** PRT-69: the scalar column subquery request with the aggregate $aggregate of $column, without its limit and order. */
+/** The scalar column subquery request with the aggregate $aggregate of $column, without its limit and order. */
 function plannerScalarAggregateRequest(array $baseRequest, string $aggregate, string $column): array
 {
     $request = $baseRequest;
@@ -57,48 +46,9 @@ function plannerScalarAggregateRequest(array $baseRequest, string $aggregate, st
     return $request;
 }
 
-/** Validates the request of a param_uses case and compares the uses of each parameter. */
-function paramUsesCase(string $root, array $fixture, string $id): void
-{
-    $found = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === $id));
-    Assert::assertTrue(count($found) === 1, "planner.json has " . count($found) . " cases $id");
-    $case = $found[0];
-    Assert::assertTrue($case['operation'] === 'param_uses', "case $id has operation {$case['operation']}");
-    $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
-    $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
-    $validator = new Validator($model);
-    $validator->validate($request);
-    // key is the fixture's sorted key order.
-    $uses = array_map(static fn(array $list): array => array_map(static fn(array $u): array => $u['column'] === null
-        ? ['type' => $u['type']]
-        : ($u['assign'] ? ['assign' => true] : []) + [
-            'column' => $u['column']['name'],
-            'length' => $u['column']['length'] ?? 0,
-            'null' => $u['column']['nullable'],
-            'precision' => $u['column']['precision'] ?? 0,
-            'scale' => $u['column']['scale'] ?? 0,
-            'type' => $u['type'],
-        ], $list), $validator->paramUses($request));
-    Assert::assertTrue($uses === $case['expected']['uses'], "$id param uses " . json_encode($uses));
-}
-
 #[Small]
 final class CoveragePlannerTest extends TestCase
 {
-    /** @return iterable<string, array{string}> */
-    public static function vectorCases(): iterable
-    {
-        return plannerFixtureCases(dirname(__DIR__, 3));
-    }
-
-    #[DataProvider('vectorCases')]
-    public function testVector(string $id): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, $id);
-    }
-
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
@@ -143,7 +93,6 @@ final class CoveragePlannerTest extends TestCase
         }
     }
 
-    // Requirements: PRT-69.
     public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
     {
         [$model, $baseRequest] = $this->scalarColumnSubqueryRequest();
@@ -173,46 +122,4 @@ final class CoveragePlannerTest extends TestCase
     {
         ColumnFunctionMetadataAssertions::assertOutputMissingPostValidationFieldIsInternal();
     }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUsesColumnFunction(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, 'param_uses_column_function');
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUsesInterval(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, 'param_uses_interval');
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUsesContains(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, 'param_uses_contains');
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUsesIfParent(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, 'param_uses_if_parent');
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUsesOptimistic(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        paramUsesCase($root, $fixture, 'param_uses_optimistic');
-    }
-
-    // Requirements: DSL-95.
 }

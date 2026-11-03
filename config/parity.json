@@ -28,7 +28,6 @@
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
         "packages/go/model/coverage_helpers_test.go",
-        "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
@@ -402,7 +401,6 @@
         "packages/php/tests/GroupRowsDbCases.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
-        "packages/php/tests/AuthenticatedEncryptionFixtureCases.php",
         "packages/php/tests/StatementRunnerCases.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
@@ -569,6 +567,10 @@
         {
           "glob": "packages/php/tests/CodecErrorCauseTest.php",
           "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
+        },
+        {
+          "glob": "packages/php/tests/CoveragePlannerTest.php",
+          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ]
     },
@@ -666,6 +668,10 @@
         {
           "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
           "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
+        },
+        {
+          "glob": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ],
       "shares": "php"
@@ -882,10 +888,6 @@
       "runner": "python",
       "internal": [
         {
-          "glob": "packages/python/tests/coverage_authenticated_encryption.py",
-          "reason": "harness: the feature coverage entry of authenticated_encryption, which T334-3-12-5 removes; its cases are recipe cases of tests/codec/codec.json"
-        },
-        {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
         },
@@ -1037,7 +1039,6 @@
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
-        "packages/rust/tests/tests/common/coverage_database.rs",
         "packages/rust/build/src/test_support.rs",
         "packages/rust/build/tests/common/grid_open.rs",
         "packages/rust/build/tests/common/physical_dialects.rs",
@@ -1263,6 +1264,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",
           "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
+          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ]
     }
@@ -7664,50 +7669,6 @@
       ]
     },
     {
-      "id": "authenticated-encryption",
-      "kind": "suite",
-      "requirements": [
-        "DIA-15",
-        "DIA-32",
-        "COD-4",
-        "COD-5",
-        "COD-6",
-        "COD-8"
-      ],
-      "file": "contracts/fixtures/authenticated_encryption.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "symbol": "TestCoverageAuthenticatedEncryption"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageAuthenticatedEncryptionTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageAuthenticatedEncryptionExtensionTest::testVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_authenticated_encryption.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "symbol": "authenticated_encryption"
-        }
-      ]
-    },
-    {
       "id": "decimal-model",
       "kind": "suite",
       "requirements": [
@@ -7875,46 +7836,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "symbol": "planner_compile_none"
-        }
-      ]
-    },
-    {
-      "id": "planner-params",
-      "kind": "suite",
-      "requirements": [
-        "DIA-31",
-        "PRT-67"
-      ],
-      "file": "contracts/fixtures/planner.json",
-      "cases": "$.cases[*].id",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "symbol": "TestCoveragePlanner"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoveragePlannerTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::testVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "symbol": "engine::coverage_planner::planner"
         }
       ]
     },
@@ -8284,7 +8205,8 @@
         "COD-65",
         "COD-66",
         "COD-67",
-        "PLN-15"
+        "PLN-15",
+        "DIA-32"
       ],
       "file": "tests/codec/codec.json",
       "cases": "$.cases[*].id",
@@ -26280,8 +26202,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_model_generation.py",
-          "id": "test_model_generation_check"
+          "test": "packages/python/tests/test_generator_none.py",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "rust",
@@ -29278,8 +29200,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
+          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+          "id": "complex_query_sqlite::page_plan_steps"
         }
       ]
     },
@@ -30423,7 +30345,8 @@
         "PRT-81",
         "PRT-82",
         "DIA-24",
-        "PRT-33"
+        "PRT-33",
+        "DBS-67"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",

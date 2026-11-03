@@ -5,6 +5,7 @@
     "DBS-104",
     "DBS-110",
     "DBS-173",
+    "DBS-175",
     "DSL-116",
     "DSL-127",
     "DSL-129",
@@ -863,6 +864,22 @@
               }
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "check_reports_differences_without_writing",
+      "requirements": [
+        "DBS-175"
+      ],
+      "steps": [
+        {
+          "op": "generator.check",
+          "document_set": "../bench/dbspec-set.json",
+          "unchanged": [],
+          "changed": [
+            "differs: <file>"
+          ]
         }
       ]
     }

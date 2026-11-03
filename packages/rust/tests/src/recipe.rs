@@ -527,6 +527,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "ir.param_uses" => return ir_param_uses(step, database, dir),
         "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
+        "generator.check" => return recipe_generator::check_files(step, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
@@ -4662,7 +4663,9 @@ mod tables {
                 self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
             } else {
                 let mut core = core_of(step["model"].as_str().ok_or_else(|| format!("{} names no model", step["op"]))?)?;
-                core.connect(db);
+                if step["unconnected"].as_bool() != Some(true) {
+                    core.connect(db);
+                }
                 let mut build = Build::default();
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
@@ -4702,18 +4705,28 @@ mod tables {
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
             if step["plan"].as_bool() == Some(true) {
-                let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
-                if count == 0 {
-                    return Err("a plan needs a limit above 0".into());
-                }
-                let steps = get_page_plan_steps(&core, offset / count + 1, count).await.map_err(orm)?;
+                let (page, per_page) = if step["plan_page"].is_null() {
+                    let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                    if count == 0 {
+                        return Err("a plan needs a limit above 0".into());
+                    }
+                    (offset / count + 1, count)
+                } else {
+                    let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                    (number("page")?, number("per_page")?)
+                };
+                let steps = get_page_plan_steps(&core, page, per_page).await.map_err(orm)?;
                 let list: Vec<Value> = steps
                     .iter()
                     .map(|plan_step| {
                         let sql = plan_step.sql.to_uppercase();
                         let count: serde_json::Map<String, Value> =
                             names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
-                        json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count })
+                        let mut shown = json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count });
+                        if step["plan_sql"].as_bool() == Some(true) {
+                            shown["sql"] = json!(plan_step.sql);
+                        }
+                        shown
                     })
                     .collect();
                 return Ok(json!({ "json": list }));

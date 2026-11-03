@@ -20,6 +20,51 @@ pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     outcome
 }
 
+/// Runs one generator.check step (FCV-4, DBS-175) through `Builder::check`, the check of the generated files of Rust,
+/// which returns its lines and names a file by its name in the output directory.
+pub fn check_files(step: &Value, dir: &Path) -> Result<(), String> {
+    let set = dir.join(step["document_set"].as_str().unwrap_or_default());
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!("orm-recipe-generator-check-{}-{n}", std::process::id()));
+    let out = root.join("model");
+    let result = check_files_in(step, &set, &out);
+    std::fs::remove_dir_all(&root).map_err(|e| format!("remove {}: {e}", root.display()))?;
+    result
+}
+
+fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
+    let lines = |key: &str, file: &str| -> Vec<String> {
+        step[key].as_array().into_iter().flatten().map(|line| line.as_str().unwrap_or_default().replace("<file>", file)).collect()
+    };
+    let check = || polyspec_orm_build::Builder::set(set).out_dir(out).check();
+    polyspec_orm_build::Builder::set(set).out_dir(out).try_generate()?;
+    let got = check()?;
+    if got != lines("unchanged", "") {
+        return Err(format!("generator.check: the unchanged files give {got:?}"));
+    }
+    let mut names: Vec<PathBuf> = std::fs::read_dir(out)
+        .map_err(|e| format!("{}: {e}", out.display()))?
+        .map(|entry| entry.map(|entry| entry.path()).map_err(|e| e.to_string()))
+        .collect::<Result<_, _>>()?;
+    names.sort();
+    let path = names
+        .into_iter()
+        .find(|path| std::fs::metadata(path).is_ok_and(|meta| meta.is_file() && meta.len() > 0))
+        .ok_or_else(|| format!("{} holds no generated file", out.display()))?;
+    let mut text = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    text[0] ^= 1;
+    std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let file = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    let got = check()?;
+    if got != lines("changed", &file) {
+        return Err(format!("generator.check: the changed file gives {got:?}"));
+    }
+    if std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))? != text {
+        return Err(format!("generator.check: the check wrote {}", path.display()));
+    }
+    Ok(())
+}
+
 /// Compares the outcome of a generation with the expect: the error with its code and line, or the included and excluded names.
 fn compare(want: &Value, result: Result<BTreeSet<String>, String>) -> Result<(), String> {
     if let Some(code) = want["error"].as_str() {
