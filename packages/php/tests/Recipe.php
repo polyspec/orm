@@ -1920,6 +1920,12 @@ final class Recipe
             if (isset($expected['message_suffix'])) {
                 Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['message_holds'])) {
+                Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
+            }
+            if (($expected['driver_cause'] ?? false) === true) {
+                Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
+            }
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
