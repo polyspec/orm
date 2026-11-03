@@ -606,6 +606,7 @@
     "dbspec.runtime_model": [
       "documents",
       "expect",
+      "external",
       "op"
     ],
     "dbspec.read_file": [

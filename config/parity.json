@@ -636,6 +636,10 @@
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
         {
+          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
+        },
+        {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
           "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid"
         },
@@ -2580,26 +2584,6 @@
             {
               "test": "packages/go/orm/catalog_sqlite_sequence_test.go",
               "id": "TestCatalogSQLiteSequenceRestoration"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "files": [
-        "packages/php-ext/tests/DbspecReleaseHooksTest.php"
-      ],
-      "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks; it tests the build, not ORM client behavior.",
-      "units": [
-        {
-          "id": "php-extension-release-omits-private-hooks",
-          "requirements": [
-            "PRT-18"
-          ],
-          "bindings": [
-            {
-              "test": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
-              "id": "testReleaseExtensionOmitsPrivateHooks"
             }
           ]
         }
@@ -7568,7 +7552,8 @@
         "SCH-12",
         "DBS-156",
         "DBS-100",
-        "DBS-103"
+        "DBS-103",
+        "DBS-99"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -14970,11 +14955,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generated manifest text and hash match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadRebuildsTheModelOfTheManifestText"
         },
         {
           "implementation": "php",
@@ -30549,7 +30529,9 @@
         "DBS-112",
         "PRT-32",
         "PRT-81",
-        "PRT-82"
+        "PRT-82",
+        "DIA-24",
+        "PRT-33"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -30591,7 +30573,9 @@
         "DBS-65",
         "DBS-85",
         "DBS-111",
-        "DBS-112"
+        "DBS-112",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/runtime-model.json",
       "cases": "$.cases[*].id",

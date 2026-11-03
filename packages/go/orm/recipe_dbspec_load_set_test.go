@@ -8,7 +8,7 @@ import (
 )
 
 // TestRecipeDbspecLoadSetNone runs The load of a document set, tests/dbspec/load-set.json, without a database (FCV-3, FCV-4).
-// Requirements: SCH-12, DBS-156, DBS-100, DBS-103.
+// Requirements: SCH-12, DBS-156, DBS-100, DBS-103, DBS-99.
 func TestRecipeDbspecLoadSetNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../tests/dbspec/load-set.json", recipe.None)

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
 - The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
 - The verification errors of apply and rollback are the recipe `tests/dbspec/apply-verification-errors.json` in all six runtimes, through the op `dbspec.apply_fault`, in place of a native test in each runtime; the cases of a rollback on real drift now run in every runtime (PLN-92, PLN-93, PLN-96).
 - The decimal document set of `contracts/fixtures/dbspec-set.json` is the recipe `tests/dbspec/set-decimal.json` on the three databases in all six runtimes: it installs the set and creates and reads its two amounts exactly, in place of a native test in each runtime (DBS-108, SCH-7).

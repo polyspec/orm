@@ -763,6 +763,8 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
+            if "rule" in expect and expect["rule"] not in str(error):
+                raise AssertionError(f"the error {error} does not name the rule {expect['rule']}")
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],
@@ -773,9 +775,15 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 built, _ = dbspec_manifest(documents)
                 _expect_equal(built.manifest_hash, expect["manifest_hash"], "manifest hash")
     elif op == "dbspec.runtime_model":
-        texts = [(directory / path).read_bytes().decode("utf-8") for path in step["documents"]]
-        model = model_of_documents(parse_document_set(texts))
+        def read(paths):
+            return [(directory / path).read_bytes().decode("utf-8") for path in paths]
+
+        model = model_of_documents(parse_document_set(read(step["documents"]), read(step.get("external", []))))
         _expect_equal(list(model.entities), expect["entities"], "entities")
+        if "manifest_text" in expect:
+            _expect_equal(model.manifest_text, "\n".join(expect["manifest_text"]) + "\n", "manifest text")
+        if "manifest_hash" in expect:
+            _expect_equal(model.manifest_hash, expect["manifest_hash"], "manifest hash")
         for name, values in expect.get("models", {}).items():
             entity = model.entities[name]
             got = {
@@ -794,6 +802,7 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                         "nullable": f.nullable,
                         "default": f.has_default,
                         "default_now": f.default_now,
+                        "select_explicit": not f.selected,
                         "codec": list(f.stages),
                         "blind_index": f.blind_index,
                         "primary_key": f.primary,
