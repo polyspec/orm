@@ -2859,6 +2859,14 @@ final class Recipe
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
         }
+        if (in_array($s['op'], RecipeApply::OPS, true)) {
+            return RecipeApply::op($s, $context, static function (array $nested) use (&$context): void {
+                // A nested step with only runs on the databases it names, as a step of the case does.
+                if (!isset($nested['only']) || in_array($context['database'], $nested['only'], true)) {
+                    self::databaseStep($nested, $context);
+                }
+            });
+        }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
 

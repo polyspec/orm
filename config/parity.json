@@ -414,6 +414,7 @@
         "packages/php/tests/RecipeRecording.php",
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
+        "packages/php/tests/RecipeApply.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/RecipeKeys.php",
