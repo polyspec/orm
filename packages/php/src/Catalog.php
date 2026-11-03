@@ -19,6 +19,8 @@ final class Catalog
     private const SNAPSHOT_BYTES = 8388608;
     private const DEFAULT_ROWS = 100000;
     private const DEFAULT_BYTES = 67108864;
+    /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
+    private const STREAM_END_MARGIN_SECONDS = 6;
     private const SQL_BYTES = 262144;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
@@ -72,8 +74,14 @@ final class Catalog
 
     private bool $closed = false;
 
+    /** @var int The server's net_write_timeout, read once at connect, in seconds. */
+    private int $netWriteTimeout = 0;
+
+    /** Whether a stop left a stream unread, so that the server has ended this connection (INT-157). */
+    private bool $streamLeft = false;
+
     private function __construct(
-        private readonly Db $db,
+        private Db $db,
         private readonly string $dialect,
         private readonly string $dsn,
     ) {
@@ -99,7 +107,18 @@ final class Catalog
                 throw new OrmException(Code::CONFIG, 'CATALOG_SQLITE_FILE: expected an existing regular file');
             }
         }
-        return new self(Orm::connect($dsn, new Config()), $driver, $dsn);
+        $catalog = new self(Orm::connect($dsn, new Config()), $driver, $dsn);
+        if ($driver === 'mysql') {
+            try {
+                $catalog->netWriteTimeout = (int) $catalog->db->pdo()
+                    ->query('SELECT @@SESSION.net_write_timeout')->fetchColumn();
+            } catch (\PDOException $e) {
+                $mapped = $catalog->db->driverError($e);
+                $catalog->db->close();
+                throw $mapped;
+            }
+        }
+        return $catalog;
     }
 
     /** The database of the connection: mysql, postgres or sqlite. */
@@ -115,7 +134,7 @@ final class Catalog
             return;
         }
         $this->closed = true;
-        $this->db->close();
+        $this->closeConnection();
     }
 
     /**
@@ -868,6 +887,31 @@ final class Catalog
      * @param \Closure(): T $read
      * @return T
      */
+    /**
+     * Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming result
+     * whenever a statement or its connection closes, so the read stops reading instead. The server then fails its write
+     * and ends the connection after net_write_timeout. This is a timer because no orthodox mechanism exists: the busy
+     * connection cannot be asked and no second one can be opened. If the server has not ended the stream by then, the
+     * close reads the rest, which is slower and still correct.
+     */
+    private function leaveStream(): void
+    {
+        $this->streamLeft = true;
+        sleep($this->netWriteTimeout + self::STREAM_END_MARGIN_SECONDS);
+    }
+
+    /** Closes the connection; the one that a left stream has lost has nothing to report. */
+    private function closeConnection(): void
+    {
+        try {
+            $this->db->close();
+        } catch (OrmException | \PDOException $e) {
+            if (!$this->streamLeft) {
+                throw $e;
+            }
+        }
+    }
+
     private function readStatement(\PDOStatement $st, ?int $connectionId, \Closure $read): mixed
     {
         $stopped = false;
@@ -876,7 +920,11 @@ final class Catalog
         } catch (OrmException $stop) {
             $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
             if ($stopped) {
-                $this->killQuery($connectionId);
+                try {
+                    $this->killQuery($connectionId);
+                } catch (OrmException | \PDOException) {
+                    $this->leaveStream();
+                }
             }
             throw $stop;
         } finally {
@@ -939,7 +987,12 @@ final class Catalog
                 case 'FLOAT8':
                     return self::float64Cell($value);
                 case 'NUMERIC':
-                    return new CatalogGridCell('decimal', self::gridText($value));
+                    // PostgreSQL writes NaN and the infinities of numeric as text.
+                    $text = self::gridText($value);
+                    if ($text === 'NaN' || str_contains($text, 'Infinity')) {
+                        throw self::refused("PostgreSQL numeric $text is not finite");
+                    }
+                    return new CatalogGridCell('decimal', $text);
                 case 'TIMESTAMPTZ':
                 case 'TIMETZ':
                     throw self::refused("PostgreSQL $native is unsupported");
@@ -1139,6 +1192,11 @@ final class Catalog
     private function session(bool $readOnly, \Closure $fn): mixed
     {
         $this->assertOpen();
+        if ($this->streamLeft) {
+            $this->closeConnection();
+            $this->db = Orm::connect($this->dsn, new Config());
+            $this->streamLeft = false;
+        }
         $pdo = $this->db->pdo();
         try {
             if ($this->dialect === 'sqlite') {
@@ -1151,6 +1209,9 @@ final class Catalog
         try {
             $value = $fn($pdo);
         } catch (\Throwable $cause) {
+            if ($this->streamLeft) {
+                throw $cause;
+            }
             $this->rollback($pdo, $cause);
         }
         if ($readOnly) {
@@ -2170,6 +2231,10 @@ final class Catalog
         if ($value === null || is_bool($value) || is_int($value)) {
             return $value;
         }
+        if (is_resource($value)) {
+            // PDO reads a PostgreSQL bytea as a stream (INT-107).
+            return self::bytes($value);
+        }
         if (!is_string($value)) {
             throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value ' . get_debug_type($value));
         }
@@ -2177,7 +2242,8 @@ final class Catalog
             'binary', 'decimal' => $value,
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
                 ? (int) $value
-                : ($dialect === 'sqlite'
+                // SQLite keeps a text in an INTEGER column; a BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits.
+                : ($dialect === 'sqlite' || (is_string($value) && ctype_digit($value))
                     ? $value
                     : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\"")),
             'float' => is_numeric($value)
@@ -2244,7 +2310,8 @@ final class Catalog
      */
     private static function changes(CatalogTableMetadata $metadata, array $values, string $code): array
     {
-        if ($values === [] || count($values) > count($metadata->columns)) {
+        // A key of defaults alone takes no assignment (INT-123).
+        if (($values === [] && $code !== Code::ROW_INSERT_INVALID) || count($values) > count($metadata->columns)) {
             throw new OrmException($code, 'invalid column assignments');
         }
         // A list of [name, value] pairs may repeat a name (the form of Go, TypeScript and Python); a map has distinct
@@ -2419,7 +2486,8 @@ final class Catalog
             return 'f' . bin2hex(pack('E', $cell));
         }
         if (is_string($cell)) {
-            return 's' . strlen($cell) . ':' . $cell;
+            // The bytes of a binary cell are hex: the revision encodes its descriptor and cells as JSON text (INT-107).
+            return self::isUtf8($cell) ? 's' . strlen($cell) . ':' . $cell : 'x' . bin2hex($cell);
         }
         throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'unsupported cell type ' . get_debug_type($cell));
     }

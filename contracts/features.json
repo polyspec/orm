@@ -67,16 +67,15 @@
         "mysql-session",
         "php-python-session-initialization",
         "parameter-slot-validation-vectors",
-        "markdown-session-messages",
         "markdown-message-vectors",
-        "markdown-rejected-surfaces",
         "py-test-placeholders",
         "pool-idle-server-end",
         "dsn_connection-mysql",
         "dsn_connection-postgres",
         "dsn_connection-sqlite",
         "dsn-reject-checked",
-        "dsn-reject-parameters"
+        "dsn-reject-parameters",
+        "connection-driver-from-dsn"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -97,17 +96,14 @@
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-        "packages/python/tests/connection_utc.py",
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/dsn_features.mjs",
-        "packages/ts/tests/connection_utc.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/statement_timeout.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",
-        "packages/go/model/coverage_dsn_test.go",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/sqlite_path_test.go",
@@ -121,13 +117,11 @@
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
-        "packages/go/orm/markdown_test.go",
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
         "packages/php-ext/src/markdown_native.h",
         "packages/php-ext/src/orm.c",
         "packages/php-ext/src/polyspec_orm.c",
-        "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
         "packages/go/orm/bind_check_test.go",
         "packages/rust/orm/tests/unit/bind_message.rs",
@@ -140,7 +134,6 @@
         "packages/python/tests/test_driver_cells.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
-        "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -202,15 +195,6 @@
       ],
       "verification": [
         {
-          "id": "markdown-session-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestMarkdownSessionMessages|TestMarkdownConnectRefused|TestMarkdownRejectedSurfaces)$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/markdown_test.go",
-            "packages/go/orm/markdown.go"
-          ]
-        },
-        {
           "id": "markdown-session-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php",
           "shard": "other",
@@ -218,31 +202,6 @@
             "packages/php/tests/MarkdownTest.php",
             "packages/php/tests/markdown_test_server.php",
             "packages/php/src/Markdown.php"
-          ]
-        },
-        {
-          "id": "markdown-session-php-extension",
-          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testSessionMessages'",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php-ext/src/config.m4",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/markdown_native.c",
-            "packages/php-ext/src/markdown_native.h",
-            "packages/php-ext/src/orm.c",
-            "packages/php-ext/src/polyspec_orm.c"
-          ]
-        },
-        {
-          "id": "markdown-session-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts markdown-session-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test markdown",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/markdown.rs",
-            "packages/rust/orm/src/markdown.rs"
           ]
         },
         {
@@ -349,15 +308,6 @@
           "inputs": [
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/markdown.ts"
-          ]
-        },
-        {
-          "id": "markdown-session-python",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.MarkdownTest.test_markdown_session_messages",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_markdown.py",
-            "packages/python/src/polyspec/orm/markdown.py"
           ]
         },
         {
@@ -593,15 +543,6 @@
           ]
         },
         {
-          "id": "connection-utc-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_utc",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/connection_utc.py",
-            "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
           "id": "connection-pool-python",
           "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_pool",
           "shard": "other",
@@ -727,22 +668,6 @@
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/bind_check.ts",
             "tests/bind/vectors.json"
-          ]
-        },
-        {
-          "id": "markdown-rejected-surfaces-php-extension",
-          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testRejectedSurfaces'",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php-ext/src/config.m4",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/markdown_native.c",
-            "packages/php-ext/src/markdown_native.h",
-            "packages/php-ext/src/orm.c",
-            "packages/php-ext/src/polyspec_orm.c"
           ]
         }
       ],
@@ -946,112 +871,7 @@
             }
           }
         },
-        "dependents": [
-          {
-            "id": "generated_go_model",
-            "language": "go",
-            "part": "packages/go/model",
-            "tests": [
-              "packages/go/model/coverage_dsn_test.go"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/mysql"
-                  },
-                  "case_database": true
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/postgres"
-                  },
-                  "case_database": true
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/sqlite"
-                  },
-                  "case_database": true
-                }
-              ]
-            }
-          },
-          {
-            "id": "generated_rust_model",
-            "language": "rust",
-            "part": "packages/rust/tests/tests/integration_program",
-            "tests": [
-              "packages/rust/tests/tests/integration_program/main.rs"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                }
-              ]
-            }
-          }
-        ]
+        "dependents": []
       }
     },
     {
@@ -1131,7 +951,6 @@
         "tests/conformance/vectors.json",
         "packages/php/tests/autoload.php",
         "contracts/fixtures/aggregate_numeric.json",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -1458,7 +1277,7 @@
         },
         {
           "id": "group-rows-python-unit",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms",
           "shard": "other",
           "inputs": [
             "packages/python/src/polyspec/orm/model_exec.py",
@@ -1467,7 +1286,7 @@
         },
         {
           "id": "group-rows-rust-unit",
-          "command": "make group-count-boolean-rust-unit-check",
+          "command": "make group-row-count-rust-unit-check",
           "shard": "rust",
           "inputs": [
             "Makefile",
@@ -2023,7 +1842,6 @@
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -2673,7 +2491,6 @@
         "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -2725,7 +2542,6 @@
         "packages/python/tests/test_sqlite.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
-        "packages/python/tests/coverage_transactions.py",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
         "packages/go/orm/transaction_api_test.go",
         "packages/ts/tests/chain-types.mjs",
@@ -2827,12 +2643,6 @@
             "packages/go/orm/rollback_fault_entry_test.go",
             "packages/go/orm/rollback_fault_test.go"
           ]
-        },
-        {
-          "id": "rollback-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^Test(Savepoint)?RollbackFailed' -count=1",
-          "shard": "other",
-          "inputs": []
         },
         {
           "id": "transaction-failure-go",
@@ -3231,8 +3041,7 @@
             "tests": [
               "packages/python/tests/test_transactions_mysql.py",
               "packages/python/tests/test_transactions_postgres.py",
-              "packages/python/tests/test_transactions_sqlite.py",
-              "packages/python/tests/coverage_transactions.py"
+              "packages/python/tests/test_transactions_sqlite.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
@@ -3243,14 +3052,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -3258,14 +3059,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -3273,14 +3066,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
@@ -3362,22 +3147,13 @@
       ],
       "parity": [
         "statement-events-server-transactions",
-        "coverage-statement-events-statement-events"
+        "coverage-statement-events-statement-events",
+        "statement-event-subscription-php-extension"
       ],
       "fixtures": [
-        "contracts/fixtures/statement_events/statement_events.dbs",
-        "tests/events/vectors.json",
-        "packages/ts/tests/statement-events-run.mjs",
-        "packages/php/tests/statement_events_run.php"
+        "contracts/fixtures/statement_events/statement_events.dbs"
       ],
       "tests": [
-        "packages/go/orm/statement_events_test.go",
-        "packages/go/orm/statement_events_export_test.go",
-        "packages/ts/tests/statement_events_server_transactions.mjs",
-        "packages/php/tests/StatementEventsTest.php",
-        "packages/rust/orm/tests/statement_events.rs",
-        "packages/python/tests/statement_events.py",
-        "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_statement_events_mysql.py",
         "packages/python/tests/test_statement_events_postgres.py",
         "packages/python/tests/test_statement_events_sqlite.py",
@@ -3400,16 +3176,6 @@
       ],
       "verification": [
         {
-          "id": "statement-events-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestStatementEvents' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/statement_events_export_test.go",
-            "packages/go/orm/statement_events_test.go",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
           "id": "transaction-failure-python",
           "command": "make transaction-failure-python-check",
           "shard": "other",
@@ -3431,50 +3197,6 @@
             "packages/rust/orm/tests/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
-        },
-        {
-          "id": "statement-events-server-transactions-typescript",
-          "command": "node packages/ts/tests/statement_events_server_transactions.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/statement_events_server_transactions.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "packages/ts/tests/statement-events-run.mjs",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/StatementEventsTest.php",
-            "packages/php/tests/statement_events_run.php",
-            "packages/php/tests/case_database.php",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-events-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/statement_events.rs",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-python",
-          "command": "make python-statement-events-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/statement_events.py",
-            "packages/python/tests/statement_events_server_transactions.py",
-            "tests/events/vectors.json"
-          ]
         }
       ],
       "public_constraints": [
@@ -3483,22 +3205,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "model_statements",
-          "transaction_savepoint",
-          "transaction_rollback",
-          "savepoint_rollback",
-          "failed_statement",
-          "subscriber_error",
-          "subscriber_orm_error",
-          "unsubscribe",
-          "install",
-          "schema_set_several_fixture_first",
-          "schema_set_several_other_first",
-          "schema_set_unregistered",
-          "schema_set_edited_manifest",
-          "notify"
-        ],
         "owners": {
           "go": {
             "part": "packages/go/orm",
@@ -3506,6 +3212,7 @@
               "packages/go/orm/recipe_statement_events_test.go"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3541,6 +3248,7 @@
               "packages/php/tests/StatementEventsRecipeTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3576,6 +3284,7 @@
               "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3613,6 +3322,7 @@
               "packages/rust/tests/tests/statement_events_sqlite.rs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3647,6 +3357,7 @@
               "packages/ts/tests/statement_events-sqlite.test.mjs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3681,6 +3392,7 @@
               "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3768,7 +3480,6 @@
         "chain-null-on-a-non-null-column"
       ],
       "fixtures": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -3808,7 +3519,6 @@
         "packages/python/tests/test_packaging.py",
         "packages/python/tests/test_requires_python.py",
         "packages/php-ext/tests/ModelDslNativeTest.php",
-        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/php-ext/tests/RuntimeModelTest.php",
         "packages/rust/build/src/manifest.rs",
         "packages/rust/build/src/lib.rs",
@@ -3947,9 +3657,6 @@
       ],
       "coverage": {
         "kind": "independent",
-        "cases": [
-          "model_generation_check"
-        ],
         "owners": {
           "go": {
             "part": "packages/go",
@@ -4151,6 +3858,7 @@
         "tests/dbspec/schema-definition.json"
       ],
       "tests": [
+        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
         "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
@@ -4224,8 +3932,6 @@
         "packages/go/engine/runtimemodel/runtimemodel_test.go",
         "packages/go/engine/dbspec/vector_loaders_test.go",
         "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-        "packages/ts/tests/dbspec-apply-cleanup.mjs",
         "packages/ts/tests/dbspec-unicode.mjs",
         "packages/php/tests/DbspecUnicodeTest.php",
         "packages/go/engine/dbspec/show_create_test.go",
@@ -4430,7 +4136,6 @@
             "packages/rust/schema/tests/dbspec_render.rs",
             "packages/rust/schema/tests/dbspec_runtime.rs",
             "packages/rust/schema/tests/dbspec_model.rs",
-            "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
             "contracts/fixtures/bench/bench.dbs",
             "packages/rust/schema/tests/common/vector_file.rs",
             "tests/dbspec/ddl.json",
@@ -4471,7 +4176,6 @@
             "packages/ts/tests/dbspec-plan-comparisons.mjs",
             "packages/ts/tests/dbspec-add-tables-steps.mjs",
             "packages/ts/tests/plan_case.mjs",
-            "packages/ts/tests/dbspec-apply-cleanup.mjs",
             "packages/ts/tests/dbspec-unicode.mjs",
             "packages/ts/src/dbspec/unicode_word.ts",
             "packages/ts/tests/dbspec-show-create.mjs",
@@ -4767,8 +4471,7 @@
               "packages/rust/tests/tests/schema_definition_none.rs"
             ],
             "inputs": [
-              "tests/dbspec/schema-definition.json",
-              "packages/rust/orm/tests/dbspec_apply_cleanup.rs"
+              "tests/dbspec/schema-definition.json"
             ],
             "commands": {
               "none": [
@@ -4803,8 +4506,7 @@
               "packages/ts/tests/recipe_schema_definition.mjs"
             ],
             "inputs": [
-              "tests/dbspec/schema-definition.json",
-              "packages/ts/tests/dbspec-apply-cleanup.mjs"
+              "tests/dbspec/schema-definition.json"
             ],
             "commands": {
               "none": [
@@ -4914,7 +4616,6 @@
         "schema-register-reuses-engine-per-hash"
       ],
       "fixtures": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -5478,7 +5179,6 @@
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/engine.mjs",
         "packages/ts/tests/engine_features.mjs",
-        "packages/go/engine/functions_physical_test.go",
         "packages/go/engine/interface_test.go",
         "packages/go/engine/plan/plan_test.go",
         "packages/go/engine/ir/fuzz_test.go",
@@ -5534,22 +5234,12 @@
           ]
         },
         {
-          "id": "param-uses-typescript",
-          "command": "node packages/ts/tests/coverage_planner.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/coverage_planner.mjs",
-            "packages/ts/src/engine/params.ts"
-          ]
-        },
-        {
           "id": "planner-go-engine",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/engine/engine_test.go",
             "packages/go/engine/compile_bench_test.go",
-            "packages/go/engine/functions_physical_test.go",
             "packages/go/engine/interface_test.go",
             "packages/go/engine/query_forms_test.go"
           ]
@@ -5588,14 +5278,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/engine/dialect/sqlite_test.go"
-          ]
-        },
-        {
-          "id": "planner-go-runtimemodel",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine/runtimemodel -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/engine/runtimemodel/runtimemodel_test.go"
           ]
         },
         {
@@ -6520,7 +6202,6 @@
       ],
       "fixtures": [
         "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -6895,7 +6576,6 @@
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/refusal.dbs",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -6916,7 +6596,6 @@
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
         "packages/php/tests/DriverErrorTest.php",
-        "packages/rust/orm/tests/refusal.rs",
         "packages/ts/tests/driver-error.mjs",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
         "packages/go/orm/recipe_immutable_write_test.go",
@@ -6976,15 +6655,6 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/DriverErrorTest.php",
-            "contracts/fixtures/refusal.dbs"
-          ]
-        },
-        {
-          "id": "refusal-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts refusal-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test refusal",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/refusal.rs",
             "contracts/fixtures/refusal.dbs"
           ]
         },
@@ -8599,7 +8269,6 @@
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
         "tests/conformance/vectors.sqlite.json",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -8629,7 +8298,7 @@
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
-        "packages/go/model/coverage_conformance_verification_test.go",
+        "packages/go/orm/recipe_conformance_verification_test.go",
         "packages/php/tests/CoverageConformanceVerificationTest.php",
         "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/rust/tests/tests/coverage_conformance_verification.rs",
@@ -8781,9 +8450,9 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_conformance_verification_test.go"
+              "packages/go/orm/recipe_conformance_verification_test.go"
             ],
             "inputs": [
               "tests/conformance/vectors.json",
@@ -8794,40 +8463,25 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationSqlite"
                 }
               ]
             }
@@ -9116,9 +8770,6 @@
         "packages/rust/tests/tests/common/mod.rs"
       ],
       "tests": [
-        "packages/rust/build/tests/grid_cells.rs",
-        "packages/rust/build/tests/grid_decimals.rs",
-        "packages/rust/build/tests/grid_numbers.rs",
         "packages/rust/build/tests/grid_temporal.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
         "packages/rust/build/tests/row_commit_permit.rs",
@@ -9154,9 +8805,7 @@
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/go/orm/catalog_sqlite_sequence_test.go",
-        "packages/go/orm/catalog_row_baseline_test.go",
         "packages/ts/tests/catalog-mutation-helper.test.mjs",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_auto_key.py",
         "packages/php/tests/CatalogQueryBoundsTest.php",
         "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
@@ -9193,9 +8842,6 @@
             "packages/rust/build/tests/tool_limits.rs",
             "packages/rust/build/tests/tool_statement.rs",
             "packages/rust/build/tests/tool_values.rs",
-            "packages/rust/build/tests/grid_cells.rs",
-            "packages/rust/build/tests/grid_decimals.rs",
-            "packages/rust/build/tests/grid_numbers.rs",
             "packages/rust/build/tests/grid_temporal.rs",
             "packages/rust/build/tests/row_commit_permit.rs",
             "packages/rust/build/tests/row_insert_identity.rs",
@@ -9267,8 +8913,7 @@
           "command": "make --no-print-directory catalog-row-baseline-go-check",
           "shard": "other",
           "inputs": [
-            "Makefile",
-            "packages/go/orm/catalog_row_baseline_test.go"
+            "Makefile"
           ]
         },
         {
@@ -9286,14 +8931,6 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/catalog-mutation-helper.test.mjs"
-          ]
-        },
-        {
-          "id": "catalog-row-baseline-python",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_catalog_row_baseline.CatalogRowBaselineTest.test_compares_exact_typed_values_and_preserves_generated_original",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_catalog_row_baseline.py"
           ]
         },
         {
@@ -9964,7 +9601,6 @@
           "command": "make complex-query-typescript-request-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/complex-query-request.mjs",
             "packages/ts/tests/complex-query-request-types.mjs"
           ]
         },
@@ -10983,7 +10619,6 @@
       ],
       "tests": [
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_mysql_visibility.py"
       ],
       "command": "make --no-print-directory catalog-mutation-helper-python-check"
@@ -11055,13 +10690,12 @@
     {
       "id": "go-test-helpers",
       "paths": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/test_helpers_test.go"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-vet/test-helpers -- go vet -tags featurecoverage,ormtest ./packages/go/orm ./packages/go/model"
+      "command": "node tests/run-long.mts go-vet/test-helpers -- go vet -tags ormtest ./packages/go/orm ./packages/go/model"
     },
     {
       "id": "rust-test-helpers",
@@ -11273,7 +10907,6 @@
       "id": "php-group-rows-test-cases",
       "paths": [
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php-ext/tests/ModelAssemblyFixture.php"
       ],
       "tests": [
@@ -11304,16 +10937,6 @@
         "packages/php/tests/DbspecPlanTest.php"
       ],
       "command": "make dbspec-php-interface-program-helper-check"
-    },
-    {
-      "id": "go-coverage-event-recorder",
-      "paths": [
-        "packages/go/testcase/event_recorder.go"
-      ],
-      "tests": [
-        "packages/go/complexquery/page_plan_steps_test.go"
-      ],
-      "command": "make get-page-plan-steps-check/go"
     },
     {
       "id": "rust-clock-integration-test-support",

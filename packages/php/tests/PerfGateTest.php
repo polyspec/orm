@@ -249,7 +249,7 @@ final class PerfGateTest extends TestCase
     {
         $q = $query->getQuery();
         $binds = array_map(
-            static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v),
+            static fn(mixed $v): mixed => is_bool($v) ? (int) $v : $v,
             $q['binds']
         );
         $cells = [];

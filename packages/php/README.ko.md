@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: ac97a905a75a872e83413327312b8f220e7ed9ca609494e2642843fc9e1625fe -->
+<!-- source-sha256: d02357c6e9f64230a99e9cd6b5dc3939b77dec16ad5ec56b86031251c2f98959 -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
@@ -88,8 +88,8 @@ DSN scheme(`mysql://`, `postgres://`, `sqlite:///abs/path`)이 PDO driver를 고
 
 `$db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`는 연결이 보내는 모든 문장의
 subscriber를 등록하고, 그것을 제거하는 closure를 돌려준다([statement event](../../docs/operations/usage.ko.md#statement-events)). event는 `sql`, `binds`, `kind`, `tables`, 초 단위
-`elapsed`, `transaction`(`?int`), `error`(`?OrmException`)를 가진다. secret bind는
-`"$SECRET"`로, SQLite clock bind는 `"$NOW"`로 읽힌다. clock bind는 client의 wall clock이며 UTC이고
+`elapsed`, `transaction`(`?int`), `error`(`?OrmException`)를 가진다. SQLite clock
+bind는 `"$NOW"`로 읽힌다. clock bind는 client의 wall clock이며 UTC이고
 소수부 여섯 자리이며, 문장마다 한 번 읽는다. SQLite에서는 insert가 생략한 기본값 `now` 컬럼에도
 바인드한다. subscriber가 던지면 그 작업은
 `SUBSCRIBER`로 실패한다.

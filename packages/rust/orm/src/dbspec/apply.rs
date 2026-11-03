@@ -304,7 +304,7 @@ pub async fn effect_holds<C: ApplyConnection + ?Sized>(connection: &mut C, diale
             [CatalogValue::Int(n)] => *n,
             other => return Err(protocol(format!("{query} returned {other:?}"))),
         },
-        _ => return Err(protocol(format!("{query} returned {} rows; want one", rows.len()))),
+        _ => return Err(row_count_error(&query, rows.len())),
     };
     Ok((n > 0) == effect.present)
 }
@@ -471,7 +471,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         let rows = self.c.query_bound(query, args).await?;
         match <[Vec<CatalogValue>; 1]>::try_from(rows) {
             Ok([row]) => Ok(row),
-            Err(rows) => Err(ApplyError::Database(protocol(format!("{query} returned {} rows; want one", rows.len())))),
+            Err(rows) => Err(ApplyError::Database(row_count_error(query, rows.len()))),
         }
     }
 
@@ -1062,7 +1062,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                         [CatalogValue::Int(id)] => *id,
                         _ => return Err(ApplyError::Database(protocol(format!("{query} returned {row:?}")))),
                     },
-                    _ => return Err(ApplyError::Database(protocol(format!("{query} returned {} rows; want one", rows.len())))),
+                    _ => return Err(ApplyError::Database(row_count_error(query, rows.len()))),
                 },
                 Err(source) => return Err(ApplyError::Failed { plan: p.name().to_owned(), step: i, statement: query.to_owned(), source }),
             };
@@ -1144,6 +1144,15 @@ fn settle(result: Result<(), ApplyError>, cleanup: Result<(), ApplyError>) -> Re
 }
 
 /// The error for a result that does not have the expected shape.
+/// The error of a query that does not return its one row (docs/spec/plans.md "Effects").
+fn row_count_error(query: &str, rows: usize) -> sqlx::Error {
+    if rows == 0 {
+        protocol(format!("{query} returned no row"))
+    } else {
+        protocol(format!("{query} returned {rows} rows; want one"))
+    }
+}
+
 fn protocol(message: String) -> sqlx::Error {
     sqlx::Error::Protocol(message)
 }

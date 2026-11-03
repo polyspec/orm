@@ -41,6 +41,14 @@
       "reply",
       "token"
     ],
+    "markdown.session": [
+      "corpus",
+      "expect",
+      "messages",
+      "op",
+      "replies",
+      "token"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -57,6 +65,7 @@
       "expect",
       "fail_catalog_read",
       "fail_statements",
+      "no_row_queries",
       "op",
       "plan",
       "sql",
@@ -139,6 +148,10 @@
       "op",
       "table"
     ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -188,7 +201,8 @@
       "op",
       "operator",
       "params",
-      "process_zone"
+      "process_zone",
+      "surface"
     ],
     "model.assign": [
       "column",
@@ -230,6 +244,7 @@
       "sql"
     ],
     "catalog.read_only_grid_query": [
+      "binds",
       "expect",
       "max_bytes",
       "max_rows",
@@ -495,6 +510,14 @@
       "op",
       "ref"
     ],
+    "events.server_transactions": [
+      "connection",
+      "expect",
+      "first_run_prepare_clients",
+      "op",
+      "probe",
+      "steps"
+    ],
     "planner.compile": [
       "assemble_types",
       "expect",
@@ -643,12 +666,19 @@
       "op"
     ],
     "catalog.reconnect": [
-      "op"
+      "op",
+      "user_from_database"
     ],
     "catalog.revision": [
       "as",
       "expect",
       "op",
+      "snapshot"
+    ],
+    "catalog.revision_compare": [
+      "expect",
+      "op",
+      "other",
       "snapshot"
     ],
     "catalog.row_cells": [
@@ -671,7 +701,14 @@
       "changed",
       "document_set",
       "op",
+      "removed",
       "unchanged"
+    ],
+    "generator.refused": [
+      "check",
+      "files",
+      "op",
+      "parts"
     ],
     "dbspec.export_mermaid": [
       "as",

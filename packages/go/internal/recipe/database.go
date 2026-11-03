@@ -44,6 +44,8 @@ type databaseFile struct {
 
 type seed struct {
 	Rows json.RawMessage `json:"rows"`
+	// After is a sql.exec step that runs once the rows of the seed are written (FCV-13).
+	After json.RawMessage `json:"after"`
 }
 
 type databaseCase struct {
@@ -56,6 +58,7 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors        string          `json:"vectors"`
 	Case           string          `json:"case"`
@@ -87,15 +90,16 @@ type databaseStep struct {
 	Namespace string                     `json:"namespace"`
 	Binds     json.RawMessage            `json:"binds"`
 	PageWith  json.RawMessage            `json:"page_with"`
+	Other     json.RawMessage            `json:"other"`
 	Seq       int64                      `json:"seq"`
 	Expect    map[string]json.RawMessage `json:"expect"`
 	Schema    json.RawMessage            `json:"schema"`
 	Steps     []json.RawMessage          `json:"steps"`
 	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
 	// counted event kind, the failure text and the nested steps of a command.
-	Lines   []string `json:"lines"`
-	Through string   `json:"through"`
-	Plans   []string `json:"plans"`
+	Lines   []string      `json:"lines"`
+	Through string        `json:"through"`
+	Plans   []string      `json:"plans"`
 	Count   []string      `json:"count"`
 	Detail  string        `json:"detail"`
 	Message string        `json:"message"`
@@ -122,11 +126,11 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
-	Lock      string          `json:"lock"`
+	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
-	Sequence int64 `json:"sequence"`
-	Isolation string          `json:"isolation"`
-	ReadOnly  bool            `json:"read_only"`
+	Sequence  int64  `json:"sequence"`
+	Isolation string `json:"isolation"`
+	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
 	TimeoutMs    int  `json:"timeout_ms"`
@@ -136,19 +140,22 @@ type databaseStep struct {
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
 	Connections []string `json:"connections"`
 	Unconnected bool     `json:"unconnected"`
-	Amount    json.RawMessage `json:"amount"`
+	// The fields of events.server_transactions (INT-149).
+	Probe                  string          `json:"probe"`
+	FirstRunPrepareClients []string        `json:"first_run_prepare_clients"`
+	Amount                 json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
-	Ref     json.RawMessage `json:"ref"`
-	Row     json.RawMessage `json:"row"`
-	Fail    bool            `json:"fail"`
-	Kind    string          `json:"kind"`
+	Ref  json.RawMessage `json:"ref"`
+	Row  json.RawMessage `json:"row"`
+	Fail bool            `json:"fail"`
+	Kind string          `json:"kind"`
 	// The ORM error of a failing subscriber (INT-96).
 	Refusal *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"refusal"`
-	Compare string          `json:"compare"`
+	Compare string `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
 	Hooks      []json.RawMessage `json:"hooks"`
@@ -199,7 +206,7 @@ type outcome struct {
 
 type databaseContext struct {
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts int
+	attempts  int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -275,6 +282,12 @@ var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
 func connectDSN(dsn, database, caseDSN string) (string, error) {
+	if query, ok := strings.CutPrefix(dsn, "case?"); ok {
+		if strings.Contains(caseDSN, "?") {
+			return caseDSN + "&" + query, nil
+		}
+		return caseDSN + "?" + query, nil
+	}
 	switch dsn {
 	case "", "case":
 		return caseDSN, nil
@@ -390,6 +403,14 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 			t.Fatalf("recipe %s case %s on %s: seed: %v", path, c.ID, database, err)
 		}
 	}
+	for _, s := range []*seed{f.Seed, c.Seed} {
+		if s == nil || len(s.After) == 0 {
+			continue
+		}
+		if _, err := runRawStep(s.After, state); err != nil {
+			t.Fatalf("recipe %s case %s on %s: seed after: %v", path, c.ID, database, err)
+		}
+	}
 	step.Step("seed rows inserted")
 	for index, raw := range c.Steps {
 		op, err := runRawStep(raw, state)
@@ -484,7 +505,7 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 	result, err := op(s, c)
 	if err != nil {
 		code := orm.ErrorCode(err)
-		if errors.Is(err, errCallback) {
+		if code == "" && errors.Is(err, errCallback) {
 			code = callbackCode
 		}
 		want, wantsError := expected["error"]
@@ -683,7 +704,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, nil, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		binds, err := queryBinds(s.Binds, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -710,8 +735,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if len(s.PageWith) > 0 {
 			var with struct {
-				OrderBy    []string `json:"order_by"`
-				ColumnName *string  `json:"column_name"`
+				OrderBy          []string `json:"order_by"`
+				ColumnName       *string  `json:"column_name"`
+				PrimaryKey       []string `json:"primary_key"`
+				Limit            *int     `json:"limit"`
+				ResultColumnName *string  `json:"result_column_name"`
+				DropLastCell     bool     `json:"drop_last_cell"`
+				FillLastCell     *struct {
+					Fill  string `json:"fill"`
+					Count int    `json:"count"`
+				} `json:"fill_last_cell"`
 			}
 			if err := json.Unmarshal(s.PageWith, &with); err != nil {
 				return outcome{}, err
@@ -720,6 +753,27 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			if with.ColumnName != nil {
 				page.Metadata.Columns = slices.Clone(page.Metadata.Columns)
 				page.Metadata.Columns[0].Name = *with.ColumnName
+			}
+			if with.PrimaryKey != nil {
+				page.Metadata.PrimaryKey = with.PrimaryKey
+			}
+			if with.Limit != nil {
+				page.Limit = *with.Limit
+			}
+			if with.ResultColumnName != nil {
+				page.Result.Columns = slices.Clone(page.Result.Columns)
+				page.Result.Columns[0].Name = *with.ResultColumnName
+			}
+			if with.DropLastCell || with.FillLastCell != nil {
+				page.Result.Rows = slices.Clone(page.Result.Rows)
+				row := slices.Clone(page.Result.Rows[0])
+				if with.DropLastCell {
+					row = row[:len(row)-1]
+				}
+				if with.FillLastCell != nil {
+					row[len(row)-1] = strings.Repeat(with.FillLastCell.Fill, with.FillLastCell.Count)
+				}
+				page.Result.Rows[0] = row
 			}
 		}
 		snapshot, err := orm.CatalogSnapshotFromPage(page, s.Index)
@@ -744,6 +798,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": snapshot.snapshot.Revision()}}}, nil
+	case "catalog.revision_compare":
+		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		other, err := boundAPI[snapshotOf](s.Other, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		revision := snapshot.snapshot.Revision()
+		return outcome{fields: map[string]any{"json": map[string]any{"length": len(revision), "differs": revision != other.snapshot.Revision()}}}, nil
 	case "catalog.row_cells":
 		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
 		if err != nil {
@@ -780,8 +845,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if connection != nil {
 			closeErr = connection.Close()
 		}
-		if _, statErr := os.Stat(path); statErr == nil {
-			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
+		var want struct {
+			FileCreated bool `json:"file_created"`
+		}
+		if raw, ok := s.Expect[c.database]; ok {
+			if err := json.Unmarshal(raw, &want); err != nil {
+				return outcome{}, closeFirst(err, closeErr)
+			}
+		}
+		_, statErr := os.Stat(path)
+		if created := statErr == nil; created != want.FileCreated {
+			return outcome{}, closeFirst(fmt.Errorf("file_created of %s is %v, want %v", path, created, want.FileCreated), closeErr)
 		}
 		if err == nil {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
@@ -791,7 +865,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
-		catalog, err := orm.ConnectCatalog(c.dsn)
+		dsn := c.dsn
+		if s.UserFromDatabase != "" {
+			match := mysqlCaseDSN.FindStringSubmatch(dsn)
+			name := match[2]
+			if len(name) > 28 {
+				name = name[len(name)-28:]
+			}
+			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		}
+		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -999,6 +1082,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "events.server_transactions":
+		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err
@@ -1588,6 +1673,8 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"null": true}, nil
 	case int64:
 		return map[string]any{"int": strconv.FormatInt(v, 10)}, nil
+	case uint64:
+		return map[string]any{"int": strconv.FormatUint(v, 10)}, nil
 	case bool:
 		return map[string]any{"bool": v}, nil
 	case float64:
@@ -1615,7 +1702,9 @@ var declaredPrecision = regexp.MustCompile(`\(([0-9]+)\)`)
 // cannot be decided fails the step.
 func plainTime(v time.Time, nativeType, database string) (any, error) {
 	kind := temporalKind(nativeType)
-	v = v.UTC()
+	if v.Location() != time.UTC {
+		return nil, fmt.Errorf("the time value %s reads in %s, not in UTC (CFG-2)", v, v.Location())
+	}
 	if kind == "date" {
 		return map[string]any{"date": v.Format("2006-01-02")}, nil
 	}

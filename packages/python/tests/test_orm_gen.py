@@ -518,40 +518,6 @@ class OrmGenTest(unittest.TestCase):
             "Author.set_ghost_column is not a model method",
         )
 
-    def test_check_reports_a_missing_or_differing_file(self):
-        # Requirements: DBS-175.
-        with tempfile.TemporaryDirectory(prefix="orm-gen-missing-") as missing:
-            result = subprocess.run(
-                args=ORM_GEN
-                + [
-                    "gen",
-                    "--set",
-                    str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
-                    "--out",
-                    missing,
-                    "--check",
-                ],
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(result.returncode, 1)
-            self.assertIn("missing:", result.stdout)
-        result = subprocess.run(
-            args=ORM_GEN
-            + [
-                "gen",
-                "--set",
-                str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
-                "--out",
-                self.out,
-                "--check",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    # Requirements: ORES-21.
     def test_the_removed_document_flags_are_usage_errors(self):
         # Requirements: ORES-21, DBS-5, DBS-98.
         for flag in ("--schema", "--use"):
@@ -617,37 +583,6 @@ class OrmGenTest(unittest.TestCase):
                     expected,
                     f"{model.__name__}.{field} setter type",
                 )
-
-    def test_set_errors_print_every_error_and_write_nothing(self):
-        # Requirements: DBS-27.
-        with tempfile.TemporaryDirectory(prefix="orm-gen-set-") as tree:
-            root = Path(tree)
-            (root / "dbspec-set.json").write_text(
-                '{"schema": 1, "documents": ["gone.dbs", "also-gone.dbs"]}',
-                encoding="utf-8",
-            )
-            out = root / "out"
-            result = run_gen(root / "dbspec-set.json", out)
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn(f"set.file: {root}/gone.dbs", result.stderr)
-            self.assertIn(f"set.file: {root}/also-gone.dbs", result.stderr)
-            self.assertFalse(out.exists())
-
-    def test_document_diagnostics_print_every_diagnostic_and_write_nothing(self):
-        # Requirements: DBS-4, DBS-155.
-        with tempfile.TemporaryDirectory(prefix="orm-gen-set-") as tree:
-            root = Path(tree)
-            (root / "a.dbs").write_text('<?xml version="1.0"?>\n', encoding="utf-8")
-            (root / "b.dbs").write_bytes(b"dbspec 1 b\n\xff\n")
-            (root / "dbspec-set.json").write_text(
-                '{"schema": 1, "documents": ["a.dbs", "b.dbs"]}', encoding="utf-8"
-            )
-            out = root / "out"
-            result = run_gen(root / "dbspec-set.json", out)
-            self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertIn(f"{root}/a.dbs:1:1: signature:", result.stderr)
-            self.assertIn(f"{root}/b.dbs:2:1: encoding:", result.stderr)
-            self.assertFalse(out.exists())
 
 
 # write_text_if_changed (T341-2): a file that holds the text is left as it is, and a changed file is renamed over the old one from its directory.

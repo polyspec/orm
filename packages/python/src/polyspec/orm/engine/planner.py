@@ -127,9 +127,6 @@ class _Builder:
             slot.length = col.length
         return self._typed(slot)
 
-    def secret(self, name: str) -> str:
-        return self._typed(_Slot("secret", name=name, col_type="text"))
-
     def config(self, name: str, type_: str) -> str:
         return self._typed(_Slot("config", name=name, col_type=type_))
 

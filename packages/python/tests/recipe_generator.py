@@ -168,13 +168,63 @@ def check_generated_files(step: dict, recipe_dir: Path) -> None:
         code, output = gen()
         if code != 0:
             raise AssertionError(f"generator.check: generate exit {code}: {output}")
-        expect(step["unchanged"], "")
         file = next(
             path for path in sorted(out.iterdir()) if path.is_file() and path.stat().st_size
         )
+        # A file that the generation does not write is not compared.
+        (out / "zz_notes.py").write_text("# notes\n", encoding="utf-8")
+        expect(step["unchanged"], "")
         text = bytearray(file.read_bytes())
         text[0] ^= 1
         file.write_bytes(bytes(text))
         expect(step["changed"], str(file))
         if file.read_bytes() != bytes(text):
             raise AssertionError(f"generator.check: the check wrote {file}")
+        file.unlink()
+        expect(step["removed"], str(file))
+        if file.exists():
+            raise AssertionError(f"generator.check: the check wrote {file}")
+
+
+def check_refused_generation(step: dict, recipe_dir: Path) -> None:
+    """Runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client."""
+    with tempfile.TemporaryDirectory(prefix="orm-recipe-generator-refused-") as work:
+        root = Path(work)
+        for name, entry in step["files"].items():
+            if isinstance(entry, str):
+                (root / name).write_text(entry, encoding="utf-8", newline="")
+            else:
+                (root / name).write_bytes((recipe_dir / entry["path"]).read_bytes())
+        out = root / "model"
+        done = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "polyspec.orm.bin_orm_gen",
+                "gen",
+                "--set",
+                str(root / "dbspec-set.json"),
+                "--out",
+                str(out),
+                *(["--check"] if step.get("check") else []),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if done.returncode != 1 or done.stdout != "":
+            raise AssertionError(
+                f"generator.refused: exit {done.returncode}, "
+                f"stdout {done.stdout!r}, stderr {done.stderr}"
+            )
+        rest = done.stderr
+        for part in step["parts"]:
+            at = rest.find(part)
+            if at < 0:
+                raise AssertionError(
+                    f"generator.refused: the output lacks {part!r} in order: {done.stderr}"
+                )
+            rest = rest[at + len(part) :]
+        if out.exists():
+            raise AssertionError(f"generator.refused: the generation wrote {out}")

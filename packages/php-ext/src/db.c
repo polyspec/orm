@@ -44,7 +44,6 @@ ZEND_DLEXPORT int sqlite3_extension_init(sqlite3 *database, char **error, const 
 #define DB_STATE "Polyspec\\Orm\\DbState"
 #define ROW_LOCK_TABLE "orm__row_lock"
 #define REQUEST_CLASS "Polyspec\\Orm\\Request"
-#define SECRET_MASK "$SECRET"
 #define NOW_MASK "$NOW"
 /* The placeholders the statement cache may retain in all, as Db::RETAINED_PLACEHOLDERS of the PHP library (KSTD-7-3-5). */
 #define RETAINED_PLACEHOLDERS 8192
@@ -2086,14 +2085,6 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                 push(out, &v);
                 zval_ptr_dtor(&v);
                 (void)hs;
-            } else if (is_str(from, "secret")) {
-                zval *name = aget(b, "name");
-                if (!is_str(name, "aes") || is_empty_str(rd(cfg, "aesKey"))) {
-                    db_throw_orm("CONFIG", "secret %s is not configured", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
-                    goto fail;
-                }
-                set_masked(&masks, acount(out), SECRET_MASK);
-                push(out, rd(cfg, "aesKey"));
             } else if (is_str(from, "config")) {
                 zval *name = aget(b, "name");
                 if (!is_str(name, "aes_version")) {

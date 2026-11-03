@@ -721,9 +721,8 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
   return builds;
 }
 
-// goBuildTags are the build tags of the normal go test, so that the checker reads a test the normal run holds. featurecoverage
-// is here only for the tests that still carry that tag (T334-3-6-2), and goes with the last of them.
-const goBuildTags = [...GO_TEST_TAGS, 'featurecoverage'].join(',');
+// goBuildTags are the build tags of the normal go test, so that the checker reads a test the normal run holds.
+const goBuildTags = GO_TEST_TAGS.join(',');
 
 // buildCargo builds only the Rust test targets selected by the coverage plans.
 // A failure stays as an error in builds.cargo, so this promise is not rejected.
