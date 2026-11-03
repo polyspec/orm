@@ -399,7 +399,6 @@
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
-        "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
         "packages/php/tests/PostgresSessionSettings.php",
@@ -3213,137 +3212,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
           "symbol": "dbspec_apply_verification_errors_none"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-chain",
-      "kind": "feature",
-      "requirements": [
-        "PLN-90",
-        "PLN-93",
-        "PLN-95",
-        "PLN-96"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-history-state",
-      "kind": "feature",
-      "requirements": [
-        "PLN-91",
-        "PLN-92"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_history_and_state_on_every_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-lock-scope",
-      "kind": "feature",
-      "requirements": [
-        "PLN-89"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_scope_on_every_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
         }
       ]
     },
@@ -14226,124 +14094,6 @@
       }
     },
     {
-      "id": "dbspec-apply-chain-finalization",
-      "kind": "feature",
-      "requirements": [
-        "PLN-94"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
-          "id": "TestRecipeDbspecApplySqlite/rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
-          "id": "DbspecApplyRecipeTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
-          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
-          "id": "rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
-          "id": "rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
-          "id": "dbspec_apply_sqlite::rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
-          "id": "TestRecipeDbspecApplySqlite/finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
-          "id": "DbspecApplyRecipeTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
-          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
-          "id": "finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
-          "id": "finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
-          "id": "dbspec_apply_sqlite::finalize_of_a_plan_that_hides_nothing"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-stress",
-      "kind": "feature",
-      "requirements": [
-        "PLN-104"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_stress_physical_test.go",
-          "id": "TestApplyStressPlan"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "mysql.apply.stress_plan"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.stress_plan"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "sqlite.apply.stress_plan"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_stress_plan_on_three_databases"
-        }
-      ]
-    },
-    {
       "id": "temporal-column-precision-mysql",
       "kind": "feature",
       "requirements": [
@@ -16225,50 +15975,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "id": "codec_none::sql_null_is_not_a_value"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-pooler",
-      "kind": "feature",
-      "requirements": [
-        "PLN-105"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyThroughTransactionPooler"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.pooler.lock_shared"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.pooler.session_changed"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_apply_through_a_transaction_pooler"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_through_a_transaction_pooler"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testPooler"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testPooler"
         }
       ]
     },
@@ -43763,6 +43469,30 @@
         "kind": "release-package",
         "artifact": "archive",
         "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "py-dbspec-apply-sqlite-lock-faults",
+      "kind": "feature",
+      "requirements": [
+        "PLN-107"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_statement_lock_timeout_is_failed_at_its_step"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/python"
       }
     }
   ],

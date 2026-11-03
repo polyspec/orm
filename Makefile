@@ -270,12 +270,12 @@ CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_python = python-check python-native-host-api-check mermaid-error-python-check generator-consumer-check catalog-mutation-helper-python-check
 CI_TARGETS_dbspec = case-database-check dbspec-introspect-compare-check
 CI_TARGETS_dbspec_apply = dbspec-apply-pairs-check
-CI_TARGETS_dbspec_go = dbspec-go-check/engine dbspec-ddl-check dbspec-introspect-check dbspec-plan-check dbspec-apply-check dbspec-lock-go-check
-CI_TARGETS_dbspec_php = dbspec-php-check/set dbspec-php-check/render dbspec-introspect-php-check dbspec-plan-php-check dbspec-apply-php-check dbspec-lock-php-check dbspec-php-interface-program-helper-check mermaid-error-php-check
-CI_TARGETS_dbspec_php_extension = dbspec-introspect-php-extension-check dbspec-php-extension-check dbspec-apply-php-extension-check dbspec-lock-php-extension-check mermaid-error-php-extension-check parent-slot-expansion-php-extension-check
-CI_TARGETS_dbspec_typescript = dbspec-introspect-ts-check dbspec-plan-ts-check dbspec-apply-ts-check dbspec-lock-ts-check typescript-dbspec-plan-fixture-check
-CI_TARGETS_dbspec_python = dbspec-introspect-python-check dbspec-apply-python-check dbspec-lock-python-check
-CI_TARGETS_dbspec_rust = dbspec-introspect-rust-check dbspec-plan-rust-check dbspec-apply-rust-check dbspec-lock-rust-check
+CI_TARGETS_dbspec_go = dbspec-go-check/engine dbspec-ddl-check dbspec-introspect-check dbspec-plan-check dbspec-lock-go-check
+CI_TARGETS_dbspec_php = dbspec-php-check/set dbspec-php-check/render dbspec-introspect-php-check dbspec-plan-php-check dbspec-lock-php-check dbspec-php-interface-program-helper-check mermaid-error-php-check
+CI_TARGETS_dbspec_php_extension = dbspec-introspect-php-extension-check dbspec-php-extension-check dbspec-lock-php-extension-check mermaid-error-php-extension-check parent-slot-expansion-php-extension-check
+CI_TARGETS_dbspec_typescript = dbspec-introspect-ts-check dbspec-plan-ts-check dbspec-lock-ts-check typescript-dbspec-plan-fixture-check
+CI_TARGETS_dbspec_python = dbspec-introspect-python-check dbspec-lock-python-check
+CI_TARGETS_dbspec_rust = dbspec-introspect-rust-check dbspec-plan-rust-check dbspec-lock-rust-check
 CI_TARGETS_feature_go_mysql = feature-coverage/go/mysql
 CI_TARGETS_feature_go_postgres = feature-coverage/go/postgres
 CI_TARGETS_feature_go_sqlite = feature-coverage/go/sqlite
@@ -543,20 +543,6 @@ dbspec-plan-check:
 dbspec-plan-python-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.dbspec_plan_physical
 
-# dbspec-apply-check applies the plan chain to MySQL, PostgreSQL, and SQLite with history, a second apply, drift,
-# lock, an unlock that releases nothing, verification, recover and rollback at an interruption after every step of a representative plan, row writes between,
-# null checks, and finalize; and it applies the 2000-table document as the first plan
-# to the three databases (docs/spec/plans.md "Apply", "Verification"). The 2000-table plan on MySQL
-# commits its statements and its 22000 history steps separately, so the deadline of that case is long.
-.PHONY: dbspec-apply-check
-dbspec-apply-check:
-
-# Runs Python's native PLN-90 lock-wait cases and PLN-104 stress apply case.
-.PHONY: dbspec-apply-python-check
-dbspec-apply-python-check: python-venv-check
-	$(WITH_TEST_ENV) $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite
-	$(WITH_TEST_ENV) $(RUN_TESTS) python --timeout 120 --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks
-
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
 	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestSqlite(LockResult|SessionClassifiesBeginErrorAndRestoresState)$$' -count=1
@@ -580,7 +566,7 @@ dbspec-lock-ts-check: lease-tool orm-codes-typescript
 
 # dbspec-apply-stress-bench applies the 2000-table document as the first plan to the databases in APPLY_STRESS_DIALECTS
 # (make bench runs all three). MySQL commits its statements and its 22000 history steps separately.
-# APPLY_STRESS_DIALECTS is the list of databases separated by `|` (mysql, postgres, sqlite) and selects the subtests of TestApplyStressPlan. So
+# APPLY_STRESS_DIALECTS is the list of databases separated by `|` (mysql, postgres, sqlite). So
 # CI runs the longest MySQL application in a different group from PostgreSQL and SQLite (feature-stress-mysql-check,
 # feature-stress-pg-sqlite-check). A name that is not a database, or an empty value, passes while selecting no subtest, so make stops before the
 # command.
@@ -599,12 +585,6 @@ dbspec-apply-stress-bench:
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check: go-test-check
 
-# dbspec-apply-rust-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the Rust client's
-# polyspec_orm::dbspec::apply, recover, rollback, and finalize.
-.PHONY: dbspec-apply-rust-check
-dbspec-apply-rust-check:
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-apply-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
-
 # dbspec-plan-ts-check builds the TypeScript client and applies every case of tests/dbspec/plan-cases.json to MySQL, PostgreSQL, and SQLite
 # with its renderDbspec, planSteps, and introspectDbspec.
 .PHONY: dbspec-plan-ts-check
@@ -612,14 +592,6 @@ dbspec-plan-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-plan-physical.mjs
-
-# dbspec-apply-ts-check builds the TypeScript client and runs the scenario of dbspec-apply-check, minus the 2000-table plan,
-# with its applyPlans, recoverPlans, rollbackPlans, and finalizePlans.
-.PHONY: dbspec-apply-ts-check
-dbspec-apply-ts-check: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
-	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-apply-physical.mjs
 
 # dbspec-plan-rust-check applies the same cases with the Rust client's plan steps, renderer,
 # and polyspec_orm::dbspec::introspect.
@@ -633,23 +605,6 @@ dbspec-plan-rust-check:
 dbspec-plan-php-check: php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanApplyTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecPlanReaderTest.php
-
-# dbspec-apply-php-check runs the scenario of dbspec-apply-check, minus the 2000-table plan, with the PHP client's
-# Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize on MySQL, PostgreSQL, and SQLite.
-.PHONY: dbspec-apply-php-check
-dbspec-apply-php-check: php-vendor-check php-models
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 120 -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
-
-# dbspec-apply-php-extension-check runs the same scenario, the PHP client's DbspecApplyTest, with the PHP extension polyspec_orm loaded,
-# whose Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, and finalize take the place of the client's. The extension is built in this
-# run's directory.
-.PHONY: dbspec-apply-php-extension-check
-dbspec-apply-php-extension-check: php-vendor-check php-models
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*' packages/php/tests/DbspecApplyTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 120 --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist --filter testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks packages/php/tests/DbspecApplyTest.php
-	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-compare-check applies the stress document (DBSPEC_INTROSPECT_TABLES tables) to MySQL,
 # PostgreSQL, and SQLite, and for each database runs the introspection runners of tests/dbspec/introspect in Go, PHP, TypeScript, Rust, and
@@ -1771,7 +1726,7 @@ client-db-rust-check: lease-tool orm-codes
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
-PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
 PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 

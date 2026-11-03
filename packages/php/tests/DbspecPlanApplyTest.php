@@ -109,6 +109,98 @@ function plan_steps(PDO $pdo, string $dialect, array $steps): void
 #[Medium]
 class DbspecPlanApplyTest extends TestCase
 {
+    // Native (FCV-2): it tests dbspec_open_server_database of tests/dbspec_cases.php, a helper only the PHP tests have, with a
+    // recording PDO; the helper is no public API, so no recipe op reaches it.
+    public function testSharedServerDatabaseLifecycleUsesTheSelectedDialect(): void
+    {
+        foreach (['mysql', 'postgres'] as $dialect) {
+            $events = (object) ['items' => []];
+            $opened = 0;
+            $factory = static function (
+                string $dsn,
+                ?string $user,
+                ?string $password,
+                array $options
+            ) use (
+                $events,
+                &$opened
+            ): PDO {
+                $opened++;
+                $role = $opened === 1 ? 'admin' : 'session';
+                return new class ($events, $role) extends PDO {
+                    public function __construct(private object $events, private string $role)
+                    {
+                    }
+
+                    public function exec(string $statement): int|false
+                    {
+                        $this->events->items[] = [$this->role, 'exec', $statement];
+                        return 0;
+                    }
+
+                    public function prepare(string $query, array $options = []): \PDOStatement|false
+                    {
+                        $events = $this->events;
+                        $role = $this->role;
+                        $events->items[] = [$role, 'prepare', $query];
+                        return new class ($events, $role) extends \PDOStatement {
+                            public function __construct(private object $events, private string $role)
+                            {
+                            }
+
+                            public function execute(?array $params = null): bool
+                            {
+                                $this->events->items[] = [$this->role, 'execute', $params];
+                                return true;
+                            }
+
+                            public function fetchColumn(int $column = 0): mixed
+                            {
+                                return 0;
+                            }
+                        };
+                    }
+                };
+            };
+            $beforeDrop = static function (PDO $admin, string $name) use ($events): void {
+                $events->items[] = ['before-drop', $name];
+            };
+            $afterDrop = static function (PDO $admin, string $name) use ($events): void {
+                $events->items[] = ['after-drop', $name];
+            };
+            [$session, $drop] = dbspec_open_server_database(
+                $dialect,
+                'dbspec_fixture',
+                "$dialect://orm@localhost/dbspec_fixture",
+                $beforeDrop,
+                $afterDrop,
+                $factory
+            );
+            $session();
+            $session();
+            $drop();
+
+            $quoted = $dialect === 'mysql' ? '`dbspec_fixture`' : '"dbspec_fixture"';
+            $create = ($dialect === 'mysql' ? 'CREATE DATABASE ' : 'CREATE SCHEMA ') . $quoted;
+            $select = $dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted";
+            $dropSql = ($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted
+                . ($dialect === 'mysql' ? '' : ' CASCADE');
+            $checkSql = $dialect === 'mysql'
+                ? 'SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?'
+                : 'SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?';
+            $this->assertSame([
+                ['admin', 'exec', $create],
+                ['session', 'exec', $select],
+                ['session', 'exec', $select],
+                ['before-drop', 'dbspec_fixture'],
+                ['admin', 'exec', $dropSql],
+                ['admin', 'prepare', $checkSql],
+                ['admin', 'execute', ['dbspec_fixture']],
+                ['after-drop', 'dbspec_fixture'],
+            ], $events->items, "$dialect server database lifecycle");
+        }
+    }
+
     public function testDriftApplyErrorNamesTheSchemaMismatchInItsDetail(): void
     {
         $pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
