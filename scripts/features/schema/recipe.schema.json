@@ -8672,6 +8672,11 @@
                 "description": "The text that the message of the error ends with.",
                 "type": "string",
                 "minLength": 1
+              },
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
               }
             }
           }

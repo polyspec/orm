@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - 문서: FCV-2가 `ts-dbspec-plan`과 `ts-dbspec-render-dialect`의 Rust compile fixture를 native binding 규칙이 읽는 형식으로 적는다.
 - PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
 - 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
