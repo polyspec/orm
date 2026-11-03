@@ -3,5 +3,14 @@ dbspec 1 parameter_chunking
 table chunk_author {
   seq i64
   name varchar(32)
+  batch_no i64 null
   primary key (seq)
+}
+
+table chunk_pair {
+  tenant_id i64
+  enabled bool
+  label varchar(32)
+  batch_no i64
+  primary key (tenant_id, enabled, label)
 }

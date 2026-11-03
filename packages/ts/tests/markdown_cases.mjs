@@ -84,6 +84,26 @@ export const conformanceCases = {
     }
     return { length: rows.length, counts, rows: rows.toArray(), first };
   },
+  group_count_i64: async s => (await new Logs().connect(s.db).groupById().orderByIdAsc().getsCount()).toArray(),
+  collection_typed_key: async s => {
+    const rows = await new Logs().connect(s.db).fetchValue(row => row.getNote()).gets();
+    const id = row => row === undefined ? null : row.getId();
+    return {
+      length: rows.length,
+      keys: rows.keys(),
+      first: id(rows.first()),
+      get: id(rows.get(1)),
+      get_text: id(rows.get('1')),
+      get_missing: id(rows.get(2)),
+      has: rows.has(1),
+      has_text: rows.has('1'),
+      fetched: rows.fetched(1) ?? null,
+      fetched_text: rows.fetched('1') ?? null,
+      fetched_missing: rows.fetched(2) ?? null,
+      array: rows.toArray(),
+    };
+  },
+  collection_key_name: async s => (await new People().connect(s.db).keyNameAge().gets()).keys(),
   sum: async s => new Tasks().connect(s.db).sumPoints().getSum(),
   avg: async s => new People().connect(s.db).avgAge().getAvg(),
   paginate: async s => {

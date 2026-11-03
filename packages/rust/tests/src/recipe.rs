@@ -229,7 +229,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.compile" => return planner_compile(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
-        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
+        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
         }
         "dbspec.parse_emit"
@@ -263,6 +263,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     }
     if step["op"] == "markdown.send" {
         return markdown_send(step);
+    }
+    if step["op"] == "collection.key" {
+        return collection_key(step, database);
     }
     if step["op"] == "model.assign" {
         return model_assign(step);
@@ -508,7 +511,7 @@ fn plan_dialect(name: &str) -> Result<Dialect, String> {
     }
 }
 
-/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps,
+/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps, add_tables_steps,
 /// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
 /// of the step is compared, as JSON, with the expect of `database`.
 fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
@@ -543,6 +546,17 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
                 Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
+        }
+        "dbspec.add_tables_steps" => {
+            let source = bound_document(&step["source"], bound)?;
+            let target = bound_document(&step["target"], bound)?;
+            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let result = dbspec::add_tables_and_columns_steps(&source, &[], &target, dialect);
+            serde_json::json!({
+                "added": result.added,
+                "statements": result.steps.iter().map(|s| s.statement.as_str()).collect::<Vec<&str>>(),
+                "differences": result.differences,
+            })
         }
         "dbspec.diff" => {
             let source = optional_document(step, "source", bound)?;
@@ -1172,6 +1186,55 @@ fn markdown_send(step: &Value) -> Result<(), String> {
 
 /// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
 /// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn collection_key(step: &Value, database: &str) -> Result<(), String> {
+    let mut keys: Vec<polyspec_orm::Key> = Vec::new();
+    let mut groups: Vec<usize> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
+    let mut failure = None;
+    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+        let value = match entry["type"].as_str().unwrap_or_default() {
+            "null" => Val::Null,
+            "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
+            "bool" => Val::Bool(entry["value"].as_bool().ok_or("a bool key holds no bool")?),
+            "int" => Val::I64(entry["value"].as_i64().ok_or("an int key holds no integer")?),
+            "bytes" => {
+                let text = entry["hex"].as_str().ok_or("a bytes key holds no hex")?;
+                let digits = (0..text.len()).step_by(2).map(|index| u8::from_str_radix(&text[index..index + 2], 16));
+                Val::Bytes(digits.collect::<Result<Vec<u8>, _>>().map_err(|error| error.to_string())?)
+            }
+            "datetime" => {
+                let text = entry["value"].as_str().ok_or("a datetime key holds no text")?;
+                Val::DateTime(polyspec_orm::chrono::DateTime::parse_from_rfc3339(text).map_err(|error| error.to_string())?.naive_utc())
+            }
+            other => return Err(format!("collection.key has no type {other}")),
+        };
+        let key = match polyspec_orm::Key::of(&value) {
+            Ok(key) => key,
+            Err(error) => {
+                failure = Some(json!({ "error": error.code(), "message": error.to_string() }));
+                break;
+            }
+        };
+        groups.push(keys.iter().position(|other| other == &key).map_or(keys.len(), |index| groups[index]));
+        types.push(match (&key, &value) {
+            (polyspec_orm::Key::I(left), Val::I64(right)) if left == right => "int",
+            (polyspec_orm::Key::S(left), Val::Str(right)) if left == right => "text",
+            (polyspec_orm::Key::B(left), Val::Bool(right)) if left == right => "bool",
+            (polyspec_orm::Key::X(left), Val::Bytes(right)) if left == right => "bytes",
+            (polyspec_orm::Key::T(left), Val::DateTime(right)) if left == right => "datetime",
+            _ => return Err(format!("key {key:?} changed its native value")),
+        });
+        keys.push(key);
+    }
+    let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
+    let want = &step["expect"][database];
+    if &got == want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
+    }
+}
+
 fn model_assign(step: &Value) -> Result<(), String> {
     let model = step["model"].as_str().unwrap_or_default();
     let column = step["column"].as_str().unwrap_or_default();
@@ -1758,6 +1821,10 @@ pub use database::{database_trials, database_trials_with_models, database_trials
 /// its objects and a column list is written in the order of the recipe (FCV-4).
 const WRITTEN_ORDER: &str = "__written_order";
 
+/// The mark that the text of a failed model op ends with when its error keeps the error of the driver as its source;
+/// the text of an op is a string, and an expect of driver_cause reads this mark (FCV-4).
+const DRIVER_CAUSE: &str = "\u{1f}driver_cause";
+
 mod database {
     use std::collections::HashMap;
     use std::future::Future;
@@ -2340,12 +2407,22 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
+                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                    Some(text) => (text.to_owned(), true),
+                    None => (message, false),
+                };
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
+                let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
-                        _ => Ok(()),
+                        _ => match holds {
+                            Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
+                            _ if wants_cause && !cause => Err(format!("error {message:?} has no driver cause")),
+                            _ => Ok(()),
+                        },
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
                     None => Err(format!("error without a code ({message}), want {want}")),
@@ -2475,7 +2552,12 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                    match step["message_contains"].as_str() {
+                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                        _ => orm(error),
+                    }
+                })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }
@@ -2608,6 +2690,14 @@ mod database {
                     for event in &mut events {
                         if let Some(members) = event["object"].as_array_mut() {
                             members.retain(|member| matches!(member[0].as_str(), Some("sql" | "kind")));
+                        }
+                    }
+                }
+                if step["compare"].as_str() == Some("shape") {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    for event in &mut events {
+                        if let Some(members) = event["object"].as_array_mut() {
+                            members.retain(|member| matches!(member[0].as_str(), Some("kind" | "tables")));
                         }
                     }
                 }
@@ -3213,7 +3303,7 @@ mod tables {
     use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
     use polyspec_orm::model::{
-        create, creates, delete, get_avg, get_core, get_count, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
+        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
         update,
     };
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
@@ -3332,7 +3422,8 @@ mod tables {
 
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
     fn orm(error: OrmError) -> String {
-        format!("{}: {error}", error.code())
+        let cause = if std::error::Error::source(&error).is_some() { super::DRIVER_CAUSE } else { "" };
+        format!("{}: {error}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
@@ -3494,6 +3585,13 @@ mod tables {
                         return Ok(());
                     }
                     "tuple" => return tuple(core, conn, value),
+                    "fulltext_boolean" => {
+                        let columns: Vec<&'static str> = names(&value["columns"]).iter().map(|name| leaked(name)).collect();
+                        let text = value["text"].as_str().ok_or_else(|| format!("fulltext_boolean {value} names no text"))?;
+                        let key = ChainKey { op: "fulltext_boolean", columns: Box::leak(columns.into_boxed_slice()), ..ChainKey::EMPTY };
+                        core.chain(conn, &[key], vec![Arg::Value(ArgValue::One(Param::Str(text.to_owned())))]);
+                        return Ok(());
+                    }
                     _ => {}
                 }
             }
@@ -3790,6 +3888,17 @@ mod tables {
         Ok(Value::Object(out))
     }
 
+    /// The row with the named fields read as a derived integer (COD-45): the text of an integer is its number.
+    fn derived_integers(row: &mut Value, fields: &Value) -> Result<(), String> {
+        for name in names(fields) {
+            if let Some(text) = row[&name].as_str() {
+                let number = text.parse::<i64>().map_err(|error| format!("{name} is an invalid derived integer: {error}"))?;
+                row[&name] = Value::from(number);
+            }
+        }
+        Ok(())
+    }
+
     /// Whether the expect of a step compares rows of wrappers.
     fn wants_rows(step: &Value) -> bool {
         step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
@@ -3972,6 +4081,23 @@ mod tables {
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
+            if step["plan"].as_bool() == Some(true) {
+                let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                if count == 0 {
+                    return Err("a plan needs a limit above 0".into());
+                }
+                let steps = get_page_plan_steps(&core, offset / count + 1, count).await.map_err(orm)?;
+                let list: Vec<Value> = steps
+                    .iter()
+                    .map(|plan_step| {
+                        let sql = plan_step.sql.to_uppercase();
+                        let count: serde_json::Map<String, Value> =
+                            names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
+                        json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count })
+                    })
+                    .collect();
+                return Ok(json!({ "json": list }));
+            }
             let root = TableRow::from_core(core);
             if let Some(aggregate) = step.get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
@@ -3986,7 +4112,9 @@ mod tables {
             let rows = gets(&root).await.map_err(orm)?;
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
-                list.push(row_json(row, &step["pick"])?);
+                let mut value = row_json(row, &step["pick"])?;
+                derived_integers(&mut value, &step["derived_integers"])?;
+                list.push(value);
             }
             let mut fields = json!({ "json": list });
             if wants_rows(step) {
@@ -4011,6 +4139,13 @@ mod tables {
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
                 "total": page.total_count,
             });
+            if step["items"].as_bool() == Some(true) {
+                let mut items = Vec::new();
+                for row in page.items.models() {
+                    items.push(row_json(row, &step["pick"])?);
+                }
+                fields["json"]["items"] = json!(items);
+            }
             if wants_rows(step) {
                 fields["rows"] = cells_of(page.items.models(), step)?;
             }

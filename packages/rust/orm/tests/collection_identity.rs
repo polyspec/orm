@@ -8,27 +8,13 @@ use or_panic::OrPanic;
 
 use polyspec_orm::chrono::DateTime;
 use polyspec_orm::plan::KeyRef;
-use polyspec_orm::{Error, Key, Val};
+use polyspec_orm::{Key, Val};
 use serde_json::Value as Json;
 
 fn fixture() -> Json {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/collection/keys.json");
     let src = std::fs::read_to_string(&path).or_panic(|e| format!("read {}: {e}; run make orm-check from the checkout root", path.display()));
     serde_json::from_str(&src).expect("tests/collection/keys.json is not JSON")
-}
-
-fn value_of(entry: &Json) -> Val {
-    let name = entry["name"].as_str().unwrap_or("?");
-    if let Some(value) = scalar_value(entry) {
-        return value;
-    }
-    match entry["type"].as_str() {
-        Some("datetime") => {
-            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).or_panic(|e| format!("fixture {name}: {e}"));
-            Val::DateTime(instant.naive_utc())
-        }
-        other => panic!("fixture {name} has unknown type {other:?}"),
-    }
 }
 
 fn composite_value_of(entry: &Json) -> Val {
@@ -72,42 +58,8 @@ fn hex_decode(text: &str) -> Vec<u8> {
 }
 
 #[test]
-fn every_fixture_key_has_its_own_identity() {
-    // Requirements: INT-11, INT-63, PRT-35.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let fixture = fixture();
-    let entries = fixture["keys"].as_array().expect("keys");
-    let mut seen: Vec<(String, Key)> = Vec::new();
-    for entry in entries {
-        let name = entry["name"].as_str().expect("name").to_owned();
-        let key = Key::of(&value_of(entry)).or_panic(|e| format!("key {name}: {e}"));
-        let again = Key::of(&value_of(entry)).expect("key again");
-        assert_eq!(key, again, "key {name} has no stable identity");
-        let preserves_native_type = matches!(
-            (entry["type"].as_str(), &key),
-            (Some("text"), Key::S(_)) | (Some("bool"), Key::B(_)) | (Some("int"), Key::I(_)) | (Some("bytes"), Key::X(_)) | (Some("datetime"), Key::T(_))
-        );
-        assert!(preserves_native_type, "key {name} lost its native type: {key:?}");
-        remember_key(name, key, entry["same_as"].as_str(), &mut seen);
-    }
-}
-
-#[test]
-fn a_null_key_is_codec_decode() {
-    // Requirements: PRT-35.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let expected = fixture()["null"].clone();
-    match Key::of(&Val::Null) {
-        Err(Error::Engine { code, msg }) => {
-            assert_eq!(code, expected["code"].as_str().unwrap());
-            assert_eq!(msg, expected["message"].as_str().unwrap());
-        }
-        other => panic!("a NULL collection key gave {other:?}"),
-    }
-}
-
-#[test]
 fn composite_components_preserve_typed_identity_and_shared_encoding() {
+    // Requirements: PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture = fixture();
     let entries = fixture["composites"].as_array().expect("composites");

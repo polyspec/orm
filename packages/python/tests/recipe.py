@@ -15,6 +15,7 @@ import threading
 import time
 import types
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -156,6 +158,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "ir.answer":
                     _answer(step, database)
+                    continue
+                if step["op"] == "collection.key":
+                    _collection_key(step, database)
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
@@ -336,6 +341,45 @@ def _answer(step: dict, database: str) -> None:
         got = _request_params(sent)
     if not same(got, want):
         raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
+
+
+def _collection_key(step: dict, database: str) -> None:
+    """Runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each key, the
+    index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63,
+    PRT-35)."""
+
+    def native(entry):
+        kind = entry["type"]
+        if kind == "null":
+            return None
+        if kind == "bytes":
+            return bytes.fromhex(entry["hex"])
+        if kind == "datetime":
+            return datetime.fromisoformat(entry["value"])
+        return entry["value"]
+
+    names = {str: "text", bool: "bool", int: "int", bytes: "bytes", datetime: "datetime"}
+    collection = Collection()
+    try:
+        groups = []
+        for index, entry in enumerate(step["keys"]):
+            key = native(entry)
+            first = collection.get(key)
+            groups.append(index if first is None else first["group"])
+            if first is None:
+                collection.put(key, {"group": index})
+        got = {
+            "groups": groups,
+            "types": [names[type(native(entry))] for entry in step["keys"]],
+        }
+        stored = collection.keys()
+        distinct = [native(step["keys"][group]) for group in dict.fromkeys(groups)]
+        if stored != distinct or [type(key) for key in stored] != [type(key) for key in distinct]:
+            raise AssertionError(f"the keys changed their native values or order: {stored}")
+    except OrmError as error:
+        got = {"error": error.code, "message": str(error)}
+    if got != step["expect"][database]:
+        raise AssertionError(f"got {got}, want {step['expect'][database]}")
 
 
 def _request_params(sent: list) -> list:
@@ -1207,6 +1251,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1246,6 +1291,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -2199,6 +2256,9 @@ class _ChainBuild:
                 return model.core.connector(conn, [self.joined[value]])
             if name == "tuple":
                 return self.tuple(model, conn, value)
+            if name == "fulltext_boolean":
+                key = ChainKey(op=name, columns=tuple(value["columns"]))
+                return model.core.where_chain(conn, [key], (value["text"],))
         if "expr" in raw and "cmp" in raw:
             return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
         for i, (column, value) in enumerate(raw.items()):
@@ -2382,6 +2442,14 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
+def _derived_integers(row: dict, step: dict) -> dict:
+    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
+    for name in step.get("derived_integers", []):
+        if isinstance(row[name], str):
+            row[name] = int(row[name])
+    return row
+
+
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2505,6 +2573,24 @@ def _table_model_query(step: dict, context: dict) -> dict:
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
+    if step.get("plan") is True:
+        limit = step["limit"]
+        steps = model.get_page_plan_steps(
+            limit["offset"] // limit["count"] + 1, limit["count"]
+        )
+        return {
+            "json": [
+                {
+                    "role": plan_step["role"],
+                    "tables": plan_step["tables"],
+                    "count": {
+                        text: plan_step["sql"].upper().count(text)
+                        for text in step["plan_count"]
+                    },
+                }
+                for plan_step in steps
+            ]
+        }
     aggregate = step.get("aggregate")
     if aggregate is not None:
         if aggregate["agg"] == "sum":
@@ -2529,6 +2615,16 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     "pages": page["totalPages"],
                     "page": page["page"],
                     "per_page": page["perPage"],
+                    **(
+                        {
+                            "items": [
+                                _row_json(row, step.get("pick"))
+                                for row in page["items"].values()
+                            ]
+                        }
+                        if step.get("items") is True
+                        else {}
+                    ),
                 }
             ),
             "total": page["totalCount"],
@@ -2539,7 +2635,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+        "json": [
+            _derived_integers(_row_json(row, step.get("pick")), step)
+            for row in rows.values()
+        ],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2711,6 +2810,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
         # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
         events = [
             {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
+            for event in events
+        ]
+    if step.get("compare") == "shape":
+        # The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("kind", "tables")]}
             for event in events
         ]
     return {"value": {"array": events}}
@@ -3025,6 +3130,15 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
             ) from error
+        holds = expected.get("message_holds")
+        if holds is not None and holds not in str(error):
+            raise AssertionError(
+                f"error message {str(error)!r} does not hold {holds!r}"
+            ) from error
+        if expected.get("driver_cause") is True and error.__cause__ is None:
+            raise AssertionError(
+                f"error {str(error)!r} has no driver cause"
+            ) from error
         return
     except CallbackError:
         # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).
@@ -3270,12 +3384,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 

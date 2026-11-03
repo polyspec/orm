@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/polyspec/orm/packages/go/internal/dialects"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -177,32 +176,6 @@ func openNativeSQLite(t *testing.T, driver, dsn, suffix string) *sql.DB {
 		t.Fatal(err)
 	}
 	return raw
-}
-
-// queryRows reads all rows of the query as strings, with the column names. NULL is "NULL".
-func queryRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]string) {
-	t.Helper()
-	rows, err := raw.Query(query)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, rows)
-	columns, err := rows.Columns()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out [][]string
-	for rows.Next() {
-		row, err := dialects.ScanCells(rows, len(columns))
-		if err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, row)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-	return columns, out
 }
 
 // auditDB connects to dsn with the audit configuration and installs s; the

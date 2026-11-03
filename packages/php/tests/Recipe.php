@@ -77,7 +77,7 @@ final class Recipe
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
-        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain',
+        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
         'dbspec.compare',
     ];
 
@@ -140,6 +140,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'ir.answer') {
                     self::answerStep($step);
+                    continue;
+                }
+                if ($step['op'] === 'collection.key') {
+                    self::collectionKeyStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'planner.compile') {
@@ -358,6 +362,18 @@ final class Recipe
             ];
         } elseif ($op === 'dbspec.emit_plan') {
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
+        } elseif ($op === 'dbspec.add_tables_steps') {
+            $result = Dbspec::addTablesAndColumnsSteps(
+                self::dbspecBound($step['source'], $bound),
+                [],
+                self::dbspecBound($step['target'], $bound),
+                $step['dialect']
+            );
+            $got = [
+                'added' => $result[0],
+                'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
+                'differences' => $result[2],
+            ];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -523,6 +539,42 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its groups are,
+     * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
+     * PRT-35).
+     */
+    private static function collectionKeyStep(array $step, string $database): void
+    {
+        $got = ['groups' => [], 'types' => []];
+        $seen = [];
+        try {
+            foreach ($step['keys'] as $index => $entry) {
+                $value = match ($entry['type']) {
+                    'null' => null,
+                    'bytes' => new \Polyspec\Orm\Bytes(hex2bin($entry['hex'])),
+                    'datetime' => new \DateTime($entry['value']),
+                    default => $entry['value'],
+                };
+                $key = \Polyspec\Orm\Collection::keyOf($value);
+                Assert::assertSame($value, $key, 'a key changed its native value');
+                $identity = \Polyspec\Orm\Collection::identityOf($value);
+                $seen[$identity] ??= $index;
+                $got['groups'][] = $seen[$identity];
+                $got['types'][] = match (true) {
+                    is_string($key) => 'text',
+                    is_bool($key) => 'bool',
+                    is_int($key) => 'int',
+                    $key instanceof \Polyspec\Orm\Bytes => 'bytes',
+                    $key instanceof \DateTimeInterface => 'datetime',
+                };
+            }
+        } catch (OrmException $error) {
+            $got = ['error' => $error->code_, 'message' => $error->getMessage()];
+        }
+        Assert::assertSame($step['expect'][$database], $got);
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
@@ -1938,6 +1990,12 @@ final class Recipe
             if (isset($expected['message_suffix'])) {
                 Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['message_holds'])) {
+                Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
+            }
+            if (($expected['driver_cause'] ?? false) === true) {
+                Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
+            }
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
@@ -1977,9 +2035,13 @@ final class Recipe
         }
     }
 
-    /** The value with the members of every object sorted by name. */
+    /** The value with the members of every object sorted by name and each integral number as an integer. */
     private static function sortedMembers(mixed $value): mixed
     {
+        if (is_float($value) && floor($value) === $value && abs($value) < 2 ** 53) {
+            // JSON has one number form, and getSum returns a binary64 (DSL-66) where the recipe writes 17540.
+            return (int) $value;
+        }
         if (!is_array($value)) {
             return $value;
         }
@@ -2016,9 +2078,14 @@ final class Recipe
                 )->close();
                 return ['value' => ['bool' => true]];
             case 'schema.add_tables_and_columns':
-                $added = $context['db']->utils()->schema()->addTablesAndColumns(
-                    self::schemaArgument($s['schema'], $context),
-                );
+                try {
+                    $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                        self::schemaArgument($s['schema'], $context),
+                    );
+                } catch (\Throwable $error) {
+                    Assert::assertStringContainsString($s['message_contains'] ?? '', $error->getMessage());
+                    throw $error;
+                }
                 return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
             case 'statements.count':
                 $count = 0;
@@ -2270,6 +2337,13 @@ final class Recipe
                         static fn (array $member): bool => $member[0] === 'sql' || $member[0] === 'kind',
                     ))], $events);
                 }
+                if (($s['compare'] ?? '') === 'shape') {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
+                        $event['object'],
+                        static fn (array $member): bool => $member[0] === 'kind' || $member[0] === 'tables',
+                    ))], $events);
+                }
                 return ['value' => ['array' => $events]];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
@@ -2452,6 +2526,15 @@ final class Recipe
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
         generateModels($documents, "$work/source", "$work/models", $namespace, $external);
+        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a manifest.
+        $declarations = (string) file_get_contents("$work/models/schema_declarations.php");
+        if (preg_match("/^const MANIFEST_HASH = '([^']+)';$/m", $declarations, $match) !== 1) {
+            Assert::fail("the generated models of $setPath declare no manifest hash");
+        }
+        if (Registry::loaded($match[1])) {
+            $loaded = (new \ReflectionClass(array_values(Registry::models($match[1]))[0]))->getNamespaceName();
+            return self::$modelNamespaces[$key] = $loaded;
+        }
         requireGeneratedClasses("$work/models");
         require_once "$work/models/bootstrap.php";
         return self::$modelNamespaces[$key] = $namespace;
@@ -2834,6 +2917,10 @@ final class Recipe
                     ), $rows);
                     self::chainCall($model, $conn, $key, [$values]);
                     return;
+                case 'fulltext_boolean':
+                    $key = 'FulltextBoolean' . implode('With', array_map(self::pascal(...), $value['columns']));
+                    self::chainCall($model, $conn, $key, [$value['text']]);
+                    return;
             }
         }
         if (isset($raw['expr'], $raw['cmp'])) {
@@ -3113,6 +3200,18 @@ final class Recipe
         return $out;
     }
 
+    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+    private static function derivedIntegers(array $row, array $names): array
+    {
+        foreach ($names as $name) {
+            if (is_string($row[$name])) {
+                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
+                $row[$name] = (int) $row[$name];
+            }
+        }
+        return $row;
+    }
+
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(array $s, array $context): bool
     {
@@ -3312,6 +3411,16 @@ final class Recipe
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
         }
+        if (($s['plan'] ?? false) === true) {
+            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            return ['json' => array_map(static function (array $step) use ($s): array {
+                $count = [];
+                foreach ($s['plan_count'] as $text) {
+                    $count[$text] = substr_count(strtoupper($step['sql']), $text);
+                }
+                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+            }, $steps)];
+        }
         $aggregate = $s['aggregate'] ?? null;
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
@@ -3335,6 +3444,12 @@ final class Recipe
                 'per_page' => $page->perPage,
                 'keys' => $page->items->keys(),
             ], 'total' => $page->totalCount];
+            if (($s['items'] ?? false) === true) {
+                $fields['json']['items'] = [];
+                foreach ($page->items as $row) {
+                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                }
+            }
             if (self::chainWantsRows($s, $context)) {
                 $fields['rows'] = self::chainCells($page->items, $s);
             }
@@ -3348,7 +3463,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

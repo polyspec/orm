@@ -47,25 +47,6 @@ func TestGroupCountRejectsInvalidStoredBoolean(t *testing.T) {
 	}
 }
 
-// Requirements: PRT-69, INT-1. The grouped row exposes the selected i64 as an exact integer value.
-func TestGroupCountPreservesExactI64Value(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	const want int64 = 9007199254740991
-	column := plan.OutCol{Name: "exact_value", Column: "exact_value", Type: "i64"}
-	declared := &runtimemodel.Field{Name: "exact_value", Type: "i64"}
-	value, err := groupColumnValue(nil, nil, column, declared, want)
-	if err != nil || value != want {
-		t.Fatalf("decoded i64 group value = %#v, %v; want %d", value, err, want)
-	}
-	row, err := newGroupRow([]groupValue{{name: "exact_value", value: value}, {name: "row_count", value: int64(1)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, err := row.Value("exact_value"); err != nil || got != want {
-		t.Fatalf("assembled i64 group value = %#v, %v; want %d", got, err, want)
-	}
-}
-
 func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, columns := range [][]plan.OutCol{
