@@ -22,6 +22,7 @@ type faultConn struct {
 	failAt int
 	reads  int
 	fail   map[string]error
+	noRow  []string
 }
 
 // QueryContext counts the reads of the SQLite master query and fails the chosen one.
@@ -31,6 +32,9 @@ func (f *faultConn) QueryContext(ctx context.Context, query string, args ...any)
 		if f.cause != nil && f.reads == f.failAt {
 			return nil, f.cause
 		}
+	}
+	if slices.Contains(f.noRow, query) {
+		return f.Conn.QueryContext(ctx, "SELECT 1 WHERE 0")
 	}
 	return f.Conn.QueryContext(ctx, query, args...)
 }
@@ -104,6 +108,7 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 		fault.cause = errors.New("catalog read failed")
 		fault.failAt = fault.reads + s.FailCatalogRead
 	}
+	fault.noRow = s.NoRowQueries
 	if s.FailStatements != nil {
 		fault.fail = map[string]error{}
 		for _, f := range s.FailStatements {

@@ -6,7 +6,9 @@
     "CFG-12",
     "CFG-16",
     "CFG-19",
-    "CFG-26"
+    "CFG-26",
+    "DIA-57",
+    "DSL-141"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
@@ -267,6 +269,994 @@
             "mysql": {
               "error": "CONFIG",
               "message_holds": "TLS connection failed"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "connection_is_utc_by_default",
+      "requirements": [
+        "CFG-2",
+        "DIA-57",
+        "DSL-141"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "utc"
+            },
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "later"
+            },
+            "start_dt": {
+              "text": "2026-01-03 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "utc"
+            }
+          },
+          "pick": [
+            "start_dt"
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [
+                "author"
+              ],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+                "postgres": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+                "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND ABS(julianday(created_ts) - julianday('now')) * 1440 < 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01 15:00:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01T15:00:00.0"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "in": {
+                "array": [
+                  {
+                    "text": "2026-01-01 15:00:00"
+                  },
+                  {
+                    "text": "2026-01-03 00:00:00"
+                  }
+                ]
+              }
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 2
+            },
+            "postgres": {
+              "json": 2
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "between": [
+                {
+                  "text": "2026-01-01 15:00:00"
+                },
+                {
+                  "text": "2026-01-01 15:00:00.5"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
+                "postgres": "SELECT current_setting('TimeZone')",
+                "sqlite": "SELECT 'UTC'"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "+00:00"
+                      },
+                      {
+                        "text": "SYSTEM"
+                      },
+                      {
+                        "text": "KST"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "connection_timezone_utc",
+      "requirements": [
+        "CFG-2",
+        "DIA-57",
+        "DSL-141"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "dsn": "case?timezone=UTC"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "utc"
+            },
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "later"
+            },
+            "start_dt": {
+              "text": "2026-01-03 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "utc"
+            }
+          },
+          "pick": [
+            "start_dt"
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [
+                "author"
+              ],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+                "postgres": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+                "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND ABS(julianday(created_ts) - julianday('now')) * 1440 < 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01 15:00:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01T15:00:00.0"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "in": {
+                "array": [
+                  {
+                    "text": "2026-01-01 15:00:00"
+                  },
+                  {
+                    "text": "2026-01-03 00:00:00"
+                  }
+                ]
+              }
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 2
+            },
+            "postgres": {
+              "json": 2
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "between": [
+                {
+                  "text": "2026-01-01 15:00:00"
+                },
+                {
+                  "text": "2026-01-01 15:00:00.5"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
+                "postgres": "SELECT current_setting('TimeZone')",
+                "sqlite": "SELECT 'UTC'"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "+00:00"
+                      },
+                      {
+                        "text": "SYSTEM"
+                      },
+                      {
+                        "text": "KST"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "connection_timezone_offset",
+      "requirements": [
+        "CFG-2",
+        "DIA-57",
+        "DSL-141"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "dsn": "case?timezone=%2B00:00"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "utc"
+            },
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "later"
+            },
+            "start_dt": {
+              "text": "2026-01-03 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "utc"
+            }
+          },
+          "pick": [
+            "start_dt"
+          ],
+          "expect": {
+            "mysql": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "postgres": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            },
+            "sqlite": {
+              "json": [
+                {
+                  "start_dt": "2026-01-01 15:00:00.000000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [
+                "author"
+              ],
+              "sql": {
+                "mysql": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+                "postgres": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND created_ts BETWEEN (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+                "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'utc' AND ABS(julianday(created_ts) - julianday('now')) * 1440 < 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-02T00:00:00+09:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01 15:00:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-01T15:00:00.0"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "in": {
+                "array": [
+                  {
+                    "text": "2026-01-01 15:00:00"
+                  },
+                  {
+                    "text": "2026-01-03 00:00:00"
+                  }
+                ]
+              }
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 2
+            },
+            "postgres": {
+              "json": 2
+            },
+            "sqlite": {
+              "json": 2
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "between": [
+                {
+                  "text": "2026-01-01 15:00:00"
+                },
+                {
+                  "text": "2026-01-01 15:00:00.5"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            },
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "db",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT @@session.time_zone, @@GLOBAL.time_zone, @@system_time_zone",
+                "postgres": "SELECT current_setting('TimeZone')",
+                "sqlite": "SELECT 'UTC'"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "+00:00"
+                      },
+                      {
+                        "text": "SYSTEM"
+                      },
+                      {
+                        "text": "KST"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "UTC"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_refuses_a_date_only_datetime",
+      "requirements": [
+        "CFG-2",
+        "DIA-57"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Author",
+          "where": {
+            "start_dt": {
+              "text": "2026-01-02"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "CODEC_ENCODE"
             }
           }
         }

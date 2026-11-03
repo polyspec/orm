@@ -16,7 +16,7 @@ final class RegistrySchemaNativeTest extends TestCase
 {
     public function testNativeOriginsAndReadonlySchemaRoundTrip(): void
     {
-        // Requirements: DBS-103
+        // That the classes are of the extension, read by reflection, is a surface of the extension.
         self::assertTrue((new \ReflectionClass(Registry::class))->isInternal());
         self::assertTrue((new \ReflectionClass(Schema::class))->isInternal());
         $text = "dbspec 1 registry_schema_native\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n";

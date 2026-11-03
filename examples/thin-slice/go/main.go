@@ -40,11 +40,6 @@ func run() (code int) {
 	defer func() { check(db.Close()) }()
 	_, err = db.Subscribe(func(e orm.StatementEvent) error {
 		lastSQL, lastArgs = e.SQL, e.Binds
-		for i, a := range lastArgs {
-			if a == orm.Secret {
-				lastArgs[i] = aesKey
-			}
-		}
 		return nil
 	})
 	check(err)

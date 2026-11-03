@@ -116,6 +116,7 @@
           "additionalProperties": false,
           "required": ["runner", "test"],
           "if": { "properties": { "recipe": true }, "required": ["recipe"] },
+          "then": { "properties": { "cases": false } },
           "else": { "properties": { "cases": true }, "required": ["cases"] },
           "properties": {
             "runner": { "enum": ["go", "php", "cargo", "node", "python"] },

@@ -15,7 +15,7 @@ use crate::driver::{
     arg_types, exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg, fetch_pg_pool,
     fetch_sqlite, fetch_sqlite_pool, masked, param_arg, statement, Target, TxInner,
 };
-pub use crate::driver::{NOW_MASK, SECRET_MASK};
+pub use crate::driver::NOW_MASK;
 use crate::engine::{self, Dialect};
 use crate::events::{statement_kind, Sent, Subscribers, KIND_UTILITY};
 use crate::markdown::{open_markdown, parse_markdown_dsn, MarkdownDsn, MdPool};
@@ -867,10 +867,6 @@ impl Db {
                         crate::codec::host_encode(&v, &b.host_styles, &cfg.aes_key)?
                     });
                 }
-                "secret" => match b.name.as_str() {
-                    "aes" if !cfg.aes_key.is_empty() => out.push(Param::Str(cfg.aes_key.clone())),
-                    _ => return Err(Error::Config(format!("secret {} is not configured", b.name))),
-                },
                 "config" => match b.name.as_str() {
                     "aes_version" => out.push(Param::I64(cfg.aes_version as i64)),
                     _ => return Err(Error::Config(format!("config value {} is not configured", b.name))),
@@ -905,9 +901,9 @@ impl Db {
         Ok(out)
     }
 
-    /// The bind as shown in the statement event: the values with the `secret` and `now` slots masked.
+    /// The bind as shown in the statement event: the values with the `now` slots masked.
     fn shown<'a>(&self, st: &Step, args: &'a [Param], n_parent: usize) -> std::borrow::Cow<'a, [Param]> {
-        if st.bind_slots.iter().any(|b| b.from == "secret" || b.from == "now") {
+        if st.bind_slots.iter().any(|b| b.from == "now") {
             std::borrow::Cow::Owned(masked(st, args, n_parent))
         } else {
             std::borrow::Cow::Borrowed(args)
@@ -1046,7 +1042,6 @@ impl Db {
         let mut binds = Vec::with_capacity(args.len());
         for (b, a) in st.bind_slots.iter().zip(args) {
             binds.push(match b.from.as_str() {
-                "secret" => Param::Str(SECRET_MASK.into()),
                 "now" => Param::Str(NOW_MASK.into()),
                 _ => a,
             });

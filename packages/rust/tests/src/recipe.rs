@@ -121,6 +121,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
         None | Some("case") => Ok(case_dsn.to_owned()),
+        Some(dsn) if dsn.starts_with("case?") => {
+            let separator = if case_dsn.contains('?') { '&' } else { '?' };
+            Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
@@ -235,6 +239,55 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the step, a
+/// read-only transaction that holds a nested one, then a transaction, whose error is checked against the expect of `database`.
+fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
+    use std::io::{BufRead as _, Write as _};
+    let lines = |name: &str| -> Vec<String> {
+        step[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+    };
+    let (replies, messages) = (lines("replies"), lines("messages"));
+    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let server = std::thread::spawn(move || -> Result<Vec<String>, String> {
+        let (connection, _) = listener.accept().map_err(|error| error.to_string())?;
+        let mut writer = connection.try_clone().map_err(|error| error.to_string())?;
+        let mut reader = std::io::BufReader::new(connection);
+        let mut received = Vec::new();
+        for reply in &replies {
+            let mut line = String::new();
+            if reader.read_line(&mut line).map_err(|error| error.to_string())? == 0 {
+                break;
+            }
+            received.push(line.trim_end().to_owned());
+            writeln!(writer, "{reply}").map_err(|error| error.to_string())?;
+        }
+        Ok(received)
+    });
+    let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome: polyspec_orm::Result<()> = runtime.block_on(async {
+        let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await?;
+        let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
+        nested?;
+        let last = db.transaction(async || Ok(())).await;
+        db.close().await;
+        last
+    });
+    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    if received != messages {
+        return Err(format!("the listener received {received:?}, want {messages:?}"));
+    }
+    let expect = &step["expect"][database];
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    match outcome {
+        Err(error) if error.code() == want && error.to_string().contains(holds) => Ok(()),
+        Err(error) => Err(format!("error {} ({error}), want {want} with {holds}", error.code())),
+        Ok(()) => Err(format!("error none, want {want}")),
+    }
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
@@ -340,6 +393,7 @@ struct FaultConnection {
     fail_at: usize,
     reads: usize,
     fail: HashMap<String, (String, Option<i64>)>,
+    no_row: Vec<String>,
 }
 
 /// An error of a SQLite result code, as the driver returns it.
@@ -436,6 +490,9 @@ impl dbspec::ApplyConnection for FaultConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
         use dbspec::ApplyConnection as _;
+        if self.no_row.iter().any(|no_row| no_row == query) {
+            return Ok(Vec::new());
+        }
         self.inner.query_bound(query, args).await
     }
 }
@@ -457,7 +514,7 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new() };
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
         if step["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
@@ -470,6 +527,9 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
         if let Some(read) = step["fail_catalog_read"].as_u64() {
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
+        }
+        if let Some(queries) = step["no_row_queries"].as_array() {
+            fault.no_row = queries.iter().filter_map(Value::as_str).map(str::to_owned).collect();
         }
         if let Some(failing) = step["fail_statements"].as_array() {
             for f in failing {
@@ -623,6 +683,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
+        "markdown.session" => return markdown_session(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
@@ -630,6 +691,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "generator.check" => return recipe_generator::check_files(step, dir),
+        "generator.refused" => return recipe_generator::check_refused(step, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
@@ -776,9 +838,15 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     let input = ir_request::request(&step["input"], &manifest.manifest_hash);
     if let Some(code) = want.get("error").and_then(Value::as_str) {
         for (name, dialect) in PLAN_DIALECTS {
-            let got = engine::compile(&manifest, dialect, &input).err().map(|error| error.code().to_owned());
+            let error = engine::compile(&manifest, dialect, &input).err();
+            let got = error.as_ref().map(|error| error.code().to_owned());
             if got.as_deref() != Some(code) {
                 return Err(format!("{name}: error {got:?}, want {code}"));
+            }
+            if let (Some(error), Some(message)) = (&error, want.get("message").and_then(Value::as_str)) {
+                if error.to_string() != message {
+                    return Err(format!("{name}: message {error}, want {message}"));
+                }
             }
         }
         return Ok(());
@@ -1745,6 +1813,9 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
     let _zone = step["process_zone"].as_str().map(ProcessZone::set);
+    if let Some(surface) = step["surface"].as_str() {
+        return send_and_check(step, Call::Surface(surface.to_owned()), "markdown.send");
+    }
     let send = SendStep::parse(step)?;
     send_and_check(step, Call::Send(send), "markdown.send")
 }
@@ -1890,6 +1961,8 @@ enum Call {
     Assign(String),
     /// The builder calls of a markdown.builder step, by name.
     Builder(Vec<String>),
+    /// The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+    Surface(String),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -2057,6 +2130,31 @@ fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
 /// the calls are large in a debug build), and closes the connection after the call.
+/// Runs the public call of a markdown.send surface on the connection `db`.
+async fn refused_surface(surface: &str, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
+    let schema = polyspec_orm::Schema::new("", "");
+    let keyring = polyspec_orm::AesKeyring::new([(1, "key".to_owned())].into(), 1)?;
+    let model = bind_model::Slots::new();
+    match surface {
+        "audit" => db.transaction(async || Ok(())).audit([("actor", "tester")]).await,
+        "isolation" => db.transaction(async || Ok(())).isolation(polyspec_orm::Isolation::Serializable).await,
+        "timeout_ms" => db.transaction(async || Ok(())).timeout_ms(100).await,
+        "get_query" => bind_model::Slots::new().connect(db).get_query().await.map(drop),
+        "subscribe" => db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe()),
+        "lock" => db.utils().lock("k").await,
+        "set_local" => db.utils().set_local("k", "v").await,
+        "local" => db.utils().local("k").map(drop),
+        "backend_waiting_for_lock" => db.utils().backend_waiting_for_lock().await.map(drop),
+        "privileges" => db.utils().privileges().inspect_table("public.items").await.map(drop),
+        "aes_status" => db.utils().aes().status(&model, &keyring).await.map(drop),
+        "aes_rotate" => db.utils().aes().rotate(&model, &keyring).await.map(drop),
+        "schema_install" => db.utils().schema().install(&schema).await,
+        "schema_evolution" => db.utils().schema().add_tables_and_columns(&schema).await.map(drop),
+        "schema_exists" => db.utils().schema().exists("orm").await.map(drop),
+        other => panic!("markdown.send surface {other} has no call in the Rust cases"),
+    }
+}
+
 fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
     match std::thread::Builder::new()
         .stack_size(64 << 20)
@@ -2067,6 +2165,7 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                 let result = match &call {
                     Call::Send(send) => send.call(&db).await,
                     Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
+                    Call::Surface(surface) => refused_surface(surface, &db).await,
                     Call::Builder(calls) => {
                         let mut model = bind_model::Slots::new().connect(&db);
                         for call in calls {
@@ -2800,6 +2899,12 @@ mod database {
             }
         }
         // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
+        for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
+            let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
+            if after.is_object() && named {
+                run_step(catalog, after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
+            }
+        }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
@@ -2896,6 +3001,18 @@ mod database {
     }
 
     /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
+    /// The rows of one utility statement in a frame of its own on the connection (INT-150).
+    async fn frame_rows(db: &Db, text: &str) -> polyspec_orm::Result<Vec<Vec<polyspec_orm::Val>>> {
+        db.utils().run(async |frame| frame.run("utility", &[], text, &[]).await).await
+    }
+
+    /// The single integer cell of a probe of events.server_transactions.
+    async fn probe_value(db: &Db, text: &str) -> Result<i64, String> {
+        let rows = frame_rows(db, text).await.map_err(|e| format!("{text}: {e}"))?;
+        let cell = rows.first().and_then(|row| row.first()).map(super::statement::cell_wrapper).ok_or_else(|| format!("{text}: no cell"))?;
+        cell["int"].as_str().or_else(|| cell["text"].as_str()).and_then(|digits| digits.parse().ok()).ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
+    }
+
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
         let name = step["connection"].as_str().ok_or_else(|| format!("{} names no connection", step["op"]))?;
         context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
@@ -3083,7 +3200,7 @@ mod database {
 
     /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
     /// connect does not create it.
-    async fn connect_check(dsn: &Value) -> Result<(), Failure> {
+    async fn connect_check(dsn: &Value, file_created: bool) -> Result<(), Failure> {
         if let Some(url) = dsn["url"].as_str() {
             let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
             connection.close().await;
@@ -3096,8 +3213,8 @@ mod database {
         let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
         let created = path.exists();
         std::fs::remove_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
-        if created {
-            return Err(Failure::Step("the connect created the SQLite file".into()));
+        if created != file_created {
+            return Err(Failure::Step(format!("file_created is {created}, want {file_created}")));
         }
         match outcome {
             Ok(connection) => {
@@ -3280,6 +3397,11 @@ mod database {
                 context.subscriptions.insert(name, subscription);
                 Output::fields(json!({}))
             }
+            "fault.next_rollback" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                polyspec_orm::testing::fail_next_rollback(&db);
+                Output::fields(json!({}))
+            }
             "events.fail_subscriber" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
@@ -3342,6 +3464,56 @@ mod database {
                 let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
                 Output::fields(json!({ "value": { "array": rows } }))
             }
+            // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts
+            // the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+            "events.server_transactions" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let probe_text = step["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
+                let mut fields = serde_json::Map::new();
+                if context.database == "postgres" {
+                    let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
+                    let cells: Vec<Value> = rows[0].iter().map(super::statement::cell_wrapper).collect();
+                    // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+                    let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+                    fields.insert("time_zone".into(), cells[0]["text"].clone());
+                    fields.insert("time_zone_from_startup".into(), json!(pooled || cells[1]["text"] == "client"));
+                }
+                let first = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let mut before = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let cost = before - first;
+                let prepares = step["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
+                for run in ["first", "second"] {
+                    let texts = Arc::new(Mutex::new(Vec::<String>::new()));
+                    let sink = Arc::clone(&texts);
+                    let subscription = db
+                        .subscribe(move |event: &StatementEvent<'_>| {
+                            sink.lock().unwrap().push(event.sql.to_owned());
+                            Ok(())
+                        })
+                        .map_err(orm)?;
+                    let mut outcome = Ok(());
+                    for nested in step["steps"].as_array().into_iter().flatten() {
+                        if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                            outcome = Err(message);
+                            break;
+                        }
+                    }
+                    subscription.unsubscribe();
+                    outcome.map_err(fault)?;
+                    let after = probe_value(&db, &probe_text).await.map_err(fault)?;
+                    let spent = after - before - cost;
+                    before = after;
+                    let texts = texts.lock().unwrap();
+                    let distinct = texts.iter().collect::<std::collections::HashSet<_>>().len() as i64;
+                    let events = texts.len() as i64;
+                    let extra = if run == "first" && prepares { distinct } else { 0 };
+                    fields.insert(format!("{run}_excess"), json!(spent - events - extra));
+                    fields.insert("events".into(), json!(events));
+                    fields.insert("texts".into(), json!(distinct));
+                }
+                fields.insert("probe_cost".into(), json!(cost));
+                Output::fields(Value::Object(fields))
+            }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
@@ -3366,7 +3538,7 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&step["dsn"]).await?;
+                connect_check(&step["dsn"], step["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {
@@ -3468,6 +3640,25 @@ mod database {
                         if let Some(name) = with["column_name"].as_str() {
                             page.metadata.columns[0].name = name.to_owned();
                         }
+                        if with.get("primary_key").is_some() {
+                            page.metadata.primary_key = strings(&with["primary_key"]).map_err(fault)?;
+                        }
+                        if let Some(limit) = with["limit"].as_u64() {
+                            page.limit = limit as usize;
+                        }
+                        if let Some(name) = with["result_column_name"].as_str() {
+                            page.result.columns[0].name = name.to_owned();
+                        }
+                        if with.get("drop_last_cell").is_some() {
+                            page.result.rows[0].pop();
+                        }
+                        if let Some(fill) = with.get("fill_last_cell") {
+                            let text = fill["fill"].as_str().ok_or_else(|| fault("fill is not text".into()))?;
+                            let count = fill["count"].as_u64().ok_or_else(|| fault("count is not a number".into()))?;
+                            if let Some(last) = page.result.rows[0].last_mut() {
+                                *last = GridCell::Text(text.repeat(count as usize));
+                            }
+                        }
                         Some(page)
                     }
                     None => None,
@@ -3487,6 +3678,11 @@ mod database {
             "catalog.revision" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
                 Output::fields(json!({ "value": { "text": snapshot.revision() } }))
+            }
+            "catalog.revision_compare" => {
+                let revision = snapshot(&step["snapshot"], context).map_err(fault)?.revision().to_owned();
+                let other = snapshot(&step["other"], context).map_err(fault)?.revision().to_owned();
+                Output::fields(json!({ "json": { "length": revision.len(), "differs": revision != other } }))
             }
             "catalog.row_cells" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
@@ -3859,6 +4055,7 @@ mod database {
         match value {
             Val::Null => json!({ "null": true }),
             Val::Int(n) => json!({ "int": n.to_string() }),
+            Val::Unsigned(n) => json!({ "int": n.to_string() }),
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
@@ -4233,7 +4430,11 @@ mod tables {
                 Val::Str(value.take_string()?)
             } else {
                 match field.ty {
-                    Type::I16 => Val::I64(i64::from(value.as_i16()?)),
+                    // A value past the range reaches the write, whose slot check refuses it (CODEC_ENCODE).
+                    Type::I16 => match value.as_i64() {
+                        Ok(n) if i16::try_from(n).is_err() => Val::I64(n),
+                        _ => Val::I64(i64::from(value.as_i16()?)),
+                    },
                     Type::I32 => Val::I64(i64::from(value.as_i32()?)),
                     Type::I64 => Val::I64(value.as_i64()?),
                     Type::F64 => Val::F64(value.as_f64()?),
@@ -4400,6 +4601,8 @@ mod tables {
     struct Build {
         joined: HashMap<String, u64>,
         outer: Option<u64>,
+        /// The connection of the step, for a join that names connect.
+        db: Option<Db>,
     }
 
     impl Build {
@@ -4417,6 +4620,10 @@ mod tables {
                         return Ok(());
                     }
                     "placed" => {
+                        if let Some(model) = value["model"].as_str() {
+                            core.place(conn, core_of(model)?.id());
+                            return Ok(());
+                        }
                         let name = value.as_str().ok_or_else(|| format!("placed {value} is not a name"))?;
                         let joined = self.joined.get(name).ok_or_else(|| format!("placed {name} names no join"))?;
                         core.place(conn, *joined);
@@ -4495,7 +4702,7 @@ mod tables {
             }
             if let Some(sub) = raw.get("sub") {
                 let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, sub, true)?;
+                Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, sub, true)?;
                 return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
             }
             if raw.get("fn").is_some() {
@@ -4545,7 +4752,7 @@ mod tables {
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()) }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -4590,7 +4797,7 @@ mod tables {
             }
             for join in q["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
-                let mut inner = Build { joined: HashMap::new(), outer: self.outer };
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None };
                 if let Some(alias) = join["alias"].as_str() {
                     child.set_alias(alias);
                 }
@@ -4600,6 +4807,9 @@ mod tables {
                     child.set_on(group);
                 }
                 inner.query(&mut child, join, true)?;
+                if join["connect"].as_bool() == Some(true) {
+                    child.connect(self.db.as_ref().ok_or_else(|| format!("join {join} has no connection"))?);
+                }
                 let id = child.id();
                 let (left, right) = (join["match"][0].as_str().unwrap_or_default(), join["match"][1].as_str().unwrap_or_default());
                 core.join(leaked(join["kind"].as_str().unwrap_or("inner")), left, right, child);
@@ -4615,6 +4825,10 @@ mod tables {
                 self.predicate(core, "", filter)?;
             }
             for entry in q["order"].as_array().into_iter().flatten() {
+                if entry["random"].as_bool() == Some(true) {
+                    core.order_by_random();
+                    continue;
+                }
                 if let Some(name) = entry.as_str() {
                     let (column, desc) = name.strip_prefix('-').map_or((name, false), |column| (column, true));
                     core.order_by(column, desc, None);
@@ -4661,7 +4875,7 @@ mod tables {
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
             }
-            Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, relation, true)?;
+            Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, relation, true)?;
             if let Some(n) = relation["group_limit"].as_u64() {
                 child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
             }
@@ -4886,7 +5100,7 @@ mod tables {
                 if step["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
-                let mut build = Build::default();
+                let mut build = Build { db: Some(db.clone()), ..Build::default() };
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
                 if !paged && !step["offset"].is_null() {
@@ -4965,7 +5179,7 @@ mod tables {
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
                 } }));
             }
-            if step["page"].as_bool() == Some(true) {
+            if step["page"].as_bool() == Some(true) || !step["plan_page"].is_null() {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
@@ -4987,10 +5201,16 @@ mod tables {
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
             let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
             let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-            if count == 0 {
-                return Err("a paged model.query needs a limit above 0".into());
-            }
-            let page = gets_page(root, offset / count + 1, count).await.map_err(orm)?;
+            let (number, size) = if step["plan_page"].is_null() {
+                if count == 0 {
+                    return Err("a paged model.query needs a limit above 0".into());
+                }
+                (offset / count + 1, count)
+            } else {
+                let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                (number("page")?, number("per_page")?)
+            };
+            let page = gets_page(root, number, size).await.map_err(orm)?;
             let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
             let mut fields = json!({
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
@@ -5013,7 +5233,13 @@ mod tables {
         /// The written model is bound with as, and its toArray is the result.
         async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
             let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
-            let mut row = self.row(model, db, &step["values"])?;
+            let mut row = if step["unconnected"].as_bool() == Some(true) {
+                let mut row = TableRow::from_core(core_of(model)?);
+                assign_values(&mut row, &step["values"])?;
+                row
+            } else {
+                self.row(model, db, &step["values"])?
+            };
             for (name, value) in members(&step["attached"]) {
                 let plain = match param(value)? {
                     Param::Null => Value::Null,
@@ -5338,9 +5564,16 @@ mod tables {
 
     /// The cells of the columns of a row, each the recipe wrapper of its value.
     fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, String> {
+        let entity = fields_of(row.core.entity()).map_err(orm)?;
         columns
             .iter()
             .map(|column| {
+                // A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
+                if entity.field(column).is_some_and(|field| matches!(field.ty, Type::Date | Type::Time(_) | Type::DateTime(_))) {
+                    if let Some(text) = to_array(row).map_err(orm)?.get(column).and_then(Value::as_str) {
+                        return Ok(json!({ "text": text }));
+                    }
+                }
                 Ok(match row.value(column).ok_or_else(|| format!("the row has no column {column}"))? {
                     Val::Str(text) => json!({ "text": text }),
                     Val::I64(n) => json!({ "int": n.to_string() }),

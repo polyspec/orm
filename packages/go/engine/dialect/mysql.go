@@ -77,24 +77,24 @@ func (MySQL) Upsert(_ []string, assigns string) string {
 
 // ReadExpr applies SQL-side stages. AES is handled by the executor so it can
 // select the key from the row's version metadata.
-func (MySQL) ReadExpr(col string, styles []string, ph func() string) (string, int) {
-	expr, binds := col, 0
+func (MySQL) ReadExpr(col string, styles []string) string {
+	expr := col
 	for i := len(styles) - 1; i >= 0; i-- {
 		if styles[i] == "ip" {
 			expr = "INET6_NTOA(" + expr + ")"
 		}
 	}
-	return expr, binds
+	return expr
 }
 
-func (MySQL) WriteExpr(ph func() string, styles []string) (string, int) {
-	expr, binds := ph(), 1
+func (MySQL) WriteExpr(ph string, styles []string) string {
+	expr := ph
 	for _, s := range styles {
 		if s == "ip" {
 			expr = "INET6_ATON(" + expr + ")"
 		}
 	}
-	return expr, binds
+	return expr
 }
 
 func (MySQL) ReadUUID(col string) string { return col }

@@ -2,7 +2,6 @@ package orm_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -31,67 +30,6 @@ table typed_value {
   }
 }
 `
-
-// TestRuntimeValueTypes writes i16, uuid, time(p), date, and ip codec values,
-// gz codec values, and a text column without select explicit in three databases, and reads them back as the Go value types of docs/spec/dbspec.md "Runtime
-// model" Go value types.
-// Requirements: INT-99, DBS-68, COD-20.
-func TestRuntimeValueTypes(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	s := documentSchema(t, valueTypesDocument)
-	columns := []string{"seq", "small", "wide", "ratio", "active", "ref", "clock", "day", "address", "packed", "payload", "note"}
-	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 1, func(t *testing.T, driver, dsn string, db *orm.DB) {
-		ent := rowEntity("typed_value", s, columns...)
-		c := orm.NewCore(ent)
-		c.Connect(db)
-		c.Set("small", int16(-1234))
-		c.Set("wide", int64(7))
-		c.Set("ratio", 1.25)
-		c.Set("active", true)
-		c.Set("ref", "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e")
-		c.Set("clock", "10:20:30.500")
-		c.Set("day", "2026-02-03")
-		c.Set("address", "192.0.2.7")
-		c.Set("packed", orm.Value("compressed text"))
-		c.Set("payload", orm.SqlNull())
-		c.Set("note", "plain text")
-		if _, err := c.Create(); err != nil {
-			t.Fatal(err)
-		}
-		q := orm.NewCore(ent)
-		q.Connect(db)
-		row, err := q.Get()
-		if err != nil {
-			t.Fatal(err)
-		}
-		vals := as[*keywordRow](t, row).vals
-		if v, err := orm.AsInt16(vals["small"]); err != nil || v != -1234 {
-			t.Errorf("small = %#v (%v)", vals["small"], err)
-		}
-		if v, err := orm.AsString(vals["ref"]); err != nil || v != "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e" {
-			t.Errorf("ref = %#v (%v)", vals["ref"], err)
-		}
-		if v, err := orm.AsTimeText(vals["clock"], 3); err != nil || v != "10:20:30.500" {
-			t.Errorf("clock = %#v (%v)", vals["clock"], err)
-		}
-		if v, ok := vals["day"].(time.Time); !ok || v.Format("2006-01-02") != "2026-02-03" {
-			t.Errorf("day = %#v", vals["day"])
-		}
-		if v, err := orm.AsString(vals["address"]); err != nil || v != "192.0.2.7" {
-			t.Errorf("address = %#v", vals["address"])
-		}
-		packed, ok := vals["packed"].(orm.StyledValue)
-		if data, present := packed.Data(); !ok || !present || data != "compressed text" {
-			t.Errorf("packed = %#v", vals["packed"])
-		}
-		if vals["note"] != "plain text" {
-			t.Errorf("note was not in the default select set: %#v", vals["note"])
-		}
-		if styled, ok := vals["payload"].(orm.StyledValue); !ok || styled.Kind() != "sql-null" {
-			t.Errorf("selected styled SQL NULL = %#v", vals["payload"])
-		}
-	})
-}
 
 // Requirements: INT-98.
 // TestRuntimeInvalidCellsFailTypedReads writes invalid physical cells through

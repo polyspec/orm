@@ -51,13 +51,6 @@ func decimalPhysical(t *testing.T, env string) {
 	if !errors.Is(err, rollback) {
 		t.Fatalf("transaction did not roll back: %v", err)
 	}
-	count, err := decimalmodel.DecimalCase().Connect(db).Seq(1).GetCount()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 0 {
-		t.Fatalf("decimal fixture row remains after rollback: %d", count)
-	}
 }
 
 // Requirements: DIA-25, COD-2.

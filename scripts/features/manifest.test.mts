@@ -4,13 +4,14 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
-import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
+import { parseFeatures, type ManifestFeature } from './manifest.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
 import { readCheckInputs } from '../check/inputs.mts';
 import { readManifest as readInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
-const manifest = readFeatures(root);
+// The manifest as written: readFeatures adds the cases of the recipe owners, which the schema refuses in the file.
+const manifest = parseFeatures(readFileSync(new URL('../../contracts/features.json', import.meta.url), 'utf8'), 'contracts/features.json');
 const first = manifest.features[0];
 assert.ok(first, 'contracts/features.json declares a feature');
 
@@ -56,6 +57,15 @@ function unresolvedCfg9Contract() {
 caseTest('the schema of contracts/features.json accepts the repository manifest', COMPUTE, () => {
   assert.deepEqual(refused(manifest), []);
   assert.deepEqual(refused(withFeature(feature => ({ ...feature, status: 'planned', verification: [] }))), []);
+});
+
+caseTest('the schema refuses a list of cases on a recipe owner and requires one on a native owner', COMPUTE, () => {
+  const owner = (command: Record<string, unknown>) => withFeature(feature => ({ ...feature, coverage: {
+    kind: 'independent', dependents: [], owners: { go: { part: 'p', tests: ['t'], commands: { none: [{ runner: 'go', test: 't', ...command }] } } },
+  } }));
+  assert.deepEqual(refused(owner({ recipe: 'r' })).filter(path => path.includes('/commands/')), []);
+  assert.ok(refused(owner({ recipe: 'r', cases: ['a'] })).some(path => path.endsWith('/commands/none/0/cases')));
+  assert.ok(refused(owner({})).some(path => path.endsWith('/commands/none/0')));
 });
 
 caseTest('coverage execution modes are explicit and reject unknown values', COMPUTE, () => {
@@ -216,13 +226,10 @@ const markdownServerContracts = [
   { path: 'packages/php/tests/WasInsertedTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
   { path: 'packages/php-ext/tests/OrmExceptionNativeTest.php', required: ['markdownTestServerCode(', 'startMarkdownTestServer(', 'stopMarkdownTestServer('], forbidden: ['markdownServerCode(', 'startMarkdownServer(', 'stopMarkdownServer('] },
-  { path: 'packages/go/orm/markdown_test.go', required: ['type markdownTestServer struct', 'receivedMessages', 'startMarkdownTestServer('], forbidden: ['type fakeServer struct', 'startFakeServer('] },
   { path: 'packages/go/markdownmodel/ir_answers_test.go', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer(', 'serveMarkdownTestConnection('], forbidden: ['keyedServer(', 'answeringServer(', 'listenLocal(', 'serveListener('] },
   { path: 'packages/python/tests/test_markdown.py', required: ['class MarkdownTestServer:', 'def received_messages(self)', 'self._received_messages'], forbidden: ['class FakeServer:', 'def messages(self)', 'self.received_messages:'] },
   { path: 'packages/python/tests/test_was_inserted.py', required: ['MarkdownTestServer'], forbidden: ['FakeServer'] },
   { path: 'packages/python/tests/chain_answer.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
-  { path: 'packages/rust/orm/tests/markdown.rs', required: ['struct MarkdownTestServer', 'received_messages', 'start_markdown_test_server('], forbidden: ['struct FakeServer', 'fake_server('] },
-  { path: 'packages/ts/tests/markdown.mjs', required: ['startMarkdownTestServer(', 'receivedMessages'], forbidden: ['fakeServer(', '.received;'] },
   { path: 'packages/ts/tests/recipe.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
   { path: 'packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },

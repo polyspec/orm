@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: b3a95e6b4293d47ba5825eaa3151b4a41e41fddb1db3c6d500a12fa30c3caf89 -->
+<!-- source-sha256: dbcb01c04bd22b5c42892675c8ca180ccbefad1fc991187415be154e91e7f4cb -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -40,6 +40,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-15** 모든 클라이언트는 그렇게 실패한 문에 `CONNECTION_LOST`를 반환하고 그 문을 다시 전송하지 않는다. 연결의 트랜잭션이나 세션 상태가 사라졌기 때문이다.
 - **CFG-38** PHP와 PHP extension은 connection에 session 하나를 둔다. 따라서 첫 statement 전에 server가 그 session을 끝내면 그 statement는 `CONNECTION_LOST`로 실패하고, 한 번만 전송된다.
 - **CFG-39** Go: callback 도중 context가 취소된 transaction은 `CANCELED`만 돌려주고, connection은 그 transaction의 named lock, user variable, SQLite mode를 유지하지 않는다.
+- **CFG-40** Go: `DriverFromDSN`은 DSN URI의 scheme으로 데이터베이스를 이름하고, URI가 아닌 DSN에는 `CONFIG`를 돌려준다.
 
 ## DSN 매개변수와 MySQL TLS
 

@@ -1,6 +1,10 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
+  "DSL-137",
+  "DIA-37",
+  "DIA-14",
+  "DIA-11",
   "FCV-2",
   "FCV-3",
   "FCV-4",
@@ -135,10 +139,23 @@
   "INT-99",
   "COD-20",
   "DIA-25",
-  "COD-2"
+  "COD-2",
+  "DSL-19",
+  "DSL-47",
+  "DSL-96",
+  "DSL-98",
+  "PRT-14"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
+  "after": {
+   "op": "sql.exec",
+   "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
+   "only": [
+    "postgres"
+   ],
+   "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
+  },
   "rows": {
    "user": [
     {
@@ -6064,14 +6081,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -6431,14 +6440,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -6817,14 +6818,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -7186,14 +7179,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -7458,6 +7443,7 @@
   {
    "id": "conditions_values",
    "requirements": [
+    "DIA-37",
     "DSL-29",
     "DSL-30",
     "DSL-31",
@@ -7471,14 +7457,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -9488,14 +9466,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -10322,14 +10292,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -10937,14 +10899,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -11669,14 +11623,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -12270,14 +12216,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -13117,6 +13055,7 @@
   {
    "id": "relations",
    "requirements": [
+    "DIA-37",
     "DSL-79",
     "DSL-80",
     "DSL-81",
@@ -13133,14 +13072,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -14512,14 +14443,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -14745,14 +14668,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -14834,14 +14749,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -15503,14 +15410,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -15890,14 +15789,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -16865,14 +16756,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -18922,14 +18805,6 @@
      }
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -20974,6 +20849,9 @@
   {
    "id": "functions",
    "requirements": [
+    "DIA-14",
+    "DIA-37",
+    "DSL-137",
     "DSL-54",
     "DSL-131",
     "DSL-132",
@@ -20991,14 +20869,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -22230,14 +22100,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -22365,14 +22227,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -22785,14 +22639,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -24511,14 +24357,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -25167,6 +25005,8 @@
   {
    "id": "creates_and_save",
    "requirements": [
+    "DIA-11",
+    "DIA-37",
     "DSL-104",
     "DSL-109"
    ],
@@ -25175,14 +25015,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -27809,14 +27641,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -30136,14 +29960,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -30391,14 +30207,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -32313,14 +32121,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -34252,12 +34052,1934 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
+     "op": "transaction",
+     "connection": "db",
+     "steps": []
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "steps": [
+      {
+       "op": "model.create",
+       "model": "SoftLink",
+       "values": {
+        "code": {
+         "text": "roc-1"
+        },
+        "label": {
+         "text": "first"
+        }
+       },
+       "as": "created",
+       "unconnected": true
+      },
+      {
+       "op": "model.update",
+       "connection": "db",
+       "row": "created",
+       "set": {
+        "deleted_at": {
+         "datetime": "2026-01-02 03:04:05.000000"
+        }
+       }
+      },
+      {
+       "op": "model.create",
+       "model": "SoftLink",
+       "values": {
+        "code": {
+         "text": "roc-1"
+        },
+        "label": {
+         "text": "second"
+        }
+       },
+       "expect": {
+        "mysql": {
+         "json": {
+          "code": "roc-1",
+          "deleted_at": null,
+          "label": "second",
+          "seq": 1
+         }
+        },
+        "postgres": {
+         "json": {
+          "code": "roc-1",
+          "deleted_at": null,
+          "label": "second",
+          "seq": 1
+         }
+        },
+        "sqlite": {
+         "json": {
+          "code": "roc-1",
+          "deleted_at": null,
+          "label": "second",
+          "seq": 1
+         }
+        }
+       },
+       "restore_or_create": true,
+       "unconnected": true
+      },
+      {
+       "op": "model.create",
+       "model": "SoftLink",
+       "values": {
+        "code": {
+         "text": "roc-1"
+        },
+        "label": {
+         "text": "third"
+        }
+       },
+       "expect": {
+        "mysql": {
+         "error": "ROW_NOT_DELETED"
+        },
+        "postgres": {
+         "error": "ROW_NOT_DELETED"
+        },
+        "sqlite": {
+         "error": "ROW_NOT_DELETED"
+        }
+       },
+       "restore_or_create": true,
+       "unconnected": true
+      },
+      {
+       "op": "model.create",
+       "model": "SoftLink",
+       "values": {
+        "code": {
+         "text": "roc-2"
+        },
+        "label": {
+         "text": "new"
+        }
+       },
+       "expect": {
+        "mysql": {
+         "json": {
+          "code": "roc-2",
+          "label": "new",
+          "seq": 2
+         }
+        },
+        "postgres": {
+         "json": {
+          "code": "roc-2",
+          "label": "new",
+          "seq": 2
+         }
+        },
+        "sqlite": {
+         "json": {
+          "code": "roc-2",
+          "label": "new",
+          "seq": 2
+         }
+        }
+       },
+       "restore_or_create": true,
+       "unconnected": true
+      }
      ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
+     "fail": true,
+     "expect": {
+      "mysql": {
+       "error": "CALLBACK"
+      },
+      "postgres": {
+       "error": "CALLBACK"
+      },
+      "sqlite": {
+       "error": "CALLBACK"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "SoftLink",
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "START TRANSACTION"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `soft_link` (`code`, `label`) VALUES (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              },
+              {
+               "text": "first"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `soft_link` SET `deleted_at` = ? WHERE `soft_link`.`seq` = ? AND `soft_link`.`deleted_at` IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "2026-01-02 03:04:05.000000"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "second"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`code` AS `a__code`, `a`.`label` AS `a__label`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ? LIMIT 0, 1"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "third"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE `soft_link` SET `label` = ?, `deleted_at` = NULL WHERE `soft_link`.`code` = ? AND `soft_link`.`deleted_at` IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "new"
+              },
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`code` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO `soft_link` (`code`, `label`) VALUES (?, ?)"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              },
+              {
+               "text": "new"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "ROLLBACK"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "rollback"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `soft_link` AS `a` WHERE `a`.`deleted_at` IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"soft_link\" (\"code\", \"label\") VALUES ($1, $2) RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              },
+              {
+               "text": "first"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"deleted_at\" = $1 WHERE \"soft_link\".\"seq\" = $2 AND \"soft_link\".\"deleted_at\" IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "2026-01-02 03:04:05.000000"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = $1, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = $2 AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "second"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"code\" AS \"a__code\", \"a\".\"label\" AS \"a__label\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = $1 LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = $1, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = $2 AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "third"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = $1"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = $1, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = $2 AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "new"
+              },
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = $1"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"soft_link\" (\"code\", \"label\") VALUES ($1, $2) RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              },
+              {
+               "text": "new"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "ROLLBACK"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "rollback"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "BEGIN IMMEDIATE"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"soft_link\" (\"code\", \"label\") VALUES (?, ?) RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              },
+              {
+               "text": "first"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"deleted_at\" = ? WHERE \"soft_link\".\"seq\" = ? AND \"soft_link\".\"deleted_at\" IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "2026-01-02 03:04:05.000000"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = ?, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = ? AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "second"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"code\" AS \"a__code\", \"a\".\"label\" AS \"a__label\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = ? LIMIT 1 OFFSET 0"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = ?, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = ? AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "third"
+              },
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "UPDATE \"soft_link\" SET \"label\" = ?, \"deleted_at\" = NULL WHERE \"soft_link\".\"code\" = ? AND \"soft_link\".\"deleted_at\" IS NOT NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "new"
+              },
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "update"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"code\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "INSERT INTO \"soft_link\" (\"code\", \"label\") VALUES (?, ?) RETURNING \"seq\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "roc-2"
+              },
+              {
+               "text": "new"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "insert"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "ROLLBACK"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "rollback"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ],
+           [
+            "transaction",
+            {
+             "int": "1"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"soft_link\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "soft_link"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "restore_or_create_connected",
+   "requirements": [
+    "INT-39",
+    "DSL-119"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
     },
     {
      "op": "transaction",
@@ -37029,14 +38751,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -38593,14 +40307,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -40181,14 +41887,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -40565,14 +42263,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -41365,14 +43055,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -42161,14 +43843,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -42976,14 +44650,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -43764,14 +45430,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -45207,14 +46865,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -45992,14 +47642,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -46775,14 +48417,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -48154,14 +49788,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -48230,14 +49856,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -48301,14 +49919,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -48379,14 +49989,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -48454,14 +50056,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -48700,14 +50294,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -49025,14 +50611,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -50544,14 +52122,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -51105,14 +52675,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -52516,6 +54078,410 @@
    ]
   },
   {
+   "id": "errors",
+   "requirements": [
+    "DSL-10",
+    "DSL-19",
+    "DSL-47",
+    "DSL-67",
+    "DSL-96",
+    "DSL-98",
+    "DSL-123",
+    "PRT-14"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "",
+        {
+         "is_close": {
+          "bool": true
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "and"
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "in": {
+        "array": []
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "EMPTY_IN"
+      },
+      "postgres": {
+       "error": "EMPTY_IN"
+      },
+      "sqlite": {
+       "error": "EMPTY_IN"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "unconnected": true,
+     "where": {
+      "name": {
+       "text": "a"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "lock": "update",
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "joins": [
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "connect": true,
+       "as": "u"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "plan_page": {
+      "page": 1,
+      "per_page": 10
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ],
+       "limit": {
+        "offset": 0,
+        "count": 1
+       }
+      }
+     ],
+     "key": {
+      "seq": {
+       "int": "42"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "LIMIT_IN_RELATION"
+      },
+      "postgres": {
+       "error": "LIMIT_IN_RELATION"
+      },
+      "sqlite": {
+       "error": "LIMIT_IN_RELATION"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "or",
+        {
+         "placed": {
+          "model": "User"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "42"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "core_conditions",
    "requirements": [
     "PLN-7",
@@ -53629,14 +55595,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\"));",
-     "only": [
-      "postgres"
-     ]
-    },
-    {
      "op": "model.get_by",
      "connection": "db",
      "model": "Author",
@@ -54161,15 +56119,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       }
      }
     },
@@ -54201,15 +56159,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       }
      }
     },
@@ -54243,15 +56201,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "user_model"
+       "message_holds": "user_model"
       }
      }
     },
@@ -54285,15 +56243,15 @@
      "expect": {
       "mysql": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "postgres": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       },
       "sqlite": {
        "error": "CONFIG",
-       "message_contains": "alias<Name>()"
+       "message_holds": "alias<Name>()"
       }
      }
     }
@@ -55499,7 +57457,6 @@
        "int": "6"
       }
      },
-     "order": [],
      "columns": [
       "name"
      ],
@@ -56676,14 +58633,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -56724,50 +58673,7 @@
          "datetime": "2026-06-01 00:00:00.000000"
         }
        }
-      }
-     ]
-    },
-    {
-     "op": "catalog.read_only_query",
-     "sql": {
-      "mysql": "SELECT COUNT(*) FROM author WHERE seq = 99907 AND created_ts = updated_ts AND created_ts > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND created_ts < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
-      "postgres": "SELECT COUNT(*) FROM author WHERE seq = 99907 AND created_ts = updated_ts AND created_ts > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND created_ts < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
-      "sqlite": "SELECT COUNT(*) FROM author WHERE seq = 99907 AND created_ts = updated_ts AND created_ts > datetime('now', '-1 minute') AND created_ts < datetime('now', '+1 minute')"
-     },
-     "expect": {
-      "mysql": {
-       "rows": [
-        [
-         {
-          "int": "1"
-         }
-        ]
-       ]
       },
-      "postgres": {
-       "rows": [
-        [
-         {
-          "int": "1"
-         }
-        ]
-       ]
-      },
-      "sqlite": {
-       "rows": [
-        [
-         {
-          "int": "1"
-         }
-        ]
-       ]
-      }
-     }
-    },
-    {
-     "op": "transaction",
-     "connection": "db",
-     "steps": [
       {
        "op": "model.get_by",
        "connection": "db",
@@ -56910,86 +58816,6 @@
            [
             "sql",
             {
-             "text": "COMMIT"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "commit"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "1"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
-             "text": "START TRANSACTION"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "begin"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "2"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
              "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
             }
            ],
@@ -57022,7 +58848,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57070,7 +58896,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57110,7 +58936,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57247,86 +59073,6 @@
            [
             "sql",
             {
-             "text": "COMMIT"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "commit"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "1"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
-             "text": "BEGIN"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "begin"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "2"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
              "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0"
             }
            ],
@@ -57359,7 +59105,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57407,7 +59153,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57447,7 +59193,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57584,86 +59330,6 @@
            [
             "sql",
             {
-             "text": "COMMIT"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "commit"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "1"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
-             "text": "BEGIN IMMEDIATE"
-            }
-           ],
-           [
-            "binds",
-            {
-             "array": []
-            }
-           ],
-           [
-            "kind",
-            {
-             "text": "begin"
-            }
-           ],
-           [
-            "tables",
-            {
-             "array": []
-            }
-           ],
-           [
-            "transaction",
-            {
-             "int": "2"
-            }
-           ],
-           [
-            "error",
-            {
-             "null": "text"
-            }
-           ]
-          ]
-         },
-         {
-          "object": [
-           [
-            "sql",
-            {
              "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT 1 OFFSET 0"
             }
            ],
@@ -57696,7 +59362,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57744,7 +59410,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57784,7 +59450,7 @@
            [
             "transaction",
             {
-             "int": "2"
+             "int": "1"
             }
            ],
            [
@@ -57829,6 +59495,87 @@
        }
       ]
      }
+    },
+    {
+     "op": "transaction",
+     "connection": "db",
+     "steps": [
+      {
+       "op": "model.create",
+       "connection": "db",
+       "model": "Author",
+       "values": {
+        "name": {
+         "text": "clock"
+        },
+        "user_seq": {
+         "int": "1"
+        },
+        "service_seq": {
+         "int": "999"
+        },
+        "service_region_seq": {
+         "int": "1"
+        },
+        "service_member_seq": {
+         "int": "1"
+        },
+        "start_dt": {
+         "datetime": "2026-06-01 00:00:00.000000"
+        },
+        "end_dt": {
+         "datetime": "2026-06-01 00:00:00.000000"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > UTC_TIMESTAMP(6) - INTERVAL 1 MINUTE AND created_ts < UTC_TIMESTAMP(6) + INTERVAL 1 MINUTE",
+      "postgres": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > (now() AT TIME ZONE 'UTC') - INTERVAL '1 minute' AND created_ts < (now() AT TIME ZONE 'UTC') + INTERVAL '1 minute'",
+      "sqlite": "SELECT COUNT(*) FROM author WHERE name = 'clock' AND created_ts = updated_ts AND created_ts > datetime('now', '-1 minute') AND created_ts < datetime('now', '+1 minute')"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "int": "1"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.delete",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "name": {
+       "text": "clock"
+      }
+     }
     }
    ]
   },
@@ -57842,14 +59589,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -57926,7 +59665,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -60783,14 +62539,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -60865,7 +62613,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -63673,14 +65438,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -65837,14 +67594,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -66586,14 +68335,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -68713,14 +70454,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -69971,14 +71704,6 @@
      "as": "db"
     },
     {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
-    },
-    {
      "op": "transaction",
      "connection": "db",
      "steps": []
@@ -70281,14 +72006,6 @@
      "op": "model.connect",
      "pool_size": 1,
      "as": "db"
-    },
-    {
-     "op": "sql.exec",
-     "reason": "an explicit seed row does not move a PostgreSQL identity sequence, which the next create reads",
-     "only": [
-      "postgres"
-     ],
-     "sql": "SELECT setval(pg_get_serial_sequence('\"author\"', 'seq'), (SELECT MAX(seq) FROM \"author\")); SELECT setval(pg_get_serial_sequence('\"user\"', 'seq'), (SELECT MAX(seq) FROM \"user\")); SELECT setval(pg_get_serial_sequence('\"service\"', 'seq'), (SELECT MAX(seq) FROM \"service\")); SELECT setval(pg_get_serial_sequence('\"service_region\"', 'seq'), (SELECT MAX(seq) FROM \"service_region\")); SELECT setval(pg_get_serial_sequence('\"service_member\"', 'seq'), (SELECT MAX(seq) FROM \"service_member\"));"
     },
     {
      "op": "transaction",
@@ -74602,7 +76319,9 @@
       "label",
       "address",
       "packed",
-      "note"
+      "note",
+      "clock",
+      "day"
      ],
      "expect": {
       "mysql": {
@@ -74618,7 +76337,9 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       },
       "postgres": {
@@ -74634,7 +76355,9 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       },
       "sqlite": {
@@ -74650,13 +76373,18 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       }
      }
     },
     {
      "op": "model.query",
+     "order": [
+      "seq"
+     ],
      "connection": "db",
      "model": "TypedValue",
      "where": {
@@ -74936,6 +76664,150 @@
       },
       "sqlite": {
        "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.5001"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "3"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "small": {
+       "int": "32767"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "small": {
+       "lt": {
+        "int": "0"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "3"
+       }
       }
      }
     }
@@ -75313,6 +77185,745 @@
         "amount": "-0.0012",
         "large": "0"
        }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "decimal_value"
+       ],
+       "sql": {
+        "mysql": "SELECT CAST(`amount` AS CHAR), CAST(`large` AS CHAR) FROM `decimal_value` ORDER BY `seq`",
+        "postgres": "SELECT CAST(\"amount\" AS TEXT), CAST(\"large\" AS TEXT) FROM \"decimal_value\" ORDER BY \"seq\"",
+        "sqlite": "SELECT CAST(\"amount\" AS TEXT), CAST(\"large\" AS TEXT) FROM \"decimal_value\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "48.0450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-0.0012"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "48.0450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-0.0012"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "480450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-12"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_styled_states",
+   "requirements": [
+    "COD-20"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "styled": {
+        "null": "text"
+       }
+      },
+      "jsons_tags": {
+       "styled": {
+        "null": "text"
+       }
+      },
+      "serialize_data": {
+       "styled": {
+        "null": "text"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "kind",
+         {
+          "text": "sql-null"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"kind\":\"sql-null\"}"
+      },
+      "postgres": {
+       "json": "{\"kind\":\"sql-null\"}"
+      },
+      "sqlite": {
+       "json": "{\"kind\":\"sql-null\"}"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "null": "text"
+      },
+      "jsons_tags": {
+       "null": "text"
+      },
+      "serialize_data": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "UPDATE `author` SET `json_setting` = '' WHERE `seq` = 1",
+        "postgres": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "query_now_and_random_order",
+   "requirements": [
+    "DSL-99",
+    "DSL-137"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "start_dt": {
+          "le": {
+           "fn": "now"
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "random": true
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
       }
      }
     }

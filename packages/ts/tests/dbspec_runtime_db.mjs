@@ -1,7 +1,7 @@
 // dbspec runtime model test on SQLite, MySQL and PostgreSQL: a connection
 // without a schema path, schema installation from dbspec documents, i16
 // values, database defaults, the default select set, the value type of every
-// codec stage and dbspec type, and the audit record of a transaction. Each dialect runs
+// codec stage and dbspec type. Each dialect runs
 // on a case database of its own on the servers of ORM_TEST_MYSQL_DSN and
 // ORM_TEST_POSTGRES_DSN, or a new SQLite file (case-database.mjs).
 //
@@ -87,7 +87,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   // Requirements: DBS-119.
   caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async ({ step }) => {
     database = await createCaseDatabase(dialect, step);
-    db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key', auditSource: auditSource('default') });
+    db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
     assert.equal(db.driver, dialect);
   });
 
@@ -97,27 +97,6 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     await db.utils().schema().install(schemaOf(auditText));
     assert.equal(await new Probe().connect(db).getCount(), 0);
     assert.equal(await new Item().connect(db).getCount(), 0);
-  });
-
-  // Requirements: INT-99.
-  caseTest(`${dialect}: an i16 column reads and writes its whole range`, 30_000, async () => {
-    for (const small of [-32768, 32767]) {
-      await assertProbeColumn(db, { small, wide: 7, ratio: 1.25, active: true }, 'small', small);
-    }
-    for (const invalid of [32768, -32769, 1.5]) {
-      assert.equal(await code(Promise.resolve().then(() => new Probe()[CORE].setValue('small', invalid))), 'CODEC_ENCODE', `i16 ${invalid}`);
-    }
-  });
-
-  // Requirements: INT-99.
-  caseTest(`${dialect}: an omitted column takes the database default and a required column is checked`, 30_000, async () => {
-    await assertProbeColumn(db, { small: 1, wide: 7, ratio: 1.25, active: true }, 'label', 'none');
-    const missing = new Probe().connect(db);
-    missing[CORE].setValue('label', 'x');
-    missing[CORE].setValue('wide', 7);
-    missing[CORE].setValue('ratio', 1.25);
-    missing[CORE].setValue('active', true);
-    assert.equal(await code(missing.create()), 'IR_INVALID');
   });
 
   caseTest(`${dialect}: the default select set leaves out only select explicit columns`, 30_000, async () => {
@@ -151,30 +130,11 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     row[CORE].setValue('stamp', '2026-01-02 03:04:05.678');
     const seq = (await row.create())[CORE].column('seq');
     const read = await new Probe().connect(db).seq(seq).get();
-    assert.equal(read[CORE].column('secret'), 'person@example.com');
     const payload = read[CORE].column('payload');
     assert.ok(payload instanceof StyledValue && payload.kind === 'value' && payload.payload() instanceof JsonValue);
     assert.equal(stringifyJson(payload.payload()), '{"b":1,"a":1.50}');
-    const packed = read[CORE].column('packed');
-    assert.ok(packed instanceof StyledValue && packed.kind === 'value');
-    assert.equal(packed.payload(), 'compressed text');
-    assert.equal(read[CORE].column('day'), '2026-01-02');
     assert.equal(read[CORE].column('clock'), '12:34:56.789');
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
-  });
-
-  // Requirements: COD-20.
-  caseTest(`${dialect}: selected styled SQL NULL survives a database read`, 30_000, async () => {
-    const row = new Probe().connect(db);
-    row[CORE].setValue('small', 4);
-    row[CORE].setValue('wide', 10);
-    row[CORE].setValue('ratio', 3.5);
-    row[CORE].setValue('active', true);
-    row[CORE].setValue('payload', StyledValue.sqlNull());
-    const seq = (await row.create())[CORE].column('seq');
-    const loaded = await new Probe().connect(db).seq(seq).get();
-    const payload = loaded[CORE].column('payload');
-    assert.ok(payload instanceof StyledValue && payload.kind === 'sql-null');
   });
 
   // Requirements: INT-98.

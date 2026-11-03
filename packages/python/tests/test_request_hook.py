@@ -43,7 +43,7 @@ class RequestHookTest(RequestHookCase):
     def setUp(self):
         self.open_database()
 
-    # Requirements: INT-78.
+    # Requirements: INT-78a.
     def test_without_hook(self):
         """The hooked handle derives from the connection: its root is the connection."""
         hooked = self.db.with_request_hook(lambda request, add_param, params: request)

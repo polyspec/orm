@@ -119,11 +119,6 @@ func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) str
 	return b.slot(s)
 }
 
-// secret is the key of an executor setting. The key is text.
-func (b *builder) secret(name string) string {
-	return b.slot(plan.BindSlot{From: "secret", Name: name, ColType: "text"})
-}
-
 // config is an executor setting value. typ is the type of the column that uses that value.
 func (b *builder) config(name, typ string) string {
 	return b.slot(plan.BindSlot{From: "config", Name: name, ColType: typ})
@@ -579,7 +574,7 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
+		expr := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec))
 		if col.Type == "time" {
 			expr = p.D.ReadTime(expr, col.Precision)
 		}
@@ -646,8 +641,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 		default:
-			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
-			expr = e
+			expr = p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec))
 			if col.Type == "time" {
 				expr = p.D.ReadTime(expr, col.Precision)
 			}
@@ -1089,17 +1083,9 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 		}
 		return ph, nil
 	}
-	first := true
-	e, _ := p.D.WriteExpr(func() string {
-		if first {
-			first = false
-			ph := b.param(i, styleInputType(styles[0]))
-			b.binds[len(b.binds)-1].HostStyles = host
-			return ph
-		}
-		return b.secret("aes")
-	}, styles)
-	return e, nil
+	ph := b.param(i, styleInputType(styles[0]))
+	b.binds[len(b.binds)-1].HostStyles = host
+	return p.D.WriteExpr(ph, styles), nil
 }
 
 // renderBlindIndexValue binds plaintext for executor-side keyed hashing. The
