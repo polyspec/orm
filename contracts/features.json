@@ -8401,9 +8401,6 @@
       },
       "coverage": {
         "kind": "database",
-        "cases": [
-          "conformance_vector"
-        ],
         "owners": {
           "go": {
             "part": "packages/go/orm",

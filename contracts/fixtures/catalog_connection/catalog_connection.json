@@ -7801,13 +7801,17 @@
         {
           "op": "sql.exec",
           "only": [
-            "postgres",
+            "postgres"
+          ],
+          "sql": "CREATE TABLE key_later_row (seq BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, n BIGINT NOT NULL)",
+          "reason": "a row with a higher key that appears before the insert can read the table: a key read from the table would be its key, the race of INT-123 without a second connection"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
             "sqlite"
           ],
-          "sql": {
-            "postgres": "CREATE TABLE key_later_row (seq BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, n BIGINT NOT NULL)",
-            "sqlite": "CREATE TABLE key_later_row (seq INTEGER PRIMARY KEY AUTOINCREMENT, n BIGINT NOT NULL)"
-          },
+          "sql": "CREATE TABLE key_later_row (seq INTEGER PRIMARY KEY AUTOINCREMENT, n BIGINT NOT NULL)",
           "reason": "a row with a higher key that appears before the insert can read the table: a key read from the table would be its key, the race of INT-123 without a second connection"
         },
         {
@@ -7815,21 +7819,23 @@
           "only": [
             "postgres"
           ],
-          "sql": {
-            "postgres": "CREATE FUNCTION key_later_row_add() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.n < 1000 THEN INSERT INTO key_later_row (n) VALUES (NEW.n + 1000); END IF; RETURN NEW; END; $$"
-          },
+          "sql": "CREATE FUNCTION key_later_row_add() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.n < 1000 THEN INSERT INTO key_later_row (n) VALUES (NEW.n + 1000); END IF; RETURN NEW; END; $$",
           "reason": "the trigger function of the later row"
         },
         {
           "op": "sql.exec",
           "only": [
-            "postgres",
+            "postgres"
+          ],
+          "sql": "CREATE TRIGGER key_later_row_after AFTER INSERT ON key_later_row FOR EACH ROW EXECUTE FUNCTION key_later_row_add()",
+          "reason": "a trigger adds the later row in the statement of the insert"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
             "sqlite"
           ],
-          "sql": {
-            "postgres": "CREATE TRIGGER key_later_row_after AFTER INSERT ON key_later_row FOR EACH ROW EXECUTE FUNCTION key_later_row_add()",
-            "sqlite": "CREATE TRIGGER key_later_row_after AFTER INSERT ON key_later_row WHEN NEW.n < 1000 BEGIN INSERT INTO key_later_row (n) VALUES (NEW.n + 1000); END"
-          },
+          "sql": "CREATE TRIGGER key_later_row_after AFTER INSERT ON key_later_row WHEN NEW.n < 1000 BEGIN INSERT INTO key_later_row (n) VALUES (NEW.n + 1000); END",
           "reason": "a trigger adds the later row in the statement of the insert"
         },
         {
