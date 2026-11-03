@@ -4790,6 +4790,10 @@ mod tables {
                 self.predicate(core, "", filter)?;
             }
             for entry in q["order"].as_array().into_iter().flatten() {
+                if entry["random"].as_bool() == Some(true) {
+                    core.order_by_random();
+                    continue;
+                }
                 if let Some(name) = entry.as_str() {
                     let (column, desc) = name.strip_prefix('-').map_or((name, false), |column| (column, true));
                     core.order_by(column, desc, None);

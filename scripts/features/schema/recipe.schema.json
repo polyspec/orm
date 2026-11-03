@@ -9159,6 +9159,18 @@
       "items": {
         "oneOf": [
           {
+            "type": "object",
+            "required": [
+              "random"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "random": {
+                "const": true
+              }
+            }
+          },
+          {
             "$ref": "#/$defs/name"
           },
           {

@@ -5346,7 +5346,6 @@
         "packages/php/tests/EngineTest.php",
         "packages/ts/tests/engine.mjs",
         "packages/ts/tests/engine_features.mjs",
-        "packages/go/engine/functions_physical_test.go",
         "packages/go/engine/interface_test.go",
         "packages/go/engine/plan/plan_test.go",
         "packages/go/engine/ir/fuzz_test.go",
@@ -5408,7 +5407,6 @@
           "inputs": [
             "packages/go/engine/engine_test.go",
             "packages/go/engine/compile_bench_test.go",
-            "packages/go/engine/functions_physical_test.go",
             "packages/go/engine/interface_test.go",
             "packages/go/engine/query_forms_test.go"
           ]

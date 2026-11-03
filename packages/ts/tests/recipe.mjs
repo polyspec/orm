@@ -1747,7 +1747,8 @@ class ChainBuild {
     for (const relation of q.relations ?? []) m[CORE].relation(relation.many === true, this.relation(relation));
     if (q.where !== undefined) this.predicate(m, '', q.where);
     for (const entry of q.order ?? []) {
-      if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
+      if (entry.random === true) m.orderByRandom();
+      else if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
       else if (entry.fn !== undefined) m[CORE].orderBy(fnColumn(entry.fn), entry.dir === 'desc', [chainFunc(entry.fn)]);
       else m[CORE].orderBy(entry.column, entry.dir === 'desc', []);
     }
