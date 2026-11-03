@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The recipe `parameter_chunking` holds that a limit on a split list fails with `IR_INVALID` before any statement (PRT-76), not only its code.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - The statement runner is the recipe `statement_runner`, whose cases all six runtimes run on MySQL, PostgreSQL and SQLite through the new op `utils.run`. The Go `TxFrame.Run` and the Rust `TxFrame::run` return a MySQL text column as text, where they returned bytes. A frame used after its transaction ended now fails with `CONFIG` in Go, TypeScript, PHP and the PHP extension: Go returned `DRIVER`, and TypeScript and PHP ran the statement. A statement that is not text fails with `CONFIG` in TypeScript, where it returned `DRIVER` (INT-150a, INT-150b).
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
