@@ -7,6 +7,8 @@ package recipe
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -29,6 +31,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	_ "modernc.org/sqlite"
 )
 
 // None is the database part of a recipe without a database (FCV-3).
@@ -60,16 +63,18 @@ type step struct {
 	Config  dsnConfig              `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
+	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
+	AssembleTypes bool `json:"assemble_types"`
 	// Names are the output names of a planner.columns step.
 	Names []string `json:"names"`
 	// ManifestHash is the hash an ir.validate request holds in place of the hash of the schema of the recipe.
-	ManifestHash string `json:"manifest_hash"`
-	Lines   []string                   `json:"lines"`
-	Plan    json.RawMessage            `json:"plan"`
-	Plans   []json.RawMessage          `json:"plans"`
-	Source  json.RawMessage            `json:"source"`
-	Target  json.RawMessage            `json:"target"`
-	Dialect string                     `json:"dialect"`
+	ManifestHash string            `json:"manifest_hash"`
+	Lines        []string          `json:"lines"`
+	Plan         json.RawMessage   `json:"plan"`
+	Plans        []json.RawMessage `json:"plans"`
+	Source       json.RawMessage   `json:"source"`
+	Target       json.RawMessage   `json:"target"`
+	Dialect      string            `json:"dialect"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
 	Documents []string  `json:"documents"`
 	Document  string    `json:"document"`
@@ -100,6 +105,15 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
+	// SQL is the statements of dbspec.introspect_sqlite or dbspec.apply_fault.
+	SQL []string `json:"sql"`
+	// Call, AppliedFirst and FailCatalogRead are the fields of dbspec.apply_fault.
+	Call            string `json:"call"`
+	AppliedFirst    bool   `json:"applied_first"`
+	FailCatalogRead int    `json:"fail_catalog_read"`
+	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -249,7 +263,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
-		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.read_file", "dbspec.read_bytes":
+		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)
@@ -285,6 +299,15 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "keyring.versions" {
 		return checkKeyring(s, database)
+	}
+	if s.Op == "dbspec.introspect_shown" {
+		return checkIntrospectShown(t, o.dir, s, database)
+	}
+	if s.Op == "dbspec.apply_fault" {
+		return checkApplyFault(t, s, bound, database)
+	}
+	if s.Op == "dbspec.introspect_sqlite" {
+		return checkIntrospectSQLite(t, s, database)
 	}
 	var r result
 	switch s.Op {
@@ -1178,6 +1201,8 @@ type plannerStatement struct {
 	SQL    string        `json:"sql"`
 	Slots  []plannerSlot `json:"slots"`
 	Tables []string      `json:"tables"`
+	// AssembleTypes is the type of each output column of the step, by name, when the step asks for it.
+	AssembleTypes map[string]string `json:"assemble_types,omitempty"`
 }
 
 // plannerSlot is the source and type of one bind slot. A param slot carries the request value's number, a parent slot
@@ -1193,6 +1218,8 @@ type plannerSlot struct {
 	// NotNull marks a param slot that assigns a non-null column.
 	NotNull  bool     `json:"not_null,omitempty"`
 	KeyTypes []string `json:"key_types,omitempty"`
+	// Name is the audit record table of an audit slot (PRT-32).
+	Name string `json:"name,omitempty"`
 }
 
 // checkPlanner compiles the request of a planner.compile step with the engine of each dialect, against the manifest of the
@@ -1382,6 +1409,14 @@ func checkPlanner(dir string, s step, database string) error {
 			return err
 		}
 		statements := plannerStatements(compiled)
+		if s.AssembleTypes {
+			for i, step := range compiled.Steps {
+				statements[i].AssembleTypes = map[string]string{}
+				for _, column := range step.Assemble.Columns {
+					statements[i].AssembleTypes[column.Name] = column.Type
+				}
+			}
+		}
 		got[dialect] = statements
 	}
 	body, err := json.Marshal(got)
@@ -1415,6 +1450,9 @@ func plannerStatements(compiled plan.Plan) []plannerStatement {
 				s.KeyTypes = slot.KeyTypes
 			default:
 				s.Type = slot.ColType
+			}
+			if slot.From == "audit" {
+				s.Name = slot.Name
 			}
 			if slot.ColType == "datetime" || slot.ColType == "time" {
 				precision := slot.Precision
@@ -1796,14 +1834,49 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 	}
 	var want struct {
 		Error           string `json:"error"`
-		MessageContains string `json:"message_contains"`
+		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
 		return err
 	}
 	code, message := fn(t, s.Calls)
-	if code != want.Error || !strings.Contains(message, want.MessageContains) {
-		return fmt.Errorf("the terminal returned %q %q, want %q with %q", code, message, want.Error, want.MessageContains)
+	if code != want.Error || message != want.Message {
+		return fmt.Errorf("the terminal returned %q %q, want %q %q", code, message, want.Error, want.Message)
+	}
+	return nil
+}
+
+// checkIntrospectSQLite runs one dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public Introspect, whose unsupported objects it compares with the expect of database (DIA-191).
+func checkIntrospectSQLite(t *testing.T, s step, database string) error {
+	var want struct {
+		Unsupported []dbspec.Unsupported `json:"unsupported"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close the memory SQLite connection: %v", err)
+		}
+	}()
+	db.SetMaxOpenConns(1)
+	ctx := context.Background()
+	for _, statement := range s.SQL {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(unsupported, want.Unsupported) {
+		return fmt.Errorf("unsupported objects = %+v, want %+v", unsupported, want.Unsupported)
 	}
 	return nil
 }

@@ -97,7 +97,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_contains": "a positive count"
+              "message": "CONFIG: limit requires a non-negative offset and a positive count"
             }
           }
         }
@@ -119,7 +119,7 @@
           "expect": {
             "none": {
               "error": "EMPTY_IN",
-              "message_contains": "i64_value received an empty list"
+              "message": "EMPTY_IN: i64_value received an empty list"
             }
           }
         }

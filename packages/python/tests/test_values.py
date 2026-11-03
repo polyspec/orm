@@ -1,6 +1,5 @@
 # Checks that value functions and column functions build IR, and codec unit cases (unittest).
 import unittest
-import json
 import math
 
 
@@ -14,7 +13,7 @@ from polyspec.orm.codec import (
 )
 from polyspec.orm.errors import OrmError
 from polyspec.orm.styled_value import StyledValue
-from polyspec.orm.values import ColumnFunction, ValueFunction, _function_ir, orm
+from polyspec.orm.values import orm
 from polyspec.orm.database import convert
 from .coverage_case import error_code
 from . import testcase
@@ -33,33 +32,6 @@ class DatabaseCellConversionTest(unittest.TestCase):
 
 class ValueFunctionTest(unittest.TestCase):
     # Requirements: PRT-77.
-    def test_ir_carry_name_and_parameters(self):
-        params = ["preceding"]
-        self.assertEqual(
-            _function_ir(
-                orm.seconds_ago(30), lambda v: params.append(v) or len(params) - 1
-            ),
-            {"name": "seconds_ago", "ps": [1]},
-        )
-        self.assertEqual(
-            json.dumps(
-                _function_ir(orm.seconds_ago(30), lambda v: 0), separators=(",", ":")
-            ),
-            '{"name":"seconds_ago","ps":[0]}',
-        )
-        self.assertEqual(
-            json.dumps(_function_ir(orm.now(), lambda v: 0), separators=(",", ":")),
-            '{"name":"now"}',
-        )
-        self.assertIsInstance(orm.day_of_week(), ColumnFunction)
-        self.assertIsInstance(orm.months_later(3), ValueFunction)
-        self.assertEqual(orm.year().name, "year")
-
-
-class NaiveDatetimeTest(unittest.TestCase):
-    """MySQL and PostgreSQL drivers return a datetime without a time zone in the connection's time zone. The process's local
-    time zone (TZ) does not change that value."""
-
     def test_a_naive_cell_is_in_the_connection_zone_whatever_the_process_zone(self):
         import datetime
         import os

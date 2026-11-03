@@ -9,15 +9,8 @@ import { join } from 'node:path';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
-// Requirements by case of request_hook_run.mjs (the cases that the recipe request_hook does not run, FCV-4):
+// Requirements by case of request_hook_run.mjs (what the recipe request_hook cannot state, FCV-4):
 // without_hook: INT-78.
-// read_filter: INT-78, PRT-2.
-// relation_scope: INT-78.
-// restore_no_key: DIA-161.
-// invalid_param: PRT-65.
-// restore_rewritten_key: DIA-161.
-// restore_hook_set_key: DIA-161.
-// restore_rewritten_key_set_scope: DIA-161.
 // reads_params: INT-78.
 let failures = 0;
 for (const [name, run] of Object.entries(cases)) {

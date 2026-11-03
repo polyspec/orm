@@ -15,7 +15,7 @@
 // rollback fault cases and the live-db cases of orm-build are in that run.
 import { readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { keepAll, render, run, runLanes, variable, type Command } from './check/commands.mts';
 import { COMMANDS as TYPESCRIPT_COMMANDS, sqliteTest } from './typescript/sqlite-test.mts';
@@ -146,6 +146,11 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
     }
   }
   for (const { feature, command } of rustCommands) {
+    // A recipe owner names no case symbol (FCV-12): its program, one per database, is the unit the feature matrix owns.
+    if (command.recipe !== undefined) {
+      testSymbols.add(basename(command.test, '.rs'));
+      continue;
+    }
     for (const id of command.cases) {
       const symbol = command.symbols?.[id];
       if (typeof symbol !== 'string' || symbol === '') throw new Error(`${feature}: Rust case ${id} has no declared native test symbol`);
@@ -163,7 +168,7 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
     const [, explicitPath, name] = match;
     if (name === undefined) continue;
     const moduleFile = explicitPath === undefined ? resolve(integrationDirectory, `${name}.rs`) : resolve(integrationDirectory, explicitPath);
-    const declared = rustCommands.filter(({ command }) => resolve(repository, command.test) === moduleFile);
+    const declared = rustCommands.filter(({ command }) => command.recipe === undefined && resolve(repository, command.test) === moduleFile);
     for (const { command } of declared) {
       const standaloneTarget = !command.test.replaceAll('\\', '/').includes('/integration/');
       for (const id of command.cases) {

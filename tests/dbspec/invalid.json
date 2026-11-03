@@ -80,7 +80,8 @@
     "DBS-135",
     "DBS-136",
     "DBS-137",
-    "DBS-138"
+    "DBS-138",
+    "COD-7"
   ],
   "cases": [
     {
@@ -177910,6 +177911,78 @@
           "expect": {
             "none": {
               "tokens": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes-json-without-aes-version",
+      "requirements": [
+        "DBS-70",
+        "COD-7"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 secret",
+            "",
+            "table secret_config {",
+            "  seq i64 identity",
+            "  config bytes",
+            "  primary key (seq)",
+            "  settings {",
+            "    codec config ordered_json aes",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 8,
+                  "column": 5
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "aes-json-on-a-text-column",
+      "requirements": [
+        "DBS-64",
+        "COD-7"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 secret",
+            "",
+            "table secret_config {",
+            "  seq i64 identity",
+            "  aes_key_version i32",
+            "  config text",
+            "  primary key (seq)",
+            "  settings {",
+            "    codec config ordered_json aes",
+            "    aes_version aes_key_version",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "rule": "setting",
+                  "line": 9,
+                  "column": 11
+                }
+              ]
             }
           }
         }

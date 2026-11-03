@@ -19,21 +19,17 @@
     "steps"
   ],
   "step": {
-    "keyring.versions": [
-      "expect",
-      "keyring",
-      "op"
-    ],
-    "markdown.builder": [
-      "calls",
-      "expect",
-      "op"
-    ],
     "dsn.connect": [
       "config",
       "dsn",
       "expect",
       "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
       "op",
       "query"
     ],
@@ -45,11 +41,15 @@
       "reply",
       "token"
     ],
-    "dsn.sqlite_file": [
+    "keyring.versions": [
       "expect",
-      "name",
-      "op",
-      "query"
+      "keyring",
+      "op"
+    ],
+    "markdown.builder": [
+      "calls",
+      "expect",
+      "op"
     ],
     "model.connect": [
       "aes_keyring",
@@ -398,6 +398,7 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
       "group_value",
       "items",
@@ -454,6 +455,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -575,6 +577,11 @@
       "op",
       "owned"
     ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -692,6 +699,12 @@
       "name",
       "op"
     ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
+    ],
     "utils.was_inserted": [
       "connection",
       "expect",
@@ -708,6 +721,31 @@
       "connection",
       "expect",
       "op"
+    ],
+    "dbspec.apply_fault": [
+      "applied_first",
+      "call",
+      "expect",
+      "fail_catalog_read",
+      "op",
+      "plan",
+      "sql"
+    ],
+    "dbspec.ddl_behavior": [
+      "case",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_shown": [
+      "case",
+      "expect",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_sqlite": [
+      "expect",
+      "op",
+      "sql"
     ]
   }
 }

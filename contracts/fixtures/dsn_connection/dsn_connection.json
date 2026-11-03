@@ -110,17 +110,7 @@
           "dsn": "case",
           "query": "sslmode=disable",
           "expect": {
-            "mysql": {
-              "value": {
-                "text": "postgres"
-              }
-            },
             "postgres": {
-              "value": {
-                "text": "postgres"
-              }
-            },
-            "sqlite": {
               "value": {
                 "text": "postgres"
               }
@@ -135,17 +125,7 @@
           "dsn": "case",
           "query": "host=127.0.0.1",
           "expect": {
-            "mysql": {
-              "value": {
-                "text": "postgres"
-              }
-            },
             "postgres": {
-              "value": {
-                "text": "postgres"
-              }
-            },
-            "sqlite": {
               "value": {
                 "text": "postgres"
               }
@@ -160,16 +140,6 @@
           "dsn": "case",
           "query": "_pragma=busy_timeout(5000)&timezone=UTC",
           "expect": {
-            "mysql": {
-              "value": {
-                "text": "sqlite"
-              }
-            },
-            "postgres": {
-              "value": {
-                "text": "sqlite"
-              }
-            },
             "sqlite": {
               "value": {
                 "text": "sqlite"
@@ -196,16 +166,6 @@
           "name": "named.sqlite",
           "query": "_pragma=busy_timeout(5000)&timezone=%2B00:00",
           "expect": {
-            "mysql": {
-              "value": {
-                "text": "named.sqlite"
-              }
-            },
-            "postgres": {
-              "value": {
-                "text": "named.sqlite"
-              }
-            },
             "sqlite": {
               "value": {
                 "text": "named.sqlite"
@@ -229,12 +189,6 @@
           "name": "refused.sqlite",
           "query": "_txlock=immediate",
           "expect": {
-            "mysql": {
-              "error": "CONFIG"
-            },
-            "postgres": {
-              "error": "CONFIG"
-            },
             "sqlite": {
               "error": "CONFIG"
             }
@@ -245,12 +199,6 @@
           "name": "refused.sqlite",
           "query": "timezone=Asia%2FSeoul",
           "expect": {
-            "mysql": {
-              "error": "CONFIG"
-            },
-            "postgres": {
-              "error": "CONFIG"
-            },
             "sqlite": {
               "error": "CONFIG"
             }
@@ -261,12 +209,6 @@
           "name": "refused.sqlite",
           "query": "_pragma=busy_timeout(soon)",
           "expect": {
-            "mysql": {
-              "error": "CONFIG"
-            },
-            "postgres": {
-              "error": "CONFIG"
-            },
             "sqlite": {
               "error": "CONFIG"
             }
@@ -294,16 +236,6 @@
               "value": {
                 "text": "mysql"
               }
-            },
-            "postgres": {
-              "value": {
-                "text": "mysql"
-              }
-            },
-            "sqlite": {
-              "value": {
-                "text": "mysql"
-              }
             }
           }
         }
@@ -325,14 +257,6 @@
             "mysql": {
               "error": "CONFIG",
               "message_holds": "TLS connection failed"
-            },
-            "postgres": {
-              "error": "CONFIG",
-              "message_holds": "TLS connection failed"
-            },
-            "sqlite": {
-              "error": "CONFIG",
-              "message_holds": "TLS connection failed"
             }
           }
         },
@@ -341,14 +265,6 @@
           "dsn": "env:ORM_TEST_MYSQL_TLS_MISMATCH_DSN",
           "expect": {
             "mysql": {
-              "error": "CONFIG",
-              "message_holds": "TLS connection failed"
-            },
-            "postgres": {
-              "error": "CONFIG",
-              "message_holds": "TLS connection failed"
-            },
-            "sqlite": {
               "error": "CONFIG",
               "message_holds": "TLS connection failed"
             }

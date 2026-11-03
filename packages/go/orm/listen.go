@@ -80,15 +80,12 @@ func (d *DB) Notify(channel, payload string) error {
 		return err
 	}
 	defer end()
-	ctx := ex.context()
-	st, err := ex.stmt(ctx, "SELECT pg_notify($1, $2)")
-	if err != nil {
-		return mapDriverErrContext(err, ctx)
+	r := runner{d: d, q: d.sql}
+	if tx != nil {
+		r = tx.run()
 	}
-	if _, err := st.ExecContext(ctx, channel, payload); err != nil {
-		return mapDriverErrContext(err, ctx)
-	}
-	return nil
+	_, err = r.exec(ex.context(), KindUtility, nil, "SELECT pg_notify($1, $2)", channel, payload)
+	return err
 }
 
 // Listen opens a LISTEN subscription on channel (DIA-194). It uses a connection
