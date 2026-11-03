@@ -1139,6 +1139,9 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
         if code == _PG_FLOAT8:
             return GridCell("float64", _float64_bits(value))
         if code == _PG_NUMERIC and isinstance(value, str):
+            # PostgreSQL writes NaN and the infinities of numeric as text.
+            if value == "NaN" or "Infinity" in value:
+                raise _refuse(f"PostgreSQL numeric {value} is not finite")
             return GridCell("decimal", value)
         if code in (_PG_TIMESTAMPTZ, _PG_TIMETZ):
             raise _refuse("PostgreSQL timestamptz and timetz are unsupported")

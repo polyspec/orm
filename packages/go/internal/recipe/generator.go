@@ -388,11 +388,15 @@ func checkGeneratedFiles(dir string, s step) error {
 	if output, code, err := gen(); err != nil || code != 0 {
 		return fmt.Errorf("generator.check: generate exit %d: %s: %w", code, output, err)
 	}
-	if err := expect(s.Same, ""); err != nil {
-		return err
-	}
 	entries, err := os.ReadDir(out)
 	if err != nil {
+		return err
+	}
+	// A file that the generation does not write and that does not carry the generated header is not compared.
+	if err := os.WriteFile(filepath.Join(out, "zz_notes.go"), []byte("package model\n"), 0o600); err != nil {
+		return err
+	}
+	if err := expect(s.Same, ""); err != nil {
 		return err
 	}
 	for _, entry := range entries {
@@ -418,7 +422,72 @@ func checkGeneratedFiles(dir string, s step) error {
 		if string(after) != string(text) {
 			return fmt.Errorf("generator.check: the check wrote %s", file)
 		}
+		if err := os.Remove(file); err != nil {
+			return err
+		}
+		if err := expect(s.Gone, file); err != nil {
+			return err
+		}
+		if _, err := os.Lstat(file); !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("generator.check: the check wrote %s", file)
+		}
 		return nil
 	}
 	return fmt.Errorf("generator.check: %s holds no generated file", out)
+}
+
+// checkRefusedGeneration runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client.
+func checkRefusedGeneration(dir string, s step) error {
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		return errors.New("generator.refused: no source path")
+	}
+	work, err := os.MkdirTemp("", "orm-recipe-generator-refused-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(work) }()
+	for name, entry := range s.Tree {
+		var text string
+		if err := json.Unmarshal(entry, &text); err != nil {
+			var from struct {
+				Path string `json:"path"`
+			}
+			if err := json.Unmarshal(entry, &from); err != nil {
+				return err
+			}
+			body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(from.Path)))
+			if err != nil {
+				return err
+			}
+			text = string(body)
+		}
+		if err := os.WriteFile(filepath.Join(work, name), []byte(text), 0o600); err != nil {
+			return err
+		}
+	}
+	out := filepath.Join(work, "model")
+	args := []string{"run", "./cmd/orm-gen", "gen", "--lang", "go", "--set", filepath.Join(work, "dbspec-set.json"), "--out", out}
+	if s.Compare {
+		args = append(args, "--check")
+	}
+	command := exec.Command("go", args...)
+	command.Dir = filepath.Join(filepath.Dir(source), "..", "..")
+	stdout, err := command.Output()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 1 || len(stdout) != 0 {
+		return fmt.Errorf("generator.refused: got %v, stdout %q, want exit 1 and nothing", err, stdout)
+	}
+	rest := string(exit.Stderr)
+	for _, part := range s.Parts {
+		at := strings.Index(rest, part)
+		if at < 0 {
+			return fmt.Errorf("generator.refused: the output lacks %q in order:\n%s", part, exit.Stderr)
+		}
+		rest = rest[at+len(part):]
+	}
+	if _, err := os.Lstat(out); !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("generator.refused: the generation wrote %s", out)
+	}
+	return nil
 }

@@ -219,7 +219,7 @@ export function driverError(name: DriverName, error: unknown): OrmError {
   const message = (typeof text === 'string' ? text : errorText(error)) + suffix;
   if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
   // A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
-  if (name === 'mysql' && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED/.test(source.code)) {
+  if (name === 'mysql' && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED|HANDSHAKE_SSL_ERROR/.test(source.code)) {
     return new OrmError(codes.CONFIG, `mysql TLS connection failed: ${message}`, error);
   }
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
