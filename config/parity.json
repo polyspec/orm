@@ -423,7 +423,7 @@
       "internal": [
         {
           "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "reason": "test: injects a close failure and an empty effect row into the private effect query of PlanApply, and calls the recover and finalize entry points that no recipe op reaches; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement, and holds the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
@@ -631,8 +631,12 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
+        },
+        {
           "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "reason": "test: runs DbspecApplyCleanupTest on the extension, the private effect query and the recover and finalize entry points of PlanApply"
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query, and the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json"
         },
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
@@ -742,10 +746,6 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
-        {
-          "glob": "packages/ts/tests/dbspec-apply-cleanup.mjs",
-          "reason": "test: reads the private EFFECT_QUERIES and dbspecEffectHolds of apply.js on a scripted connection; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
-        },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
           "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
@@ -1116,10 +1116,6 @@
         "pattern": "^pub const (\\w+): &str = \"\\w+\";$"
       },
       "internal": [
-        {
-          "glob": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "reason": "test: the effect_holds of a scripted MySQL connection, whose row count message is the form of Rust; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
-        },
         {
           "glob": "packages/rust/schema/tests/dbspec_runtime.rs",
           "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
@@ -6111,7 +6107,7 @@
       "id": "request-hook-root-is-the-connection",
       "kind": "feature",
       "requirements": [
-        "INT-78"
+        "INT-78a"
       ],
       "bindings": [
         {
@@ -6128,23 +6124,17 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
-          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
-          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::without_hook"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "request_hook",
+        "parts": [
+          "owner/go",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "request-hook-params-are-read-only",
@@ -6180,8 +6170,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::reads_params"
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::int78-bound-param-write-e0594"
         }
       ]
     },
@@ -6303,19 +6293,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_handle_abandoned_query",
-          "command": [
-            "env",
-            "BENCH_SQLITE_DSN=${BENCH_SQLITE_DSN}",
-            "BENCH_MYSQL_DSN=${BENCH_MYSQL_DSN}",
-            "BENCH_POSTGRES_DSN=${BENCH_POSTGRES_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_handle_abandoned_query"
-          ]
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_postgres"
         },
         {
           "implementation": "typescript",
@@ -26280,23 +26269,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_generation_test.go",
-          "id": "TestCoverageModelGenerationCheck"
+          "test": "packages/go/orm/recipe_generator_test.go",
+          "id": "TestRecipeGeneratorNone/check_reports_differences_without_writing"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelGenerationTest.php",
-          "id": "CoverageModelGenerationTest::testModelGenerationCheck"
+          "test": "packages/php/tests/GeneratorTest.php",
+          "id": "GeneratorTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+          "id": "GeneratorTestExtensionTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_generation.mjs",
-          "id": "model_generation_check"
+          "test": "packages/ts/tests/generator-none.test.mjs",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "python",
@@ -26305,8 +26294,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/generator_none.rs",
+          "id": "generator_none::check_reports_differences_without_writing"
         }
       ]
     },
@@ -26893,11 +26882,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_manifest_hash"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
-          "id": "RegistrySchemaNativeTest::testNativeOriginsAndReadonlySchemaRoundTrip"
         }
       ]
     },
@@ -26977,21 +26961,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_analyze_tokens"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
-          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeInvalidByte"
         }
       ]
     },
@@ -27031,11 +27000,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_format"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestFormat"
         }
       ]
     },
@@ -29081,6 +29045,21 @@
         "DBS-144"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeInvalidByte"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecAnalyzeTest.php",
+          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
         {
           "implementation": "go",
           "test": "packages/go/engine/dbspec/rules_test.go",
