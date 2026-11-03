@@ -21,5 +21,6 @@ trait RecipeCases
     {
         $this->addToAssertionCount(1);
         Recipe::run(static::recipe(), $case, $database);
+        Recipe::report($case, $database);
     }
 }

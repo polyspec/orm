@@ -277,7 +277,7 @@ caseTest('every case of the PHP catalog owner selects a method of its test class
     for (const command of commands) {
       const methods = declaredPhpMethods(join(root, command.test));
       for (const id of command.cases) {
-        const method = command.symbols?.[id] ?? `test_${id}`;
+        const method = command.symbol ?? command.symbols?.[id] ?? `test_${id}`;
         if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
       }
     }
@@ -395,13 +395,8 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
     assert.equal(nativeCommands.length, 1);
     const entry = entries[database];
     assert.ok(entry, `no recipe entry method for ${database}`);
-    assert.deepEqual(nativeCommands[0]?.symbols, {
-      catalog_read: entry,
-      catalog_row_mutation: entry,
-      model_read_null_and_empty_text: entry,
-      catalog_grid_column_and_row_order: entry,
-      catalog_plain_query_bounds: entry,
-    });
+    assert.equal(nativeCommands[0]?.symbol, entry);
+    assert.equal(nativeCommands[0]?.recipe, 'contracts/fixtures/catalog_connection/catalog_connection.json');
     assert.match(methods, new RegExp(`function ${entry}\\(`), `CatalogConnectionRecipeTest lacks ${entry}`);
   }
 });

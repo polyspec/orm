@@ -73,6 +73,18 @@ fn recipe_text(path: &str) -> (PathBuf, String) {
     (root, text)
 }
 
+/// Appends the pass of a case to the file that `ORM_RECIPE_RESULTS` names, the line the feature checker reads (FCV-12).
+/// A run outside the checker names no file. A trial that failed panicked before this call.
+fn report_case(id: &str, database: &str) {
+    use std::io::Write as _;
+    let Some(path) = std::env::var_os("ORM_RECIPE_RESULTS") else { return };
+    let line = if database == NONE { format!("CASE {id} PASS\n") } else { format!("CASE {id} [{database}] PASS\n") };
+    let appended = std::fs::OpenOptions::new().append(true).create(true).open(&path).and_then(|mut file| file.write_all(line.as_bytes()));
+    if let Err(error) = appended {
+        panic!("recipe results {}: {error}", path.to_string_lossy());
+    }
+}
+
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
 /// `<entry>::<case id>`.
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -99,6 +111,7 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
+                report_case(&id, &database);
             })
         })
         .collect()
@@ -2023,6 +2036,7 @@ mod database {
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
                     run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, models).await;
+                    super::report_case(&id, &database);
                 })
             })
             .collect()

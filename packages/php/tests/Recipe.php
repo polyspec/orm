@@ -105,6 +105,24 @@ final class Recipe
         }
     }
 
+    /**
+     * Appends the pass of a case that ran on database to the file that ORM_RECIPE_RESULTS names, the line the feature
+     * checker reads (FCV-12). A run outside the checker names no file.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function report(array $case, string $database): void
+    {
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+            return;
+        }
+        $named = $database === self::NONE ? '' : " [{$database}]";
+        if (file_put_contents($path, "CASE {$case['id']}{$named} PASS\n", FILE_APPEND) === false) {
+            throw new \RuntimeException("recipe results: cannot append to {$path}");
+        }
+    }
+
     /** Runs the steps of one case on database. */
     public static function run(string $path, array $case, string $database): void
     {

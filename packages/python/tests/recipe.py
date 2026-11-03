@@ -118,6 +118,22 @@ class _Failed:
         self.error = error
 
 
+def _reporting(check, database: str):
+    """check, which then appends the pass of its case to the file that ORM_RECIPE_RESULTS names, the line the feature
+    checker reads (FCV-12). A run outside the checker names no file."""
+
+    def reported(test: unittest.TestCase, case: dict) -> None:
+        check(test, case)
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if not path:
+            return
+        named = "" if database == NONE else f" [{database}]"
+        with open(path, "a", encoding="utf-8") as results:
+            results.write(f"CASE {case['id']}{named} PASS\n")
+
+    return reported
+
+
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
@@ -184,7 +200,9 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = recipe["cases"]
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
+    )
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -1759,7 +1777,7 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case for case in recipe["cases"] if database in case.get("only", DATABASES)
     ]
-    return vector_load_tests(DatabaseRecipeCase, cases, check)
+    return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
 
 def _fixture_schema(set_path: Path):
