@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.
 - The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
 - The recipe `tests/planner/runtime-model.json` holds what Go `runtime_model_test.go` held and all six runtimes run it: i16 read and plus, the insert of a default or a missing required column (PRT-81), and the audit slot of audited writes (PRT-32, PRT-82). `planner.compile` compares an audit slot with its `name` and, with `assemble_types`, the output types.
 - AES rotation of every AES column, of the rows not at the current version, its status, and the write with the key of the current version are cases of the aes_rotation recipe in all six runtimes, and the native rotation tests are gone.
