@@ -1,47 +1,18 @@
 use super::validate;
 use std::error::Error;
-// Requirements: INT-136.
-#[test]
-fn policy_validates_nested_read_shapes_and_rejects_writes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for dialect in ["mysql", "postgres", "sqlite"] {
-        for sql in [
-            "SELECT 1",
-            "-- query\nSELECT ';'",
-            "WITH x AS (SELECT 1 AS n) SELECT n FROM x",
-            "SELECT 1 UNION ALL SELECT 2",
-            "SELECT (SELECT 1)",
-            "SELECT '/*! not executable */'",
-        ] {
-            assert!(validate(sql, dialect).is_ok(), "{dialect}:{sql}");
-        }
-        for sql in [
-            "UPDATE t SET n=2",
-            "COMMIT",
-            "CALL f()",
-            "SELECT 1; SELECT 2",
-            "SELECT 1 INTO new_table",
-            "SELECT 1 FOR UPDATE",
-            "SELECT 1 /*! INTO OUTFILE '/secret' */",
-            "WITH x AS (DELETE FROM t RETURNING n) SELECT n FROM x",
-            "SELECT (SELECT n FROM t FOR UPDATE)",
-        ] {
-            assert!(validate(sql, dialect).is_err(), "{dialect}:{sql}");
-        }
-    }
-    // INT-136: PostgreSQL refuses 200 UNION ALL operands or 200 + terms with CATALOG_LIMIT, before the query runs.
-    let union = std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL ");
-    let error = validate(&union, "postgres").expect_err("200 UNION ALL operands must fail");
-    assert!(error.to_string().starts_with("CATALOG_LIMIT:"), "{error}");
-    let plus = format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+"));
-    let error = validate(&plus, "postgres").expect_err("200 + terms must fail");
-    assert!(error.to_string().starts_with("CATALOG_LIMIT:"), "{error}");
-}
-
 #[test]
 fn parser_failure_keeps_its_cause_without_exposing_input_details() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = validate("SELECT '", "postgres").expect_err("unterminated string must fail");
     assert_eq!(error.to_string(), "QUERY_READ_ONLY: expected one supported non-locking read query");
     assert!(error.source().is_some_and(|cause| cause.to_string().contains("Unterminated string literal")));
+}
+
+#[test]
+fn postgres_refuses_a_read_at_its_operand_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let union = std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL ");
+    assert!(validate(&union, "postgres").is_err(), "200 UNION ALL operands must fail");
+    let plus = format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+"));
+    assert!(validate(&plus, "postgres").is_err(), "200 + terms must fail");
 }

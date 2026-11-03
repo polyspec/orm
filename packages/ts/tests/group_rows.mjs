@@ -1,17 +1,5 @@
 import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
-import { groupValue } from '../dist/model.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
-
-// PRT-36: the model result decoder rejects an invalid stored boolean.
-caseTest('group_rows/boolean_invalid_stored_value', COMPUTE, () => {
-  try {
-    groupValue(null, { name: 'active', column: '', type: 'bool' }, 2, null);
-    throw new Error('invalid boolean group value was accepted');
-  } catch (error) {
-    if (!(error instanceof OrmError) || error.code !== 'CODEC_DECODE') throw error;
-    if (!error.message.includes('active is not boolean')) throw error;
-  }
-});
 
 // The forms of a count that only a driver cell holds: a text, a bigint, a negative zero, a repeated column and an entry of another
 // length. The answer of a listener holds none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the

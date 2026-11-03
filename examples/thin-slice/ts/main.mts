@@ -41,8 +41,7 @@ async function main(): Promise<void> {
   try {
     db.subscribe(event => {
       lastSql = event.sql;
-      // A secret bind is reported as the marker $SECRET; the native statement needs the key it stands for.
-      lastArgs = event.binds.map(value => (value === '$SECRET' ? AES_KEY : value));
+      lastArgs = event.binds;
     });
     const now = '2026-09-11 00:00:00';
     const query = () => new Author().connect(db)

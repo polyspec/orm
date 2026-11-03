@@ -709,7 +709,6 @@
         "packages/ts/src/engine/dialect.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query-request.mjs",
         "packages/ts/tests/complex-query-request.types.ts",
         "packages/ts/tests/complex-query-request-types.mjs"
       ]
@@ -1050,7 +1049,8 @@
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_planner_compile_none.py",
-        "tests/planner/compile.json"
+        "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs"
       ]
     },
     "rust-time-precision-check": {
@@ -1777,7 +1777,6 @@
         "docs/spec/protocol.ko.md",
         "packages/go/orm/driver_error_test.go",
         "packages/go/orm/driver_error_internal_test.go",
-        "packages/go/orm/markdown_test.go",
         "packages/php/src/Db.php",
         "packages/php/src/Model.php",
         "packages/php/src/OrmException.php",
@@ -1793,7 +1792,6 @@
         "packages/python/src/polyspec/orm/driver_cells.py",
         "packages/python/tests/test_driver_errors.py",
         "packages/python/tests/test_markdown.py",
-        "packages/rust/orm/tests/markdown.rs",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/src/row.rs",
         "packages/ts/tests/driver-cell-bytes.mjs",
@@ -3017,22 +3015,6 @@
         "tests/testcase.mts"
       ]
     },
-    "connection-utc-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/connection_utc.mjs",
-        "packages/ts/tests/model.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "contracts/fixtures/bench/**",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-utc-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -3053,37 +3035,6 @@
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
-      ]
-    },
-    "connection-utc-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php/tests/ModelTest.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/tests/bench.php",
-        "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "contracts/fixtures/bench/**"
-      ]
-    },
-    "connection-utc-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust",
-        "databases",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/tests/zone.rs",
-        "tests/cargo-test.mts",
-        "tests/testcase.mts"
       ]
     },
     "dbspec-apply-php-extension-check": {
@@ -3146,7 +3097,6 @@
         "packages/python/src/polyspec/orm/dbspec/apply.py",
         "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/rust/orm/src/dbspec/apply.rs",
-        "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/src/dbspec/apply.ts",
         "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "tests/dbspec/apply-verification-errors.json",
@@ -3424,6 +3374,7 @@
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
         "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"
       ]
@@ -3691,7 +3642,6 @@
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/php-ext/tests/CatalogPageMutationPdo.php",
         "packages/php-ext/tests/CatalogPageMutationStatement.php",
@@ -5338,10 +5288,6 @@
     "packages/go/internal/testdb/testdb.go": {
       "scope": "suite",
       "reason": "every Go database test opens its database through it, so it changes the setup of every Go database target"
-    },
-    "packages/go/testing/feature-json.mts": {
-      "scope": "suite",
-      "reason": "the command that parity runs for each Go feature unit (config/parity.json command): it runs one feature test under the environment feature-check gives it and prints go test -json, so the parity units that bind it run it"
     },
     "packages/python/uv.lock": {
       "scope": "suite",

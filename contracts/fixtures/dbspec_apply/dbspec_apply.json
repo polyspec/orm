@@ -6795,9 +6795,7 @@
         {
           "op": "dbspec.exec",
           "connection": "holder",
-          "sql": {
-            "sqlite": "ROLLBACK"
-          },
+          "sql": "ROLLBACK",
           "only": [
             "sqlite"
           ]
@@ -8904,9 +8902,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9014,9 +9010,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9117,9 +9111,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9193,9 +9185,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9277,9 +9267,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9473,9 +9461,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9583,9 +9569,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9686,9 +9670,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9762,9 +9744,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -9846,9 +9826,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10042,9 +10020,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10152,9 +10128,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10255,9 +10229,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10331,9 +10303,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10415,9 +10385,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10611,9 +10579,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10721,9 +10687,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10824,9 +10788,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10900,9 +10862,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -10984,9 +10944,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11180,9 +11138,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11290,9 +11246,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11393,9 +11347,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11469,9 +11421,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11553,9 +11503,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11749,9 +11697,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11859,9 +11805,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -11962,9 +11906,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12038,9 +11980,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12122,9 +12062,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12318,9 +12256,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12428,9 +12364,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12531,9 +12465,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12607,9 +12539,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12691,9 +12621,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12887,9 +12815,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -12997,9 +12923,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13100,9 +13024,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13176,9 +13098,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13260,9 +13180,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13456,9 +13374,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13566,9 +13482,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13669,9 +13583,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13745,9 +13657,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -13829,9 +13739,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14025,9 +13933,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14135,9 +14041,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14238,9 +14142,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14314,9 +14216,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14398,9 +14298,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14594,9 +14492,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14704,9 +14600,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14807,9 +14701,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14883,9 +14775,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -14967,9 +14857,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15163,9 +15051,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15273,9 +15159,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15376,9 +15260,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15452,9 +15334,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15536,9 +15416,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15732,9 +15610,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15842,9 +15718,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -15945,9 +15819,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16021,9 +15893,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16105,9 +15975,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16301,9 +16169,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16411,9 +16277,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16514,9 +16378,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16590,9 +16452,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16674,9 +16534,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16870,9 +16728,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -16980,9 +16836,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17083,9 +16937,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17159,9 +17011,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17243,9 +17093,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17439,9 +17287,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17549,9 +17395,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17652,9 +17496,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17728,9 +17570,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -17812,9 +17652,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18008,9 +17846,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18118,9 +17954,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18221,9 +18055,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18297,9 +18129,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18381,9 +18211,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18577,9 +18405,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18687,9 +18513,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18790,9 +18614,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18866,9 +18688,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -18950,9 +18770,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19146,9 +18964,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19256,9 +19072,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19359,9 +19173,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19435,9 +19247,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19519,9 +19329,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19715,9 +19523,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19825,9 +19631,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -19928,9 +19732,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20004,9 +19806,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20088,9 +19888,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20284,9 +20082,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20394,9 +20190,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20497,9 +20291,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20573,9 +20365,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20657,9 +20447,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20853,9 +20641,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -20963,9 +20749,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21066,9 +20850,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21142,9 +20924,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21226,9 +21006,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21422,9 +21200,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21532,9 +21308,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21635,9 +21409,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21711,9 +21483,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21795,9 +21565,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -21991,9 +21759,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22101,9 +21867,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22204,9 +21968,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22280,9 +22042,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22364,9 +22124,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22560,9 +22318,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22670,9 +22426,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22773,9 +22527,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22849,9 +22601,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -22933,9 +22683,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
           "expect": {
             "mysql": {
               "value": {
@@ -23129,9 +22877,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23239,9 +22985,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23342,9 +23086,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23418,9 +23160,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23502,9 +23242,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23698,9 +23436,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23808,9 +23544,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23911,9 +23645,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -23987,9 +23719,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24071,9 +23801,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24267,9 +23995,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24377,9 +24103,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24480,9 +24204,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24556,9 +24278,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24640,9 +24360,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24836,9 +24554,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -24946,9 +24662,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25049,9 +24763,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25125,9 +24837,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25209,9 +24919,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25405,9 +25113,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25515,9 +25221,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25618,9 +25322,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25694,9 +25396,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25778,9 +25478,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -25974,9 +25672,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26084,9 +25780,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26187,9 +25881,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26263,9 +25955,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26347,9 +26037,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26543,9 +26231,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26653,9 +26339,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26756,9 +26440,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26832,9 +26514,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -26916,9 +26596,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27112,9 +26790,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27222,9 +26898,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27325,9 +26999,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27401,9 +27073,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27485,9 +27155,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27681,9 +27349,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27791,9 +27457,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27894,9 +27558,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -27970,9 +27632,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28054,9 +27714,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28250,9 +27908,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28360,9 +28016,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28463,9 +28117,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28539,9 +28191,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28623,9 +28273,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28819,9 +28467,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -28929,9 +28575,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29032,9 +28676,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29108,9 +28750,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29192,9 +28832,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29388,9 +29026,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29498,9 +29134,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29601,9 +29235,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29677,9 +29309,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29761,9 +29391,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -29957,9 +29585,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30067,9 +29693,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30170,9 +29794,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30246,9 +29868,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30330,9 +29950,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30526,9 +30144,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30636,9 +30252,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30739,9 +30353,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30815,9 +30427,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -30899,9 +30509,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31095,9 +30703,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31205,9 +30811,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31308,9 +30912,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31384,9 +30986,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31468,9 +31068,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31664,9 +31262,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31774,9 +31370,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31877,9 +31471,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -31953,9 +31545,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32037,9 +31627,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32233,9 +31821,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32343,9 +31929,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32446,9 +32030,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32522,9 +32104,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32606,9 +32186,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32802,9 +32380,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -32912,9 +32488,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33015,9 +32589,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33091,9 +32663,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33175,9 +32745,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33371,9 +32939,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33481,9 +33047,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33584,9 +33148,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33660,9 +33222,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33744,9 +33304,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -33940,9 +33498,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34050,9 +33606,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34153,9 +33707,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34229,9 +33781,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34313,9 +33863,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34509,9 +34057,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34619,9 +34165,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34722,9 +34266,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34798,9 +34340,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -34882,9 +34422,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35078,9 +34616,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35188,9 +34724,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35291,9 +34825,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35367,9 +34899,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35451,9 +34981,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35647,9 +35175,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35757,9 +35283,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35860,9 +35384,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -35936,9 +35458,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36020,9 +35540,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36216,9 +35734,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36326,9 +35842,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36429,9 +35943,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36505,9 +36017,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36589,9 +36099,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36785,9 +36293,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36895,9 +36401,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -36998,9 +36502,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37074,9 +36576,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37158,9 +36658,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37354,9 +36852,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37464,9 +36960,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37567,9 +37061,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37643,9 +37135,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37727,9 +37217,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -37923,9 +37411,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38033,9 +37519,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38136,9 +37620,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38212,9 +37694,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38296,9 +37776,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38492,9 +37970,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38602,9 +38078,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38705,9 +38179,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38781,9 +38253,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -38865,9 +38335,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39061,9 +38529,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39171,9 +38637,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39274,9 +38738,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39350,9 +38812,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39434,9 +38894,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39630,9 +39088,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39740,9 +39196,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39843,9 +39297,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -39919,9 +39371,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40003,9 +39453,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40199,9 +39647,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40309,9 +39755,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40412,9 +39856,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40488,9 +39930,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40572,9 +40012,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "postgres": {
               "value": {
@@ -40768,9 +40206,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -40878,9 +40314,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -40981,9 +40415,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41057,9 +40489,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41141,9 +40571,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41337,9 +40765,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41447,9 +40873,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41550,9 +40974,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41626,9 +41048,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41710,9 +41130,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -41906,9 +41324,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42016,9 +41432,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42119,9 +41533,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42195,9 +41607,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42279,9 +41689,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42475,9 +41883,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42585,9 +41991,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42688,9 +42092,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42764,9 +42166,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -42848,9 +42248,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43044,9 +42442,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43154,9 +42550,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43257,9 +42651,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43333,9 +42725,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43417,9 +42807,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43613,9 +43001,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43723,9 +43109,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43826,9 +43210,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43902,9 +43284,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -43986,9 +43366,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44182,9 +43560,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44292,9 +43668,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44395,9 +43769,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44471,9 +43843,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44555,9 +43925,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44751,9 +44119,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44861,9 +44227,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -44964,9 +44328,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45040,9 +44402,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45124,9 +44484,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45320,9 +44678,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45430,9 +44786,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45533,9 +44887,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45609,9 +44961,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45693,9 +45043,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45889,9 +45237,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -45999,9 +45345,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46102,9 +45446,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46178,9 +45520,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46262,9 +45602,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46458,9 +45796,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46568,9 +45904,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46671,9 +46005,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46747,9 +46079,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -46831,9 +46161,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47027,9 +46355,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47137,9 +46463,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47240,9 +46564,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47316,9 +46638,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47400,9 +46720,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47596,9 +46914,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47706,9 +47022,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47809,9 +47123,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47885,9 +47197,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -47969,9 +47279,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48165,9 +47473,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48275,9 +47581,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48378,9 +47682,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48454,9 +47756,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48538,9 +47838,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48734,9 +48032,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48844,9 +48140,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -48947,9 +48241,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49023,9 +48315,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49107,9 +48397,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49303,9 +48591,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49413,9 +48699,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49516,9 +48800,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49592,9 +48874,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49676,9 +48956,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49872,9 +49150,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -49982,9 +49258,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50085,9 +49359,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50161,9 +49433,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50245,9 +49515,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50441,9 +49709,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50551,9 +49817,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50654,9 +49918,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50730,9 +49992,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -50814,9 +50074,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51010,9 +50268,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51120,9 +50376,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51223,9 +50477,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51299,9 +50551,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51383,9 +50633,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51579,9 +50827,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51689,9 +50935,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51792,9 +51036,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51868,9 +51110,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -51952,9 +51192,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52148,9 +51386,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52258,9 +51494,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52361,9 +51595,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52437,9 +51669,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52521,9 +51751,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52717,9 +51945,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52827,9 +52053,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -52930,9 +52154,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53006,9 +52228,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53090,9 +52310,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53286,9 +52504,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53396,9 +52612,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53499,9 +52713,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53575,9 +52787,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53659,9 +52869,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53855,9 +53063,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -53965,9 +53171,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54068,9 +53272,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54144,9 +53346,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54228,9 +53428,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54424,9 +53622,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54534,9 +53730,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54637,9 +53831,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54713,9 +53905,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54797,9 +53987,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -54993,9 +54181,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55103,9 +54289,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55206,9 +54390,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55282,9 +54464,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55366,9 +54546,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55562,9 +54740,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55672,9 +54848,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55775,9 +54949,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55851,9 +55023,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -55935,9 +55105,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56131,9 +55299,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56241,9 +55407,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56344,9 +55508,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56420,9 +55582,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56504,9 +55664,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56700,9 +55858,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56810,9 +55966,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56913,9 +56067,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -56989,9 +56141,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57073,9 +56223,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57269,9 +56417,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57379,9 +56525,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57482,9 +56626,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57558,9 +56700,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57642,9 +56782,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57838,9 +56976,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -57948,9 +57084,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58051,9 +57185,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58127,9 +57259,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58211,9 +57341,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58407,9 +57535,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58517,9 +57643,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58620,9 +57744,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58696,9 +57818,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58780,9 +57900,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -58976,9 +58094,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59086,9 +58202,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59189,9 +58303,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59265,9 +58377,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59349,9 +58459,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59545,9 +58653,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59655,9 +58761,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59758,9 +58862,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59834,9 +58936,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -59918,9 +59018,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60114,9 +59212,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60224,9 +59320,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60327,9 +59421,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60403,9 +59495,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60487,9 +59577,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60683,9 +59771,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60793,9 +59879,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60896,9 +59980,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -60972,9 +60054,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61056,9 +60136,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61252,9 +60330,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61362,9 +60438,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61465,9 +60539,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61541,9 +60613,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61625,9 +60695,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61821,9 +60889,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -61931,9 +60997,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -62034,9 +61098,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -62110,9 +61172,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {
@@ -62194,9 +61254,7 @@
         {
           "op": "dbspec.exec",
           "connection": "conn",
-          "sql": {
-            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
-          },
+          "sql": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
           "expect": {
             "sqlite": {
               "value": {

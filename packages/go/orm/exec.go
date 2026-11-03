@@ -160,7 +160,7 @@ func clockText(t time.Time, precision int) string {
 	return t.Format(layout)
 }
 
-// args resolves the bind slots of a step; masks marks secret and clock
+// args resolves the bind slots of a step; masks marks clock
 // positions for the query event.
 func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks map[int]string, err error) {
 	out = make([]any, 0, len(st.BindSlots))
@@ -222,12 +222,6 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 				}
 			}
 			out = append(out, v)
-		case "secret":
-			if b.Name != "aes" || d.cfg.AESKey == "" {
-				return nil, nil, configErr("secret %q is not configured", b.Name)
-			}
-			mask(Secret)
-			out = append(out, d.cfg.AESKey)
 		case "config":
 			if b.Name != "aes_version" {
 				return nil, nil, configErr("config value %q is not configured", b.Name)
@@ -429,7 +423,7 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 }
 
 // modelDone publishes the event of a model statement and returns the error
-// the operation receives. bind is the value with secret and time slots masked.
+// the operation receives. bind is the value with time slots masked.
 func (d *DB) modelDone(ex executor, st *plan.Step, sqlText string, args []any, masks map[int]string, start time.Time, err error) error {
 	shown := args
 	if len(masks) > 0 {

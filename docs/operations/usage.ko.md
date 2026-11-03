@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 310bb0de3d7246e54058a452b1c6e587864699ccdbb0a0f54fbc6d393701a4bc -->
+<!-- source-sha256: caedb94a57f6146e3fb1e0093a32303a4e5ede94270cca592f680319da79b754 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -462,7 +462,7 @@ $b->getJsonSetting()['a'];
 
 ### Statement event {#statement-events}
 
-모든 client는 데이터베이스로 보내는 statement마다 event 하나를 publish한다: model의 statement, transaction 제어, schema utility의 statement, 그 밖의 모든 utility statement다. subscriber는 연결에 등록한다. 공유 vector `tests/events/vectors.json`은 sequence 하나를 MySQL, PostgreSQL, SQLite에서 실행하고 모든 client가 publish하는 event를 적는다.
+모든 client는 데이터베이스로 보내는 statement마다 event 하나를 publish한다: model의 statement, transaction 제어, schema utility의 statement, 그 밖의 모든 utility statement다. subscriber는 연결에 등록한다. Recipe `statement_events`는 sequence 하나를 MySQL, PostgreSQL, SQLite에서 실행하고 모든 client가 publish하는 event를 적는다.
 
 | Client | 등록과 해제 | Event |
 |---|---|---|
@@ -472,7 +472,7 @@ $b->getJsonSetting()['a'];
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`number \| null`), `error`(`OrmError \| null`)를 가진 `StatementEvent` |
 
 - `sql`은 보낸 statement다. relation step은 펼친 `IN` 목록을 담는다.
-- `binds`는 순서대로 bind한 값이다. 비밀은 `$SECRET`, executor 시각 값은 `$NOW`다.
+- `binds`는 순서대로 bind한 값이다. executor 시각 값은 `$NOW`다.
 - `kind`는 statement의 출처에서 정한다: model statement는 plan step이 쓰는 동사인 `select`, `insert`, `update`, `delete`다(soft delete는 `update`). transaction 제어는 `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`다. schema utility의 statement는 `schema`다(`install`과 `addTablesAndColumns`의 catalog 읽기와 statement, `exists`, `installed`, `empty`의 읽기). 그 밖의 모든 statement는 `utility`다: 이름 lock과 row lock, transaction 지역 값, transaction 설정, 권한, AES 상태와 회전, SQLite row lock table이다.
 - `tables`는 정렬하고 중복을 뺀 목록이다. model statement는 plan step의 `tables`를 가진다([protocol](../spec/protocol.md#_2-plan)). table을 만들거나 바꾸는 schema statement는 그 table을 가진다. table에 대한 utility statement는 그 table을 가진다(SQLite row lock의 `orm__row_lock`, 권한의 table, AES 상태와 회전의 table). transaction 제어, catalog 읽기, 그 밖의 statement는 table이 없다.
 - `elapsed`는 statement를 보낸 때부터 client가 그 결과를 다 읽을 때까지다.

@@ -161,7 +161,5 @@ require_once dirname(__DIR__, 2) . '/php/tests/MarkdownTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelMethodsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RollbackTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/SessionStateTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SqliteRowLockRestoreTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/StatementEventsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/StatementFaultTest.php';

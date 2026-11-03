@@ -10,6 +10,7 @@
   "compile_refused": [
     {"name": "i16-above", "slot": {"type": "i16"}, "value": 32768, "code": "CODEC_ENCODE"},
     {"name": "i16-below", "slot": {"type": "i16"}, "value": -32769, "code": "CODEC_ENCODE"},
+    {"name": "i16-fraction", "slot": {"type": "i16"}, "value": 1.5, "code": "CODEC_ENCODE"},
     {"name": "i32-above", "slot": {"type": "i32"}, "value": 2147483648, "code": "CODEC_ENCODE"},
     {"name": "i64-fraction", "slot": {"type": "i64"}, "value": 1.5, "code": "CODEC_ENCODE"},
     {"name": "i64-text", "slot": {"type": "i64"}, "value": "5", "code": "CODEC_ENCODE"},

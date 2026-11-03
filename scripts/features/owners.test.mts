@@ -85,7 +85,6 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     ['packages/ts/tests/coverage_case.mjs', 'coverage-runner-typescript'],
     ['packages/php/tests/autoload.php', 'php-test-autoload'],
     ['packages/go/orm/test_helpers_test.go', 'go-test-helpers'],
-    ['packages/go/orm/coverage_fixture_test.go', 'go-test-helpers'],
     ['packages/go/orm/failing_driver_test.go', 'go-test-helpers'],
     ['packages/go/orm/schema_helpers_test.go', 'go-test-helpers'],
     ['packages/php/testing/conformance/runner.php', 'conformance-runners'],
@@ -211,10 +210,10 @@ caseTest('a selected make target runs with the environments of owner-check and t
 // T42 was a change across four clients. A change of that shape selects only the changed features' checks and the file-level owner target,
 // and the full suite target (scope suite) is run only by make orm-check.
 const t42 = [
-  'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
-  'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsTest.php',
-  'packages/rust/orm/src/events.rs', 'packages/rust/orm/tests/statement_events.rs',
-  'packages/ts/src/events.ts', 'packages/ts/tests/statement_events_server_transactions.mjs',
+  'packages/go/orm/recipe_statement_events_test.go', 'packages/go/orm/events.go',
+  'packages/php/src/StatementEvent.php', 'packages/php/tests/StatementEventsRecipeTest.php',
+  'packages/rust/orm/src/events.rs', 'packages/rust/tests/tests/statement_events_sqlite.rs',
+  'packages/ts/src/events.ts', 'packages/ts/tests/statement_events-sqlite.test.mjs',
   'contracts/fixtures/statement_events/statement_events.dbs',
 ];
 
@@ -238,10 +237,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   const owners = await selectOwners(manifest, root, t42);
   assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
   assert.deepEqual(selected(owners.slice(0, 1)), [
-    'statement_events/statement-events-go', 'statement_events/statement-events-server-transactions-typescript', 'statement_events/statement-events-php', 'statement_events/statement-events-rust',
-    'statement_events/statement-events-python',
-    'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/php-extension', 'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript',
-    'statement_events/coverage/owner/python',
+    'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript',
   ]);
 });
 
