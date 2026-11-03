@@ -126,5 +126,182 @@
     "diagnostic": "mismatched types",
     "sourceLine": "plan_steps(None, plan, \"oracle\")",
     "source": "use polyspec_orm::dbspec::{plan_steps, Plan};\n// Requirements: DBS-174. Dialect is a closed enum, so an unsupported name cannot enter this public API.\nfn reject(plan: &Plan) { let _ = plan_steps(None, plan, \"oracle\"); }\nfn main() {}\n"
+  },
+  {
+    "id": "refusal-chains-typed-positive",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "success",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let _: polyspec_orm::Result<_> = author().name(\"a\").is_close(true).gets().await;\n    let _: polyspec_orm::Result<_> = author().name(\"a\").and(()).gets().await;\n    let _: polyspec_orm::Result<_> = author().seq(Vec::<i64>::new()).gets().await;\n    let _: polyspec_orm::Result<_> = model::Author::new().name(\"a\").gets().await;\n    let _: polyspec_orm::Result<_> = author().for_update().gets().await;\n    let _: polyspec_orm::Result<_> = author().join_user_seq_with_seq(model::User::new().connect(db)).gets().await;\n    let _: polyspec_orm::Result<_> = author().limit(0, 1).gets_page(1, 10).await;\n    let _: polyspec_orm::Result<_> = author().relation(model::User::new().match_user_seq_with_seq().limit(0, 1)).gets_by_seq(42).await;\n    let _: polyspec_orm::Result<_> = author().name(\"a\").or(&model::User::new()).gets().await;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-missing-connector-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().name(\"a\").is_close(true).gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().name(\"a\").is_close(true).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-dangling-connector-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().name(\"a\").and(()).gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().name(\"a\").and(()).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-empty-list-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().seq(Vec::<i64>::new()).gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().seq(Vec::<i64>::new()).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-no-connection-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "model::Author::new().name(\"a\").gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = model::Author::new().name(\"a\").gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-lock-outside-transaction-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().for_update().gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().for_update().gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-join-child-with-connection-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().join_user_seq_with_seq(model::User::new().connect(db)).gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().join_user_seq_with_seq(model::User::new().connect(db)).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-page-with-limit-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().limit(0, 1).gets_page(1, 10).await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().limit(0, 1).gets_page(1, 10).await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-relation-with-limit-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().relation(model::User::new().match_user_seq_with_seq().limit(0, 1)).gets_by_seq(42).await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().relation(model::User::new().match_user_seq_with_seq().limit(0, 1)).gets_by_seq(42).await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "refusal-unjoined-model-placement-e0308",
+    "requirements": [
+      "DSL-10",
+      "DSL-19",
+      "DSL-47",
+      "DSL-67",
+      "DSL-96",
+      "DSL-98",
+      "DSL-123",
+      "PRT-14"
+    ],
+    "expect": "error",
+    "code": "E0308",
+    "diagnostic": "mismatched types",
+    "sourceLine": "author().name(\"a\").or(&model::User::new()).gets().await",
+    "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().name(\"a\").or(&model::User::new()).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
   }
 ]

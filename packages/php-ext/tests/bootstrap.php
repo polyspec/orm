@@ -32,6 +32,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RecipeKeysTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RefusalBeforeRequestTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FulltextSearchRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/OrmGenParsedModelTest.php';
