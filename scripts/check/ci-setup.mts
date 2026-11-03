@@ -50,10 +50,10 @@ export const CI_SETUP: Record<string, string | null> = {
 // that failure is a job failure, and the log of that step is the cause.
 export const RUNNER_STEPS = ['checkout', 'node'];
 
-// NEEDS are the needs a target may declare. databases, complex-query and mysql-privilege-server are prepared by the runner's setup
-// phase: the first two use servers and databases/create, and the privilege server is a separate optional MySQL fixture. The rest
+// NEEDS are the needs a target may declare. databases and mysql-privilege-server are prepared by the runner's setup
+// phase: databases uses servers and databases/create, and the privilege server is a separate optional MySQL fixture. The rest
 // are prepared by the CI setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
-export const NEEDS = ['databases', 'complex-query', 'mysql-privilege-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
+export const NEEDS = ['databases', 'mysql-privilege-server', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
 // release and .php-version) together with Composer; PHP extension build tools have their own need so library-only checks skip them. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
@@ -112,10 +112,8 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 // the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
 // also needs this need (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
-// complex-query is made by the same databases/create, so it needs databases.
 export const SETUP_NEEDS: Record<string, string[]> = {
   databases: ['go-lease', 'node-modules', 'server-programs'],
-  'complex-query': ['databases'],
   'mysql-privilege-server': ['databases'],
   'php-min': ['node-modules'],
   'php-extension-tools': ['php', 'composer', 'node-modules'],

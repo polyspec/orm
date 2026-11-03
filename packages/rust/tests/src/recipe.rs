@@ -2680,6 +2680,14 @@ mod database {
                         }
                     }
                 }
+                if step["compare"].as_str() == Some("shape") {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    for event in &mut events {
+                        if let Some(members) = event["object"].as_array_mut() {
+                            members.retain(|member| matches!(member[0].as_str(), Some("kind" | "tables")));
+                        }
+                    }
+                }
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
@@ -3282,7 +3290,7 @@ mod tables {
     use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
     use polyspec_orm::model::{
-        create, creates, delete, get_avg, get_core, get_count, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
+        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
         update,
     };
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
@@ -3564,6 +3572,13 @@ mod tables {
                         return Ok(());
                     }
                     "tuple" => return tuple(core, conn, value),
+                    "fulltext_boolean" => {
+                        let columns: Vec<&'static str> = names(&value["columns"]).iter().map(|name| leaked(name)).collect();
+                        let text = value["text"].as_str().ok_or_else(|| format!("fulltext_boolean {value} names no text"))?;
+                        let key = ChainKey { op: "fulltext_boolean", columns: Box::leak(columns.into_boxed_slice()), ..ChainKey::EMPTY };
+                        core.chain(conn, &[key], vec![Arg::Value(ArgValue::One(Param::Str(text.to_owned())))]);
+                        return Ok(());
+                    }
                     _ => {}
                 }
             }
@@ -4053,6 +4068,23 @@ mod tables {
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
+            if step["plan"].as_bool() == Some(true) {
+                let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                if count == 0 {
+                    return Err("a plan needs a limit above 0".into());
+                }
+                let steps = get_page_plan_steps(&core, offset / count + 1, count).await.map_err(orm)?;
+                let list: Vec<Value> = steps
+                    .iter()
+                    .map(|plan_step| {
+                        let sql = plan_step.sql.to_uppercase();
+                        let count: serde_json::Map<String, Value> =
+                            names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
+                        json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count })
+                    })
+                    .collect();
+                return Ok(json!({ "json": list }));
+            }
             let root = TableRow::from_core(core);
             if let Some(aggregate) = step.get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
@@ -4094,6 +4126,13 @@ mod tables {
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
                 "total": page.total_count,
             });
+            if step["items"].as_bool() == Some(true) {
+                let mut items = Vec::new();
+                for row in page.items.models() {
+                    items.push(row_json(row, &step["pick"])?);
+                }
+                fields["json"]["items"] = json!(items);
+            }
             if wants_rows(step) {
                 fields["rows"] = cells_of(page.items.models(), step)?;
             }

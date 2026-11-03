@@ -2320,6 +2320,13 @@ final class Recipe
                         static fn (array $member): bool => $member[0] === 'sql' || $member[0] === 'kind',
                     ))], $events);
                 }
+                if (($s['compare'] ?? '') === 'shape') {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
+                        $event['object'],
+                        static fn (array $member): bool => $member[0] === 'kind' || $member[0] === 'tables',
+                    ))], $events);
+                }
                 return ['value' => ['array' => $events]];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
@@ -2502,6 +2509,15 @@ final class Recipe
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
         generateModels($documents, "$work/source", "$work/models", $namespace, $external);
+        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a manifest.
+        $declarations = (string) file_get_contents("$work/models/schema_declarations.php");
+        if (preg_match("/^const MANIFEST_HASH = '([^']+)';$/m", $declarations, $match) !== 1) {
+            Assert::fail("the generated models of $setPath declare no manifest hash");
+        }
+        if (Registry::loaded($match[1])) {
+            $loaded = (new \ReflectionClass(array_values(Registry::models($match[1]))[0]))->getNamespaceName();
+            return self::$modelNamespaces[$key] = $loaded;
+        }
         requireGeneratedClasses("$work/models");
         require_once "$work/models/bootstrap.php";
         return self::$modelNamespaces[$key] = $namespace;
@@ -2883,6 +2899,10 @@ final class Recipe
                         $row,
                     ), $rows);
                     self::chainCall($model, $conn, $key, [$values]);
+                    return;
+                case 'fulltext_boolean':
+                    $key = 'FulltextBoolean' . implode('With', array_map(self::pascal(...), $value['columns']));
+                    self::chainCall($model, $conn, $key, [$value['text']]);
                     return;
             }
         }
@@ -3377,6 +3397,16 @@ final class Recipe
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
         }
+        if (($s['plan'] ?? false) === true) {
+            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            return ['json' => array_map(static function (array $step) use ($s): array {
+                $count = [];
+                foreach ($s['plan_count'] as $text) {
+                    $count[$text] = substr_count(strtoupper($step['sql']), $text);
+                }
+                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+            }, $steps)];
+        }
         $aggregate = $s['aggregate'] ?? null;
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
@@ -3400,6 +3430,12 @@ final class Recipe
                 'per_page' => $page->perPage,
                 'keys' => $page->items->keys(),
             ], 'total' => $page->totalCount];
+            if (($s['items'] ?? false) === true) {
+                $fields['json']['items'] = [];
+                foreach ($page->items as $row) {
+                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                }
+            }
             if (self::chainWantsRows($s, $context)) {
                 $fields['rows'] = self::chainCells($page->items, $s);
             }

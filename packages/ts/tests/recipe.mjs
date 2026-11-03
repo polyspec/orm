@@ -1315,6 +1315,7 @@ class ChainBuild {
         return m[CORE].connector(conn, [this.joined.get(value)]);
       }
       if (name === 'tuple') return this.tuple(m, conn, value);
+      if (name === 'fulltext_boolean') return m[CORE].whereChain(conn, [{ conn: '', op: name, column: '', columns: value.columns, compare: '' }], [value.text]);
     }
     if ('expr' in raw && 'cmp' in raw) return this.functionLeaf(m, conn, raw.expr, raw.cmp);
     members.forEach(([column, value], i) => this.leaf(m, i === 0 ? conn : 'and', column, value));
@@ -1557,6 +1558,13 @@ const TABLE_OPS = {
   async 'model.query'(s, context) {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
+    if (s.plan === true) {
+      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      return { json: steps.map(step => {
+        const sql = step.sql.toUpperCase();
+        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+      }) };
+    }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
@@ -1565,7 +1573,7 @@ const TABLE_OPS = {
       if (!(count > 0)) throw new Error('a page needs a limit count above 0');
       const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
       const page = await m.getsPage(Math.floor(offset / count) + 1, count);
-      const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage }), total: page.totalCount };
+      const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
       if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
       return fields;
     }
@@ -1805,6 +1813,8 @@ Object.assign(OPS, {
       if (binds === undefined || mask.bind >= binds.length) throw new Error(`mask ${JSON.stringify(mask)} names no captured bind`);
       binds[mask.bind] = { text: mask.value };
     }
+    // compare "shape" keeps the kind and the tables: the shape of a plan, whatever its text and binds on the database.
+    if (s.compare === 'shape') return { value: { array: events.map(event => ({ object: event.object.filter(([name]) => name === 'kind' || name === 'tables') })) } };
     if (s.compare !== 'statements') return { value: { array: events } };
     // compare "statements" keeps the sql and the kind: the bound clock of a soft delete differs on each run.
     return { value: { array: events.map(event => ({ object: event.object.filter(([name]) => name === 'sql' || name === 'kind') })) } };

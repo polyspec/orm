@@ -2238,6 +2238,9 @@ class _ChainBuild:
                 return model.core.connector(conn, [self.joined[value]])
             if name == "tuple":
                 return self.tuple(model, conn, value)
+            if name == "fulltext_boolean":
+                key = ChainKey(op=name, columns=tuple(value["columns"]))
+                return model.core.where_chain(conn, [key], (value["text"],))
         if "expr" in raw and "cmp" in raw:
             return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
         for i, (column, value) in enumerate(raw.items()):
@@ -2552,6 +2555,24 @@ def _table_model_query(step: dict, context: dict) -> dict:
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
+    if step.get("plan") is True:
+        limit = step["limit"]
+        steps = model.get_page_plan_steps(
+            limit["offset"] // limit["count"] + 1, limit["count"]
+        )
+        return {
+            "json": [
+                {
+                    "role": plan_step["role"],
+                    "tables": plan_step["tables"],
+                    "count": {
+                        text: plan_step["sql"].upper().count(text)
+                        for text in step["plan_count"]
+                    },
+                }
+                for plan_step in steps
+            ]
+        }
     aggregate = step.get("aggregate")
     if aggregate is not None:
         if aggregate["agg"] == "sum":
@@ -2576,6 +2597,16 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     "pages": page["totalPages"],
                     "page": page["page"],
                     "per_page": page["perPage"],
+                    **(
+                        {
+                            "items": [
+                                _row_json(row, step.get("pick"))
+                                for row in page["items"].values()
+                            ]
+                        }
+                        if step.get("items") is True
+                        else {}
+                    ),
                 }
             ),
             "total": page["totalCount"],
@@ -2766,6 +2797,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
         # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
         events = [
             {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
+            for event in events
+        ]
+    if step.get("compare") == "shape":
+        # The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("kind", "tables")]}
             for event in events
         ]
     return {"value": {"array": events}}
