@@ -469,7 +469,8 @@ func catalogValue(value any, nativeType string) (any, error) {
 func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	t := strings.ToUpper(nativeType)
 	switch {
-	case strings.Contains(t, "BLOB"), strings.Contains(t, "BINARY"), strings.Contains(t, "BYTEA"):
+	case t == "", strings.Contains(t, "BLOB"), strings.Contains(t, "BINARY"), strings.Contains(t, "BYTEA"):
+		// A SQLite expression has no declared type, and its driver reads a BLOB value as bytes (INT-153).
 		return append([]byte(nil), value...), nil
 	case catalogNativeTimeType(t):
 		if !utf8.Valid(value) {

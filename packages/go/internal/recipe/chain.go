@@ -103,6 +103,8 @@ type chainJoin struct {
 
 type chainRelation struct {
 	chainQuery
+	// Connection names a bound connection that the child connects to (PLN-42).
+	Connection string          `json:"connection"`
 	Match      [][2]string     `json:"match"`
 	Many       bool            `json:"many"`
 	Connect    bool            `json:"connect"`
@@ -796,8 +798,24 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 }
 
 // relation is the child core of a relation.
+// connectChild connects the child of a relation to the bound connection that the name names, if any.
+func (b *chainBuild) connectChild(child *orm.Core, name string) error {
+	if name == "" {
+		return nil
+	}
+	db, ok := b.c.bound[name].api.(*orm.DB)
+	if !ok {
+		return fmt.Errorf("child connection %q is not bound by model.connect", name)
+	}
+	child.Connect(db)
+	return nil
+}
+
 func (b *chainBuild) relation(r chainRelation) (*orm.Core, error) {
 	child := chainCore(r.Model, b.c)
+	if err := b.connectChild(child, r.Connection); err != nil {
+		return nil, err
+	}
 	for _, pair := range r.Match {
 		child.Match(pair[0], pair[1])
 	}

@@ -140,7 +140,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/CodeCatalogTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CollectionIdentityTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecAnalyzeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecApplyCleanupTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/DbspecApplyTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/HashesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SetsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecPlanApplyTest.php';

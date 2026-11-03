@@ -4002,6 +4002,9 @@ final class Recipe
     private static function chainRelation(array $relation, object $build, array $context): Model
     {
         $child = self::chainModel($relation['model'], $context);
+        if (isset($relation['connection'])) {
+            $child->connect(self::connectionOf(['connection' => $relation['connection']], $context));
+        }
         foreach ($relation['match'] ?? [] as [$left, $right]) {
             $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
         }
@@ -4554,7 +4557,9 @@ final class Recipe
             // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
             return ['int' => $value];
         }
-        if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
+        // A PHP string is its bytes, so a plain value with no column type is binary when it is not text (INT-153).
+        if (is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
+            || ($nativeType === null && mb_check_encoding($value, 'UTF-8') === false))) {
             return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {

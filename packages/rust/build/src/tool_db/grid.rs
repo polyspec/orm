@@ -28,6 +28,7 @@ impl From<Val> for GridCell {
             Val::Float(value) => Self::Float64(value.to_bits()),
             Val::Text(value) => Self::Text(value),
             Val::Bool(value) => Self::Boolean(value),
+            Val::Binary(value) => Self::Binary(value),
         }
     }
 }

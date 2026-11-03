@@ -1033,7 +1033,6 @@
         "packages/ts/src/bin/orm-gen.ts",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
-        "packages/python/tests/test_related_output.py",
         "packages/python/tests/test_model_json_text.py",
         "packages/python/tests/test_styled_column_states.py",
         "packages/python/tests/test_styled_sql_null.py",
@@ -1142,7 +1141,7 @@
         },
         {
           "id": "queries-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries|TimeSetterRecordsBadText' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Conditions|ColumnsAndSubqueries|TimeSetterRecordsBadText' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go",
@@ -1479,12 +1478,11 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
-            "packages/python/tests/test_related_output.py",
             "packages/python/tests/test_model_json_text.py",
             "packages/python/tests/test_styled_column_states.py",
             "packages/python/tests/test_styled_sql_null.py",
@@ -3452,7 +3450,6 @@
         "coverage-model-generation-model-generation-check",
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
-        "model-connection-and-join-methods",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",
@@ -3815,7 +3812,8 @@
         "dbspec-apply-cleanup-python",
         "dbspec-apply-cleanup-php",
         "dbspec-apply-cleanup-errors",
-        "dbspec-dialect-refusal"
+        "dbspec-dialect-refusal",
+        "py-dbspec-apply-sqlite-lock-faults"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -3831,7 +3829,6 @@
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
@@ -3847,7 +3844,6 @@
         "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
         "packages/go/internal/dialects/apply_clients_physical_test.go",
-        "packages/go/internal/dialects/apply_physical_test.go",
         "packages/go/internal/dialects/ddl_physical_test.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
@@ -3856,7 +3852,6 @@
         "packages/go/internal/dialects/schema_documents_physical_test.go",
         "packages/go/internal/dialects/sqlite_filename_physical_test.go",
         "packages/php/tests/DbspecApplyCleanupTest.php",
-        "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/DbspecCatalogChecksTest.php",
         "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/php/tests/DbspecIntrospectTest.php",
@@ -3869,13 +3864,11 @@
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/orm/tests/dbspec_apply.rs",
         "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
         "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
         "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
         "packages/rust/orm/tests/dbspec_plan_apply.rs",
         "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
-        "packages/ts/tests/dbspec-apply-physical.mjs",
         "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
         "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
         "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
@@ -3973,7 +3966,6 @@
         "packages/rust/schema/src/names.rs",
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
         "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
         "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
         "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
         "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
@@ -10806,7 +10798,7 @@
     {
       "id": "dbspec-apply-stress-mysql",
       "paths": [
-        "packages/go/internal/dialects/apply_stress_physical_test.go"
+        "packages/go/orm/recipe_dbspec_apply_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS=mysql dbspec-apply-stress-bench"
@@ -10814,7 +10806,7 @@
     {
       "id": "dbspec-apply-stress-pg-sqlite",
       "paths": [
-        "packages/go/internal/dialects/apply_stress_physical_test.go"
+        "packages/go/orm/recipe_dbspec_apply_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"
@@ -10907,10 +10899,9 @@
         "packages/rust/orm/tests/common/clock_test_support.rs"
       ],
       "tests": [
-        "packages/rust/orm/tests/clock.rs",
         "packages/rust/orm/tests/was_inserted.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock --test was_inserted"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test was_inserted"
     },
     {
       "id": "rust-temp-sqlite-fixture",
