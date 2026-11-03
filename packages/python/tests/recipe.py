@@ -3200,12 +3200,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 

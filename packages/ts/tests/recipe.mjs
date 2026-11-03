@@ -1165,7 +1165,10 @@ Object.assign(OPS, {
     return okValue;
   },
   async 'schema.add_tables_and_columns'(s, context) {
-    const added = await context.db.utils().schema().addTablesAndColumns(await schemaArgument(s.schema, context));
+    const added = await context.db.utils().schema().addTablesAndColumns(await schemaArgument(s.schema, context)).catch(error => {
+      if (s.message_contains !== undefined && !String(error?.message).includes(s.message_contains)) throw new Error(`the message ${error?.message} holds no ${s.message_contains}`);
+      throw error;
+    });
     return { value: { array: added.map(text => ({ text })) } };
   },
   async 'statements.count'(s, context) {

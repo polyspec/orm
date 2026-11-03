@@ -1968,9 +1968,14 @@ final class Recipe
                 )->close();
                 return ['value' => ['bool' => true]];
             case 'schema.add_tables_and_columns':
-                $added = $context['db']->utils()->schema()->addTablesAndColumns(
-                    self::schemaArgument($s['schema'], $context),
-                );
+                try {
+                    $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                        self::schemaArgument($s['schema'], $context),
+                    );
+                } catch (\Throwable $error) {
+                    Assert::assertStringContainsString($s['message_contains'] ?? '', $error->getMessage());
+                    throw $error;
+                }
                 return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
             case 'statements.count':
                 $count = 0;

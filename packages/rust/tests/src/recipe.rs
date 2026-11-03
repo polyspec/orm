@@ -2461,7 +2461,12 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                    match step["message_contains"].as_str() {
+                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                        _ => orm(error),
+                    }
+                })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }

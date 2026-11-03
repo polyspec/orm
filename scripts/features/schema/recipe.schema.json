@@ -1231,6 +1231,11 @@
           "schema": {
             "$ref": "#/$defs/schemaArgument"
           },
+          "message_contains": {
+            "description": "With an expected error: the text that its message holds.",
+            "type": "string",
+            "minLength": 1
+          },
           "expect": {
             "$ref": "#/$defs/expect"
           }

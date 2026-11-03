@@ -13,7 +13,10 @@
     "PLN-44",
     "SCH-7",
     "SCH-10",
-    "SCH-11"
+    "SCH-11",
+    "INT-56",
+    "SCH-8",
+    "SCH-9"
   ],
   "fixture": "none",
   "cases": [
@@ -689,6 +692,1594 @@
                 "seq"
               ],
               "reliable_row_identity": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_upgrade",
+      "requirements": [
+        "INT-56",
+        "SCH-8",
+        "SCH-10"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/log.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v1.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('setup')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "statements": [
+            {
+              "kind": "insert",
+              "tables": [
+                "addcol_tag"
+              ],
+              "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('update')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('extra')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (999, 'orphan', 3)",
+          "refused": true,
+          "reason": "a constraint or an audit trigger of the created table refuses this statement"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, '', 3)",
+          "refused": true,
+          "reason": "a constraint or an audit trigger of the created table refuses this statement"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DELETE FROM addcol_extra",
+          "refused": true,
+          "reason": "a constraint or an audit trigger of the created table refuses this statement"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM addcol_extra",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_differs",
+      "requirements": [
+        "SCH-9"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/log.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v1.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('setup')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/required.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/removed.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/changed.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/nullable.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/default.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/unique.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/reorder.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_index",
+      "requirements": [
+        "SCH-8",
+        "SCH-9"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/log.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v1.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('setup')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/unique.dbs"
+            ]
+          },
+          "message_contains": "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan",
+          "expect": {
+            "mysql": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "postgres": {
+              "error": "SCHEMA_DIFFERS"
+            },
+            "sqlite": {
+              "error": "SCHEMA_DIFFERS"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/index.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.ix_addcol_item_label"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.ix_addcol_item_label"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.ix_addcol_item_label"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/index.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/index.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_transaction",
+      "requirements": [
+        "SCH-8"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/log.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v1.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('setup')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "transaction",
+          "fail": true,
+          "steps": [
+            {
+              "op": "schema.add_tables_and_columns",
+              "schema": {
+                "documents": [
+                  "../add_tables_and_columns/v2.dbs"
+                ]
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "value": {
+                    "array": [
+                      {
+                        "text": "addcol_extra"
+                      },
+                      {
+                        "text": "addcol_extra_history"
+                      },
+                      {
+                        "text": "addcol_item.note"
+                      },
+                      {
+                        "text": "addcol_item.priority"
+                      },
+                      {
+                        "text": "addcol_item.archived"
+                      },
+                      {
+                        "text": "addcol_item.status"
+                      },
+                      {
+                        "text": "addcol_item_history.note"
+                      },
+                      {
+                        "text": "addcol_item_history.priority"
+                      },
+                      {
+                        "text": "addcol_item_history.archived"
+                      },
+                      {
+                        "text": "addcol_item_history.status"
+                      },
+                      {
+                        "text": "addcol_tag.color"
+                      }
+                    ]
+                  }
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "add_tables_edited_manifest",
+      "requirements": [
+        "SCH-8"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/log.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v1.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO audit (actor) VALUES ('setup')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_item (ref, label, created_at, audit_seq) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+          "reason": "the rows of the tables that the set installs; the recipe has no fixture that generates models for them"
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ],
+            "manifest_replace": {
+              "from": " note ",
+              "to": " memo "
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.add_tables_and_columns",
+          "schema": {
+            "documents": [
+              "../add_tables_and_columns/v2.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "text": "addcol_extra"
+                  },
+                  {
+                    "text": "addcol_extra_history"
+                  },
+                  {
+                    "text": "addcol_item.note"
+                  },
+                  {
+                    "text": "addcol_item.priority"
+                  },
+                  {
+                    "text": "addcol_item.archived"
+                  },
+                  {
+                    "text": "addcol_item.status"
+                  },
+                  {
+                    "text": "addcol_item_history.note"
+                  },
+                  {
+                    "text": "addcol_item_history.priority"
+                  },
+                  {
+                    "text": "addcol_item_history.archived"
+                  },
+                  {
+                    "text": "addcol_item_history.status"
+                  },
+                  {
+                    "text": "addcol_tag.color"
+                  }
+                ]
+              }
             }
           }
         }
