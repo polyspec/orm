@@ -2044,21 +2044,6 @@
         "tests/dbspec/introspect.json"
       ]
     },
-    "conformance-ts-suite-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/coverage_conformance_mysql.mjs",
-        "packages/ts/tests/coverage_conformance_postgres.mjs",
-        "packages/ts/tests/coverage_conformance_sqlite.mjs",
-        "packages/ts/tests/conformance_case.mjs",
-        "packages/ts/tests/conformance_vector_count.test.mts"
-      ]
-    },
     "dbspec-introspect-ts-check": {
       "scope": "owner",
       "needs": [

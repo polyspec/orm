@@ -723,7 +723,6 @@
         "packages/ts/tests/mysql-test-options.mjs",
         "packages/ts/tests/bench-set.mjs",
         "packages/ts/tests/codec_case.mjs",
-        "packages/ts/tests/conformance_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
@@ -835,10 +834,6 @@
         {
           "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
           "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/conformance_vector_count.test.mts",
-          "reason": "harness: an internal test that verifies the TypeScript conformance runner covers every declared vector, not ORM behaviour itself (K313)"
         },
         {
           "glob": "packages/ts/tests/parse_documents.test.mjs",
@@ -10769,7 +10764,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs"
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs"
         },
         {
           "implementation": "python",
@@ -10981,7 +10976,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs"
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs"
         },
         {
           "implementation": "python",
@@ -11194,7 +11189,7 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs"
         },
         {
           "implementation": "python",
@@ -12829,8 +12824,13 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
         },
         {
           "implementation": "python",
@@ -14445,8 +14445,18 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -14459,11 +14469,6 @@
           "id": "conformance_mysql::datetime_p0_roundtrip"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/conformance_mysql.py",
           "id": "time_p3_roundtrip"
@@ -14472,11 +14477,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_mysql::time_p3_roundtrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -14524,8 +14524,18 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -14538,11 +14548,6 @@
           "id": "conformance_postgres::datetime_p0_roundtrip"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/conformance_postgres.py",
           "id": "time_p3_roundtrip"
@@ -14551,11 +14556,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_postgres::time_p3_roundtrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -14603,8 +14603,18 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
           "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -14617,11 +14627,6 @@
           "id": "conformance_sqlite::datetime_p0_roundtrip"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
-          "id": "time_p3_roundtrip"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/conformance_sqlite.py",
           "id": "time_p3_roundtrip"
@@ -14630,11 +14635,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "conformance_sqlite::time_p3_roundtrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
-          "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
@@ -26789,8 +26789,23 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "conditions_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "relations"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
         },
         {
           "implementation": "python",
