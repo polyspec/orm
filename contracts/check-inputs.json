@@ -5000,6 +5000,16 @@
         "packages/rust/tests/tests/complex_query_sqlite.rs",
         "packages/rust/tests/src/recipe.rs"
       ]
+    },
+    "connection-sqlite-several-processes-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
+      ]
     }
   },
   "paths": {

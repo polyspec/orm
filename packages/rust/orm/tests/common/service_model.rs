@@ -1,4 +1,4 @@
-//! The service table of contracts/fixtures/bench/bench.dbs and its model, which transaction_flow uses.
+//! The service table of contracts/fixtures/bench/bench.dbs and its model, which sqlite_concurrency and transaction_flow use.
 
 use std::sync::LazyLock;
 

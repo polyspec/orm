@@ -533,6 +533,8 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The drop step refuses a binary log purge that the replica did not apply, and names the replica SQL thread state and its last error; the start of the test servers no longer reuses a MySQL replica whose SQL thread stopped, and reports it with its last error (G5.55-2).
 - The statement timeout (CFG-6) and its isolation through a transaction pooler (CFG-27, CFG-28, CFG-29) run as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `statement_timeout_ms` and the DSN `case-pooler`. The Python catalog session through a pooler is a requirement of its own (CFG-41).
 - The SQLite lock wait, read during a write and concurrent writers run as recipe cases in the six runtimes; the native tests of those behaviours are gone.
+- A failed SQLite BEGIN in Go reports only its error, and a SQLite message names its result code once.
+- Several processes writing one SQLite file are a requirement (CFG-42), tested in the six runtimes.
 
 ## 0.0.21
 

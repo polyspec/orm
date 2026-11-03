@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c6c7b4f5dbe3d9923c81fe0e648c5fd808ce4f7b3a83772aa9ebe1c7fc6ea1a9 -->
+<!-- source-sha256: e9dfa5db13d42e72ad3b7e71e3a3f98f544fc69389e45cd87121537d0a618e67 -->
 # 변경 이력
 
 ## Unreleased
@@ -528,6 +528,8 @@
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - statement timeout(CFG-6)과 transaction pooler를 거친 격리(CFG-27, CFG-28, CFG-29)를 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `statement_timeout_ms`와 DSN `case-pooler`를 받는다. pooler를 거친 Python catalog session은 별도 요구사항(CFG-41)이 된다.
 - SQLite 잠금 대기, 쓰기 중 읽기, 동시 쓰기는 여섯 runtime의 recipe case로 실행하고, 그 동작의 native 시험은 없앤다.
+- Go에서 실패한 SQLite BEGIN은 자기 오류만 보고하고, SQLite message는 result code를 한 번만 적는다.
+- 한 SQLite 파일에 쓰는 여러 process를 요구사항(CFG-42)으로 두고 여섯 runtime에서 시험한다.
 
 ## 0.0.21
 

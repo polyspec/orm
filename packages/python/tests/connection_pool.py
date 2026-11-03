@@ -6,6 +6,8 @@
 # and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 # Usage: python -m packages.python.tests.connection_pool
 import os
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -29,6 +31,23 @@ from .server_database import with_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
 TEMP = {}
+
+
+# One writer process of test_sqlite_several_process_writers_commit_every_row: read-then-write transactions without retries.
+SQLITE_WRITER_PROCESS = """
+import sys
+from packages.python.tests.models import models
+dsn, name, count = sys.argv[1], sys.argv[2], int(sys.argv[3])
+db = models.connect(dsn)
+try:
+    for index in range(count):
+        def body(iteration=index):
+            models.Service().connect(db).get_count()
+            models.Service().connect(db).set_name(f"{name}-{iteration}").create()
+        db.transaction(body, {"retry": 0})
+finally:
+    db.close()
+"""
 
 
 def setUpModule():
@@ -334,6 +353,33 @@ class ConnectionPoolTest(unittest.TestCase):
                 db.close()
 
         self.each(body)
+
+    # Requirements: CFG-42. A recipe case runs on the connections of one test process in Python, so this test starts the processes.
+    def test_sqlite_several_process_writers_commit_every_row(self):
+        with tempfile.TemporaryDirectory(prefix="orm-sqlite-processes-") as directory:
+            dsn = f"sqlite://{directory}/processes.sqlite3"
+            setup = models.connect(dsn)
+            install_bench(setup)
+            setup.close()
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            children = [
+                subprocess.Popen(
+                    [sys.executable, "-c", SQLITE_WRITER_PROCESS, dsn, f"process-{index}", "40"],
+                    cwd=root,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                for index in range(6)
+            ]
+            for child in children:
+                output, _ = child.communicate()
+                self.assertEqual(child.returncode, 0, output)
+            reader = models.connect(dsn)
+            try:
+                self.assertEqual(models.Service().connect(reader).get_count(), 240)
+            finally:
+                reader.close()
 
     # Requirements: INT-92.
     def test_idle_server_end_discards_connection(self):

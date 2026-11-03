@@ -2509,6 +2509,8 @@
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/goexit_test.go",
+        "packages/go/model/sqlite_concurrency_test.go",
+        "packages/rust/orm/tests/sqlite_concurrency.rs",
         "packages/go/orm/context_reset_test.go",
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/go/orm/coverage_transaction_failure_test.go",
@@ -2809,6 +2811,31 @@
             "packages/python/tests/test_row_lock_event.py",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/utils.py"
+          ]
+        },
+        {
+          "id": "transactions-sqlite-locking-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^TestSQLiteWritersInSeveralProcesses$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/model/sqlite_concurrency_test.go"
+          ]
+        },
+        {
+          "id": "sqlite-concurrency-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test sqlite_concurrency",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/sqlite_concurrency.rs"
+          ]
+        },
+        {
+          "id": "connection-sqlite-several-processes-python",
+          "command": "make connection-sqlite-several-processes-python-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
           ]
         }
       ],

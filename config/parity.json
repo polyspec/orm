@@ -25967,6 +25967,45 @@
       }
     },
     {
+      "id": "connection-sqlite-several-process-writers",
+      "kind": "feature",
+      "requirements": [
+        "CFG-42"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteWritersInSeveralProcesses"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_writers_commit_every_row\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_writers_commit_every_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_several_process_writers_commit_every_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "writers_in_several_processes"
+        }
+      ]
+    },
+    {
       "id": "connection-sqlite-read-during-write",
       "kind": "feature",
       "requirements": [

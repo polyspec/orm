@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 0c321a5b6b5a819e2da8e489e3fb218d6b906e8d7a7d938b2e4552e5be56dd01 -->
+<!-- source-sha256: 6d0fea355e269553067e9d02a973b94d456e8f5581fb19000b5c1840cbd12391 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -43,6 +43,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-39** Go: callback 도중 context가 취소된 transaction은 `CANCELED`만 돌려주고, connection은 그 transaction의 named lock, user variable, SQLite mode를 유지하지 않는다.
 - **CFG-40** Go: `DriverFromDSN`은 DSN URI의 scheme으로 데이터베이스를 이름하고, URI가 아닌 DSN에는 `CONFIG`를 돌려준다.
 - **CFG-41** Python: transaction pooler의 server connection 하나를 거치는 catalog session은, 그 connection의 다른 client가 같은 text의 prepared statement를 아직 쥔 동안 column type이 바뀐 table을 읽는다.
+- **CFG-42** Go와 PHP와 PHP extension과 TypeScript와 Python과 Rust: 한 SQLite 파일을 여는 여러 process는 읽고 쓰는 transaction의 모든 쓰기를 transaction 재시도 없이 commit한다. 그들 사이의 잠금은 CFG-12가 기다리는 파일 잠금이기 때문이다.
 
 ## DSN 매개변수와 MySQL TLS
 
