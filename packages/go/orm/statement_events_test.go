@@ -14,7 +14,6 @@ import (
 )
 
 // Runs the cases of tests/events/vectors.json with this client and compares the statement events.
-// If ORM_EVENTS_RECORD=1, it records this driver's expected events into the vector instead of comparing.
 // Requirements: INT-77, INT-96, PLN-44.
 
 const eventsVector = "../../../tests/events/vectors.json"

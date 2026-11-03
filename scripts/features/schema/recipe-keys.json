@@ -456,7 +456,8 @@
       "as",
       "connection",
       "kind",
-      "op"
+      "op",
+      "refusal"
     ],
     "events.stop_failing": [
       "op",

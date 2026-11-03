@@ -26,6 +26,7 @@
 - TypeScript는 `transactionConflict(message)`를, Python은 `transaction_conflict(message)`를 내보낸다. 이는 INT-48의 재시도 대상 `DEADLOCK` 오류이며 지금까지 다른 runtime에만 있었다. 두 runtime의 utility가 이를 쓰고 recipe helper가 이를 호출한다. recipe `model_queries_chain`은 join한 child의 scalar SUM을 INT-160의 정수로 읽고 NULL collection key의 메시지를 비교한다.
 - PHP, TypeScript, Go의 runtime model native를 값별로 비교해 없앴다. recipe에 외부 문서가 있는 bench set, 주석과 diagram이 없는 manifest text, select explicit 표시, i16 조건, 삽입 행별 clock, 할당된 `default now` 컬럼, rule로 거부되는 반복 문서와 빈 text를 더했다. PRT-81에 PRT-33의 `default now` 예외를 적었다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
+- Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
 - markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
 - 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
@@ -101,7 +102,7 @@
 - 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
-<!-- source-sha256: 259368138824f93da205175bb9dfe4de43e8598dc4a2632b100b9c64fe21ef3c -->
+<!-- source-sha256: 8bd07566a7a5f6abbc7d4c57b0331b8fe9f12e97b465e4290a02cac9e791c800 -->
 - request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
 - 분할된 root `in` 목록의 merge를 primary key 없는 표에 대한 public query로 recipe `parameter_chunking`에서 시험합니다.
 - collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.

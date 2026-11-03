@@ -2002,7 +2002,9 @@ Object.assign(OPS, {
   },
   async 'events.fail_subscriber'(s, context) {
     const stop = connectionOf(s, context).subscribe(event => {
-      if (event.kind === s.kind) throw new Error('subscriber refused the event');
+      if (event.kind === s.kind) {
+        throw s.refusal === undefined ? new Error('subscriber refused the event') : new OrmError(s.refusal.code, s.refusal.message);
+      }
     });
     return { bind: { stop } };
   },
