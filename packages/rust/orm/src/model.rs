@@ -1070,7 +1070,7 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
     Ok(a)
 }
 
-fn validate_host_value(styles: &[String], value: &Param) -> Result<()> {
+pub(crate) fn validate_host_value(styles: &[String], value: &Param) -> Result<()> {
     // Some dialects apply `ip` in SQL; validate it here so bad text returns CODEC_ENCODE before it reaches the driver.
     if styles.iter().any(|style| style == "ip") {
         crate::codec::host_encode(value, &["ip".to_owned()], "")?;
@@ -1834,22 +1834,6 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
         Error::Engine { code: codes::COLUMN_UNSELECTED.into(), msg: format!("{}.{} has no decoded value", c.ent.name, name) }
     } else {
         Error::internal(format!("model output column {name} is missing"))
-    }
-}
-
-#[cfg(test)]
-mod host_assignment_tests {
-    use super::validate_host_value;
-    use crate::{codes, value::Param};
-
-    // Requirements: COD-38.
-    #[test]
-    fn invalid_ip_assignment_is_codec_encode() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let ip = vec!["ip".to_owned()];
-        assert_eq!(validate_host_value(&ip, &Param::Str("10. 0.0.1".into())).unwrap_err().code(), codes::CODEC_ENCODE);
-        assert!(validate_host_value(&ip, &Param::Str("10.0.0.1".into())).is_ok());
-        assert!(validate_host_value(&["hex".to_owned()], &Param::Str("10. 0.0.1".into())).is_ok());
     }
 }
 
