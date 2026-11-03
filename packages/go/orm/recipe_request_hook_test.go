@@ -12,6 +12,7 @@ import (
 // requestHookRecipe is the recipe of the request hook, relative to this package directory.
 const requestHookRecipe = "../../../contracts/fixtures/request_hook/request_hook.json"
 
+// Requirements: INT-78, PRT-2, PRT-65, DIA-161.
 // TestRecipeRequestHookMysql runs the request_hook recipe on MySQL, each case on a case database (FCV-3).
 // Requirements: INT-78, PRT-2, PRT-4, PRT-5, PRT-6, PRT-41, CFG-21, INT-36, INT-37, PLN-16, DIA-161, INT-38.
 func TestRecipeRequestHookMysql(t *testing.T) {

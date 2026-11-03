@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Go request hook natives that the recipe holds are gone; the read of a failing hook also states that no statement runs. The units that stay native are stated in FCV-2 with their reasons.
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
 - A process deadline reports a process that has ended, and its case holds that the pid is gone (#T334-3-4-22)
 - The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.

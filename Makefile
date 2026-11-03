@@ -3617,12 +3617,12 @@ request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 .PHONY: request-hook-relation-scope-check
 request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hook-relation-scope-check-$$PPID
 request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRequestHook$$/^relation_scope$$' -count=1
-	$(NODE) --test-name-pattern='^request-hook/relation_scope$$' packages/ts/tests/request_hook.mjs
+	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
+	$(NODE) --test --test-name-pattern='relation_scope' packages/ts/tests/request_hook-sqlite.test.mjs
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook_sqlite
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookSqliteRecipeTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php/tests/RequestHookTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) request-hook-relation-scope-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --manifest-path packages/rust/Cargo.toml --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_sqlite -- --exact request_hook_sqlite::relation_scope
 
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
