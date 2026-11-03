@@ -99,6 +99,7 @@ var tableModels = map[string]string{
 	"HookUpsert":  "hook_upsert",
 	"RotRow":      "rot_row",
 	"ChunkAuthor": "chunk_author",
+	"ChunkPair":   "chunk_pair",
 	"Item":        "item",
 	"Card":        "card",
 	"Tag":         "tag",

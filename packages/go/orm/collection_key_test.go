@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -247,27 +246,6 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 	r.ir.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "in", Ps: indexes}}}}
 	if _, err := rootINParts(r, count, "sqlite"); err == nil {
 		t.Fatal("split query accepted unsupported key")
-	}
-}
-
-// Requirements: PRT-35.
-func TestSplitQueryRowKeyRejectsSQLNull(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	_, err := splitQueryRowKey([]any{nil}, []plan.KeyRef{{Column: "id", Index: 0}})
-	if err == nil || !strings.Contains(err.Error(), "CODEC_DECODE: split query row identity contains SQL NULL") {
-		t.Fatalf("split query row key error = %v", err)
-	}
-	compositeRefs := []plan.KeyRef{{Column: "tenant_id", Index: 0}, {Column: "enabled", Index: 1}, {Column: "label", Index: 2}}
-	if _, err := splitQueryRowKey([]any{int64(0), nil, ""}, compositeRefs); err == nil || !strings.Contains(err.Error(), "CODEC_DECODE: split query row identity contains SQL NULL") {
-		t.Fatalf("composite split query row key error = %v", err)
-	}
-	if _, err := splitQueryRowKey([]any{int64(0), false, ""}, compositeRefs); err != nil {
-		t.Fatalf("valid composite falsey key: %v", err)
-	}
-	for _, value := range []any{int64(0), false, ""} {
-		if _, err := splitQueryRowKey([]any{value}, []plan.KeyRef{{Column: "id", Index: 0}}); err != nil {
-			t.Errorf("valid falsey key %T(%v): %v", value, value, err)
-		}
 	}
 }
 

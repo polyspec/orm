@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The merge of a split root `in` list is tested through the public query on a table without its primary key, in the recipe `parameter_chunking`.
 - Key identity, typed lookup, the exact group value and the configured key of a collection are cases of the recipe `collection`, through the new op `collection.key` and the markdown chains `group_count_i64`, `collection_typed_key` and `collection_key_name`.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - The group row units of the collection are the cases of the recipe `tests/collection/collection.json`, which all six runtimes run through `ir.answer`; the chain `group_count_views` reads the length, the order, the values and `COLUMN_UNSELECTED` of a group result. The forms of a count that only a driver cell holds stay native as `group-row-driver-cell-forms`

@@ -510,7 +510,7 @@ function bindWrapper(value) {
 // Each op maps to one call of the public API and returns the fields that its expect compares.
 const TABLE_MODELS = {
   EventProbe: 'event_probe', HookItem: 'hook_item', HookEntry: 'hook_entry', HookUpsert: 'hook_upsert', RotRow: 'rot_row',
-  ChunkAuthor: 'chunk_author', Item: 'item', Card: 'card', Tag: 'tag', Membership: 'membership', Label: 'label', Audit: 'audit',
+  ChunkAuthor: 'chunk_author', ChunkPair: 'chunk_pair', Item: 'item', Card: 'card', Tag: 'tag', Membership: 'membership', Label: 'label', Audit: 'audit',
 };
 
 /** The table of a table model, or a failure that names the model. */
