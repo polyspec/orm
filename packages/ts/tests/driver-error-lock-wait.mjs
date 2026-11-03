@@ -9,15 +9,6 @@ import { join } from 'node:path';
 import { driverError, openDriver, parseDsn } from '../dist/driver.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
-// Requirements: PRT-79.
-caseTest('driver-error/native-cause/mysql', COMPUTE, () => {
-  const source = Object.assign(new Error('trigger refused the write'), { code: 'ER_SIGNAL_EXCEPTION', errno: 1644 });
-  const mapped = driverError('mysql', source);
-  assert.equal(mapped.code, 'DRIVER');
-  assert.match(mapped.message, /mysql: trigger refused the write/);
-  assert.strictEqual(mapped.cause, source);
-});
-
 // Requirements: PLN-24.
 caseTest('driver-error/sqlite-locked/sqlite', COMPUTE, () => {
   const source = Object.assign(new Error('database table is locked'), { code: 'SQLITE_LOCKED', errcode: 6 });

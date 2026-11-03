@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c3a4c83c89e7c238558ae7e89d9b1fee1308cee911024a52df3589510879d4ee -->
+<!-- source-sha256: 9222fc833ea28ef00db2078b8a3468937d936019ba6ae8ff072b2a16908ba05f -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: driver 오류와 native cause(PRT-79)는 모든 runtime에서 각 database가 일으킨 오류로 case `immutable_write`가 확인하며, 오류를 만들어 쓰던 native는 사라졌다.
 - Tests: MySQL lock wait timeout(CFG-6)은 모든 runtime에서 `transactions` recipe의 case `mysql_lock_wait_expiry_is_canceled`가 서버의 실제 1205로 확인하며, driver 오류를 만들어 쓰던 native는 사라졌다.
 - CR15-F: 저장된 표의 내림차순 행과 NULL을 `grid_column_and_row_order`의 step으로 두었다. Go 시험은 wrapper의 plan만 남기고(SCH-6b), Rust helper 시험은 지우며, Rust commit 분류기는 단일 소유 unit이 된다(INT-118a).
 - `performance_gate`는 각 class가 가리키는 database의 `BENCH_<DATABASE>_DSN`을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)

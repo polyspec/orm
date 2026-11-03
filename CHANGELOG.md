@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: a driver error and its native cause (PRT-79) are the case `immutable_write` in every runtime, raised by each database; the natives that built the error are gone.
 - CR15-F: the rows of a stored table in descending order, with a NULL, are steps of `grid_column_and_row_order`; the Go test keeps the plan of its wrapper (SCH-6b), the Rust helper test is removed, and the Rust commit classifier is a single-owner unit (INT-118a).
 - `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.

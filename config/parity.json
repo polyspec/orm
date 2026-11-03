@@ -2678,6 +2678,93 @@
   },
   "units": [
     {
+      "id": "rust-postgres-bind-parse-cause",
+      "kind": "feature",
+      "requirements": [
+        "PRT-79a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_native_parse_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_utf8_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_datetime_bind_preserves_parse_cause_message"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "php-extension-pgsql-adapter-statement-sqlstate",
+      "kind": "feature",
+      "requirements": [
+        "PRT-79b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
+          "id": "PgsqlPdoAdapterNativeTest::testNativePgsqlAdapterStatementErrorCarriesItsSqlState"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/php-extension"
+      }
+    },
+    {
+      "id": "sqlite-locked-is-driver",
+      "kind": "feature",
+      "requirements": [
+        "PLN-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/sqlite/sqlite_locked_test.go",
+          "id": "TestSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
+          "id": "OrmExceptionLockWaitTest::testSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
+          "id": "driver-error/sqlite-locked/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "test_sqlite_locked_is_driver_not_deadlock"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/lib.rs",
+          "id": "sqlite_code_tests::sqlite_locked_is_driver_not_deadlock"
+        }
+      ]
+    },
+    {
       "id": "page-cache-root-limit-values",
       "kind": "feature",
       "requirements": [
@@ -13835,65 +13922,6 @@
         "feature": "transactions",
         "part": "owner/php-extension"
       }
-    },
-    {
-      "id": "native-driver-error-cause",
-      "kind": "feature",
-      "requirements": [
-        "PRT-79"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapDriverErrorPreservesNativeCause"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::testUnlistedMysqlDriverErrorKeepsItsCause"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DriverErrorTest.php",
-          "id": "DriverErrorTest::testNativeDbMapperKeepsTheDriverErrorAsPrevious"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
-          "id": "PgsqlPdoAdapterNativeTest::testNativePgsqlAdapterStatementErrorCarriesItsSqlState"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
-          "id": "driver-error/native-cause/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_mysql_errors_have_the_codes_of_the_catalog"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/lib.rs",
-          "id": "driver_error_tests::unknown_database_error_keeps_the_native_source_chain"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_bind_preserves_native_parse_cause_message"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_bind_preserves_utf8_cause_message"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_datetime_bind_preserves_parse_cause_message"
-        }
-      ]
     },
     {
       "id": "go-internal-packages-go-orm-codec-custom-marshaler",
@@ -41540,6 +41568,7 @@
       "id": "immutable_write-mysql",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
@@ -41626,6 +41655,7 @@
       "id": "immutable_write-postgres",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
@@ -41712,6 +41742,7 @@
       "id": "immutable_write-sqlite",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
