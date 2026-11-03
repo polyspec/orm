@@ -21,7 +21,7 @@ fn error_with(error: impl std::fmt::Display) -> sqlx::Error {
 
 fn check_row_count(limits: QueryLimits, count: usize) -> Result<(), sqlx::Error> {
     if count >= limits.max_rows {
-        Err(error())
+        Err(sqlx::Error::Decode(format!("TOOL_QUERY_LIMIT: result has more than {} rows", limits.max_rows).into()))
     } else {
         Ok(())
     }
@@ -43,6 +43,7 @@ impl CellSize for super::Val {
     fn size_bytes(&self) -> usize {
         match self {
             super::Val::Text(text) => text.len(),
+            super::Val::Binary(bytes) => bytes.len(),
             super::Val::Null | super::Val::Int(_) | super::Val::Float(_) | super::Val::Bool(_) => 8,
         }
     }
@@ -77,9 +78,10 @@ impl ValueBudget {
         check_row_count(self.limits, count)
     }
     pub(super) fn add_row<T: CellSize>(&mut self, row: &[T], _count: usize) -> Result<(), sqlx::Error> {
+        let over = || sqlx::Error::Decode(format!("TOOL_QUERY_LIMIT: result has more than {} bytes of values", self.limits.max_bytes).into());
         let size = row.iter().try_fold(0usize, |bytes, value| bytes.checked_add(value.size_bytes()).filter(|total| *total <= self.limits.max_bytes));
-        let Some(bytes) = size else { return Err(error()) };
-        self.bytes = self.bytes.checked_add(bytes).filter(|total| *total <= self.limits.max_bytes).ok_or_else(error)?;
+        let Some(bytes) = size else { return Err(over()) };
+        self.bytes = self.bytes.checked_add(bytes).filter(|total| *total <= self.limits.max_bytes).ok_or_else(over)?;
         Ok(())
     }
 }
