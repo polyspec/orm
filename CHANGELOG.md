@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - The group row units of the collection are the cases of the recipe `tests/collection/collection.json`, which all six runtimes run through `ir.answer`; the chain `group_count_views` reads the length, the order, the values and `COLUMN_UNSELECTED` of a group result. The forms of a count that only a driver cell holds stay native as `group-row-driver-cell-forms`
 - The PHP extension answers a markdown value of the wrong type with `CODEC_DECODE`, as the other runtimes do, not `INTERNAL`
 - Rust refuses SQL NULL in a selected group column that is not nullable with `CODEC_DECODE`, as the other runtimes do
