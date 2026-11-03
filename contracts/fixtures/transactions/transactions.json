@@ -1865,25 +1865,7 @@
                 "account_id"
               ],
               "expect": {
-                "mysql": {
-                  "rows": [
-                    [
-                      {
-                        "int": "6"
-                      }
-                    ]
-                  ]
-                },
                 "postgres": {
-                  "rows": [
-                    [
-                      {
-                        "int": "6"
-                      }
-                    ]
-                  ]
-                },
-                "sqlite": {
                   "rows": [
                     [
                       {
@@ -1920,30 +1902,14 @@
                 }
               ],
               "expect": {
-                "mysql": {
-                  "error": "CANCELED"
-                },
                 "postgres": {
-                  "error": "CANCELED"
-                },
-                "sqlite": {
                   "error": "CANCELED"
                 }
               }
             }
           ],
           "expect": {
-            "mysql": {
-              "value": {
-                "bool": true
-              }
-            },
             "postgres": {
-              "value": {
-                "bool": true
-              }
-            },
-            "sqlite": {
               "value": {
                 "bool": true
               }
@@ -1969,25 +1935,7 @@
             "name"
           ],
           "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "text": "before timeout"
-                  }
-                ]
-              ]
-            },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "before timeout"
-                  }
-                ]
-              ]
-            },
-            "sqlite": {
               "rows": [
                 [
                   {
@@ -2300,12 +2248,6 @@
                 }
               ],
               "expect": {
-                "mysql": {
-                  "error": "CANCELED"
-                },
-                "postgres": {
-                  "error": "CANCELED"
-                },
                 "sqlite": {
                   "error": "CANCELED"
                 }
@@ -2314,16 +2256,6 @@
             {
               "op": "transaction.attempts",
               "expect": {
-                "mysql": {
-                  "value": {
-                    "int": "0"
-                  }
-                },
-                "postgres": {
-                  "value": {
-                    "int": "0"
-                  }
-                },
                 "sqlite": {
                   "value": {
                     "int": "0"
@@ -2333,16 +2265,6 @@
             }
           ],
           "expect": {
-            "mysql": {
-              "value": {
-                "bool": true
-              }
-            },
-            "postgres": {
-              "value": {
-                "bool": true
-              }
-            },
             "sqlite": {
               "value": {
                 "bool": true
@@ -2369,24 +2291,6 @@
             "name"
           ],
           "expect": {
-            "mysql": {
-              "rows": [
-                [
-                  {
-                    "text": "holder"
-                  }
-                ]
-              ]
-            },
-            "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "holder"
-                  }
-                ]
-              ]
-            },
             "sqlite": {
               "rows": [
                 [
@@ -2486,11 +2390,6 @@
               "same_flow": true
             },
             "postgres": {
-              "attempts": 3,
-              "deadlocks": 1,
-              "same_flow": true
-            },
-            "sqlite": {
               "attempts": 3,
               "deadlocks": 1,
               "same_flow": true

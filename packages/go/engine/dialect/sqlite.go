@@ -53,8 +53,8 @@ func (SQLite) Upsert(conflict []string, assigns string) string {
 	return upsert(conflict, assigns)
 }
 
-func (SQLite) ReadExpr(col string, _ []string, _ func() string) (string, int) { return col, 0 }
-func (SQLite) WriteExpr(ph func() string, _ []string) (string, int)           { return ph(), 1 }
+func (SQLite) ReadExpr(col string, _ []string) string { return col }
+func (SQLite) WriteExpr(ph string, _ []string) string { return ph }
 
 func (SQLite) HostNow() bool                     { return true }
 func (SQLite) ReadTime(col string, _ int) string { return col }

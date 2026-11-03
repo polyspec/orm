@@ -8,9 +8,11 @@ package recipe
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"math"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/orm"
@@ -88,11 +90,12 @@ type chainFn struct {
 
 type chainJoin struct {
 	chainQuery
-	Kind  string          `json:"kind"`
-	Match []string        `json:"match"`
-	On    json.RawMessage `json:"on"`
-	As    string          `json:"as"`
-	Alias string          `json:"alias"`
+	Kind    string          `json:"kind"`
+	Match   []string        `json:"match"`
+	On      json.RawMessage `json:"on"`
+	As      string          `json:"as"`
+	Alias   string          `json:"alias"`
+	Connect bool            `json:"connect"`
 }
 
 type chainRelation struct {
@@ -165,6 +168,7 @@ type chainBuild struct {
 	c      *databaseContext
 	joined map[string]*orm.Core
 	outer  *orm.Core
+	db     *orm.DB // the connection of the step, for a join that names connect
 }
 
 // snakeOf is the table of a model name as the generator spells it: CompositeAccount is composite_account.
@@ -355,6 +359,13 @@ func (b *chainBuild) predicate(core *orm.Core, conn string, raw json.RawMessage)
 			core.AddNegatedGroup(conn, g)
 			return nil
 		case "placed":
+			var unjoined struct {
+				Model string `json:"model"`
+			}
+			if err := json.Unmarshal(members[0].value, &unjoined); err == nil {
+				core.Connector(conn, []any{chainCore(unjoined.Model, b.c).Self()})
+				return nil
+			}
 			var name string
 			if err := json.Unmarshal(members[0].value, &name); err != nil {
 				return err
@@ -727,6 +738,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 		if kind == "" {
 			kind = "inner"
 		}
+		if j.Connect {
+			child.Connect(b.db)
+		}
 		core.Join(kind, j.Match[0], j.Match[1], child.Self())
 		if j.As != "" {
 			b.joined[j.As] = child
@@ -970,7 +984,7 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	if s.Page {
 		q.Limit = nil
 	}
-	build := &chainBuild{c: c, joined: map[string]*orm.Core{}}
+	build := &chainBuild{c: c, joined: map[string]*orm.Core{}, db: db}
 	if err := build.query(core, q); err != nil {
 		return nil, err
 	}
@@ -1074,7 +1088,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		if s.Limit != nil {
 			limit = chainLimit{Offset: limit.Offset + s.Offset + s.Limit.Offset, Count: s.Limit.Count}
 		}
-		return chainPage(s, core, limit, c)
+		return chainPage(s, core, limit.Offset/max(limit.Count, 1)+1, limit.Count, c)
+	case s.PlanPage != nil:
+		return chainPage(s, core, s.PlanPage.Page, s.PlanPage.PerPage, c)
 	}
 	rows, err := orm.Gets[*tableRow](core)
 	if err != nil {
@@ -1228,11 +1244,11 @@ func chainPlanSteps(steps []orm.QueryPlanStep, texts []string, withSQL bool) []a
 }
 
 // chainPage runs GetsPage: the keys and the counts of the page, and the rows and total of a rows expect.
-func chainPage(s chainStep, core *orm.Core, limit chainLimit, c *databaseContext) (outcome, error) {
-	if limit.Count <= 0 {
+func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContext) (outcome, error) {
+	if count <= 0 && s.PlanPage == nil {
 		return outcome{}, fmt.Errorf("a page needs a limit count above 0")
 	}
-	page, err := orm.GetsPage[*tableRow](core, limit.Offset/limit.Count+1, limit.Count)
+	page, err := orm.GetsPage[*tableRow](core, number, count)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -1636,6 +1652,10 @@ func tableValue(s *orm.Schema, table string, row *tableRow, name string, v any) 
 	}
 	switch field.Type {
 	case "i16":
+		// A value past the range reaches the write, whose slot check refuses it (CODEC_ENCODE).
+		if n, err := orm.AsInt64(v); err == nil && (n < math.MinInt16 || n > math.MaxInt16) {
+			return v, nil
+		}
 		return orm.AsInt16(v)
 	case "i32":
 		return orm.AsInt32(v)
@@ -1648,9 +1668,17 @@ func tableValue(s *orm.Schema, table string, row *tableRow, name string, v any) 
 	case "f64":
 		return orm.AsFloat64(v)
 	case "date", "datetime":
-		return orm.AsTime(v)
+		// A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
+		t, err := orm.AsTime(v)
+		if err != nil {
+			return nil, err
+		}
+		if field.Type == "date" {
+			return t.Format(time.DateOnly), nil
+		}
+		return t.Format("2006-01-02 15:04:05.000000"), nil
 	case "time":
-		return orm.AsTimeText(v, field.Precision)
+		return orm.AsTimeText(v, 6)
 	case "bytes":
 		if len(field.Codec) == 0 {
 			return orm.AsBytes(v)

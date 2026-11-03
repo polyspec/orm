@@ -40,8 +40,7 @@ pub const KIND_UTILITY: &str = "utility";
 pub struct StatementEvent<'a> {
     /// The statement as sent; a relation step carries its expanded `IN` list.
     pub sql: &'a str,
-    /// The bound values in order; a secret is `$SECRET` and an executor clock
-    /// value `$NOW`.
+    /// The bound values in order; an executor clock value is `$NOW`.
     pub binds: &'a [Param],
     /// The kind of the statement by its origin (the `KIND_*` constants).
     pub kind: &'a str,

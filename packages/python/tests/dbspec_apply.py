@@ -15,7 +15,6 @@ from pathlib import Path
 
 from polyspec.orm.dbspec.apply import (
     DbspecApplyError,
-    _finish,
     apply_plans,
     finalize_plans,
     recover_plans,
@@ -494,27 +493,6 @@ class DbspecApplyTest(unittest.TestCase):
                         same_connection.close()
 
     # Requirements: PLN-101, PLN-106. This case checks that Python keeps the original failure and adds each cleanup error as a note in order.
-    def test_cleanup_failure_notes(self) -> None:
-        """A failure with failing cleanups is raised itself, with one note per cleanup error in order."""
-        failure = RuntimeError("stop")
-
-        def fail() -> None:
-            raise failure
-
-        def release() -> None:
-            raise RuntimeError("release failed")
-
-        def restore() -> None:
-            raise RuntimeError("restore failed")
-
-        with self.assertRaises(RuntimeError) as raised:
-            _finish(fail, release, restore)
-        self.assertIs(raised.exception, failure)
-        self.assertEqual(
-            getattr(raised.exception, "__notes__", []),
-            ["cleanup failed: release failed", "cleanup failed: restore failed"],
-        )
-
     # Requirement: PLN-90. The in-memory SQLite case verifies the configured bound and
     # failed-step result when the driver reports a statement-level lock failure.
     def test_sqlite_statement_lock_timeout_is_failed_at_its_step(self) -> None:

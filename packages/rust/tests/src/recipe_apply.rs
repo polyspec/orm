@@ -1,0 +1,491 @@
+//! The ops of the dbspec apply API (docs/spec/feature-coverage.md FCV-4): each command is one call of the public API on a named
+//! connection, and steps nested in its on field run inside the event handler. The handler is a synchronous function and the
+//! command borrows its connection, so the ops run on a multi-thread runtime of their own, where the handler waits for a nested
+//! step with block_in_place, and a statement nested on the connection of the command runs before the next statement of the
+//! command.
+
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+use polyspec_orm::db::{parse_dsn, ConnectOptions};
+use polyspec_orm::dbspec::{
+    self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan,
+};
+use polyspec_orm_case_database::CaseDatabase;
+use serde_json::{json, Value};
+use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
+use tokio::runtime::{Handle, Runtime};
+
+/// The ops that [`ApplyOps::run`] takes.
+pub const OPS: [&str; 9] = [
+    "dbspec.plan",
+    "dbspec.connect",
+    "dbspec.exec",
+    "dbspec.schema",
+    "dbspec.other_database",
+    "dbspec.apply",
+    "dbspec.recover",
+    "dbspec.rollback",
+    "dbspec.finalize",
+];
+
+/// The fixed clock of the commands, 2023-11-14T22:13:20Z.
+fn now() -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("the fixed time is in range")
+}
+
+/// What an on with stop returns from the event handler, so the code of the command is stopped.
+#[derive(Debug)]
+struct Stop;
+
+impl std::fmt::Display for Stop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("the recipe stops the command")
+    }
+}
+
+impl std::error::Error for Stop {}
+
+/// A named connection.
+enum Conn {
+    MySql(MySqlConnection),
+    Postgres(PgConnection),
+    Sqlite(SqliteConnection),
+}
+
+impl Conn {
+    async fn close(self) -> Result<(), String> {
+        match self {
+            Conn::MySql(c) => c.close().await,
+            Conn::Postgres(c) => c.close().await,
+            Conn::Sqlite(c) => c.close().await,
+        }
+        .map_err(|e| e.to_string())
+    }
+}
+
+impl CatalogQuerier for Conn {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        match self {
+            Conn::MySql(c) => CatalogQuerier::rows(c, query).await,
+            Conn::Postgres(c) => CatalogQuerier::rows(c, query).await,
+            Conn::Sqlite(c) => CatalogQuerier::rows(c, query).await,
+        }
+    }
+}
+
+impl ApplyConnection for Conn {
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        match self {
+            Conn::MySql(c) => ApplyConnection::execute(c, statement).await,
+            Conn::Postgres(c) => ApplyConnection::execute(c, statement).await,
+            Conn::Sqlite(c) => ApplyConnection::execute(c, statement).await,
+        }
+    }
+
+    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        match self {
+            Conn::MySql(c) => ApplyConnection::execute_bound(c, statement, args).await,
+            Conn::Postgres(c) => ApplyConnection::execute_bound(c, statement, args).await,
+            Conn::Sqlite(c) => ApplyConnection::execute_bound(c, statement, args).await,
+        }
+    }
+
+    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        match self {
+            Conn::MySql(c) => ApplyConnection::query_bound(c, query, args).await,
+            Conn::Postgres(c) => ApplyConnection::query_bound(c, query, args).await,
+            Conn::Sqlite(c) => ApplyConnection::query_bound(c, query, args).await,
+        }
+    }
+}
+
+/// The connection of a running command: the statements that the event handler queued run before its next statement.
+struct Flushing<'c> {
+    inner: &'c mut Conn,
+    queue: Arc<Mutex<Vec<String>>>,
+}
+
+impl Flushing<'_> {
+    async fn flush(&mut self) -> Result<(), sqlx::Error> {
+        let queued = std::mem::take(&mut *self.queue.lock().expect("the queue of the command"));
+        for statement in queued {
+            ApplyConnection::execute(&mut *self.inner, &statement).await?;
+        }
+        Ok(())
+    }
+}
+
+impl CatalogQuerier for Flushing<'_> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        self.flush().await?;
+        CatalogQuerier::rows(&mut *self.inner, query).await
+    }
+}
+
+impl ApplyConnection for Flushing<'_> {
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        self.flush().await?;
+        ApplyConnection::execute(&mut *self.inner, statement).await
+    }
+
+    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        self.flush().await?;
+        ApplyConnection::execute_bound(&mut *self.inner, statement, args).await
+    }
+
+    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        self.flush().await?;
+        ApplyConnection::query_bound(&mut *self.inner, query, args).await
+    }
+}
+
+/// The named plans and connections of a case, and the step of the event that nested steps read.
+#[derive(Default)]
+struct State {
+    plans: HashMap<String, Plan>,
+    sessions: HashMap<String, Conn>,
+    step: usize,
+}
+
+/// The apply ops of one case; [`ApplyOps::close`] ends its connections before the case database is dropped.
+#[derive(Default)]
+pub struct ApplyOps {
+    runtime: Option<Runtime>,
+    state: State,
+}
+
+impl ApplyOps {
+    /// Runs one op of [`OPS`]; the result holds the value that its expect compares.
+    pub fn run(&mut self, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
+        if self.runtime.is_none() {
+            let built = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().map_err(|e| e.to_string())?;
+            self.runtime = Some(built);
+        }
+        let runtime = self.runtime.as_ref().ok_or("the runtime of the apply ops")?;
+        let state = &mut self.state;
+        // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
+        std::thread::scope(|scope| {
+            scope
+                .spawn(|| runtime.block_on(run_op(state, step, database, dsn)))
+                .join()
+                .unwrap_or_else(|_| Err("an apply op panicked".to_owned()))
+        })
+    }
+
+    /// Closes the connections of the case; a failure names the first that did not close.
+    pub fn close(&mut self) -> Result<(), String> {
+        let Some(runtime) = self.runtime.take() else { return Ok(()) };
+        let sessions: Vec<Conn> = self.state.sessions.drain().map(|(_, session)| session).collect();
+        let closed = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    runtime.block_on(async {
+                        let mut first = Ok(());
+                        for session in sessions {
+                            let closed = session.close().await;
+                            if first.is_ok() {
+                                first = closed;
+                            }
+                        }
+                        first
+                    })
+                })
+                .join()
+                .unwrap_or_else(|_| Err("closing an apply connection panicked".to_owned()))
+        });
+        runtime.shutdown_background();
+        closed
+    }
+}
+
+fn required(name: &str) -> Result<String, String> {
+    match std::env::var(name) {
+        Ok(value) if !value.is_empty() => Ok(value),
+        _ => Err(format!("{name} is required; database tests never skip")),
+    }
+}
+
+fn dialect_of(database: &str) -> Result<Dialect, String> {
+    match database {
+        "mysql" => Ok(Dialect::MySql),
+        "postgres" => Ok(Dialect::Postgres),
+        "sqlite" => Ok(Dialect::Sqlite),
+        other => Err(format!("unknown database {other}")),
+    }
+}
+
+/// The database name of a case DSN.
+fn name_of(dsn: &str) -> &str {
+    let path = dsn.split('?').next().unwrap_or(dsn);
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+/// The direct connection to the database of the case DSN, with the rules of a new connection.
+async fn direct(database: &str, dsn: &str) -> Result<Conn, String> {
+    let name = name_of(dsn);
+    let (mut session, rule) = match database {
+        "mysql" => {
+            let server = required("ORM_TEST_MYSQL_SERVER_DSN")?;
+            let ConnectOptions::MySql(options) = parse_dsn(&server).map_err(|e| e.to_string())?.options else {
+                return Err("ORM_TEST_MYSQL_SERVER_DSN is not mysql://".to_owned());
+            };
+            let connection = MySqlConnection::connect_with(&options.database(name)).await.map_err(|e| e.to_string())?;
+            (Conn::MySql(connection), "SET time_zone = '+00:00'")
+        }
+        "postgres" => {
+            let server = required("ORM_TEST_POSTGRES_SERVER_DSN")?;
+            let ConnectOptions::Postgres(options) = parse_dsn(&server).map_err(|e| e.to_string())?.options else {
+                return Err("ORM_TEST_POSTGRES_SERVER_DSN is not postgres://".to_owned());
+            };
+            let connection = PgConnection::connect_with(&options.database(name)).await.map_err(|e| e.to_string())?;
+            (Conn::Postgres(connection), "SET TimeZone = 'UTC'")
+        }
+        _ => {
+            let ConnectOptions::Sqlite(options) = parse_dsn(dsn).map_err(|e| e.to_string())?.options else {
+                return Err(format!("{dsn} is not sqlite://"));
+            };
+            let connection = SqliteConnection::connect_with(&options).await.map_err(|e| e.to_string())?;
+            (Conn::Sqlite(connection), "PRAGMA foreign_keys = ON")
+        }
+    };
+    ApplyConnection::execute(&mut session, rule).await.map_err(|e| format!("{rule}: {e}"))?;
+    Ok(session)
+}
+
+/// The connection through the transaction pooler (PLN-105), with no statement cache: a server connection behind the pooler can
+/// change with each statement.
+async fn through_pooler(dsn: &str) -> Result<Conn, String> {
+    let pooler = required("ORM_TEST_PGBOUNCER_DSN")?;
+    let ConnectOptions::Postgres(options) = parse_dsn(&pooler).map_err(|e| e.to_string())?.options else {
+        return Err("ORM_TEST_PGBOUNCER_DSN is not postgres://".to_owned());
+    };
+    PgConnection::connect_with(&options.database(name_of(dsn)).statement_cache_capacity(0))
+        .await
+        .map(Conn::Postgres)
+        .map_err(|e| e.to_string())
+}
+
+/// The text of a step field that holds SQL: the string itself, or the entry of the database.
+fn sql_of(step: &Value, database: &str, event_step: usize) -> Result<String, String> {
+    let field = &step["sql"];
+    let text = field.as_str().or_else(|| field[database].as_str()).ok_or_else(|| format!("no statement for {database}: {step}"))?;
+    Ok(text.replace("{step}", &event_step.to_string()))
+}
+
+fn cell(value: &CatalogValue) -> Value {
+    match value {
+        CatalogValue::Null => json!({ "null": true }),
+        CatalogValue::Text(text) => json!({ "text": text }),
+        CatalogValue::Int(number) => json!({ "text": number.to_string() }),
+        CatalogValue::Bool(flag) => json!({ "text": flag.to_string() }),
+    }
+}
+
+fn skipped(step: &Value, database: &str) -> bool {
+    step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database)))
+}
+
+/// Compares the value of a nested step with its expect; the steps of a case are compared by the helper.
+fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
+    match step.get("expect") {
+        Some(expect) if expect[database]["value"] != got["value"] => {
+            Err(format!("got {}, want {}", got["value"], expect[database]["value"]))
+        }
+        _ => Ok(()),
+    }
+}
+
+type OpFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
+
+fn run_op<'a>(state: &'a mut State, step: &'a Value, database: &'a str, dsn: &'a str) -> OpFuture<'a> {
+    Box::pin(op_body(state, step, database, dsn))
+}
+
+async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
+    let name = step["as"].as_str().unwrap_or_default();
+    match step["op"].as_str().unwrap_or_default() {
+        "dbspec.plan" => {
+            let lines: Vec<&str> = step["lines"].as_array().ok_or("lines")?.iter().filter_map(Value::as_str).collect();
+            let plan = dbspec::parse_plan(&format!("{}\n", lines.join("\n"))).map_err(|d| format!("dbspec.plan {name}: {d:?}"))?;
+            state.plans.insert(name.to_owned(), plan);
+            Ok(json!({}))
+        }
+        "dbspec.connect" => {
+            let session = if step["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            state.sessions.insert(name.to_owned(), session);
+            Ok(json!({}))
+        }
+        "dbspec.exec" => {
+            let text = sql_of(step, database, state.step)?;
+            let connection = step["connection"].as_str().unwrap_or_default();
+            let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
+            if step.get("expect").is_none() {
+                ApplyConnection::execute(session, &text).await.map_err(|e| format!("{text}: {e}"))?;
+                return Ok(json!({}));
+            }
+            let rows = ApplyConnection::query_bound(session, &text, &[]).await.map_err(|e| format!("{text}: {e}"))?;
+            let array: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(cell).collect::<Vec<_>>() })).collect();
+            Ok(json!({ "value": { "array": array } }))
+        }
+        "dbspec.schema" => {
+            let connection = step["connection"].as_str().unwrap_or_default();
+            let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
+            let introspection = dbspec::introspect(session, dialect_of(database)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
+            if !introspection.unsupported.is_empty() {
+                return Err(format!("dbspec.schema: unsupported {:?}", introspection.unsupported));
+            }
+            let text = if introspection.document.tables.is_empty() {
+                String::new()
+            } else {
+                dbspec::manifest(&[&introspection.document]).map_err(|e| format!("manifest: {e:?}"))?.schema_text
+            };
+            Ok(json!({ "value": { "text": text } }))
+        }
+        "dbspec.other_database" => {
+            let other = CaseDatabase::create(database).await;
+            let result = other_steps(state, step, database, other.dsn()).await;
+            other.drop().await;
+            result.map(|()| json!({}))
+        }
+        _ => command(state, step, database, dsn).await,
+    }
+}
+
+/// The nested steps of dbspec.other_database, on a new connection to the other database that ends with them.
+async fn other_steps(state: &mut State, step: &Value, database: &str, other: &str) -> Result<(), String> {
+    let name = step["as"].as_str().unwrap_or_default();
+    state.sessions.insert(name.to_owned(), direct(database, other).await?);
+    let mut result = Ok(());
+    for nested in step["steps"].as_array().into_iter().flatten() {
+        if skipped(nested, database) {
+            continue;
+        }
+        result = match run_op(state, nested, database, other).await {
+            Ok(got) => checked(nested, database, &got),
+            Err(failure) => Err(failure),
+        };
+        if result.is_err() {
+            break;
+        }
+    }
+    if let Some(session) = state.sessions.remove(name) {
+        let closed = session.close().await;
+        if result.is_ok() {
+            result = closed;
+        }
+    }
+    result
+}
+
+/// The failure that a cleanup failure followed, which holds the code of the command.
+fn first_failure(error: &ApplyError) -> &ApplyError {
+    match error {
+        ApplyError::Cleanup { error, .. } => first_failure(error),
+        other => other,
+    }
+}
+
+/// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
+async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
+    let dialect = dialect_of(database)?;
+    let target = step["connection"].as_str().unwrap_or_default().to_owned();
+    let mut plans: Vec<Plan> = Vec::new();
+    for name in step["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
+        plans.push(state.plans.get(name).cloned().ok_or_else(|| format!("plan {name} is not bound"))?);
+    }
+    // The command borrows its connection, so it is out of the map while the nested steps reach the others.
+    let mut session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
+    let queue: Arc<Mutex<Vec<String>>> = Arc::default();
+    let on = step.get("on");
+    let mut kinds: HashMap<String, u64> = HashMap::new();
+    let mut events = 0_u64;
+    let mut ran = false;
+    let started = Instant::now();
+    let result = {
+        let queued = Arc::clone(&queue);
+        let mut handler = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
+            events += 1;
+            *kinds.entry(event.kind.as_str().to_owned()).or_default() += 1;
+            let Some(on) = on else { return Ok(()) };
+            if on["event"].as_str() != Some(event.kind.as_str()) || (ran && on["every"].as_bool() != Some(true)) {
+                return Ok(());
+            }
+            if on.get("plan").is_some_and(|plan| plan.as_str() != Some(event.plan.as_str()))
+                || on.get("step").is_some_and(|at| at.as_u64() != u64::try_from(event.step).ok())
+            {
+                return Ok(());
+            }
+            ran = true;
+            state.step = event.step;
+            for nested in on["steps"].as_array().into_iter().flatten() {
+                if skipped(nested, database) {
+                    continue;
+                }
+                if nested["op"] == "dbspec.exec" && nested["connection"].as_str() == Some(target.as_str()) {
+                    if nested.get("expect").is_some() {
+                        return Err(format!("a nested step on the connection of the command expects no value: {nested}").into());
+                    }
+                    queued.lock().expect("the queue of the command").push(sql_of(nested, database, state.step)?);
+                    continue;
+                }
+                let got = tokio::task::block_in_place(|| Handle::current().block_on(run_op(&mut *state, nested, database, dsn)))?;
+                checked(nested, database, &got)?;
+            }
+            if on["stop"].as_bool() == Some(true) {
+                return Err(Box::new(Stop));
+            }
+            Ok(())
+        };
+        let mut connection = Flushing { inner: &mut session, queue: Arc::clone(&queue) };
+        match step["op"].as_str().unwrap_or_default() {
+            "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
+            "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
+            "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, &plans, &now, &mut handler).await,
+            "dbspec.finalize" => dbspec::finalize(&mut connection, dialect, &plans, &now, &mut handler).await,
+            other => return Err(format!("OP_UNKNOWN {other}")),
+        }
+    };
+    let elapsed = started.elapsed().as_millis();
+    state.sessions.insert(target, session);
+    let code = match &result {
+        Ok(()) => "ok".to_owned(),
+        Err(error) => {
+            let failure = first_failure(error);
+            let message = failure.to_string();
+            let code = match failure {
+                ApplyError::Event(stop) if stop.is::<Stop>() => "stopped".to_owned(),
+                other => match other.code() {
+                    Some(code) => code.to_owned(),
+                    None if step["message"].as_str() == Some(message.as_str()) => "message".to_owned(),
+                    None => return Err(format!("{}: {message}", step["op"])),
+                },
+            };
+            if let Some(detail) = step["detail"].as_str() {
+                if !message.to_lowercase().contains(&detail.to_lowercase()) {
+                    return Err(format!("the message {message:?} does not hold {detail:?}"));
+                }
+            }
+            code
+        }
+    };
+    if let Some(bounds) = step.get("elapsed") {
+        let (least, below) = (bounds["at_least_ms"].as_u64().unwrap_or(0), bounds["below_ms"].as_u64().unwrap_or(0));
+        if elapsed < u128::from(least) || elapsed >= u128::from(below) {
+            return Err(format!("the command took {elapsed} ms, want at least {least} and below {below}"));
+        }
+    }
+    let mut members = vec![json!(["code", { "text": code }])];
+    match step["count"].as_array() {
+        None => members.push(json!(["events", { "int": events.to_string() }])),
+        Some(counted) => {
+            for kind in counted.iter().filter_map(Value::as_str) {
+                members.push(json!([kind, { "int": kinds.get(kind).copied().unwrap_or(0).to_string() }]));
+            }
+        }
+    }
+    Ok(json!({ "value": { "object": members } }))
+}

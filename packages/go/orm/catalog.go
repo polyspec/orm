@@ -15,6 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-sql-driver/mysql"
+
 	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
@@ -126,6 +128,12 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		return nil, err
 	}
 	conn, err := c.db.sql.Conn(ctx)
+	// The socket that a budget stop closed holds its place in max_user_connections until the server ends that thread, which
+	// it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of CFG-35 at most.
+	for deadline := time.Now().Add(2 * time.Second); catalogConnectionsFull(err) && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		conn, err = c.db.sql.Conn(ctx)
+	}
 	if err != nil {
 		return nil, mapDriverErrContext(err, ctx)
 	}
@@ -172,6 +180,12 @@ func catalogBegin(dialect string, readOnly bool) string {
 	default:
 		return "BEGIN IMMEDIATE"
 	}
+}
+
+// catalogConnectionsFull reports the refusal of a connection over max_user_connections.
+func catalogConnectionsFull(err error) bool {
+	var refused *mysql.MySQLError
+	return errors.As(err, &refused) && refused.Number == 1226
 }
 
 // discard closes the connection of the session instead of returning it to the pool, and returns err.

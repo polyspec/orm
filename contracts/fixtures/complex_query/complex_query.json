@@ -2661,6 +2661,69 @@
        "error": "CONFIG"
       }
      }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "fulltext_boolean": {
+       "columns": [
+        "name",
+        "short_description",
+        "content"
+       ],
+       "text": "alpha"
+      }
+     },
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "tables": [
+          "product"
+         ]
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "tables": [
+          "product"
+         ]
+        }
+       ]
+      },
+      "sqlite": {
+       "error": "OPERATOR_NOT_ALLOWED"
+      }
+     }
     }
    ]
   }

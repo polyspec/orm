@@ -232,8 +232,13 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
     let set: BTreeMap<String, String> = owned.iter().chain(&externals).map(|(_, name, chunk)| (name.clone(), chunk.clone())).collect();
     let mut documents = Vec::with_capacity(owned.len() + externals.len());
     let mut errors = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
     for (chunks, is_external) in [(&owned, false), (&externals, true)] {
-        for (start, name, chunk) in chunks {
+        for (_, name, chunk) in chunks {
+            if !seen.insert(name.clone()) {
+                errors.push(Diagnostic { rule: "name.duplicate".into(), line: 1, column: 10, message: format!("document {name}: document {name} appears twice in the document set") });
+                continue;
+            }
             let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
             match super::parse(chunk, &others) {
                 Ok(parsed) => {
@@ -242,7 +247,7 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
                     documents.push(document);
                 }
                 Err(diagnostics) => {
-                    errors.extend(diagnostics.into_iter().map(|d| Diagnostic { line: d.line + start, message: format!("document {name}: {}", d.message), ..d }))
+                    errors.extend(diagnostics.into_iter().map(|d| Diagnostic { message: format!("document {name}: {}", d.message), ..d }))
                 }
             }
         }
