@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.
 - The audit transactions, the selected audit columns and the restore of a soft-deleted row are the cases of the recipe `audit_triggers`, which all six runtimes run on MySQL, PostgreSQL and SQLite; their hand-written tests are gone, and the Go context of the audit source (CFG-8a) and the Rust transaction forms (INT-44a) stay native (T334-3-4-11).
 - The chain values of DSL-49 and DSL-50 are the cases of the recipes `dsl` and `dsl-dynamic`; `markdown.send` takes the chain methods of Eq, Ne and Gt and a list parameter, and the PHP extension and Python native tests are gone. The uses that a compiler refuses stay native in Go, TypeScript and Rust.
 - The Rust stress apply of three databases gets each database's deadline from its step count, 250 ms a step plus one minute (testcase `step_budget`), and its apply is stopped by a stall guard that a step restarts, after 30 s with no step (testcase `StallGuard`), as the Go stress test does. Under 11 CPU-bound processes with three runs at once, the old 60 s probe deadline failed each run with `mysql.apply.stress_plan: exceeded 60s` (63.6 to 64 s); with the step budgets, the same load passes in 79.5 to 82.3 s, and alone it takes 22.7 s (T343-5).

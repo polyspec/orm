@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 174f3740406e6eec8e431b3365a2033164e4975227ddde3d4384d3cfa77817c8 -->
+<!-- source-sha256: be5272a12cea7772ec786fbfa5ac86af3a28d7ee533632ab0a04394de4d4b119 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
 - Rust의 세 database stress apply는 각 database의 deadline을 step 수로 정한다. step마다 250 ms에 1분을 더한 값이다(testcase `step_budget`). apply는 step이 30 s 동안 없으면 멈추는 stall guard(testcase `StallGuard`)로 감시하며, step이 적용될 때마다 그 기한이 다시 시작된다. Go stress test와 같은 근거다. 11개 CPU 부하 프로세스 아래에서 세 실행을 동시에 돌리면, 기존 60 s probe deadline은 실행마다 `mysql.apply.stress_plan: exceeded 60s`로 실패했다(63.6~64 s). step 기준 deadline으로는 같은 부하에서 79.5~82.3 s에 통과하고, 단독으로는 22.7 s다(T343-5).
 - compiler fixture는 cargo target lease를 기다리는 시간을 deadline 밖에 둔다. 각 case의 Rust trial은 그 기다림에 deadline을 두지 않으며, tests/cargo-test.mts의 build에 deadline이 없는 것과 같다. scripts/rust/compiler-fixtures.mts는 lease 아래의 자기 compile에만 PROCESS deadline을 준다. 그래서 다른 실행의 build 뒤에서 기다리던 case는 `deadline 5m0s exceeded`로 실패하지 않고 통과한다(T343-6).
 - DSL-49와 DSL-50의 chain 값은 recipe `dsl`과 `dsl-dynamic`의 case가 되었다. `markdown.send`는 Eq, Ne, Gt의 chain method와 list parameter를 받고, PHP extension과 Python의 native 시험을 지웠다. 컴파일러가 거부하는 사용은 Go, TypeScript, Rust에서 native로 남는다.
