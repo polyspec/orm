@@ -20,7 +20,12 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm import codes
 from polyspec.orm._sqlite_codes import result_code_suffix
-from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
+from polyspec.orm.codec import (
+    CodecError,
+    blind_index,
+    decode as codec_decode,
+    host_encode,
+)
 from polyspec.orm.clock import wall_micros
 from polyspec.orm.canonical import canonical_request
 from polyspec.orm.bind_check import (
@@ -2780,14 +2785,18 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
 
         # The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the
         # single key is used only without a keyring (COD-8).
-        if value is not None and host:
-            if "aes" in host and db.aes_keyring is not None:
-                key = db.aes_keyring.key(_stored_version(version_cell))
-            else:
-                key = db.aes_key
-            value = host_decode(value, host, key)
-        if client:
-            value = codec_decode(client, value)
+        try:
+            if value is not None and host:
+                if "aes" in host and db.aes_keyring is not None:
+                    key = db.aes_keyring.key(_stored_version(version_cell))
+                else:
+                    key = db.aes_key
+                value = host_decode(value, host, key)
+            if client:
+                value = codec_decode(client, value)
+        except CodecError as error:
+            # A read of a model fails as every library failure does; the codec's own call keeps CodecError.
+            raise OrmError(error.code, str(error).partition(": ")[2], error) from error
         row[column["index"]] = value
     for child in assemble["children"]:
         if child["kind"] == "join" and child.get("assemble"):

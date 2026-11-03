@@ -2,6 +2,8 @@
 # connection; outside a transaction the runner opens one and ends it without retry, inside one it joins
 # that transaction. frame.run returns the statement result with its rows and a non-text statement is CONFIG
 # (packages/ts/src/utils.ts Utils.run, packages/ts/tests/statement-runner.mjs).
+# These cases stay native (FCV-2): `active_frame()` is public only in Python, and a statement that is not text can be
+# passed only where the language does not type it. The shared behaviour is the recipe statement_runner.
 import os
 import tempfile
 import unittest

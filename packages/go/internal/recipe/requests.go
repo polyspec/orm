@@ -21,6 +21,8 @@ import (
 type hookRecord struct {
 	kind   string
 	entity string
+	// param is the wrapper of the bound value of a record_param action, or nil.
+	param any
 }
 
 // auditSourceSpec is the audit_source of a model.connect (FCV-4, CFG-8): the values that the source returns, or a source
@@ -86,8 +88,11 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		counts := map[string]int{}
 		list := []any{}
 		for _, r := range c.records {
-			list = append(list, map[string]any{"object": []any{
-				[]any{"kind", map[string]any{"text": r.kind}}, []any{"entity", map[string]any{"text": r.entity}}}})
+			members := []any{[]any{"kind", map[string]any{"text": r.kind}}, []any{"entity", map[string]any{"text": r.entity}}}
+			if r.param != nil {
+				members = append(members, []any{"param", r.param})
+			}
+			list = append(list, map[string]any{"object": members})
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
@@ -205,14 +210,44 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				for i := range r.Rows {
 					r.Rows[i] = append(r.Rows[i], addParam(a.value))
 				}
+			case "assign_first":
+				p := addParam(a.value)
+				r.Set = append([]ir.Assign{{Column: a.column, P: &p}}, r.Set...)
+			case "rewrite":
+				for i := range r.Set {
+					if r.Set[i].Column == a.column {
+						p := addParam(a.value)
+						r.Set[i].P = &p
+					}
+				}
+			case "invalid_param":
+				p := r.NParams + 5
+				irwhere.And(&r.Query, ir.Pred{Column: a.column, Op: "eq", P: &p})
 			case "record":
 				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity})
+			case "record_param":
+				for _, assignment := range r.Set {
+					if assignment.Column != a.column || assignment.P == nil {
+						continue
+					}
+					w, err := plain(params[*assignment.P], "", c.database)
+					if err != nil {
+						return err
+					}
+					c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity, param: w})
+				}
 			case "fail":
 				return &ir.Error{Code: a.code, Msg: "request hook refused " + r.Kind}
 			}
 		}
 		return nil
 	})
+	// With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+	if s.As != "" {
+		out := okOutcome()
+		out.api = hooked
+		return out, nil
+	}
 	c.bound[s.Connection] = bound{api: hooked, fields: b.fields, hookBase: base}
 	return okOutcome(), nil
 }

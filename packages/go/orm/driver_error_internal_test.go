@@ -11,12 +11,18 @@ import (
 
 // A test that the private mapDriverErrContext keeps the context cause beside the error it maps, with errors.Join.
 
-func TestMapDriverErrorContextPreservesBothCauses(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	serverCause := errors.New("PostgreSQL canceled the active statement")
+// mapCanceledDriverError maps a statement the server canceled under a context that is canceled too, and returns the
+// cause beside the mapped error.
+func mapCanceledDriverError() (serverCause, mapped error) {
+	serverCause = errors.New("PostgreSQL canceled the active statement")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	mapped := mapDriverErrContext(&ir.Error{Code: CodeCanceled, Msg: serverCause.Error(), Cause: serverCause}, ctx)
+	return serverCause, mapDriverErrContext(&ir.Error{Code: CodeCanceled, Msg: serverCause.Error(), Cause: serverCause}, ctx)
+}
+
+func TestMapDriverErrorContextPreservesBothCauses(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	serverCause, mapped := mapCanceledDriverError()
 	if !errors.Is(mapped, serverCause) || !errors.Is(mapped, context.Canceled) {
 		t.Fatalf("mapped error does not preserve both causes: %#v", mapped)
 	}

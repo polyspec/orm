@@ -48,27 +48,22 @@ NATIVE_AUTHOR_COLUMNS = (
 )
 
 
-def feature_item(item):
-    dsn = os.environ.get("ORM_FEATURE_DSN")
-    database = os.environ.get("ORM_FEATURE_DATABASE")
-    if not dsn or not database:
-        raise RuntimeError(
-            "ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run this case through make feature-check"
-        )
-    if item is None or item != (database, dsn):
-        raise RuntimeError(
-            "the coverage item differs from ORM_FEATURE_DSN or ORM_FEATURE_DATABASE"
-        )
-    expected_scheme = {
-        "mysql": "mysql",
-        "postgres": "postgres",
-        "sqlite": "sqlite",
-    }.get(database)
+# The seeded bench database of each entry: the databases need of perf-check writes these variables after seeding.
+BENCH_DSN_VARIABLES = {
+    "mysql": "BENCH_MYSQL_DSN",
+    "postgres": "BENCH_POSTGRES_DSN",
+    "sqlite": "BENCH_SQLITE_DSN",
+}
+
+
+def bench_item(database):
+    variable = BENCH_DSN_VARIABLES[database]
+    dsn = os.environ.get(variable)
+    if not dsn:
+        raise RuntimeError(f"{variable} is missing; run this case through make perf-check")
     url = urlsplit(dsn)
-    if expected_scheme is None or url.scheme != expected_scheme:
-        raise RuntimeError(
-            f"ORM_FEATURE_DSN scheme {url.scheme!r} does not match {database}"
-        )
+    if url.scheme != database:
+        raise RuntimeError(f"{variable} scheme {url.scheme!r} does not match {database}")
     return database, dsn, url
 
 
@@ -258,8 +253,8 @@ def measure(database, name, client, native, expected_rows):
     )
 
 
-def hot_path_gate(item):
-    database, dsn, url = feature_item(item)
+def hot_path_gate(database):
+    database, dsn, url = bench_item(database)
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
     if db.driver != database:
         db.close()
@@ -297,9 +292,3 @@ def hot_path_gate(item):
     finally:
         native.close()
         db.close()
-
-
-def feature_hot_path_gate():
-    database = os.environ.get("ORM_FEATURE_DATABASE")
-    dsn = os.environ.get("ORM_FEATURE_DSN")
-    return hot_path_gate((database, dsn))
