@@ -358,7 +358,6 @@
         "packages/php/tests/SqliteRowLockStatement.php",
         "packages/php/tests/StatementCountingPdo.php",
         "packages/php/tests/StatementEventLog.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/Stop.php",
         "packages/php/tests/TransactionCloseDuringFailure.php",
         "packages/php/tests/TransactionFailureCases.php",
@@ -507,10 +506,6 @@
         {
           "glob": "packages/php/tests/RelationKeysTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/RequestHookTest.php",
-          "reason": "fixture: an internal test of the PHP package that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/SqliteWithoutMysqlTest.php",
@@ -5081,17 +5076,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testWithoutHook"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testWithoutHook"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "without_hook"
         },
         {
@@ -5120,11 +5115,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_without_hook"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/without_hook"
         }
       ]
     },
@@ -5154,17 +5144,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testReadFilter"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"read_filter\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testReadFilter"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"read_filter\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "read_filter"
         },
         {
@@ -5188,11 +5178,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_read_filter"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/read_filter"
         }
       ]
     },
@@ -5221,17 +5206,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testInvalidParam"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"invalid_param\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testInvalidParam"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"invalid_param\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "invalid_param"
         },
         {
@@ -5255,11 +5240,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_invalid_param"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/invalid_param"
         }
       ]
     },
@@ -5288,17 +5268,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreNoKey"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"restore_no_key\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreNoKey"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"restore_no_key\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "restore_no_key"
         },
         {
@@ -5322,11 +5302,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_restore_no_key"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_no_key"
         }
       ]
     },
@@ -5355,17 +5330,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreRewrittenKey"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"restore_rewritten_key\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreRewrittenKey"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"restore_rewritten_key\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "restore_rewritten_key"
         },
         {
@@ -5389,11 +5364,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_restore_rewritten_key"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_rewritten_key"
         }
       ]
     },
@@ -5422,17 +5392,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreHookSetKey"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"restore_hook_set_key\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreHookSetKey"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"restore_hook_set_key\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "restore_hook_set_key"
         },
         {
@@ -5456,11 +5426,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_restore_hook_set_key"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_hook_set_key"
         }
       ]
     },
@@ -5489,17 +5454,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreRewrittenKeySetScope"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"restore_rewritten_key_set_scope\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRestoreRewrittenKeySetScope"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"restore_rewritten_key_set_scope\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "restore_rewritten_key_set_scope"
         },
         {
@@ -5523,11 +5488,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_restore_rewritten_key_set_scope"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/restore_rewritten_key_set_scope"
         }
       ]
     },
@@ -5556,17 +5516,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRelationScope"
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"relation_scope\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testRelationScope"
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"relation_scope\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
           "id": "relation_scope"
         },
         {
@@ -5590,11 +5550,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_request_hook_relation_scope"
           ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/relation_scope"
         }
       ]
     },
@@ -5786,13 +5741,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testReadsParams"
+          "test": "packages/php/tests/RequestHookTest.php",
+          "id": "RequestHookTest::testRequestHook with data set \"reads_params\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::testReadsParams"
+          "test": "packages/php-ext/tests/RequestHookTestExtensionTest.php",
+          "id": "RequestHookTestExtensionTest::testRequestHook with data set \"reads_params\""
         },
         {
           "implementation": "python",
@@ -26776,17 +26731,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "id": "CoverageConstraintsAndRelationsTest::testImmutableWrite"
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "id": "ImmutableWriteRecipeTest::testSqlite with data set \"immutable_write\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-          "id": "CoverageConstraintsAndRelationsExtensionTest::testImmutableWrite"
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "id": "ImmutableWriteRecipeTestExtensionTest::testSqlite with data set \"immutable_write\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "test": "packages/ts/tests/immutable_write-sqlite.test.mjs",
           "id": "immutable_write"
         },
         {
@@ -26911,13 +26866,83 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::testStatementEvents"
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"model_statements\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"transaction_savepoint\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"transaction_rollback\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"savepoint_rollback\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"failed_statement\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"subscriber_error\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"unsubscribe\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"install\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::testStatementEvents"
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"model_statements\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"transaction_savepoint\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"transaction_rollback\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"savepoint_rollback\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"failed_statement\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"subscriber_error\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"unsubscribe\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"install\""
         },
         {
           "implementation": "python",
@@ -27086,42 +27111,42 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "model_statements"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "transaction_savepoint"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "transaction_rollback"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "savepoint_rollback"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "failed_statement"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "subscriber_error"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "unsubscribe"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "install"
         }
       ]

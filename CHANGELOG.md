@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- The TypeScript, PHP and PHP extension immutable write coverage files are gone: the recipe immutable_write holds their assertions on each database, and constraints_and_relations owners read the two recipes.
+- The TypeScript, PHP and PHP extension request hook coverage files are gone: the recipe request_hook holds their cases on each database.
+- The cases of the request hook that only native tests held are cases of the recipe `request_hook` in all six runtimes, through the new hook actions `rebind` and `bad_param` and `first` on `assign`: a hook that rewrites a restore key, a parameter index outside the request, no statement on a refused restore, and the bound value of a hooked `getQuery`. The native tests of TypeScript and PHP keep only what a recipe cannot state: the handle sharing its connection, and a hook that reads the bound parameters.
+- The statement event coverage files of TypeScript, PHP and the PHP extension are removed: the eight vectors they ran are the eight cases of the recipe `statement_events`, event by event on the three databases. The TypeScript helper also refuses an event error that is not an `OrmError`, and the check that the PHP extension publishes events natively moves to `StatementEventsTestExtensionTest`.
+- The statement runner coverage files of TypeScript, PHP and the PHP extension are removed: their two reads of `SELECT 1`, outside and inside a transaction, are cases of the recipe `statement_runner`, which also names their feature owners.
 - A notify publishes its statement event in Go, Python, PHP and the PHP extension, as a case of the recipe `statement_events` requires (INT-91).
 - make group-rows-db-rust passes no DSN to a test that creates its own SQLite case database (#T334-3-4-20)
 - The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: its thirty-nine cases cover connectors, groups, chain reuse, expressions, columns, joins, relations, subqueries, aggregates, empty reads, functions, AES and hex values, a write cycle, batch creates, restores, audits, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
