@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: a3ed9136f6d70879ac5859e790b679c5c0671e2074746ee65d1a06c5d9986af8 -->
+<!-- source-sha256: fe60790a2f30d2ebae7b9dac7ed8f15ce0001ebf9d13f8024cab6bea50cc4784 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -95,6 +95,7 @@ Key   = [Operator] Column
   - **DSL-153** 숫자가 뒤따르지 않는 `$`는 자리표시자가 아니라 글자다. 그래서 parent 슬롯 확장은 그것을 그대로 쓴다. 번호를 붙이는 것은 `$n`뿐이며(DIA-2, DIA-19), literal이나 식별자 안의 `$`에는 번호가 붙지 않는다. 그런 `$`가 있는 statement는 `$`를 바꾸지 않은 같은 글자로 확장된다.
   - **DSL-154** **선언된 query 메서드.** 생성된 model class는 chain 메서드를 스키마의 이름을 기준으로 선언한다: 각 column의 조건 메서드, 두 개 이상 column으로 된 key prefix마다의 tuple 메서드, 정렬 메서드(`orderBy<Col>Asc`), `addColumn<Name>` 메서드, `plus<Col>` 메서드, 각 index의 `forceIndex<Name>` 메서드. 선언된 메서드는 모두 model 자신을 돌려주도록 타입이 정해진다(Python은 `typing.Self`). 그래서 타입 검사기는 chain을 model로 읽는다.
   - **DSL-157** `github.com/polyspec/orm/packages/go` generator는 Go로 models 파일의 set들을 각 scan이 필요로 하는 순서로 생성한다: 스캔한 package가 다른 set의 generated model을 import하는 set은 그 set 다음에 생성되며, 두 set 사이의 순환은 두 set 이름을 모두 밝히는 오류로 거부한다.
+  - **DSL-158** `@polyspec/orm` generator는 TypeScript로, scan하는 file의 첫 줄에 있는 parse error를 앞에 줄바꿈이 없어도 line 1과 parser가 주는 column으로 보고한다. 이 generator는 parser의 offset을 position으로 직접 바꾼다.
 
 ### 2.3 값 형태
 

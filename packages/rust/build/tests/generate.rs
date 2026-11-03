@@ -35,15 +35,6 @@ fn generate(source: &str) -> Result<String, String> {
     generate_with_schema(schema(), source)
 }
 
-/// Generates from the source with the set of member.dbs, which uses core.dbs as an external document.
-fn generate_external(source: &str) -> Result<String, String> {
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
-    let set = set_file(&dir, &[external.join("member.dbs")], &[external.join("core.dbs")]);
-    generate_with_set(dir, source, set)
-}
-
 fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String> {
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
@@ -616,129 +607,6 @@ fn check_keeps_the_output_directory_on_generation_error() {
     assert!(!created, "the check created the output directory");
 }
 
-/// A relation alias that starts with a chain prefix (match, join) still gives the parent its getter.
-// Requirements: DBS-118.
-#[test]
-// The test of DSL-44 (docs/spec).
-fn relation_alias_with_a_chain_prefix_has_its_getter() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let text = generate_with_schema(
-        bench(),
-        "fn main() { let b = Author::new().relation(User::new().match_user_seq_with_seq().alias_match()).relation(User::new().match_user_seq_with_seq().alias_join()); let _ = b.get_match(); let _ = b.get_join(); }",
-    )
-    .unwrap();
-    for want in ["pub fn get_match(&self)", "pub fn get_join(&self)"] {
-        assert!(text.contains(want), "generated source lacks {want}");
-    }
-}
-
-/// The alias of a relation nested in a relation gives its getter to the model it aliases on, and a receiver typed through
-/// a wrapper of the getter's result (`Option<User>`) resolves to that model.
-// Requirements: DBS-118.
-#[test]
-// The test of DSL-44 (docs/spec).
-fn nested_relation_alias_attaches_its_getter_to_its_parent() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let text = generate_with_schema(
-        bench(),
-        "fn main() { let _ = Author::new().relation(User::new().match_user_seq_with_seq().alias_writer().relation(Author::new().match_seq_with_user_seq().alias_match())); }
-fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); let _ = writer.unwrap().get_match(); }",
-    )
-    .unwrap();
-    let user = text.split("pub struct User ").nth(1).and_then(|rest| rest.split("pub struct ").next()).expect("the generated source has User");
-    assert!(user.contains("pub fn get_match(&self)"), "User lacks get_match");
-}
-
-/// A scanned getter call that no alias, new or add_column call attaches stops generation, naming the model and the method.
-#[test]
-// The test of DSL-44 (docs/spec).
-fn unattached_getter_stops_generation() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let err = generate_with_schema(
-        bench(),
-        "fn main() { let _ = Author::new().relation(User::new().match_user_seq_with_seq().alias_writer()); }
-fn read(row: &Author) { let writer: Option<User> = row.get_writer().unwrap(); let _ = writer.unwrap().get_ghost(); }",
-    )
-    .unwrap_err();
-    assert!(err.contains("User has no method get_ghost: no call attaches \"ghost\""), "{err}");
-}
-
-/// A call belongs to the set whose model module the class is reached through: `main_set` includes another set's output, which
-/// shares the class name Author, so its calls, through a `use` or a path, are not this set's; `requests` includes this set's.
-#[test]
-// Requirements: DSL-151.
-fn a_call_on_a_class_of_another_set_is_not_this_sets_call() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let text = generate_with_schema(
-        bench(),
-        r#"mod main_set { include!("main/orm_model.rs"); }
-mod requests { include!("../out/orm_model.rs"); }
-use main_set::Author;
-use crate::main_set::{User as MainUser};
-use requests::User;
-fn main() {
-    let _ = Author::new().get_ghost();
-    let _ = main_set::Author::new().lt_seq(1);
-    let _ = MainUser::new().gt_seq(1);
-    let _ = User::new().ne_name("x");
-}
-fn read(row: &main_set::Author, user: MainUser) { let _ = row.get_phantom(); let _ = user.lt_name("x"); }"#,
-    )
-    .unwrap();
-    assert!(
-        !text.contains("pub fn lt_seq") && !text.contains("pub fn gt_seq") && !text.contains("pub fn lt_name"),
-        "a method of another set's model is generated"
-    );
-    assert!(text.contains("pub fn ne_name"), "the call on this set's User is not generated");
-}
-
-/// A file of a scanned directory that does not parse stops the generation, writes nothing, and names the file and position.
-#[test]
-// Requirements: DSL-152.
-fn a_file_that_does_not_parse_stops_the_generation() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), "fn main() {}\n").unwrap();
-    std::fs::write(src.join("broken.rs"), "fn main() {}\nfn (\n").unwrap();
-    let out = polyspec_orm_build::Builder::set(set_file(&dir, &[bench()], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
-    let wrote = dir.join("out").exists();
-    remove_test_dir(&dir);
-    let err = out.expect_err("an unparsable file is skipped");
-    assert!(err.contains("broken.rs:2:"), "the error does not name the file and position: {err}");
-    assert!(!wrote, "the failed generation wrote its output");
-}
-
-/// A receiver held in a variable resolves through its initializer and its reassignments to its class, as the checker types it: a
-/// `let mut` initialized from a chain on an imported class and reassigned from its own chain in an `if` expression still holds
-/// that class, so a getter called on it after each reassignment is checked as that class's call. An untyped call is offered to
-/// every model, so only the refusal of a getter that nothing attaches tells that the receiver resolved to Author.
-#[test]
-// Requirements: DSL-151.
-fn a_receiver_held_in_a_reassigned_variable_resolves_to_its_class() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let err = generate_with_schema(
-        bench(),
-        r#"mod requests { include!("../out/orm_model.rs"); }
-use requests::Author;
-fn page(limit: Option<i64>) {
-    let mut page = Author::new().add_all_columns();
-    let mut conditions = 0;
-    if let Some(limit) = limit {
-        page = if conditions == 0 { page.gt_read_count(limit) } else { page.and_gt_read_count(limit) };
-        conditions += 1;
-    }
-    if let Some(limit) = limit { page = if conditions == 0 { page.lt_seq(limit) } else { page.and_lt_seq(limit) }; }
-    let _ = page.get_ghost();
-}
-fn main() { page(None); }"#,
-    )
-    .unwrap_err();
-    assert!(err.contains("Author has no method get_ghost"), "{err}");
-}
-
 /// Requirements: DBS-173. The used table of an external document keeps its model when no scanned source calls it and no
 /// owned table references it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it,
 /// and the source calls ExtNote only.
@@ -763,48 +631,6 @@ fn unused_external_tables_keep_their_models() {
     remove_test_dir(&dir);
     let text = text.or_panic(|e| format!("generate: {e}"));
     assert!(text.contains("pub struct ExtSession "), "a used external table that no source calls has no model");
-}
-
-/// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
-// Requirements: DSL-44.
-#[test]
-fn relation_to_an_external_entity_attaches_its_getter() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let text = generate_external(
-        "fn main() { let _ = ExtPost::new().relation(ExtAudit::new().match_audit_seq_with_seq()); }
-fn read(row: &ExtPost) { let _ = row.get_ext_audit_model(); }",
-    )
-    .unwrap();
-    assert!(text.contains("pub fn get_ext_audit_model(&self)"), "the getter of the external entity is missing");
-}
-
-/// A name is typed by its binding in its own scope: a for loop or a match arm that binds the name gives it no model, so a
-/// call on it is not the outer Author's; a call on a ServiceMember is attributed to ServiceMember.
-// Requirements: DSL-151.
-#[test]
-fn a_name_is_typed_by_its_binding_in_its_own_scope() {
-    // The outer row is a ServiceMember, which has no is_close column. The for loop and the match arm bind row to values the
-    // scan cannot type, so their get_is_close calls are not the outer ServiceMember's; the call on an Author is Author's.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    generate_with_schema(
-        bench(),
-        "fn read(blocks: Vec<Author>) {
-    let row = ServiceMember::new();
-    for row in blocks {
-        let _ = row.get_is_close();
-    }
-    match blocks.first() {
-        Some(row) => { let _ = row.get_is_close(); }
-        None => {}
-    }
-    let member = Author::new();
-    let _ = member.get_is_close();
-}
-impl ServiceMember {
-    fn read(row: Author) { let _ = row.get_is_close(); }
-}",
-    )
-    .unwrap();
 }
 
 #[test]

@@ -241,7 +241,7 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindMessageVectors$' -count=1",
           "shard": "other",
           "inputs": [
-                "packages/go/orm/markdown.go",
+            "packages/go/orm/markdown.go",
             "tests/bind/vectors.json"
           ]
         },
@@ -3030,7 +3030,7 @@
               "packages/python/tests/test_bind_messages_dynamic_none.py",
               "packages/python/tests/test_bind_messages_untyped_null_none.py",
               "packages/python/tests/test_bind_messages_python_null_none.py",
-                    "packages/python/tests/coverage_model_writes.py"
+              "packages/python/tests/coverage_model_writes.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -4473,7 +4473,6 @@
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
-        "packages/php-ext/tests/OrmGenScanNativeTest.php",
         "packages/php/tests/OrmGenScanParityTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
@@ -15372,17 +15371,6 @@
         "packages/php-ext/tests/ModelStreamReadTest.php"
       ],
       "command": "make --no-print-directory model-native-php-extension-check MODEL_NATIVE_TEST_FILTER='testNativeRowStreamReadFailurePreservesThrowableAndDoesNotMutateBuilder|testSuccessfulNormalAndExtraRowsPreserveStreamText|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder'"
-    },
-    {
-      "id": "php-orm-gen-scan-failure-case",
-      "paths": [
-        "packages/php/tests/OrmGenScanFailureCase.php"
-      ],
-      "tests": [
-        "packages/php/tests/OrmGenScanTest.php",
-        "packages/php-ext/tests/OrmGenScanNativeTest.php"
-      ],
-      "command": "make --no-print-directory php-orm-gen-scan-failure-case-check"
     },
     {
       "id": "go-dialect-runner-environment",

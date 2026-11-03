@@ -18,8 +18,6 @@ use Polyspec\Orm\Scan;
 #[Small]
 class OrmGenScanTest extends TestCase
 {
-    use OrmGenScanFailureCase;
-
     private const NS = 'Polyspec\\Orm\\Tests\\Scanned';
 
     private static string $work;
@@ -281,27 +279,6 @@ PHP;
         self::assertSame(['ltSeq'], self::tags($dir, 'Service'), 'Service');
     }
 
-    public function testAnAliasNamedMatchDeclaresItsGetter(): void
-    {
-        // The test of DSL-44 (docs/spec).
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-use $ns\\User;
-
-\$a = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasMatch())
-    ->relation((new User())->matchUserSeqWithSeq()->aliasJoin())->get();
-\$a->getMatch();
-\$a->getJoin();
-PHP;
-        [$code, $err, $dir] = self::generate('alias-match', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
-        $author = self::tags($dir, 'Author');
-        self::assertContains('getJoin', $author);
-        self::assertContains('getMatch', $author);
-    }
-
     public function testRelationAliasTypesFollowRelationEdgesAndExplicitAliases(): void
     {
         $source = self::authorUsage([
@@ -422,138 +399,6 @@ PHP;
         self::assertNotContains('getUnused', self::tags($dir, 'Author'));
     }
 
-    // Requirements: DBS-118.
-    public function testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn(): void
-    {
-        // The test of DSL-44 (docs/spec).
-        $source = OrmGenTestSupport::phpSource(
-            [self::NS . '\\Author', self::NS . '\\User'],
-            '$rows = ' . OrmGenTestSupport::phpRelationCall(
-                '(new Author())',
-                'relation',
-                'User',
-                'matchUserSeqWithSeq()->aliasWriter()'
-                    . "\n    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch())",
-                'gets'
-            ) . "\n"
-                . "foreach (\$rows as \$row) {\n"
-                . "    /** @var User|null \$writer */\n"
-                . "    \$writer = \$row->getWriter();\n"
-                . "    \$writer?->getMatch();\n"
-                . "}\n",
-            'App'
-        );
-        [$code, $err, $dir] = self::generate('nested-alias', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
-        self::assertContains('getWriter', self::tags($dir, 'Author'));
-        self::assertContains('getMatch', self::tags($dir, 'User'));
-    }
-
-    public function testAGetterCallThatNothingAttachesStopsGeneration(): void
-    {
-        // The test of DSL-44 (docs/spec).
-        $source = OrmGenTestSupport::phpSource(
-            [self::NS . '\\Author', self::NS . '\\User'],
-            '$rows = ' . OrmGenTestSupport::phpRelationCall(
-                '(new Author())',
-                'relation',
-                'User',
-                'matchUserSeqWithSeq()->aliasWriter()',
-                'gets'
-            ) . "\n"
-                . "foreach (\$rows as \$row) {\n"
-                . "    /** @var User|null \$writer */\n"
-                . "    \$writer = \$row->getWriter();\n"
-                . "    \$writer?->getGhost();\n"
-                . "}\n"
-        );
-        [$code, $err, $dir] = self::generate('unattached-getter', ['usage.php' => $source]);
-        self::assertSame(1, $code, 'status');
-        self::assertStringContainsString(
-            'User.getGhost is called, but no aliasGhost, newGhost or addColumn call attaches it',
-            $err
-        );
-        self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
-    }
-
-    public function testACallOnAClassOfAnotherSetIsNotThisSetsCall(): void
-    {
-        // Requirements: DSL-151.
-        // Another set's output shares the class name Author: a call on it, through a use import or a qualified name,
-        // declares and refuses nothing on this set's Author.
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use Polyspec\\Orm\\Tests\\OtherSet\\Author;
-use $ns\\User;
-
-(new Author())->ltSeq(1);
-(new Author())->getGhost();
-(new \\Polyspec\\Orm\\Tests\\OtherSet\\Author())->gtReadCount(1);
-(new User())->neName('x');
-PHP;
-        [$code, $err, $dir] = self::generate('imported-set', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
-        self::assertNotContains('ltSeq', self::tags($dir, 'Author'));
-        self::assertNotContains('gtReadCount', self::tags($dir, 'Author'));
-        self::assertContains('neName', self::tags($dir, 'User'));
-    }
-
-    public function testAReceiverHeldInAReassignedVariableResolvesToItsClass(): void
-    {
-        // Requirements: DSL-151.
-        // A variable initialized from a chain on an imported class and reassigned from its own chain in a conditional
-        // expression still holds that class, as the checker types it, so the calls on it after each reassignment are
-        // its calls.
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-
-function page(\$db, ?int \$limit): Author
-{
-    \$page = (new Author())->connect(\$db)->addAllColumns();
-    \$conditions = 0;
-    if (\$limit !== null) {
-        \$page = \$conditions === 0 ? \$page->gtReadCount(\$limit) : \$page->andGtReadCount(\$limit);
-        \$conditions += 1;
-    }
-    if (\$limit !== null) \$page = \$conditions === 0 ? \$page->ltSeq(\$limit) : \$page->andLtSeq(\$limit);
-    return \$page;
-}
-PHP;
-        [$code, $err, $dir] = self::generate('reassigned-variable', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
-        foreach (['gtReadCount', 'andGtReadCount', 'ltSeq', 'andLtSeq'] as $method) {
-            self::assertContains(
-                $method,
-                self::tags($dir, 'Author'),
-                "Author lacks $method called on a reassigned variable"
-            );
-        }
-    }
-
-    // Requirements: DSL-44.
-    public function testARelationToAnEntityOfAUsedDocumentAttachesItsGetter(): void
-    {
-        // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
-        // getExtAuditModel as it does for a local entity.
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\\ExtPost;
-
-\$rows = (new ExtPost())->relation((new ExtAudit())->connect(\$db)->matchAuditSeqWithSeq())->gets();
-foreach (\$rows as \$row) {
-    \$row->getExtAuditModel();
-}
-PHP;
-        [$code, $err] = self::generateExternal('external-getter', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
-    }
-
     // Requirements: DBS-173.
     public function testAUsedExternalTableThatNoSourceCallsKeepsItsModel(): void
     {
@@ -573,43 +418,6 @@ PHP;
         [$code, $err, $dir] = self::generateExternal('external-unused-models', ['usage.php' => $source], $owned);
         self::assertSame(0, $code, $err);
         self::assertFileExists("$dir/model/ExtSession.php");
-    }
-
-    // Requirements: DSL-151.
-    public function testANameIsTypedByItsBindingInItsOwnScope(): void
-    {
-        // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with
-        // a class the scan cannot type, so their setIsClose calls are not the outer ServiceMember's; the call on an
-        // Author row in another function is attributed to Author.
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\\Author;
-use $ns\\ServiceMember;
-
-function read(array \$blocks, bool \$flag): void
-{
-    \$row = new ServiceMember();
-    [\$row] = \$blocks;
-    \$row->setIsClose(true);
-    if (\$flag) {
-        \$row = new Author();
-    } else {
-        \$row = \$blocks[0];
-    }
-    \$row->setIsClose(false);
-}
-
-function write_author(): void
-{
-    \$row = new Author();
-    \$row->setIsClose(false);
-}
-PHP;
-        [$code, $err] = self::generate('scope-binding', ['usage.php' => $source]);
-        self::assertSame(0, $code, $err);
     }
 
     public function testANameThatMayHoldTwoModelsGetsTheCallOnEach(): void

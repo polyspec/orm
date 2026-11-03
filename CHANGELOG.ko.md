@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a9f684e0bb3dca4815c6bb9cda667b84b274583308071d1398d763e0b33a5605 -->
+<!-- source-sha256: c8b38a176ae36900384676721ed4674bb433c8b5654bc505a403d24431eac162 -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
 - `make client-db-rust-check`는 다른 target이 소유하지 않은 case만 실행하고, crate의 public connection 시험은 외부 변수가 필요 없으며, compiler fixture는 순서대로 실행되고, generate.mjs는 임시 디렉터리를 남기지 않는다.
 - generator scan recipe의 사례 8개가 여섯 runtime 모두에서 돈다: 모든 recipe runner가 `generator.generate`를 구현하고, 각 사례는 언어마다 native 시험이 쓰던 형식의 source를 담으며, 옵션 `before`가 다른 set을 먼저 생성하므로 imported-set 사례에 native 시험이 필요 없다(T334-3-22-2). model이 아닌 호출의 TypeScript 시험은 DSL-154가 모든 column에 선언하는 column method를 더 이상 적지 않는다.

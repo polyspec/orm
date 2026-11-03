@@ -2,7 +2,6 @@
 // the sources call on models, each on the model the receiver resolves to, and
 // nothing for a call whose receiver is not a model.
 // Usage: node packages/ts/tests/generate-scan.mjs [case ...] (after npm run typescript:build)
-import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -145,63 +144,6 @@ async function generateRefused(source) {
   }
 }
 
-/** A relation alias that starts with a chain prefix (Match, Join, Possible, New) still declares its getter on the parent. */
-// Requirements: DSL-44.
-async function aliasMatchGetter() {
-  const { members } = await generate(`
-import { Author, User } from './models/models.js';
-declare const db: unknown;
-const a = await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasMatch()).relation(new User().matchUserSeqWithSeq().aliasWriter()).get();
-a.getMatch();
-a.getWriter();
-const child = new User().matchUserSeqWithSeq().aliasMatchup();
-const rows = await new Author().connect(db).relations(child).gets();
-for (const row of rows) row.getMatchup();
-rows.map(r => r.getJoin());
-class Repo { list(): Promise<Author | null> { return new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasJoin()).get(); } }
-const r2 = await new Repo().list(); r2?.getMatch();
-export {};
-`);
-  check(members('User').includes('aliasMatch'), 'User lacks aliasMatch');
-  check(members('Author').includes('getWriter'), 'Author lacks getWriter');
-  for (const n of ['getMatch', 'getMatchup', 'getJoin']) check(members('Author').includes(n), `Author lacks ${n}`);
-}
-
-/**
- * The alias of a relation nested in a relation attaches its getter to the model it aliases on, and a receiver typed through
- * a getter's generic argument resolves to that model (consumer: OrdersheetStore.getMatch).
- */
-// Requirements: DSL-44.
-async function nestedAliasGetter() {
-  const { members } = await generate(`
-import { Author, User } from './models/models.js';
-declare const db: unknown;
-await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasWriter().relation(new Author().matchSeqWithUserSeq().aliasMatch())).gets();
-export function read(rows: Iterable<Author>): void {
-  for (const row of rows) {
-    const writer = row.getWriter<User | null>();
-    writer?.getMatch<Author | null>();
-  }
-}
-`);
-  check(members('Author').includes('getWriter'), 'Author lacks getWriter');
-  check(members('User').includes('getMatch'), 'User lacks getMatch of the nested alias');
-}
-
-/** A scanned getter call that no alias, new or addColumn call attaches stops generation, naming the model and the method. */
-// Requirements: DSL-44.
-async function unattachedGetter() {
-  const { status, stderr } = await generateRefused(`
-import { Author, User } from './models/models.js';
-declare const db: unknown;
-const rows = await new Author().connect(db).relation(new User().matchUserSeqWithSeq().aliasWriter()).gets();
-for (const row of rows) row.getWriter<User | null>()?.getGhost();
-export {};
-`);
-  check(status !== 0, 'orm-gen accepted an unattached getter');
-  check(stderr.includes('User.getGhost()'), `the refusal does not name User.getGhost(): ${stderr}`);
-}
-
 /**
  * Generates models.ts of member.dbs, which uses core.dbs as an external document, with --scan of one source; returns the
  * declared chain methods of each model class, as generate does.
@@ -245,42 +187,6 @@ table ext_note {
 }
 `);
   check(text.includes('export class ExtSession extends Model'), 'no model for the used external table ext_session that no source calls');
-}
-
-/** A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does. */
-// Requirements: DSL-44.
-async function externalGetter() {
-  await generateExternal(`
-import { ExtPost } from './models/models.js';
-declare const db: unknown;
-const rows = await new ExtPost().relation(new ExtAudit().connect(db).matchAuditSeqWithSeq()).gets();
-for (const row of rows) row.getExtAuditModel();
-export {};
-`);
-}
-
-/**
- * A name is typed by its latest assignment in its own scope: a nested function that reassigns row to a value the scan
- * cannot type does not leave the outer ServiceMember on the call, and a call on an Author row is attributed to Author.
- */
-// Requirements: DSL-151.
-async function scopeBinding() {
-  const { members } = await generate(`
-import { Author, ServiceMember } from './models/models.js';
-declare const db: unknown;
-declare function loadRow(db: unknown): unknown;
-export function read(): void {
-  let row = new ServiceMember().connect(db);
-  const write = (): void => { row = loadRow(db); };
-  write();
-  row.getIsClose();
-}
-export function author(): void {
-  const row = new Author().connect(db);
-  row.getIsClose();
-}
-`);
-  check(!members('ServiceMember').includes('getIsClose'), 'ServiceMember declares getIsClose');
 }
 
 /**
@@ -365,55 +271,6 @@ async function callbackParameters() {
   check(own.status !== 0 && own.stderr.includes('Author.getOwner()'), `a parameter annotated with Author is not recorded against Author: status ${own.status}: ${own.stderr}`);
 }
 
-/**
- * A call belongs to the set whose generated module the class is imported from: a class of the same name imported from another
- * set's output, by name or through a namespace, is not this set's model, so its calls declare and refuse nothing here.
- */
-// Requirements: DSL-151.
-async function importedSet() {
-  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-import-'));
-  try {
-    await mkdir(join(work, 'src'));
-    await mkdir(join(work, 'main'));
-    // The output of another set: orm-gen wrote it from another manifest, whose hash it names.
-    await writeFile(join(work, 'main/models.ts'), `// Code generated by orm-gen; DO NOT EDIT.\nexport const MANIFEST_HASH = 'sha256:${'0'.repeat(64)}';\nexport class Author { [name: string]: (...args: unknown[]) => Author }\n`);
-    await writeFile(join(work, 'src/other.ts'), `import { Author } from '../main/models.js';\nimport * as main from '../main/models';\ndeclare const db: unknown;\nnew Author().connect(db).gtReadCount(1);\nnew Author().getGhost();\nnew main.Author().ltSeq(1);\n`);
-    await writeFile(join(work, 'src/own.ts'), `import { User } from '../out/models.js';\ndeclare const db: unknown;\nnew User().connect(db).neName('x');\n`);
-    const result = await runGeneratorCommand(bin, ['gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], work);
-    check(result.status === 0, `a call on another set's Author is taken as this set's: status ${result.status}: ${result.stderr}`);
-    if (result.status !== 0) return;
-    const text = await readFile(join(work, 'out/models.ts'), 'utf8');
-    const declares = (model, method) => new RegExp(`export class ${model} extends Model \\{\\n(?:(?!\\n\\}\\n)[\\s\\S])*\\n  declare ${method}:`).test(text);
-    check(!declares('Author', 'gtReadCount') && !declares('Author', 'ltSeq'), "Author declares a method that only another set's Author is called with");
-    check(declares('User', 'neName'), 'User lacks neName of its own import');
-  } finally {
-    await rm(work, { recursive: true, force: true });
-  }
-}
-
-/**
- * A receiver held in a variable resolves through the variable's initializer and its reassignments to its class, as the checker
- * types the variable: a `let` initialized from a chain on an imported class and reassigned from its own chain in a conditional
- * expression still holds that class, so the calls on it after each reassignment are its calls.
- */
-// Requirements: DSL-151.
-async function reassignedVariable() {
-  const { members } = await generate(`
-import { Author } from './models/models.js';
-declare const db: unknown;
-declare const limit: number | null;
-let page = new Author().connect(db).addAllColumns();
-let conditions = 0;
-if (limit !== null) {
-  page = conditions === 0 ? page.gtReadCount(limit) : page.andGtReadCount(limit);
-  conditions += 1;
-}
-if (limit !== null) page = conditions === 0 ? page.ltSeq(limit) : page.andLtSeq(limit);
-page.orderBySeqDesc();
-`);
-  for (const name of ['gtReadCount', 'andGtReadCount', 'ltSeq', 'andLtSeq']) check(members('Author').includes(name), `Author lacks ${name} called on a reassigned variable`);
-}
-
 /** The base method names of the generator are the public methods of the runtime Model, which every generated model inherits. */
 async function baseMethodsMatchModel() {
   const { baseMethods } = await import('../dist/generate/typescript.js');
@@ -425,19 +282,13 @@ async function baseMethodsMatchModel() {
   check(missing.length === 0 && extra.length === 0, `baseMethods differs from the Model methods: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}`);
 }
 
-/** A file of a scanned directory that does not parse stops the generation, writes nothing, and names the file and position. */
-// Requirements: DSL-152.
-async function unparsableFile() {
+// A parse error on the first line, which no line break precedes, is at its own column of line 1: the turn of an offset into a position
+// is TypeScript's own; the generator-scan recipe holds the other lines in every runtime.
+// Requirements: DSL-158.
+async function unparsableFirstLine() {
   const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-parse-'));
   try {
     await mkdir(join(work, 'src'));
-    await writeFile(join(work, 'src/usage.ts'), 'export const x = 1;\n');
-    await writeFile(join(work, 'src/broken.ts'), 'export const x = 1;\nfunction (\n');
-    const result = await runGeneratorCommand(bin, ['gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], work);
-    check(result.status !== 0, `an unparsable file is skipped: status ${result.status}`);
-    check(result.stderr.includes('broken.ts:2:10: does not parse'), `the error does not name the file and position: ${result.stderr}`);
-    check(!existsSync(join(work, 'out')), 'the failed generation wrote its output');
-    // A parse error on the first line, which no line break precedes, is at its own column of line 1.
     await writeFile(join(work, 'src/broken.ts'), 'const = 1;\n');
     const first = await runGeneratorCommand(bin, ['gen', '--set', join(root, 'contracts/fixtures/bench/dbspec-set.json'), '--out', 'out', '--scan', 'src'], work);
     check(first.stderr.includes('broken.ts:1:7: does not parse'), `the error does not name line 1 and its column: ${first.stderr}`);
@@ -446,7 +297,7 @@ async function unparsableFile() {
   }
 }
 
-const cases = { unused_external_models: unusedExternalModels, non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, alias_match_getter: aliasMatchGetter, nested_alias_getter: nestedAliasGetter, unattached_getter: unattachedGetter, external_getter: externalGetter, scope_binding: scopeBinding, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, imported_set: importedSet, reassigned_variable: reassignedVariable, unparsable_file: unparsableFile };
+const cases = { unused_external_models: unusedExternalModels, non_model_call: nonModelCall, base_methods_match_model: baseMethodsMatchModel, model_calls: modelCalls, scan_path_spelling: scanPathSpelling, may_hold_two_models: mayHoldTwoModels, possible_classes: possibleClasses, callback_parameters: callbackParameters, unparsable_first_line: unparsableFirstLine };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];
