@@ -1405,11 +1405,19 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "pool_lifetime_ms": "poolLifetimeMs",
         "statement_timeout_ms": "statementTimeoutMs",
     }
-    db = Db.connect(dsn, {names[key]: value for key, value in (config or {}).items()})
+    db = Db.connect(
+        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
+    )
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
             raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+        if (config or {}).get("tls_version"):
+            status = db.utils().run(
+                lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")
+            )["rows"]
+            if not status or str(status[0][1]) not in ("TLSv1.2", "TLSv1.3"):
+                raise AssertionError(f"the Ssl_version of the connection is {status!r}")
         return db.driver
     finally:
         db.close()
@@ -2084,6 +2092,11 @@ def _op_dsn_connect(step: dict, context: dict) -> dict:
         dsn = context["dsn"]
         if "query" in step:
             dsn += ("&" if "?" in dsn else "?") + step["query"]
+    if dsn.startswith("env:"):
+        name = dsn[len("env:") :]
+        dsn = os.environ.get(name, "")
+        if not dsn:
+            raise AssertionError(f"dsn.connect: {name} is unset; run make orm-test-servers")
     return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
 
 

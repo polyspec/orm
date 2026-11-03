@@ -90,6 +90,11 @@ async function connectDriver(dsn, config = {}) {
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
+    if (config.tls_version === true) {
+      const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
+      const version = status.rows[0]?.[1];
+      if (version !== 'TLSv1.2' && version !== 'TLSv1.3') throw new Error(`the connection has Ssl_version ${JSON.stringify(version)}`);
+    }
     return db.driver;
   } finally {
     await db.close();
@@ -533,6 +538,11 @@ const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
+    if (s.dsn.startsWith('env:')) {
+      const dsn = process.env[s.dsn.slice(4)];
+      if (!dsn) throw new Error(`dsn.connect: ${s.dsn.slice(4)} is unset; run make orm-test-servers`);
+      return { value: { text: await connectDriver(dsn, s.config) } };
+    }
     if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
     const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
     return { value: { text: await connectDriver(dsn, s.config) } };

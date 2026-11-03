@@ -614,6 +614,11 @@ func mapDriverErr(err error) error {
 	if errors.Is(err, driver.ErrBadConn) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
 	}
+	// A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
+	var refused *tls.CertificateVerificationError
+	if errors.As(err, &refused) {
+		return &ir.Error{Code: CodeConfig, Msg: "mysql TLS connection failed: " + err.Error(), Cause: err}
+	}
 	// Other driver errors, such as a write a trigger refused, are DRIVER.
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }

@@ -116,7 +116,6 @@
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
         "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
         "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
@@ -140,7 +139,6 @@
         "packages/python/tests/test_sqlite_version.py",
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
-        "packages/python/tests/mysql_tls.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
         "packages/python/tests/connection_utc.py",
@@ -444,7 +442,7 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php-ext/tests/MysqlTlsNativeTest.php"
+            "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php"
           ]
         },
         {
@@ -559,15 +557,6 @@
             "tests/dsn/sqlite-paths.json",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/placeholders.py"
-          ]
-        },
-        {
-          "id": "dsn-mysql-tls-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.mysql_tls",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/mysql_tls.py",
-            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {

@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 44850c719b563e6d7509db42a71b059613a1e466ae00843885f0685cdc0bd7b7 -->
+<!-- source-sha256: 2e7bf0a503f44aa3ea7ad43d750de88fe01ad6db5a1f263f2706db0e36ec4df6 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -47,7 +47,7 @@ MySQL DSN은 모든 클라이언트가 구현하는 한 가지 모드로 TLS 연
 mysql://user:password@db.example:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/etc/orm/mysql-ca.pem
 ```
 
-- **CFG-16** `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 연결을 실패시킨다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
+- **CFG-16** `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 `CONFIG`로 연결을 실패시키고, 메시지는 `TLS connection failed`를 담는다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
 - **CFG-17** host는 server 인증서가 이름하는 host 이름이며 IP 주소가 아니다. TypeScript driver가 주소 host를 이름 `localhost`로 검사하기 때문이며, 모든 클라이언트는 `ssl-mode`와 함께 쓴 주소에 `CONFIG`를 반환한다. 이 모드는 TCP로 연결하며 `socket`을 받지 않는다.
 - **CFG-18** `VERIFY_CA`나 `REQUIRED` 같은 `ssl-mode`의 다른 값, `ssl-ca` 없는 `ssl-mode`, `ssl-mode` 없는 `ssl-ca`, 상대 `ssl-ca` 경로, 읽을 수 없는 CA file은 Rust를 뺀 모든 클라이언트에서 `CONFIG`를 반환한다. Rust의 매개변수는 아래에 있다.
 - **CFG-19** Go와 Rust를 뺀 모든 클라이언트는 다음 매개변수만 받고 다른 매개변수에는 `CONFIG`를 반환한다. MySQL은 `timezone`, `socket`, `ssl-mode`, `ssl-ca`, PostgreSQL은 `timezone`, `host`, `sslmode`, SQLite는 `timezone`, `_pragma`, 그리고 그 자체로 `CONFIG`를 반환하는 `_txlock`이다.

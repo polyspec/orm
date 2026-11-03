@@ -8,7 +8,7 @@ use PHPUnit\Framework\Assert;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 
-/** Shared assertions for the PHP and native extension MySQL TLS cases. */
+/** Shared assertions for the PHP and native extension MySQL session cases. */
 final class MysqlTlsCases
 {
     public static function assertSessionSqlMode(string $dsn): void
@@ -32,15 +32,4 @@ final class MysqlTlsCases
         Assert::assertSame(237, (int) ($session[2] ?? -1), '@@SESSION.max_execution_time');
     }
 
-    public static function sslVersion(string $dsn): string
-    {
-        $db = Orm::connect($dsn, new Config());
-        try {
-            return (string) (
-                $db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? ''
-            );
-        } finally {
-            $db->close();
-        }
-    }
 }

@@ -303,6 +303,7 @@ type dsnConfig struct {
 	PoolIdleSize       int `json:"pool_idle_size"`
 	PoolLifetimeMs     int `json:"pool_lifetime_ms"`
 	StatementTimeoutMs int `json:"statement_timeout_ms"`
+	TLSVersion         bool `json:"tls_version"`
 }
 
 // sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
@@ -360,6 +361,23 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 		}
 		if fmt.Sprint(cell) != "1" {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		if !config.TLSVersion {
+			return nil
+		}
+		status, err := f.Run(orm.KindUtility, nil, "SHOW SESSION STATUS LIKE 'Ssl_version'")
+		if err != nil {
+			return err
+		}
+		if len(status.Rows) != 1 || len(status.Rows[0]) != 2 {
+			return fmt.Errorf("Ssl_version on the connection of %s returned %v", driver, status.Rows)
+		}
+		version := status.Rows[0][1]
+		if text, isBytes := version.([]byte); isBytes {
+			version = string(text)
+		}
+		if got := fmt.Sprint(version); got != "TLSv1.2" && got != "TLSv1.3" {
+			return fmt.Errorf("the connection has Ssl_version %q, want TLSv1.2 or TLSv1.3", got)
 		}
 		return nil
 	})

@@ -3793,33 +3793,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmConnectsWithTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_connects_with_tls"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_verifies_the_server_identity"
         }
       ]
     },
@@ -3832,33 +3832,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUntrustedTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_refuses_another_ca_and_another_host"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_refuses_an_untrusted_identity"
         }
       ]
     },
@@ -8960,6 +8960,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
         "CFG-2",
         "CFG-19",
         "CFG-26",
@@ -9009,6 +9010,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
         "CFG-2",
         "CFG-19",
         "CFG-26",
@@ -9058,6 +9060,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
         "CFG-2",
         "CFG-19",
         "CFG-26",

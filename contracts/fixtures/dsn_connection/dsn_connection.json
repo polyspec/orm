@@ -4,6 +4,7 @@
     "CFG-1",
     "CFG-2",
     "CFG-12",
+    "CFG-16",
     "CFG-19",
     "CFG-26"
   ],
@@ -238,6 +239,88 @@
             },
             "sqlite": {
               "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_verifies_the_server_identity",
+      "requirements": [
+        "CFG-16"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_MYSQL_TLS_DSN",
+          "config": {
+            "tls_version": true
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "mysql"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "mysql"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_refuses_an_untrusted_identity",
+      "requirements": [
+        "CFG-16"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_MYSQL_TLS_OTHER_CA_DSN",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "env:ORM_TEST_MYSQL_TLS_MISMATCH_DSN",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "TLS connection failed"
             }
           }
         }

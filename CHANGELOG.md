@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.
 - Go, PHP and the PHP extension refuse a SQLite `busy_timeout` that is not a whole number, and Go refuses a malformed `_pragma` and the SQLite path `/`, each with `CONFIG` (CFG-11, CFG-12), and PHP names the path in that refusal. An unreadable MySQL `ssl-ca` reads `is not a readable file` in every client that checks it, and the Python refusal of a negative timeout reads `statement timeout must not be negative`. A DSN that returns `CONFIG` creates no file. The refused DSN and configuration forms of CFG-36 and CFG-37 are recipe cases, with their messages, and the native tests they replace are gone.
 - `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.

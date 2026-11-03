@@ -930,6 +930,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 				dsn += separator + s.Query
 			}
 		}
+		if name, isEnv := strings.CutPrefix(dsn, "env:"); isEnv {
+			dsn = os.Getenv(name)
+			if dsn == "" {
+				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
+			}
+		}
 		driver, err := connectDriver(dsn, s.Config)
 		if err != nil {
 			return outcome{}, err

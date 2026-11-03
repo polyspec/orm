@@ -106,7 +106,10 @@ final class Orm
                 }
             }
         } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+            $prefix = $sslCa !== null && str_contains($e->getMessage(), 'SSL')
+                ? 'mysql TLS connection failed: '
+                : 'cannot connect: ';
+            throw new OrmException(Code::CONFIG, $prefix . $e->getMessage(), $e);
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
         if ($driver === 'mysql') {

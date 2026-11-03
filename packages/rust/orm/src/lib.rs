@@ -202,6 +202,10 @@ impl From<sqlx::Error> for Error {
                 return Error::Driver { code: codes::CONNECTION_LOST.into(), msg: e.to_string(), source: e };
             }
         }
+        // A certificate that the CA or the host of the DSN refuses is CONFIG (CFG-16).
+        if let sqlx::Error::Tls(_) = &e {
+            return Error::Config(format!("mysql TLS connection failed: {e}"));
+        }
         Error::Driver { code: codes::DRIVER.into(), msg: e.to_string(), source: e }
     }
 }

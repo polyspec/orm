@@ -582,6 +582,16 @@ final class Recipe
             Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
+            if ($config['tls_version'] ?? false) {
+                $status = $db->utils()->run(
+                    static fn (TxFrame $frame): array => $frame->run(
+                        StatementEvent::UTILITY,
+                        [],
+                        "SHOW SESSION STATUS LIKE 'Ssl_version'",
+                    ),
+                );
+                Assert::assertContains($status[0][1] ?? null, ['TLSv1.2', 'TLSv1.3'], 'the Ssl_version of the connection');
+            }
             return $db->driver();
         } finally {
             $db->close();
@@ -2438,6 +2448,11 @@ final class Recipe
                     if (isset($s['query'])) {
                         $dsn .= (str_contains($dsn, '?') ? '&' : '?') . $s['query'];
                     }
+                }
+                if (str_starts_with($dsn, 'env:')) {
+                    $name = substr($dsn, 4);
+                    $dsn = (string) getenv($name);
+                    Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
                 }
                 return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
             case 'dsn.sqlite_file':

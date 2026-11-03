@@ -138,7 +138,22 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
+            let status = match config["tls_version"].as_bool() {
+                Some(true) => Some(db.utils().run(async |frame| frame.run("utility", &[], "SHOW SESSION STATUS LIKE 'Ssl_version'", &[]).await).await),
+                _ => None,
+            };
             db.close().await;
+            match status {
+                Some(Ok(rows)) => {
+                    let version = rows.first().and_then(|row| row.get(1));
+                    let held = matches!(version, Some(Val::Str(text)) if text == "TLSv1.2" || text == "TLSv1.3");
+                    if !held {
+                        return Err(("STEP".to_owned(), format!("the connection has Ssl_version {version:?}, want TLSv1.2 or TLSv1.3")));
+                    }
+                }
+                Some(Err(error)) => return Err((error.code().to_owned(), error.to_string())),
+                None => {}
+            }
             match answer {
                 Ok(rows) if matches!(rows.as_slice(), [row] if matches!(row.as_slice(), [Val::I64(1)])) => Ok(driver),
                 Ok(rows) => Err(("STEP".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
@@ -2872,7 +2887,10 @@ mod database {
                         format!("{}{separator}{query}", context.dsn)
                     }
                     ("case", None) => context.dsn.clone(),
-                    (text, _) => text.to_owned(),
+                    (text, _) => match text.strip_prefix("env:") {
+                        Some(name) => std::env::var(name).map_err(|_| fault(format!("dsn.connect: {name} is unset; run make orm-test-servers")))?,
+                        None => text.to_owned(),
+                    },
                 };
                 let driver = crate::recipe::connect_driver(&dsn, &step["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))

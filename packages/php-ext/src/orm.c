@@ -725,7 +725,8 @@ static void orm_connect_failure(zend_object *cause)
             cause, ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
         detail = zval_get_string(property);
     }
-    zend_string *message = strpprintf(0, "cannot connect: %s", ZSTR_VAL(detail));
+    zend_string *message = strpprintf(
+        0, strstr(ZSTR_VAL(detail), "SSL") != NULL ? "mysql TLS connection failed: %s" : "cannot connect: %s", ZSTR_VAL(detail));
     zend_string_release(detail);
     zval args[3], exception;
     ZVAL_STRING(&args[0], "CONFIG");
