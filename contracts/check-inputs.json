@@ -1049,7 +1049,8 @@
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_planner_compile_none.py",
-        "tests/planner/compile.json"
+        "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs"
       ]
     },
     "rust-time-precision-check": {
@@ -3432,6 +3433,7 @@
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
         "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"
       ]

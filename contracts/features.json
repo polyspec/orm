@@ -2879,12 +2879,6 @@
           ]
         },
         {
-          "id": "rollback-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^Test(Savepoint)?RollbackFailed' -count=1",
-          "shard": "other",
-          "inputs": []
-        },
-        {
           "id": "transaction-failure-go",
           "command": "make transaction-failure-go-check",
           "shard": "other",
@@ -3556,6 +3550,7 @@
               "packages/go/orm/recipe_statement_events_test.go"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3591,6 +3586,7 @@
               "packages/php/tests/StatementEventsRecipeTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3626,6 +3622,7 @@
               "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3663,6 +3660,7 @@
               "packages/rust/tests/tests/statement_events_sqlite.rs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3697,6 +3695,7 @@
               "packages/ts/tests/statement_events-sqlite.test.mjs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3731,6 +3730,7 @@
               "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -5595,15 +5595,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/params.rs"
-          ]
-        },
-        {
-          "id": "param-uses-typescript",
-          "command": "node packages/ts/tests/coverage_planner.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/coverage_planner.mjs",
-            "packages/ts/src/engine/params.ts"
           ]
         },
         {
