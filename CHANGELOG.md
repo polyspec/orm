@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
+- PRT-82 states the order in which a statement writes its columns, and DBS-67 that an `update` and a delete of a soft-deleted table match only rows whose column is null; `tests/planner/runtime-model.json` holds them in all dialects.
+- A recipe owner of `contracts/features.json` holds no list of cases: reading the manifest takes them from the recipe, so a case added to a recipe cannot leave an owner list stale.
+- `gen --check` (DBS-175) is the case `check_reports_differences_without_writing` of the recipe `generator`, through the new op `generator.check` in every runtime; the Python coverage file of it is removed.
 - `make perf-check` runs the Go measurement of PERF-1 on MySQL, PostgreSQL and SQLite, and the Go lane of `client-db-check` skips those tests, which assert no client result.
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
 - A process deadline reports a process that has ended, and its case holds that the pid is gone (#T334-3-4-22)
@@ -12,13 +16,18 @@
 - The recipe `parameter_chunking` holds that a limit on a split list fails with `IR_INVALID` before any statement (PRT-76), not only its code.
 - The recipe `statement_events` holds the failure of a subscriber as INT-96 states it, in all six runtimes on the three databases: the exact message and the error of the subscriber as its cause, which a `{"error": <code>}` outcome may now name with `message` and `cause`.
 - The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: the first eight cases cover connectors, groups, chain reuse, joins, relations, a write cycle, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
 - The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
 - The verification errors of apply and rollback are the recipe `tests/dbspec/apply-verification-errors.json` in all six runtimes, through the op `dbspec.apply_fault`, in place of a native test in each runtime; the cases of a rollback on real drift now run in every runtime (PLN-92, PLN-93, PLN-96).
 - The decimal document set of `contracts/fixtures/dbspec-set.json` is the recipe `tests/dbspec/set-decimal.json` on the three databases in all six runtimes: it installs the set and creates and reads its two amounts exactly, in place of a native test in each runtime (DBS-108, SCH-7).
 - The physical run of the rendered statements of `tests/dbspec/ddl.json` is the recipe `tests/dbspec/render-physical.json` on the three databases in all six runtimes, through the op `dbspec.ddl_behavior`, in place of a native test in each runtime (DIA-113).
 - The MySQL introspection of the checks of SHOW CREATE TABLE is the recipe `tests/dbspec/show-create-introspect.json` in all six runtimes, through the op `dbspec.introspect_shown`, which holds what each case of `tests/dbspec/show-create.json` expects
 - The SQLite unsupported column reason of DIA-191 is the recipe `tests/dbspec/introspect-messages.json` in all six runtimes, through the op `dbspec.introspect_sqlite`, and each compares the whole list of unsupported objects; a test of it in a single runtime is gone
 - A recipe's expect names exactly the databases that run its step, so a case with `only` no longer states outcomes on databases that never run it (FCV-4, FCV-10).
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
+- The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
+- The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
 - CR32 gives the times that rule out a harness stop of the tool call.
 - The owners of parameter_chunking declare model_parameter_after_schema_change.
 - catalog_read_budgets names its wait for all three databases, as a recipe's sql must.
@@ -49,7 +58,6 @@
 - A notify publishes its statement event in Go, Python, PHP and the PHP extension, as a case of the recipe `statement_events` requires (INT-91).
 - The uses of each parameter, the output columns of a plan, blind index sources, a composite upsert key, the operators of each column type and a request of another manifest are recipe cases of all six runtimes, through the new ops `ir.param_uses` and `planner.columns`; TypeScript and Python now refuse an order comparison on `uuid`, as the others did.
 - The AES envelope, its tampering, a wrong key and the blind index vector are cases of the codec recipe in all six runtimes, with the form of an envelope as an expect, and the hostcodec tests of Go, PHP and the PHP extension are gone.
-- The refusal of two unaliased relations with one result name (CPX-5) is the case `duplicate_relation_name` of the recipe `complex_query` in every runtime; the Python test of it is removed, and the Python interface_contract coverage stays native without reading the feature environment.
 - The immutable write of Go is its recipe, and the Go coverage tests of the generated connection, the bench manifest install, the model generation check and the hot-path read run in the normal go test: the first two take case databases in place of the seeded bench database.
 - CR32 records what the exit 137 of catalog_read_budgets on the PHP extension is not; its sender stays unknown and no fix is made.
 - CR31 states what holds: the PHP extension already computes and declares CatalogColumn::$checkPrecision.
@@ -72,6 +80,7 @@
 - A budget stop of a read of the Rust catalog returns `CATALOG_LIMIT` at once, through ProxySQL too: on MySQL and PostgreSQL the read returns without a `ROLLBACK` and its connection closes.
 - `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
 - A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
+- The refusal of two unaliased relations with one result name (CPX-5) is the case `duplicate_relation_name` of the recipe `complex_query` in every runtime; the Python test of it is removed, and the Python interface_contract coverage stays native without reading the feature environment.
 - The inline form of the recipe op `dbspec.analyze` checks that the analysis holds the document, positions and diagnostics of `parse` (DBS-134), so Go, TypeScript, Python and PHP check it as Rust did, and Go `TestAnalyzeIsParse` is gone.
 - Go `runtimemodel.LoadSet` fails with the code `SCHEMA_INVALID` that SCH-12 states, as a `*SetLoadError`, and the recipe helper reads that code instead of translating diagnostics.
 - The canonical forms, state machine rules and markdown storage rules of the Go `rules_test.go` are cases of `tests/dbspec/rules.json`, so all six runtimes run them.
