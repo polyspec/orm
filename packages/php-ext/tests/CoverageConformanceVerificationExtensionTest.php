@@ -107,10 +107,10 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             return self::$outputs[$driver];
         }
         $variable = 'BENCH_' . strtoupper($driver) . '_DSN';
-        $dsn = getenv('ORM_FEATURE_DSN') ?: getenv($variable);
+        $dsn = getenv($variable);
         if (!is_string($dsn) || $dsn === '') {
             throw new \RuntimeException(
-                "ORM_FEATURE_DSN or $variable is required to run the native conformance vectors"
+                "$variable is required to run the native conformance vectors"
             );
         }
 
