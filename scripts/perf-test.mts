@@ -1,6 +1,7 @@
-// Hot-path gates against the seeded MySQL bench database named by ORM_BENCH_MYSQL_DSN; each gate fails when the variable
-// is unset. The five measurements (three Go gates, and the PHP gate without and under CPU load) are independent: a failed
-// one does not stop the rest, and the script lists every failed measurement and ends with 1.
+// Hot-path gates against the seeded bench databases named by ORM_BENCH_MYSQL_DSN, BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and
+// BENCH_SQLITE_DSN; each gate fails by the name of its variable when it is unset. The seven measurements (five Go gates, and the
+// PHP gate without and under CPU load) are independent: a failed one does not stop the rest, and the script lists every failed
+// measurement and ends with 1.
 import { resolve } from 'node:path';
 import { keepAll, render, type Command } from './check/commands.mts';
 
@@ -12,6 +13,8 @@ const STEPS: Command[] = [
   { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestNative', '-count=1'], cwd: root },
   { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestHotPathGate(UnderLoad)?$', '-count=1'], cwd: root },
   { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementMysql$', '-count=1'], cwd: root },
+  { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementPostgres$', '-count=1'], cwd: root },
+  { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementSQLite$', '-count=1'], cwd: root },
   phpunit(),
   phpunit({ ORM_PERF_CPU_LOAD: '1' }),
 ];
