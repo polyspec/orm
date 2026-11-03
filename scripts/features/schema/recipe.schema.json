@@ -1734,10 +1734,16 @@
                   ]
                 },
                 "value": {
-                  "type": [
-                    "string",
-                    "boolean",
-                    "integer"
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "integer"
+                    }
                   ]
                 },
                 "hex": {
