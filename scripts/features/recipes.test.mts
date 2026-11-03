@@ -298,3 +298,14 @@ caseTest('the cases of a recipe on a database leave out a case that names only o
   assert.deepEqual(recipeCaseIds(text, 'sqlite'), ['all', 'lite']);
   assert.deepEqual(recipeCaseIds(text, 'mysql'), ['all']);
 });
+
+// tests/dbspec/introspect.json is the vector file of the recipe dbspec_introspect, not a suite of its own: each of its cases
+// is a case of that recipe, so that a new vector cannot stay unrun.
+// Requirements: FCV-2, DIA-133.
+caseTest('the recipe dbspec_introspect names every case of tests/dbspec/introspect.json', COMPUTE, () => {
+  const vectors = JSON.parse(readFileSync('tests/dbspec/introspect.json', 'utf8')).cases.map((vector: { id: string }) => vector.id);
+  const recipe = JSON.parse(readFileSync('contracts/fixtures/dbspec_introspect/dbspec_introspect.json', 'utf8'));
+  const named = recipe.cases.flatMap((entry: { steps: { vectors?: string; case?: string }[] }) =>
+    entry.steps.filter(step => step.vectors === '../../../tests/dbspec/introspect.json').map(step => step.case));
+  assert.deepEqual([...named].sort(), [...vectors].sort());
+});

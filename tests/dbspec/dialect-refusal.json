@@ -66,6 +66,23 @@
           }
         }
       ]
+    },
+    {
+      "id": "introspect-unknown-dialect",
+      "requirements": [
+        "DBS-174"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_refusal",
+          "dialect": "oracle",
+          "expect": {
+            "none": {
+              "refused": "oracle"
+            }
+          }
+        }
+      ]
     }
   ]
 }

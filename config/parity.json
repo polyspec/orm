@@ -407,6 +407,7 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/RecipeKeys.php",
@@ -728,6 +729,7 @@
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
         "packages/ts/tests/recipe_apply.mjs",
+        "packages/ts/tests/recipe_introspect.mjs",
         "packages/ts/tests/recipe_keys.mjs",
         "packages/ts/tests/recipe_generator.mjs"
       ],
@@ -1009,6 +1011,7 @@
         "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
         "packages/python/tests/recipe_apply.py",
+        "packages/python/tests/recipe_introspect.py",
         "packages/python/tests/recipe_keys.py",
         "packages/python/tests/recipe_generator.py"
       ],
@@ -41188,6 +41191,225 @@
           "owner/python"
         ]
       }
+    },
+    {
+      "id": "dbspec_introspect-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DBS-42",
+        "DBS-84",
+        "DBS-94",
+        "DIA-110",
+        "DIA-111",
+        "DIA-112",
+        "DIA-133",
+        "DIA-134",
+        "DIA-135",
+        "DIA-136",
+        "DIA-137",
+        "DIA-138",
+        "DIA-139",
+        "DIA-140",
+        "DIA-141",
+        "DIA-142",
+        "DIA-143",
+        "DIA-144",
+        "DIA-145",
+        "DIA-146",
+        "DIA-147",
+        "DIA-148",
+        "DIA-149",
+        "DIA-150",
+        "DIA-151",
+        "DIA-152",
+        "DIA-153",
+        "DIA-198",
+        "DIA-39",
+        "DIA-44",
+        "DIA-49",
+        "DIA-50",
+        "DIA-59",
+        "DIA-71",
+        "FCV-2"
+      ],
+      "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_introspect_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
+          "symbol": "dbspec_introspect_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_introspect-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-42",
+        "DBS-84",
+        "DBS-94",
+        "DIA-110",
+        "DIA-111",
+        "DIA-112",
+        "DIA-133",
+        "DIA-134",
+        "DIA-135",
+        "DIA-136",
+        "DIA-137",
+        "DIA-138",
+        "DIA-139",
+        "DIA-140",
+        "DIA-141",
+        "DIA-142",
+        "DIA-143",
+        "DIA-144",
+        "DIA-145",
+        "DIA-146",
+        "DIA-147",
+        "DIA-148",
+        "DIA-149",
+        "DIA-150",
+        "DIA-151",
+        "DIA-152",
+        "DIA-153",
+        "DIA-198",
+        "DIA-39",
+        "DIA-44",
+        "DIA-49",
+        "DIA-50",
+        "DIA-59",
+        "DIA-71",
+        "FCV-2"
+      ],
+      "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_introspect_test.go",
+          "symbol": "TestRecipeDbspecIntrospectPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
+          "symbol": "dbspec_introspect_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_introspect-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-42",
+        "DBS-84",
+        "DBS-94",
+        "DIA-110",
+        "DIA-111",
+        "DIA-112",
+        "DIA-133",
+        "DIA-134",
+        "DIA-135",
+        "DIA-136",
+        "DIA-137",
+        "DIA-138",
+        "DIA-139",
+        "DIA-140",
+        "DIA-141",
+        "DIA-142",
+        "DIA-143",
+        "DIA-144",
+        "DIA-145",
+        "DIA-146",
+        "DIA-147",
+        "DIA-148",
+        "DIA-149",
+        "DIA-150",
+        "DIA-151",
+        "DIA-152",
+        "DIA-153",
+        "DIA-198",
+        "DIA-39",
+        "DIA-44",
+        "DIA-49",
+        "DIA-50",
+        "DIA-59",
+        "DIA-71",
+        "FCV-2"
+      ],
+      "file": "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_introspect_test.go",
+          "symbol": "TestRecipeDbspecIntrospectSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
+          "symbol": "dbspec_introspect_sqlite"
+        }
+      ]
     },
     {
       "id": "schema_install-mysql",

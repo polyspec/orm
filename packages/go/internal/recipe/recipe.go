@@ -273,7 +273,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkGenerator(t, o.dir, s, database)
 	case "generator.check":
 		return checkGeneratedFiles(o.dir, s)
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.introspect_refusal", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
@@ -1501,6 +1501,8 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		got, err = dbspecDiff(s, bound)
 	case "dbspec.plan_steps":
 		got, err = dbspecPlanSteps(s, bound)
+	case "dbspec.introspect_refusal":
+		got, err = dbspecIntrospectRefusal(s)
 	case "dbspec.add_tables_steps":
 		got, err = dbspecAddTablesSteps(s, bound)
 	case "dbspec.chain":

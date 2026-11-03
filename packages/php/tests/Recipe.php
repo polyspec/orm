@@ -83,7 +83,7 @@ final class Recipe
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
         'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
-        'dbspec.compare',
+        'dbspec.compare', 'dbspec.introspect_refusal',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
@@ -463,6 +463,13 @@ final class Recipe
                 'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
                 'differences' => $result[2],
             ];
+        } elseif ($op === 'dbspec.introspect_refusal') {
+            $got = self::dialectRefusal(
+                $step['dialect'],
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+            );
+            Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+            return;
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -2874,6 +2881,8 @@ final class Recipe
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
+            case 'dbspec.introspect':
+                return RecipeIntrospect::step($s, $context);
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
