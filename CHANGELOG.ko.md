@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 99fc8200697d787c6f0619c4f94cc4c92fe5bf7c744d974d3ad24064f20a5c6d -->
+<!-- source-sha256: f03b53ed90eabb6014da4dabe4c1c836eea5a7910ba08a2d1e2ec04a722d9e5e -->
 # 변경 이력
 
 ## Unreleased
 
+- INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
 - `conformance-generated-methods-check`는 본문 `now_defaults`, `delete_recursive`, `affected_counts`도 그 recipe case의 expect와 비교한다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.

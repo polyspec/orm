@@ -12183,7 +12183,8 @@
         "coverage-request-hook-without-hook",
         "request_hook-mysql",
         "request_hook-postgres",
-        "request_hook-sqlite"
+        "request_hook-sqlite",
+        "request-hook-root-is-the-connection"
       ],
       "fixtures": [
         "contracts/fixtures/request_hook/request_hook.dbs",

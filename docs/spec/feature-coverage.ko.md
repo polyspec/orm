@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 69247757767b384680aebe0a05bd380fc3347304b0112a0236232792cd944607 -->
+<!-- source-sha256: 06f830f7c3bd726b1937dd290e29e743240c49fb65a8c91cab90c2338be06d67 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -14,8 +14,7 @@
   - `dbspec-set-bench`(SCH-1)는 `generator-takes-the-documents-only-from-the-set-file`과 같은 이유로 모든 runtime에서 native로 남는다. 이 단위는 set 파일과 그 언어의 생성 출력으로 bench set을 읽고, `generator.generate`는 schema를 받는다.
   - `generated-external-model-reads-its-table`(DBS-110, DBS-173)는 모든 runtime에서 native로 남는다. 외부 텍스트를 담는 생성 schema 값은 그 언어의 소스이므로, 사용하는 외부 테이블의 모델이 자기 테이블을 읽는다는 것은 그 언어의 생성 모듈을 불러오거나 컴파일해 연결해야만 드러난다.
   - `generated-manifest-text-and-hash-match`(DBS-104, DBS-111, DBS-120)는 모든 runtime에서 native로 남는다. 언어의 생성된 module을 불러오고 manifest와 어긋나는 module을 거부하기 때문이다. `generator` recipe의 `generated-code-carries-the-manifest-hash` 사례가 모든 runtime에서 DBS-103의 hash를 검사한다.
-  - `request-hook-root-is-the-connection`(INT-78)은 Go, TypeScript, Python에서 native로 남는다. `root()`는 그 세 runtime에서만 공개되며 recipe op는 여섯 runtime 모두의 공개 API를 필요로 한다. PHP, PHP extension, Rust는 recipe의 `without_hook` case, 곧 handle이 공유하는 subscriber에 묶는다.
-  - `request-hook-params-are-read-only`(INT-78)는 Go, TypeScript, Python, PHP, PHP extension에서 native로 남는다. hook이 바인딩 값을 바꾸지 못하게 하는 방식은 언어마다 달라 frozen 배열, tuple, 복사본으로 적으므로 recipe 값으로 적을 수 없고, Rust는 hook에 읽기와 추가만 주므로 거부할 쓰기가 없어 recipe의 `reads_params` case에 묶는다.
+  - `request-hook-params-are-read-only`(INT-78)는 모든 runtime에서 native로 남는다. 각 언어는 bind된 값 쓰기를 자기 형식, 곧 frozen array, tuple, 복사본, compiler 오류로 거부하며, `hook.install`의 동작은 매개변수를 읽고 더할 뿐이므로 어떤 recipe step도 그 쓰기를 시도할 수 없다.
   - `dynamic-vs-scanned-model-chain-dispatch`(PLN-40)는 모든 runtime에서 native로 남는다. model의 메서드는 각 언어 source의 scan과 그 dispatch에서 오며 recipe 값이 닿지 않는다.
   - `native-public-package-entry`(INT-138)는 모든 runtime에서 native로 남는다. package 진입점은 그 언어의 packaging, 곧 import 경로와 내보낸 이름이며 FCV-2는 이를 runtime 고유로 다룬다.
   - 생성 메서드를 호출하는 conformance 본문(`terminal_by`, `terminal_reuse`, `relation_empty`, `aes_values`, `hex_malformed`, `empty_reads`, `now_defaults`, `delete_recursive`, `affected_counts`)은 모든 runtime에서 native로 남는다. 생성 메서드는 언어의 source이고 recipe step은 일반 builder를 호출하기 때문이다. `conformance-generated-methods-check`는 recipe `conformance_verification`의 fixture와 seed에서 이 본문을 실행하고 출력을 같은 이름의 case expect와 비교하므로 두 경로가 어긋날 수 없다.

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.
 - `conformance-generated-methods-check` also compares the bodies `now_defaults`, `delete_recursive` and `affected_counts` with the expects of their recipe cases.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.

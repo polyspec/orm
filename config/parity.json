@@ -6091,7 +6091,7 @@
       "id": "request-hook-root-is-the-connection",
       "kind": "feature",
       "requirements": [
-        "INT-78"
+        "INT-78a"
       ],
       "bindings": [
         {
@@ -6108,23 +6108,17 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
-          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
-          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::without_hook"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "request_hook",
+        "parts": [
+          "owner/go",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "request-hook-params-are-read-only",
@@ -6160,8 +6154,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::reads_params"
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::int78-bound-param-write-e0594"
         }
       ]
     },
