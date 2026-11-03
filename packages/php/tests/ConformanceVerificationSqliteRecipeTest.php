@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: PRT-77.
+// Requirements: PRT-77, DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
 // sqlite (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 declare(strict_types=1);

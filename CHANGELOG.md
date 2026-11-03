@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - Go runs the conformance vectors through the recipe conformance_verification and its fixed-clock bodies only: the tagged test `coverage_conformance_verification_test.go`, its helper, `testdb.FeatureDatabase`, the runner `packages/go/testing/feature-json.mts`, the target `feature-go-unit` and the build tag `featurecoverage` are gone (#T334-3-12-2)
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)

@@ -11366,16 +11366,6 @@
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock --test was_inserted"
     },
     {
-      "id": "rust-temp-sqlite-fixture",
-      "paths": [
-        "packages/rust/tests/tests/common/temp_sqlite.rs"
-      ],
-      "tests": [
-        "packages/rust/tests/tests/refusal_before_request.rs"
-      ],
-      "command": "make --no-print-directory temp-sqlite-fixture-rust-helper-check"
-    },
-    {
       "id": "php-database-test-assertions",
       "paths": [
         "packages/php/tests/DatabaseTestAssertions.php",
