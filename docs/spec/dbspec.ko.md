@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: e1ea43420d48b38639832693affc1d2b1859c998c2ac83366c2b18fab8a3b111 -->
+<!-- source-sha256: 4f82f05c1ed985e13c5919f544b779955b0dae6359ea09c44e927089ddad21e3 -->
 # dbspec
 
 [English](dbspec.md)
@@ -534,7 +534,7 @@ make build-php-ext
 php -d extension=var/php-ext/polyspec_orm.so your-script.php
 ```
 
-선언은 `packages/php-ext/src/polyspec_orm.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 이를 읽는다. Native build는 설치된 `gen_stub.php`와 PHP-Parser를 offline으로 temporary source copy에서 실행해 `polyspec_orm_arginfo.h`를 생성하고, `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/polyspec_orm.c`가 등록한다. `make php-ext-arginfo`는 ignored `var/` 아래에 확인용 output을 쓴다. `make dbspec-php-extension-check`는 stub 선언을 확인하고 확장을 실행 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 문서, syntax, statement, plan, Mermaid vector, 변경 문서, 메모리 SQLite database introspection, 실패하는 catalog query, SQLite file의 apply, recover, rollback, finalize script에서 PHP client와 같은 결과, message, exception을 내는지, public class가 PHP client의 public dbspec class와 같은 선언을 가지는지 확인한다. `make dbspec-compare-check`, `make dbspec-introspect-compare-check`, `make dbspec-apply-pairs-check`는 이를 다섯 번째 runner로 실행하고, `make dbspec-introspect-php-extension-check`와 `make dbspec-apply-php-extension-check`는 PHP client의 introspection과 apply test를 MySQL, PostgreSQL, SQLite에서 실행한다.
+선언은 `packages/php-ext/src/polyspec_orm.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 이를 읽는다. Native build는 설치된 `gen_stub.php`와 PHP-Parser를 offline으로 temporary source copy에서 실행해 `polyspec_orm_arginfo.h`를 생성하고, `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/polyspec_orm.c`가 등록한다. `make php-ext-arginfo`는 ignored `var/` 아래에 확인용 output을 쓴다. `make dbspec-php-extension-check`는 stub 선언을 확인하고 확장을 실행 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 문서, syntax, statement, plan, Mermaid vector, 변경 문서, 메모리 SQLite database introspection, 실패하는 catalog query, SQLite file의 apply, recover, rollback, finalize script에서 PHP client와 같은 결과, message, exception을 내는지, public class가 PHP client의 public dbspec class와 같은 선언을 가지는지 확인한다. `make dbspec-compare-check`, `make dbspec-introspect-compare-check`, `make dbspec-apply-pairs-check`는 이를 다섯 번째 runner로 실행하고, `make dbspec-introspect-php-extension-check`와 suite unit `dbspec_apply-*`는 PHP client의 introspection test와 apply recipe를 MySQL, PostgreSQL, SQLite에서 실행한다.
 
 ## 검증
 

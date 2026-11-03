@@ -4,12 +4,21 @@
 
 ## Unreleased
 
+- apply chain, history와 state, lock 범위, finalize, stress plan, pooler는 여섯 런타임의 recipe `dbspec_apply`이며, 각 명령은 이름 있는 연결에서 공개 apply API를 한 번 호출하고, 그 native 시험은 사라졌다.
+- ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
+- Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
+- introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
+- PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
+- constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
+- catalog는 `max_user_connections`가 거부한 연결을 자신의 연결을 닫은 뒤 2초 안에서만 다시 시도하고, Go의 budget 중단은 rollback을 시도하지 않고 `CATALOG_LIMIT`만 보고한다.
+- schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).
+- 행이 없는 effect 질의는 모든 runtime에서 `<query> returned no row`이고(Rust는 `returned 0 rows; want one`이었다), `dbspec.apply_fault` recipe가 그것을 시험하며, native 시험은 없앴다 (#T334-3-18).
+- 서버가 거부한 연결은 모든 클라이언트에서 `DRIVER`다. PHP와 extension은 `CONFIG`를, Rust catalog는 코드 없는 문자열을 보고했다.
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - CR15-F: 공유되는 행 변경 결과(충돌, unique, 강제 변환, 생성 열, 스키마 변경, 외래 키, insert 형태)는 recipe case `row_mutation_lifecycle`이 맡고, Rust 시험은 INT-106a의 phase, 취소, 버려진 커밋만 남긴다.
 - 어떤 시간 형식으로도 읽히지 않는 text를 모델에 쓰면 PHP와 PHP extension은 PRT-67대로 `CODEC_ENCODE`를 돌려준다. 예전에는 `CODEC_DECODE`였다. temporal column의 저장 형식과 그 거부는 recipe `conformance_verification`에서 돌고, PRT-67a는 Go에만 있는 setter 형식을 정한다.
 - introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
-- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
-- Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
 - 수정 시각과 soft delete의 microsecond, now 조건을 모든 runtime에서 recipe `conformance_verification`의 `clock_cell`과 `soft_record`로 돌린다. native 시험은 없앴고 recipe 함수 `seconds_later`를 더했다. TypeScript는 자기 clock source인 `wallMicros`의 시험을 지킨다.
 - 문서: FCV-2가 `ts-dbspec-plan`과 `ts-dbspec-render-dialect`의 Rust compile fixture를 native binding 규칙이 읽는 형식으로 적는다.
 - rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
