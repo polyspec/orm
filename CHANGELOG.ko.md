@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1df0dd30a7ff91d576073bb5b88e097a976b8075b8ccacdad14dfaed7a686db9 -->
+<!-- source-sha256: b0c296d327777fc5276bc9b3e2d578e41c8efc90177a1bbf6cce463a63f5f6e5 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR31에 사실을 적음: PHP 확장은 CatalogColumn::$checkPrecision을 이미 계산하고 선언함.
 - schema 변경 뒤 Rust 재시도는 서버가 추론한 타입으로 문을 parse하고 각 값을 그 타입으로 bind하므로, 컬럼 타입이 바뀐 parameter가 다른 클라이언트처럼 유지된다.
 - 트랜잭션 밖에서 pool로 실행되는 Go 문은 schema 변경 뒤 model 문과 같은 재시도를 하므로 `Aes().Status`가 그 뒤에도 유지된다.
 - schema 변경 이전의 model 문은 Go, Rust, TypeScript, Python에서 트랜잭션 밖이면 `DEALLOCATE ALL`로 시작하는 트랜잭션 하나 안에서 한 번 더 실행된다. 결과 타입이 바뀐 경우와 parameter가 옛 타입을 유지하는 경우 모두 해당하며 CFG-28이 이를 명시한다. Rust catalog의 `query`도 같은 방식으로 재시도하고, `current_namespace`와 `describe_table`은 읽기 전용 session에서 실행된다.
