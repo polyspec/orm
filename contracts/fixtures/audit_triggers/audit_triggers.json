@@ -97,9 +97,19 @@
           "connection": "no_source",
           "steps": [
             {
-              "op": "model.count",
+              "op": "model.update",
               "connection": "no_source",
-              "model": "Audit"
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
             }
           ],
           "audit": {
@@ -124,9 +134,19 @@
           "connection": "bad_source",
           "steps": [
             {
-              "op": "model.count",
+              "op": "model.update",
               "connection": "bad_source",
-              "model": "Audit"
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
             }
           ],
           "audit": {
@@ -151,9 +171,19 @@
           "connection": "failing",
           "steps": [
             {
-              "op": "model.count",
+              "op": "model.update",
               "connection": "failing",
-              "model": "Audit"
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
             }
           ],
           "audit": {},
@@ -174,9 +204,19 @@
           "connection": "db",
           "steps": [
             {
-              "op": "model.count",
+              "op": "model.update",
               "connection": "db",
-              "model": "Audit"
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
             }
           ],
           "audit": {
@@ -215,9 +255,19 @@
               "connection": "db",
               "steps": [
                 {
-                  "op": "model.count",
+                  "op": "model.update",
                   "connection": "db",
-                  "model": "Audit"
+                  "model": "Item",
+                  "key": {
+                    "seq": {
+                      "int": "-1"
+                    }
+                  },
+                  "set": {
+                    "title": {
+                      "text": "none"
+                    }
+                  }
                 }
               ],
               "audit": {
@@ -412,9 +462,19 @@
           "connection": "db",
           "steps": [
             {
-              "op": "model.count",
+              "op": "model.update",
               "connection": "db",
-              "model": "Audit"
+              "model": "Item",
+              "key": {
+                "seq": {
+                  "int": "-1"
+                }
+              },
+              "set": {
+                "title": {
+                  "text": "none"
+                }
+              }
             }
           ],
           "audit": {
@@ -1208,9 +1268,19 @@
               "connection": "db",
               "steps": [
                 {
-                  "op": "model.count",
+                  "op": "model.update",
                   "connection": "db",
-                  "model": "Audit"
+                  "model": "Item",
+                  "key": {
+                    "seq": {
+                      "int": "-1"
+                    }
+                  },
+                  "set": {
+                    "title": {
+                      "text": "none"
+                    }
+                  }
                 }
               ],
               "audit": {
@@ -2199,6 +2269,9 @@
               "text": "red"
             }
           },
+          "order": [
+            "id"
+          ],
           "columns": [
             "id"
           ],
@@ -2262,7 +2335,6 @@
                 "team_id",
                 "member_id",
                 "note",
-                "audit_seq",
                 "deleted_at"
               ],
               "expect": {
@@ -2280,9 +2352,6 @@
                       },
                       {
                         "text": "n2"
-                      },
-                      {
-                        "int": "4"
                       },
                       {
                         "null": "datetime"
@@ -2306,9 +2375,6 @@
                         "text": "n2"
                       },
                       {
-                        "int": "4"
-                      },
-                      {
                         "null": "datetime"
                       }
                     ]
@@ -2328,9 +2394,6 @@
                       },
                       {
                         "text": "n2"
-                      },
-                      {
-                        "int": "3"
                       },
                       {
                         "null": "datetime"
@@ -2365,6 +2428,39 @@
           }
         },
         {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.actor FROM membership m JOIN audit a ON a.seq = m.audit_seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
           "op": "transaction",
           "connection": "db",
           "steps": [
@@ -2385,7 +2481,6 @@
                 "team_id",
                 "member_id",
                 "note",
-                "audit_seq",
                 "deleted_at"
               ],
               "expect": {
@@ -2403,9 +2498,6 @@
                       },
                       {
                         "text": "n2"
-                      },
-                      {
-                        "int": "4"
                       },
                       {
                         "null": "datetime"
@@ -2429,9 +2521,6 @@
                         "text": "n2"
                       },
                       {
-                        "int": "4"
-                      },
-                      {
                         "null": "datetime"
                       }
                     ]
@@ -2451,9 +2540,6 @@
                       },
                       {
                         "text": "n2"
-                      },
-                      {
-                        "int": "3"
                       },
                       {
                         "null": "datetime"
@@ -2484,6 +2570,39 @@
               "value": {
                 "bool": true
               }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT a.actor FROM membership m JOIN audit a ON a.seq = m.audit_seq",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "restore"
+                  }
+                ]
+              ]
             }
           }
         },
@@ -3019,6 +3138,9 @@
               "text": "keep"
             }
           },
+          "order": [
+            "id"
+          ],
           "expect": {
             "mysql": {
               "json": [
@@ -3055,6 +3177,9 @@
               "text": "gone"
             }
           },
+          "order": [
+            "id"
+          ],
           "expect": {
             "mysql": {
               "json": []
@@ -3147,7 +3272,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?"
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ? ORDER BY `a`.`id` ASC"
                         }
                       ],
                       [
@@ -3163,7 +3288,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?"
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ? ORDER BY `a`.`id` ASC"
                         }
                       ],
                       [
@@ -3249,7 +3374,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1"
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1 ORDER BY \"a\".\"id\" ASC"
                         }
                       ],
                       [
@@ -3265,7 +3390,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1"
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1 ORDER BY \"a\".\"id\" ASC"
                         }
                       ],
                       [
@@ -3351,7 +3476,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ?"
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ? ORDER BY \"a\".\"id\" ASC"
                         }
                       ],
                       [
@@ -3367,7 +3492,7 @@
                       [
                         "sql",
                         {
-                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ?"
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ? ORDER BY \"a\".\"id\" ASC"
                         }
                       ],
                       [

@@ -59,6 +59,8 @@ export function runRecipe(path, database) {
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
@@ -73,10 +75,15 @@ export function runRecipe(path, database) {
   }
 }
 
-// connectDriver opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+// connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+// driver: the one implementation of dsn.connect (FCV-4).
 async function connectDriver(dsn) {
   const db = await Db.connect(dsn);
   try {
+    const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
+    if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
+      throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
     return db.driver;
   } finally {
     await db.close();
@@ -594,6 +601,10 @@ const OPS = {
   },
   async 'catalog.row_snapshot'(s, context) {
     const page = s.page_with === undefined ? stepArgument(s.page, context) : { ...bound(s.page_with.page.ref, context), orderBy: s.page_with.order_by };
+    if (s.page_with?.column_name !== undefined) {
+      const [first, ...rest] = page.metadata.columns;
+      page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
   },
@@ -631,9 +642,10 @@ const OPS = {
       await nativeQuery(context.database, context.dsn, [statement]);
       return {};
     }
-    // Any driver error of the refused statement passes.
-    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => false, () => true);
-    if (!refused) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    // Any driver error of the refused statement passes, unless the step names its text.
+    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => null, error => error);
+    if (refused === null) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    if (s.refused_message !== undefined && !refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the database refused the statement for another reason: ${refused.message}`);
     return {};
   },
   // The request hook and AES ops of FCV-4 (T334-3-4): each calls the public API of the same name on a bound connection.
@@ -1676,6 +1688,17 @@ Object.assign(OPS, {
     refOf(s.ref, context).stop();
     return {};
   },
+  // utils.run (FCV-4, INT-150): one Utils.run whose function runs the statements in order on its frame; the value is the rows of the last.
+  async 'utils.run'(s, context) {
+    const result = await connectionOf(s, context).utils().run(async frame => {
+      let last = { rows: [] };
+      for (const statement of s.statements) {
+        last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
+      }
+      return last;
+    });
+    return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
@@ -1995,6 +2018,53 @@ async function checkSend(step, wrappedExpect) {
     if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
+}
+
+// checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,
+// INT-130).
+function checkKeyring(step, database) {
+  const expect = step.expect[database];
+  let keyring;
+  try {
+    keyring = aesKeyring(step.keyring);
+  } catch (error) {
+    if (expect.error !== undefined && error instanceof OrmError && error.code === expect.error) return;
+    throw error;
+  }
+  if (expect.error !== undefined) throw new Error(`the keyring was built, want ${expect.error}`);
+  if (keyring.currentVersion !== expect.current) throw new Error(`current version ${keyring.currentVersion}, want ${expect.current}`);
+  if (JSON.stringify(keyring.versions()) !== JSON.stringify(expect.versions)) throw new Error(`versions ${JSON.stringify(keyring.versions())}, want ${JSON.stringify(expect.versions)}`);
+}
+
+// checkBuilder runs a markdown.builder step: the builder calls on the slots model, then getCount, on the markdown.send listener. The
+// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+async function checkBuilder(step, database) {
+  const received = [];
+  const server = await startMarkdownSendListener(received);
+  let db;
+  let callError;
+  try {
+    db = await connectSlots(server.dsn);
+    let model = new Slots().connect(db);
+    for (const call of step.calls) {
+      if (call === 'limit_zero_count') model = model.limit(0, 0);
+      else if (call === 'limit_negative_offset') model = model.limit(-1, 1);
+      else if (call === 'empty_i64_list') model = model.i64Value([]);
+      else if (call === 'empty_varchar_list') model = model.varcharValue([]);
+      else throw new Error(`markdown.builder call ${call} has no builder call in the TypeScript cases`);
+    }
+    await model.getCount();
+  } catch (error) {
+    callError = error;
+  } finally {
+    if (db !== undefined) await db.close();
+    await server.close();
+  }
+  if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
+  const expect = step.expect[database];
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  }
 }
 
 // checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a

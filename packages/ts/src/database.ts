@@ -215,7 +215,14 @@ export class TxFrame {
    * runs in this transaction and never opens one. Transaction control statements (COMMIT, ROLLBACK, savepoints) use it too,
    * and a test statement fault is not consumed by them. Returns the statement result with its rows (INT-150).
    */
-  public run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
+  public async run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
+    if (typeof sql !== 'string') throw new OrmError(codes.CONFIG, 'a statement must be text');
+    if (this.finished) throw new OrmError(codes.CONFIG, 'transaction already finished');
+    return this.control(kind, tables, sql, params);
+  }
+
+  /** @internal Sends a statement with no check of the frame: the end of a transaction sends its COMMIT or ROLLBACK after it marks the frame finished. */
+  public control(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params));
   }
 
@@ -1037,7 +1044,7 @@ export class Db {
       // The cleanup statement that restores settings and releases locks does not consume the test fault (protocol 3.2).
       const attempt = async (sql: string, params: readonly DriverValue[] = []): Promise<DriverResult | undefined> => {
         try {
-          return await frame.run('utility', [], sql, params);
+          return await frame.control('utility', [], sql, params);
         } catch (error) { errors.push(error); return undefined; }
       };
       if (this.driver === 'sqlite') {
@@ -1059,7 +1066,7 @@ export class Db {
       if (errors.some(error => !subscriberError(error))) discard = true;
       if (commit && failure === undefined) {
         try {
-          await frame.run('commit', [], 'COMMIT');
+          await frame.control('commit', [], 'COMMIT');
           return;
         } catch (error) {
           // A COMMIT whose subscriber failed has been committed.
@@ -1067,14 +1074,14 @@ export class Db {
           // A failed COMMIT may already have ended the transaction. SQLite rolls back only when it is open, so
           // the database closes a session whose state is unknown.
           if (session.inTransaction?.() === true) {
-            try { await frame.run('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
+            try { await frame.control('rollback', [], codes.ROLLBACK); } catch (rollback) { throw rollbackFailed(error, rollback); }
           } else if (this.driver !== 'sqlite') discard = true;
           throw error;
         }
       }
       try {
         // SQLite may have rolled the transaction back by itself after an error (INT-155); then there is nothing to roll back.
-        if (this.driver !== 'sqlite' || session.inTransaction?.() !== false) await frame.run('rollback', [], codes.ROLLBACK);
+        if (this.driver !== 'sqlite' || session.inTransaction?.() !== false) await frame.control('rollback', [], codes.ROLLBACK);
       } catch (rollback) {
         if (!subscriberError(rollback)) discard = true;
         if (commit) throw rollbackFailed(failure, rollback);
@@ -1611,6 +1618,18 @@ async function writeStep(ex: Executor, request: Request, params: readonly unknow
     const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
     return { key, affected: upsert ? 1 : result.affected };
   });
+}
+
+/** One statement of a plan: role is main, count or relation, tables are the tables that it reads. */
+export interface QueryPlanStep { role: string; tables: string[]; sql: string; }
+
+/** Returns the steps of the plan of a page request, from the plan call that paginate runs. */
+export async function pagePlanSteps(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<QueryPlanStep[]> {
+  ex.db.unsupportedOnMarkdown('getPagePlanSteps');
+  const { request } = hooked(ex, given, givenParams);
+  checkLock(ex, request);
+  const cached = await ex.db.plan(request);
+  return cached.plan.steps.map(step => ({ role: step.role, tables: [...step.tables], sql: step.sql }));
 }
 
 /** Returns the statement of a select request without executing it. */

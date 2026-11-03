@@ -1,7 +1,7 @@
 import { CORE, Core, RowState, configError, integerRanges, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encodeStyled } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
+import { Db, keyOfValues, keyText, keyValue, pagePlanSteps, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type QueryPlanStep, type Result } from './database.js';
 import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
@@ -166,6 +166,11 @@ export abstract class Model implements ModelLike {
   public async getsPage(page: number, perPage: number): Promise<Page<this>> {
     const found = await pageOf(this[CORE], page, perPage);
     return { ...found, items: collectionOf(this, found.items) };
+  }
+  /** Returns the steps of the plan that getsPage runs, in their order, without executing it. */
+  public async getPagePlanSteps(page: number, perPage: number): Promise<QueryPlanStep[]> {
+    const { ex, r } = pageRequest(this[CORE], page, perPage);
+    return pagePlanSteps(ex, r.finish(), r.params);
   }
   /** Returns the statement of gets() without executing it. */
   public async getQuery(): Promise<{ sql: string; binds: unknown[] }> {
@@ -608,7 +613,8 @@ export function aggregateNumber(value: unknown): number {
   return number;
 }
 
-async function pageOf(c: Core, page: number, perPage: number): Promise<Page> {
+/** The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps. */
+function pageRequest(c: Core, page: number, perPage: number) {
   if (!Number.isSafeInteger(page) || !Number.isSafeInteger(perPage) || page < 1 || perPage < 1) throw configError('getsPage requires a positive page and perPage');
   if (c.limit) throw configError('getsPage cannot be combined with limit');
   const ex = terminal(c);
@@ -616,6 +622,11 @@ async function pageOf(c: Core, page: number, perPage: number): Promise<Page> {
   q.limit = { offset: (page - 1) * perPage, count: perPage };
   const r = q.build('paginate');
   if (r.error) throw r.error;
+  return { ex, q, r };
+}
+
+async function pageOf(c: Core, page: number, perPage: number): Promise<Page> {
+  const { ex, q, r } = pageRequest(c, page, perPage);
   const { result, total } = await paginate(ex, r.finish(), r.params);
   const items = await assemble(q, ex, r.external, result);
   return { items, totalCount: total, totalPages: Math.ceil(total / perPage), page, perPage };

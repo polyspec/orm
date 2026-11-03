@@ -208,17 +208,29 @@ fail:
     zval_ptr_dtor(out);ZVAL_UNDEF(out);return false;
 }
 
+/* An OrmException of a condition value is the error of the builder call: the model records the first one and the terminal
+   returns it before it sends a statement (INT-88). Any other pending exception stays pending. */
+static bool keep_builder_error(model_state *s)
+{
+    zend_object *pending=EG(exception);
+    if(pending==NULL||!zend_string_equals_literal(pending->ce->name,"Polyspec\\Orm\\OrmException"))return false;
+    zval *error=prop(s,"error");
+    if(Z_TYPE_P(error)==IS_NULL){GC_ADDREF(pending);ZVAL_OBJ(error,pending);}
+    zend_clear_exception();
+    return true;
+}
+
 bool model_dsl_where_chain(zval *model,zend_string *conn,zval *keys,zval *args)
 {
     model_state *s=model_state_of(Z_OBJ_P(model));uint32_t key_count=zend_hash_num_elements(Z_ARRVAL_P(keys)),arg_index=0;
     for(uint32_t i=0;i<key_count;i++){
         zval *key=zend_hash_index_find(Z_ARRVAL_P(keys),i),*value=zend_hash_index_find(Z_ARRVAL_P(args),arg_index++);
-        if(!value){zend_string *m=strpprintf(0,"the condition expects %u values",key_count);throw_orm("CONFIG",ZSTR_VAL(m));zend_string_release(m);return false;}
+        if(!value){zend_string *m=strpprintf(0,"the condition expects %u values",key_count);model_native_fail(s,ZSTR_VAL(m));zend_string_release(m);return true;}
         zval rest;array_init(&rest);for(uint32_t j=arg_index;j<zend_hash_num_elements(Z_ARRVAL_P(args));j++){zval *rest_value=zend_hash_index_find(Z_ARRVAL_P(args),j);if(rest_value){zval copy;ZVAL_COPY(&copy,rest_value);add_next_index_zval(&rest,&copy);}}
-        zval pred;zend_long extra=0;bool valid=predicate_build(model,key,value,&rest,key_count==1,&pred,&extra);zval_ptr_dtor(&rest);if(!valid)return false;arg_index+=(uint32_t)extra;
+        zval pred;zend_long extra=0;bool valid=predicate_build(model,key,value,&rest,key_count==1,&pred,&extra);zval_ptr_dtor(&rest);if(!valid)return keep_builder_error(s);arg_index+=(uint32_t)extra;
         zval node;array_init(&node);add_assoc_zval(&node,"pred",&pred);zval *kc=at(key,"conn");zend_string *use=i==0?conn:(kc&&Z_TYPE_P(kc)==IS_STRING?Z_STR_P(kc):ZSTR_EMPTY_ALLOC());if(!add_item(s,use,&node)){if(EG(exception)==NULL)model_native_fail(s,"failed to append condition");return false;}
     }
-    if(arg_index!=zend_hash_num_elements(Z_ARRVAL_P(args))){zend_string *m=strpprintf(0,"the condition expects %u values, got %u",key_count,zend_hash_num_elements(Z_ARRVAL_P(args)));throw_orm("CONFIG",ZSTR_VAL(m));zend_string_release(m);return false;}return true;
+    if(arg_index!=zend_hash_num_elements(Z_ARRVAL_P(args))){zend_string *m=strpprintf(0,"the condition expects %u values, got %u",key_count,zend_hash_num_elements(Z_ARRVAL_P(args)));model_native_fail(s,ZSTR_VAL(m));zend_string_release(m);}return true;
 }
 
 PHP_METHOD(Polyspec_Orm_Model,prefixed)

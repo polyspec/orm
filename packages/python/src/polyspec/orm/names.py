@@ -222,6 +222,18 @@ def _split_with(e: Entity, ws) -> list | None:
     return out
 
 
+def _operator_problem(e: Entity, c: Field, op: str) -> str | None:
+    """Why the leading operator op is not accepted on the column c, or None (DSL-37)."""
+    allowed = op_allowed(c, _ENGINE_OPS[op])
+    if op in ("", "ne"):
+        allowed = allowed or op_allowed(c, "is_null")
+    if op in ("gt", "lt", "ge", "le", "") and function_column(c):
+        allowed = True
+    if allowed:
+        return None
+    return f"{e.name}.{c.name} does not accept the {op or 'equality'} operator"
+
+
 def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
     if not ws:
         raise OrmError(codes.CONFIG, "a condition key is empty")
@@ -275,7 +287,11 @@ def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
         else:
             column = index.get("".join(ws[1:]))
             if column is not None:
-                candidates.append(ChainKey(op=op, column=column))
+                problem = _operator_problem(e, fields[column], op)
+                if problem is None:
+                    candidates.append(ChainKey(op=op, column=column))
+                else:
+                    errors.append(problem)
     if ws[0] == "Tuple":
         columns = _split_with(e, ws[1:])
         if columns and len(columns) >= 2:
@@ -389,6 +405,7 @@ RESERVED_SEGMENTS = frozenset(
         "lk",
         "lb",
         "between",
+        "fulltext",
         "tuple",
     }
 )
@@ -413,6 +430,7 @@ RESERVED_PREFIXES = frozenset(
         "lk",
         "lb",
         "between",
+        "fulltext",
     }
 )
 RESERVED_COLUMNS = frozenset(
@@ -423,6 +441,7 @@ RESERVED_COLUMNS = frozenset(
         "get",
         "gets",
         "gets_page",
+        "get_page_plan_steps",
         "get_query",
         "limit",
         "alias",

@@ -389,7 +389,6 @@ final class OrmExceptionNativeTest extends TestCase
     {
         $ring = new AesKeyring([2 => 'new secret', 1 => 'old secret'], 2);
         Assert::assertSame(2, $ring->currentVersion);
-        Assert::assertSame([1, 2], $ring->versions());
         Assert::assertSame('old secret', $ring->key(1));
         Assert::assertSame(17, AesKeyring::storedVersion('017'));
 

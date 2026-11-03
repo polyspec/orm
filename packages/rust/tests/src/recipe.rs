@@ -124,14 +124,19 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
     }
 }
 
-/// Opens a DSN with Db::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
-/// A refused DSN returns its error code and message.
+/// Opens a DSN with Db::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its driver:
+/// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
 async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
     match polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await {
         Ok(db) => {
             let driver = db.driver().to_owned();
+            let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
             db.close().await;
-            Ok(driver)
+            match answer {
+                Ok(rows) if matches!(rows.as_slice(), [row] if matches!(row.as_slice(), [Val::I64(1)])) => Ok(driver),
+                Ok(rows) => Err(("STEP".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
+                Err(error) => Err((error.code().to_owned(), error.to_string())),
+            }
         }
         Err(error) => Err((error.code().to_owned(), error.to_string())),
     }
@@ -158,10 +163,56 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,
+/// INT-130), against the expect of `database`.
+fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
+    let expect = &step["expect"][database];
+    let versions = step["keyring"]["versions"].as_object().ok_or("the keyring has no versions")?;
+    let mut keys = std::collections::BTreeMap::new();
+    for (version, key) in versions {
+        keys.insert(version.parse::<i32>().map_err(|error| error.to_string())?, key.as_str().ok_or("a key is not a text")?.to_owned());
+    }
+    let current = step["keyring"]["current"].as_i64().ok_or("the keyring has no current version")?;
+    let current = i32::try_from(current).map_err(|error| error.to_string())?;
+    match (polyspec_orm::AesKeyring::new(keys, current), expect["error"].as_str()) {
+        (Err(error), Some(code)) if error.code() == code => Ok(()),
+        (Err(error), _) => Err(format!("the keyring returned {error}, want {expect}")),
+        (Ok(_), Some(code)) => Err(format!("the keyring was built, want {code}")),
+        (Ok(keyring), None) => {
+            let got = json!({ "current": keyring.current(), "versions": keyring.versions() });
+            if &got == expect {
+                Ok(())
+            } else {
+                Err(format!("keyring {got}, want {expect}"))
+            }
+        }
+    }
+}
+
+/// The markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the listener of markdown.send. The
+/// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
+    let calls: Vec<String> = step["calls"].as_array().ok_or("the step has no calls")?.iter().filter_map(|call| call.as_str().map(str::to_owned)).collect();
+    let listener = markdown::send_listener();
+    let result = call_on_connection(listener.dsn.clone(), Call::Builder(calls));
+    if let Some(message) = listener.finish() {
+        return Err(format!("the terminal sent {message} before its error"));
+    }
+    let expect = &step["expect"][database];
+    let (code, contains) = (expect["error"].as_str().unwrap_or_default(), expect["message_contains"].as_str().unwrap_or_default());
+    match result {
+        Err(error) if error.code() == code && error.to_string().contains(contains) => Ok(()),
+        Err(error) => Err(format!("the terminal returned {error}, want {code} with {contains}")),
+        Ok(()) => Err(format!("the terminal returned no error, want {code}")),
+    }
+}
+
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "keyring.versions" => return keyring_versions(step, database),
+        "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
@@ -1196,6 +1247,8 @@ enum Sent {
 enum Call {
     Send(SendStep),
     Assign(String),
+    /// The builder calls of a markdown.builder step, by name.
+    Builder(Vec<String>),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -1373,6 +1426,18 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                 let result = match &call {
                     Call::Send(send) => send.call(&db).await,
                     Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
+                    Call::Builder(calls) => {
+                        let mut model = bind_model::Slots::new().connect(&db);
+                        for call in calls {
+                            model = match call.as_str() {
+                                "limit_zero_count" => model.limit(0, 0),
+                                "empty_i64_list" => model.i64_value(Vec::<i64>::new()),
+                                "empty_varchar_list" => model.varchar_value(Vec::<String>::new()),
+                                other => panic!("markdown.builder call {other} has no builder call in the Rust cases"),
+                            };
+                        }
+                        model.get_count().await.map(drop)
+                    }
                 };
                 db.close().await;
                 result
@@ -2490,6 +2555,35 @@ mod database {
                 subscription.unsubscribe();
                 Output::fields(json!({}))
             }
+            // utils.run (FCV-4, INT-150): one Utils::run whose function runs the statements in order on its frame; the value is
+            // the rows of the last.
+            "utils.run" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let mut statements = Vec::new();
+                for statement in step["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
+                    let kind = statement["kind"].as_str().ok_or_else(|| fault("a statement of utils.run names no kind".into()))?;
+                    let tables: Vec<&str> = statement["tables"].as_array().map(|names| names.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+                    let sql = sql_field(&statement["sql"], context).map_err(fault)?;
+                    let mut params = Vec::new();
+                    for raw in statement["params"].as_array().map(Vec::as_slice).unwrap_or_default() {
+                        params.push(super::tables::param(raw).map_err(fault)?);
+                    }
+                    statements.push((kind, tables, sql, params));
+                }
+                let rows = db
+                    .utils()
+                    .run(async |frame| {
+                        let mut last = Vec::new();
+                        for (kind, tables, sql, params) in &statements {
+                            last = frame.run(kind, tables, sql, params).await?;
+                        }
+                        Ok(last)
+                    })
+                    .await
+                    .map_err(orm)?;
+                let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
+                Output::fields(json!({ "value": { "array": rows } }))
+            }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
@@ -2592,6 +2686,9 @@ mod database {
                         let Bound::Page(page, _) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                         let mut page = page.clone();
                         page.order_by = strings(&with["order_by"]).map_err(fault)?;
+                        if let Some(name) = with["column_name"].as_str() {
+                            page.metadata.columns[0].name = name.to_owned();
+                        }
                         Some(page)
                     }
                     None => None,
@@ -2650,8 +2747,14 @@ mod database {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
                     if step["refused"].as_bool() == Some(true) {
-                        if done.is_ok() {
-                            return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}")));
+                        match done {
+                            Ok(_) => return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}"))),
+                            Err(error) => {
+                                let text = step["refused_message"].as_str().unwrap_or_default();
+                                if !error.to_lowercase().contains(text) {
+                                    return Err(fault(format!("the database refused the statement for another reason: {error}")));
+                                }
+                            }
                         }
                     } else {
                         done.map_err(Failure::Call)?;
@@ -3011,7 +3114,7 @@ mod statement {
     use std::collections::HashMap;
     use std::sync::Mutex;
 
-    use polyspec_orm::{Param, StatementEvent};
+    use polyspec_orm::{Param, StatementEvent, Val};
     use serde_json::{json, Value};
 
     /// The events that a recording subscriber received: each with whether it names a table, and its wrapper.
@@ -3025,6 +3128,17 @@ mod statement {
         /// The recorded events; with `tables_only`, the ones that name a table.
         pub(super) fn captured(&self, tables_only: bool) -> Vec<Value> {
             self.records.iter().filter(|(named, _)| !tables_only || *named).map(|(_, e)| e.clone()).collect()
+        }
+    }
+
+    /// The recipe wrapper of one cell of a statement result of the frame (INT-150).
+    pub(super) fn cell_wrapper(cell: &Val) -> Value {
+        match cell {
+            Val::Null => json!({ "null": true }),
+            Val::I64(n) => json!({ "int": n.to_string() }),
+            Val::F64(f) => json!({ "float": f.to_string() }),
+            Val::Str(text) => json!({ "text": text }),
+            other => panic!("the statement recipe has no wrapper for the cell {other:?}"),
         }
     }
 
@@ -4146,7 +4260,7 @@ mod tables {
     }
 
     /// The recipe value of a column: the parameter of its wrapper.
-    fn param(wrapper: &Value) -> Result<Param, String> {
+    pub(super) fn param(wrapper: &Value) -> Result<Param, String> {
         let (kind, body) = super::kind(wrapper)?;
         Ok(match kind {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),

@@ -111,12 +111,12 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
 });
 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
-  // The coverage of schema_definition renders audit.dbs from contracts/fixtures/schema_definition.json.
+  // The coverage of schema_definition renders audit.dbs from tests/dbspec/schema-definition.json.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
   assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations']);
   const [first] = owners;
   assert.ok(first);
-  assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
+  assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by tests/dbspec/schema-definition.json)']);
   // The Rust send tests are a declared input of transaction-end-rust; they are not inputs to interface extraction.
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust']);
 });
@@ -237,7 +237,7 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   const selectedTargets = targets(selectTargets(inputs, t42));
   assert.deepEqual(selectedTargets, ['typescript-build-unit-check', 'comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check',
     'statement-events-check/rust', 'statement-events-check/go', 'statement-events-check/typescript', 'statement-events-check/python', 'statement-events-check/php',
-    'statement-events-check/php-extension', 'catalog-php-extension-surface-check']);
+    'statement-events-check/php-extension', 'php-package-entry-check', 'catalog-php-extension-surface-check', 'recipe-runners-check']);
   for (const target of selectedTargets) assert.notEqual(inputs[target]?.scope, 'suite', `${target} is a full-suite target`);
   const runtimes = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'];
   const nativeTargets = runtimes.flatMap(runtime => [
@@ -346,7 +346,7 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
-  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check', 'generated-lint-check']);
+  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check', 'generated-lint-check', 'recipe-runners-check']);
 });
 
 // The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).

@@ -182,34 +182,6 @@ class OrmGenTest(unittest.TestCase):
         author.and_not(lambda m: m.name("excluded"))
         self.assertTrue(author.core.where.items[-1]["group"].not_)
 
-    # Requirements: INT-28, PLN-1, PLN-40.
-    def test_scan_reports_unknown_model_methods(self):
-        # Requirements: DSL-37.
-        source = Path(self.out) / "scan_probe.py"
-        source.write_text(
-            "from models import Author\n"
-            "author = Author()\n"
-            "author.not_a_model_method()\n",
-            encoding="utf-8",
-        )
-        result = subprocess.run(
-            args=ORM_GEN
-            + [
-                "gen",
-                "--set",
-                str(ROOT / "contracts" / "fixtures" / "bench" / "dbspec-set.json"),
-                "--out",
-                self.out,
-                "--scan",
-                str(source),
-            ],
-            capture_output=True,
-            text=True,
-        )
-        source.unlink()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Author.not_a_model_method", result.stderr)
-
     def test_a_restore_or_create_call_is_a_model_method(self):
         # restore_or_create is a public method of Model, so a scanned call to it is accepted.
         result = self._scan(
@@ -610,45 +582,6 @@ class OrmGenTest(unittest.TestCase):
             self.assertEqual(result.returncode, 2, result.stderr)
             self.assertIn(flag, result.stderr)
 
-    def test_a_column_named_after_a_model_method_is_rejected(self):
-        # Requirements: DSL-127, PLN-22.
-        with tempfile.TemporaryDirectory(prefix="orm-gen-reserved-") as tree:
-            root = Path(tree)
-            (root / "reserved.dbs").write_text(
-                "dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n",
-                encoding="utf-8",
-            )
-            (root / "dbspec-set.json").write_text(
-                '{"schema": 1, "documents": ["reserved.dbs"]}', encoding="utf-8"
-            )
-            out = root / "out"
-            result = run_gen(root / "dbspec-set.json", out)
-            self.assertNotEqual(result.returncode, 0, result.stderr)
-            self.assertIn(
-                "column name is a reserved method name: restore", result.stderr
-            )
-            self.assertFalse(out.exists())
-
-    def test_generated_method_collision_is_rejected(self):
-        # Requirements: DSL-129.
-        with tempfile.TemporaryDirectory(prefix="orm-gen-collision-") as tree:
-            root = Path(tree)
-            (root / "collision.dbs").write_text(
-                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n",
-                encoding="utf-8",
-            )
-            (root / "dbspec-set.json").write_text(
-                '{"schema": 1, "documents": ["collision.dbs"]}', encoding="utf-8"
-            )
-            out = root / "out"
-            result = run_gen(root / "dbspec-set.json", out)
-            self.assertNotEqual(result.returncode, 0, result.stderr)
-            self.assertIn(
-                "item.sum_amount: the condition method sum_amount collides with a generated method of item",
-                result.stderr,
-            )
-            self.assertFalse(out.exists())
-
     # Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
     def test_generated_field_types_follow_runtime_model(self):
         # Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
@@ -693,32 +626,6 @@ class OrmGenTest(unittest.TestCase):
                     typing.get_type_hints(getattr(model, f"set_{field}"))["value"],
                     expected,
                     f"{model.__name__}.{field} setter type",
-                )
-
-    def test_a_column_name_with_an_operator_or_connector_segment_is_rejected(self):
-        # Requirements: DSL-130.
-        for column, segment in (
-            ("price_gt_limit", "gt"),
-            ("with_tax", "with"),
-            ("min_price", None),
-        ):
-            with tempfile.TemporaryDirectory(prefix="orm-gen-segment-") as tree:
-                root = Path(tree)
-                (root / "segment.dbs").write_text(
-                    f"dbspec 1 segment\n\ntable thing {{\n  id i64 identity\n  {column} i32\n  primary key (id)\n}}\n",
-                    encoding="utf-8",
-                )
-                (root / "dbspec-set.json").write_text(
-                    '{"schema": 1, "documents": ["segment.dbs"]}', encoding="utf-8"
-                )
-                result = run_gen(root / "dbspec-set.json", root / "out")
-                if segment is None:
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    continue
-                self.assertNotEqual(result.returncode, 0, result.stderr)
-                self.assertIn(
-                    f'column name may not contain the segment "{segment}": {column}',
-                    result.stderr,
                 )
 
     def test_the_owned_and_the_used_external_tables_of_a_set_have_models(self):

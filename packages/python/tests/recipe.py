@@ -153,6 +153,12 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
                     continue
+                if step["op"] == "keyring.versions":
+                    _keyring_versions(step, database)
+                    continue
+                if step["op"] == "markdown.builder":
+                    _markdown_builder(step, database)
+                    continue
                 if step["op"] in _DBSPEC_FILE_OPS:
                     _dbspec_files(step, ROOT / Path(path).parent, database)
                     continue
@@ -887,6 +893,70 @@ def _send(step: dict, call=None) -> None:
         )
 
 
+def _keyring_versions(step: dict, database: str) -> None:
+    """Runs the keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions
+    (INT-74, INT-130), against the expect of database."""
+    expect = step["expect"][database]
+    try:
+        keyring = _keyring(step["keyring"])
+    except OrmError as error:
+        if error.code != expect.get("error"):
+            raise AssertionError(f"the keyring returned {error}, want {expect}") from error
+        return
+    if "error" in expect:
+        raise AssertionError(f"the keyring was built, want {expect['error']}")
+    if keyring.current_version != expect["current"] or keyring.versions() != expect["versions"]:
+        raise AssertionError(
+            f"current {keyring.current_version}, versions {keyring.versions()}, want {expect}"
+        )
+
+
+def _markdown_builder(step: dict, database: str) -> None:
+    """Runs the markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the markdown.send listener.
+    The terminal returns the first recorded error before it sends a message (INT-88, INT-89)."""
+    received: list = []
+    listener, thread = _start_send_listener(received)
+    caught = None
+    db = None
+    try:
+        models = _bind_models()
+        db = models.connect(
+            f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
+        )
+        model = models.Slots().connect(db)
+        try:
+            for call in step["calls"]:
+                if call == "limit_zero_count":
+                    model = model.limit(0, 0)
+                elif call == "limit_negative_offset":
+                    model = model.limit(-1, 1)
+                elif call == "empty_i64_list":
+                    model = model.i64_value([])
+                elif call == "empty_varchar_list":
+                    model = model.varchar_value([])
+                else:
+                    raise AssertionError(
+                        f"markdown.builder call {call} has no builder call in the Python cases"
+                    )
+            model.get_count()
+        except OrmError as error:
+            caught = error
+    finally:
+        if db is not None:
+            db.close()
+        listener.close()
+        thread.join(5)
+    if received:
+        raise AssertionError(f"the terminal sent {received[0]} before its error")
+    expect = step["expect"][database]
+    if (
+        caught is None
+        or caught.code != expect["error"]
+        or expect["message_contains"] not in str(caught)
+    ):
+        raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
+
+
 # The chain method prefix of each operator of markdown.send (DSL-50).
 OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
 
@@ -1260,9 +1330,13 @@ def _validate(step: dict, model: Any, database: str) -> None:
 
 
 def _connect_driver(dsn: str) -> str:
-    """Opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4)."""
+    """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+    driver: the one implementation of dsn.connect (FCV-4)."""
     db = Db.connect(dsn)
     try:
+        rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
+        if [[int(cell) for cell in row] for row in rows] != [[1]]:
+            raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
         return db.driver
     finally:
         db.close()
@@ -1861,6 +1935,14 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
     if "page_with" in step:
         bound = _bound(step["page_with"]["page"]["ref"], context)
         page = dataclasses.replace(bound, order_by=step["page_with"]["order_by"])
+        if "column_name" in step["page_with"]:
+            first = dataclasses.replace(
+                page.metadata.columns[0], name=step["page_with"]["column_name"]
+            )
+            columns = [first, *page.metadata.columns[1:]]
+            page = dataclasses.replace(
+                page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
     else:
         page = _step_argument(step["page"], context)
     snapshot = context["catalog"].row_snapshot_from_page(page, step["index"])
@@ -1904,7 +1986,12 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
         return {}
     try:
         native_query(context["database"], context["dsn"], [statement])
-    except Exception:  # noqa: BLE001 - any driver error of the refused statement
+    except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+        text = step.get("refused_message", "")
+        if text not in str(error).lower():
+            raise AssertionError(
+                f"the database refused the statement for another reason: {error}"
+            ) from error
         return {}
     raise AssertionError(
         f"the database accepted the statement that the step expects it to refuse: {statement}"
@@ -2538,6 +2625,32 @@ def _op_events_stop(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_utils_run(step: dict, context: dict) -> dict:
+    """utils.run (FCV-4, INT-150): one utils().run whose function runs the statements in order on its frame; the value is
+    the rows of the last."""
+
+    def run(frame):
+        last = {"rows": []}
+        for statement in step["statements"]:
+            last = frame.run(
+                _sql(statement["sql"], context),
+                [_to_value(raw) for raw in statement.get("params", [])],
+                kind=statement["kind"],
+                tables=statement["tables"],
+            )
+        return last
+
+    result = _connection_of(step, context).utils().run(run)
+    return {
+        "value": {
+            "array": [
+                {"array": [_plain(cell, None) for cell in row]}
+                for row in result["rows"]
+            ]
+        }
+    }
+
+
 def _op_events_captured(step: dict, context: dict) -> dict:
     subscription = _bound_value(step["ref"], context)
     if subscription.recording is None:
@@ -2805,6 +2918,7 @@ _DATABASE_OPS = {
     "events.fail_subscriber": _op_events_fail_subscriber,
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
+    "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,
