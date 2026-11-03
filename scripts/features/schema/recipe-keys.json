@@ -378,6 +378,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",

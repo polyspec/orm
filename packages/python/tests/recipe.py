@@ -2638,6 +2638,8 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        if "conflict" in step:
+            raise OrmError("DEADLOCK", step["conflict"])
         return last
 
     result = _connection_of(step, context).utils().run(run)

@@ -2192,6 +2192,9 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        if (isset($s['conflict'])) {
+                            throw Orm::transactionConflict($s['conflict']);
+                        }
                         return $last;
                     }
                 );

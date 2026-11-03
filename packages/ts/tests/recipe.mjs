@@ -1700,6 +1700,7 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      if (s.conflict !== undefined) throw new OrmError('DEADLOCK', s.conflict);
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };

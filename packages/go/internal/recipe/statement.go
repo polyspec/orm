@@ -203,6 +203,9 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			rows = result.Rows
 		}
+		if s.Conflict != "" {
+			return orm.TransactionConflict(s.Conflict)
+		}
 		return nil
 	})
 	if err != nil {

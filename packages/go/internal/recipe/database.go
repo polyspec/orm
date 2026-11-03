@@ -86,6 +86,8 @@ type databaseStep struct {
 	Steps     []json.RawMessage          `json:"steps"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	Statements []frameStatement `json:"statements"`
+	// Conflict is the message of the retryable error that the function of utils.run returns after its statements (INT-48).
+	Conflict string `json:"conflict"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`

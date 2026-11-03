@@ -2577,6 +2577,9 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
+                        if let Some(message) = step["conflict"].as_str() {
+                            return Err(polyspec_orm::transaction_conflict(message));
+                        }
                         Ok(last)
                     })
                     .await
