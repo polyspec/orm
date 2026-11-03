@@ -300,6 +300,10 @@
         {
           "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/go/orm/values_test.go",
+          "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
         }
       ]
     },
@@ -325,7 +329,6 @@
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
         "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/Cpx5DuplicateRelationCases.php",
         "packages/php/tests/DatabaseTestAssertions.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
         "packages/php/tests/DbspecSqliteLockCases.php",
@@ -382,7 +385,6 @@
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
-        "packages/php/tests/hot_path_read_correctness.php",
         "packages/php/tests/limit_columns_peak.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/model-types-weak-caller.php",
@@ -2584,6 +2586,26 @@
     },
     {
       "files": [
+        "packages/php-ext/tests/DbspecReleaseHooksTest.php"
+      ],
+      "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks; it tests the build, not ORM client behavior.",
+      "units": [
+        {
+          "id": "php-extension-release-omits-private-hooks",
+          "requirements": [
+            "PRT-18"
+          ],
+          "bindings": [
+            {
+              "test": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+              "id": "testReleaseExtensionOmitsPrivateHooks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "files": [
         "packages/php/tests/ExtensionRunGuardTest.php"
       ],
       "reason": "harness: verifies the extension run guard of the PHP test bootstrap, which fails a run of ORM_PHP_MODE=extension that loaded a file of packages/php/src holding a class the extension declares; it tests the test harness rather than client behavior, in php -n child runs.",
@@ -3190,62 +3212,42 @@
     },
     {
       "id": "dbspec-apply-verification-errors",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PLN-92",
         "PLN-93",
         "PLN-96"
       ],
+      "file": "tests/dbspec/apply-verification-errors.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestSettledVerifyPreservesIntrospectionErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/settled-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/rollback-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/post-forward-introspection-error"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "symbol": "TestRecipeDbspecApplyVerificationErrorsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testVerifyErrorsAreNotDriftAndPreserveCause"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyVerificationErrorsRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
-          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift"
+          "test": "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyVerificationErrorsRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_settled_introspection_error_and_real_drift"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_rollback_preserves_introspection_error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_post_forward_introspection_error_does_not_report_success"
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_verify_errors_separately_from_drift"
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "symbol": "dbspec_apply_verification_errors_none"
         }
       ]
     },
@@ -3592,41 +3594,119 @@
       ]
     },
     {
-      "id": "dbspec-render-physical",
-      "kind": "feature",
+      "id": "dbspec-render-physical-mysql",
+      "kind": "suite",
       "requirements": [
         "DIA-113"
       ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render-physical.mjs",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_render_physical.py",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
-          "id": "render_physical"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/dbspec_render_physical_test.go",
-          "id": "TestDBSpecRenderPhysical"
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "id": "DbspecRenderTest::testBehaviourPhysical"
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
-          "id": "DbspecRenderTestExtensionTest::testBehaviourPhysical"
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+          "symbol": "dbspec_render_physical_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+          "symbol": "dbspec_render_physical_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+          "symbol": "dbspec_render_physical_sqlite"
         }
       ]
     },
@@ -6805,45 +6885,6 @@
       ]
     },
     {
-      "id": "ts-markdown",
-      "kind": "feature",
-      "requirements": [
-        "PRT-63"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/parse-dsn"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestParseMarkdownDSN"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testParseDsn"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmParsesMarkdownDsnAndCreatesFunctionValues"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_parse_markdown_dsn"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "parse_markdown_dsn"
-        }
-      ]
-    },
-    {
       "id": "markdown-session-messages",
       "kind": "feature",
       "requirements": [
@@ -7879,60 +7920,6 @@
       ]
     },
     {
-      "id": "in-list-padding-keeps-compiled-shape",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlanCacheBoundTest.php",
-          "id": "PlanCacheBoundTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
-          "id": "PlanCacheBoundNativeTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/plan-cache-in.mjs",
-          "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_plan_cache_bound.py",
-          "id": "test_in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::plan_cache_tests::in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestPadInRepeatsTheLastCompositeTuple"
-        }
-      ]
-    },
-    {
       "id": "aggregate-numeric",
       "kind": "suite",
       "requirements": [
@@ -8008,11 +7995,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/aes_json.rs",
           "id": "aes_json_column"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumnSchema"
         }
       ]
     },
@@ -8560,46 +8542,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/styled_column_states.rs",
           "symbol": "styled_column_state_fixture"
-        }
-      ]
-    },
-    {
-      "id": "hot-path-read-correctness",
-      "kind": "feature",
-      "requirements": [
-        "PRT-2",
-        "PRT-34"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_hot_path_read_correctness_test.go",
-          "id": "TestHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
-          "id": "CoverageHotPathReadCorrectnessTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
-          "id": "CoverageHotPathReadCorrectnessExtensionTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
-          "id": "hot_path_read_correctness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_hot_path_read_correctness.py",
-          "id": "test_hot_path_read_correctness"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-          "id": "hot_path_read_correctness"
         }
       ]
     },
@@ -9970,7 +9912,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10102,7 +10051,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10234,7 +10190,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "DSL-115",
+        "DSL-155",
+        "CPX-5",
+        "DSL-128",
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -12318,7 +12281,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -12330,8 +12293,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_show_create.rs",
-          "symbol": "show_create_vectors"
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -13087,7 +13050,7 @@
       ]
     },
     {
-      "id": "dbspec-show-create-check-body",
+      "id": "dbspec-show-create-reader-text",
       "kind": "feature",
       "requirements": [
         "DIA-84"
@@ -13095,68 +13058,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/show_create_introspect_test.go",
-          "id": "TestMySQLIntrospectionOfShownChecks"
+          "test": "packages/go/engine/dbspec/show_create_test.go",
+          "id": "TestMySQLShownCheckVectors"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::testIntrospect"
+          "test": "packages/php/tests/DbspecShowCreateTest.php",
+          "id": "DbspecShowCreateTest::testShowCreate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
-          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-parentheses"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-ends-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/name-without-check"
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "non-ascii-literal"
         },
         {
           "implementation": "python",
@@ -13164,44 +13082,48 @@
           "id": "non-ascii-literal"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-quote"
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
+          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-show-create-check-body",
+      "kind": "suite",
+      "requirements": [
+        "DIA-84"
+      ],
+      "file": "tests/dbspec/show-create-introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_show_create_introspect_test.go",
+          "symbol": "TestRecipeDbspecShowCreateIntrospectNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateIntrospectTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_show_create_introspect-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-backslash"
+          "test": "packages/python/tests/test_dbspec_show_create_introspect_none.py"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-parentheses"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-ends-with-backslash"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "name-without-check"
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -17813,40 +17735,40 @@
     },
     {
       "id": "dbspec-introspect-messages",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "DIA-191"
       ],
+      "file": "tests/dbspec/introspect-messages.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestSQLiteUnsupportedColumnReasonQuotesMissingCheck"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "dbspec.introspect.sqlite-empty-check-reason"
+          "test": "packages/go/orm/recipe_dbspec_introspect_messages_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMessagesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php/tests/DbspecIntrospectMessagesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectMessagesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectMessagesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect_messages-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_introspect_messages.py",
-          "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
+          "test": "packages/python/tests/test_dbspec_introspect_messages_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_unsupported_column_reason_quotes_missing_check"
+          "test": "packages/rust/tests/tests/dbspec_introspect_messages_none.rs",
+          "symbol": "dbspec_introspect_messages_none"
         }
       ]
     },
@@ -17970,43 +17892,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/values_test.go",
-          "id": "TestFuncIR"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/value_function_parameter_indexes"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testValueFunctionIrCarriesNameAndParameterIndexes"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeValueFunctionIrCarriesNameAndParameterIndexes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/value_function_ir.mjs",
-          "id": "value_function_ir_parameter_indexes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_ir_carry_name_and_parameters"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--lib",
-            "FEATURE_TEST=request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "value_function_parameter_indexes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "value_function_parameter_indexes"
         }
       ]
     },
@@ -18825,62 +18777,122 @@
       ]
     },
     {
-      "id": "dbspec-set-decimal",
-      "kind": "feature",
+      "id": "dbspec-set-decimal-mysql",
+      "kind": "suite",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalMysql"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testDecimalDocument"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-decimal.mjs",
-          "id": "decimal_schema.dbs"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/sqlite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/mysql"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/postgres"
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-          "id": "DecimalModelDbNativeTest::testNativeRoundTrip"
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/decimal_model_db.py",
-          "id": "test_round_trip"
+          "test": "packages/python/tests/test_set_decimal_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_mysql"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+          "symbol": "dbspec_set_decimal_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_postgres"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+          "symbol": "dbspec_set_decimal_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_sqlite"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+          "symbol": "dbspec_set_decimal_sqlite"
         }
       ]
     },
@@ -26962,25 +26974,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_immutable_write",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
-          ]
+          "test": "packages/python/tests/test_immutable_write_sqlite.py",
+          "id": "immutable_write"
         },
         {
           "implementation": "rust",
@@ -28362,51 +28357,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/clock.rs",
           "id": "clock_now_condition_postgres"
-        }
-      ]
-    },
-    {
-      "id": "coverage-model-query-duplicate-relation",
-      "kind": "feature",
-      "requirements": [
-        "CPX-5",
-        "DSL-128"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/cpx5_duplicate_relation_test.go",
-          "id": "TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestDuplicateRelationNamesTheAliasCall"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/Cpx5DuplicateRelationTest.php",
-          "id": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
-          "id": "Cpx5DuplicateRelationNativeTest::testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/cpx5_duplicate_relation.mjs",
-          "id": "duplicate_relation_name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query_sqlite.py",
-          "id": "duplicate_relation_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::duplicate_relation_name_reports_config_alias_hint"
         }
       ]
     },
@@ -30891,159 +30841,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=joins_and_relations"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "terminal-count-by-preserves-the-query",
-      "kind": "feature",
-      "requirements": [
-        "DSL-60"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestConditions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testConditions"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "conditions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_terminal_by.py",
-          "id": "test_terminal_by_after_a_condition_counts_the_joined_rows"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "conditions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=conditions"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "model-attached-values-survive-create",
-      "kind": "feature",
-      "requirements": [
-        "DSL-115"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestWrites"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=writes"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "optimistic-update-requires-fresh-version",
-      "kind": "feature",
-      "requirements": [
-        "DSL-155"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestWrites"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testWrites"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testWrites"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "writes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_write_cycle"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "writes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=writes"
           ]
         }
       ]
@@ -41919,7 +41716,8 @@
         "CFG-19",
         "CFG-26",
         "FCV-15",
-        "PRT-64"
+        "PRT-64",
+        "PRT-63"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",
@@ -43638,7 +43436,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -43680,7 +43479,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -43722,7 +43522,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -44601,6 +44402,25 @@
           "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
+    },
+    {
+      "id": "php-extension-pad-in",
+      "kind": "feature",
+      "requirements": [
+        "CPX-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     }
   ],
   "errors": {

@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import socket
+import sqlite3
 import tempfile
 import threading
 import time
@@ -66,7 +67,9 @@ from polyspec.orm.dbspec import (
 )
 from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
+from polyspec.orm.dbspec.introspect import introspect_dbspec
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
+from polyspec.orm.dbspec.apply import DbspecApplyError, apply_plans, rollback_plans
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
 from polyspec.orm.dbspec.plan_diff import diff_plan
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
@@ -78,7 +81,7 @@ from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
 from .case_database import case_database
-from .coverage_case import native_query
+from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_generator
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -185,6 +188,15 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
+                    continue
+                if step["op"] == "dbspec.introspect_shown":
+                    _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "dbspec.apply_fault":
+                    _dbspec_apply_fault(step, bound, database)
+                    continue
+                if step["op"] == "dbspec.introspect_sqlite":
+                    _dbspec_introspect_sqlite(step, database)
                     continue
                 if step["op"] == "keyring.versions":
                     _keyring_versions(step, database)
@@ -1027,6 +1039,178 @@ def _send(step: dict, call=None) -> None:
     if got != expect["message"]:
         raise AssertionError(
             f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
+        )
+
+
+class _ShownCatalogConnection:
+    """Answers the catalog queries of the MySQL introspection from a case of the vectors of
+    dbspec.introspect_shown."""
+
+    def __init__(self, catalog: dict, case: dict) -> None:
+        self.catalog = catalog
+        self.case = case
+
+    def execute(self, sql: str, _values: Any = None) -> dict:
+        catalog, case = self.catalog, self.case
+        table = catalog["table"]
+        if "information_schema.TABLES" in sql:
+            rows = [[table, "BASE TABLE", ""]]
+        elif "information_schema.COLUMNS" in sql:
+            rows = [
+                [
+                    table,
+                    column["name"],
+                    column["type"],
+                    column["nullable"],
+                    None,
+                    "",
+                    column["charset"],
+                    column["collation"],
+                    "",
+                ]
+                for column in catalog["columns"]
+            ]
+        elif "information_schema.STATISTICS" in sql:
+            rows = [[table, "PRIMARY", 0, catalog["primary_key"], "A", 0, 0, "BTREE"]]
+        elif "REFERENTIAL_CONSTRAINTS" in sql:
+            rows = []
+        elif "information_schema.CHECK_CONSTRAINTS" in sql:
+            rows = [[case["name"], catalog["stored_clause"]]]
+        elif "information_schema.TABLE_CONSTRAINTS" in sql:
+            rows = [[table, case["name"], "YES"]]
+        elif "SHOW CREATE TABLE" in sql:
+            rows = [[table, "\n".join(case["create"]) + "\n"]]
+        elif (
+            "information_schema.TRIGGERS" in sql
+            or "information_schema.ROUTINES" in sql
+            or "information_schema.EVENTS" in sql
+        ):
+            rows = []
+        else:
+            raise AssertionError(f"no canned answer for {sql}")
+        return {"rows": rows}
+
+
+class _FaultConnection:
+    """A memory SQLite connection for dbspec.apply_fault: read fail_at of the SQLite master query raises cause."""
+
+    def __init__(self) -> None:
+        self.connection = sqlite3.connect(":memory:")
+        self.connection.isolation_level = None
+        self.cause: Exception | None = None
+        self.fail_at = 0
+        self.reads = 0
+
+    def execute(self, sql: str, args: Any) -> dict:
+        if sql.startswith("SELECT type, name, tbl_name"):
+            self.reads += 1
+            if self.cause is not None and self.reads == self.fail_at:
+                raise self.cause
+        cursor = self.connection.execute(sql, tuple(args))
+        rows = [list(row) for row in cursor.fetchall()]
+        cursor.close()
+        return {"rows": rows, "insert_id": None, "affected": 0}
+
+
+def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
+    """Runs the dbspec.apply_fault op (FCV-4): the public apply_plans or rollback_plans on a memory SQLite connection,
+    after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An
+    injected failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96)."""
+    expect = step["expect"][database]
+    plans = [_dbspec_value(step["plan"], bound, "plan")]
+    now = lambda: 1_790_000_000_000_000  # noqa: E731 - the clock of the call
+    fault = _FaultConnection()
+    try:
+        if step.get("applied_first"):
+            apply_plans(fault, "sqlite", plans, now)
+        for statement in step.get("sql", []):
+            fault.execute(statement, [])
+        if "fail_catalog_read" in step:
+            fault.cause = RuntimeError("catalog read failed")
+            fault.fail_at = fault.reads + step["fail_catalog_read"]
+        kinds: list[str] = []
+        call = rollback_plans if step["call"] == "rollback" else apply_plans
+        try:
+            call(fault, "sqlite", plans, now, lambda event: kinds.append(event["kind"]))
+        except DbspecApplyError as error:
+            if error.code != expect["code"]:
+                raise AssertionError(f"the call raised {error.code}, want {expect['code']}") from error
+            if fault.cause is not None and error.cause is not fault.cause:
+                raise AssertionError(f"the error {error} does not hold the catalog read error") from error
+        else:
+            raise AssertionError(f"the call succeeded, want {expect['code']}")
+        if "history_state" in expect:
+            state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
+            if state != expect["history_state"]:
+                raise AssertionError(f"the history state is {state}, want {expect['history_state']}")
+        for kind in expect.get("absent_events", []):
+            if kind in kinds:
+                raise AssertionError(f"the events {kinds} hold {kind}")
+    finally:
+        fault.connection.close()
+
+
+def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> None:
+    """Runs the dbspec.introspect_shown op (FCV-4): the public introspect_dbspec on the canned catalog
+    of a case of the vectors file, whose check lines and unsupported objects, or error, it compares
+    (DIA-84). A reason compares by its rule, the text before the first ": ", since its text differs
+    between the clients."""
+    vectors = json.loads((recipe_dir / step["vectors"]).read_text(encoding="utf-8"))
+    case = next(c for c in vectors["cases"] if c["id"] == step["case"])
+    connection = _ShownCatalogConnection(vectors["catalog"], case)
+    expect = step["expect"][database]
+    if "error" in expect:
+        try:
+            introspect_dbspec(connection, "mysql", "introspected")
+        except ValueError as error:
+            if str(error) != expect["error"]:
+                raise AssertionError(f"error {error}, want {expect['error']}") from error
+            return
+        raise AssertionError(f"no error, want {expect['error']}")
+    result = introspect_dbspec(connection, "mysql", "introspected")
+    checks = [
+        line.strip()
+        for line in emit_dbspec(result["document"]).splitlines()
+        if line.strip().startswith("check ")
+    ]
+    unsupported = [
+        f"{item['kind']} {item['name']}: {item['reason'].split(': ', 1)[0]}"
+        for item in result["unsupported"]
+    ]
+    if checks != expect["checks"] or unsupported != expect["unsupported"]:
+        raise AssertionError(f"checks {checks}, unsupported {unsupported}, want {expect}")
+
+
+class _SqliteCatalogConnection:
+    """The connection that introspect_dbspec reads: execute answers the rows of a statement."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def execute(self, sql: str, values: Any = None) -> dict:
+        cursor = self._connection.execute(sql, list(values or []))
+        return {"rows": [list(row) for row in cursor.fetchall()]}
+
+
+def _dbspec_introspect_sqlite(step: dict, database: str) -> None:
+    """Runs the dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of
+    its own, then the public introspect_dbspec, whose unsupported objects it compares (DIA-191)."""
+    connection = sqlite3.connect(":memory:")
+    try:
+        for statement in step["sql"]:
+            connection.execute(statement)
+        result = introspect_dbspec(
+            _SqliteCatalogConnection(connection), "sqlite", "introspected"
+        )
+    finally:
+        connection.close()
+    got = [
+        {key: item[key] for key in ("kind", "table", "name", "reason")}
+        for item in result["unsupported"]
+    ]
+    if got != step["expect"][database]["unsupported"]:
+        raise AssertionError(
+            f"unsupported objects {got}, want {step['expect'][database]['unsupported']}"
         )
 
 
@@ -2265,6 +2449,50 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+# The statement that every client runs on a new connection (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
+_DDL_CONNECTION_RULES = {
+    "mysql": "SET time_zone = '+00:00'",
+    "postgres": "SET TimeZone = 'UTC'",
+    "sqlite": "PRAGMA foreign_keys = ON",
+}
+
+
+def _op_ddl_behavior(step: dict, context: dict) -> dict:
+    """dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
+    statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step
+    with fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it."""
+    vectors = json.loads((context["dir"] / step["vectors"]).read_text(encoding="utf-8"))
+    vector = next((c for c in vectors["cases"] if c["id"] == step["case"]), None)
+    if vector is None:
+        raise AssertionError(f"the vectors have no case {step['case']}")
+    database = context["database"]
+    with native_session(database, context["dsn"]) as run:
+        for statement in [_DDL_CONNECTION_RULES[database], *vector["statements"][database]]:
+            run(statement)
+        for entry in vector["behavior"]:
+            if "dialects" in entry and database not in entry["dialects"]:
+                continue
+            if "sql" in entry:
+                try:
+                    run(entry["sql"])
+                except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+                    if not entry.get("fails"):
+                        raise AssertionError(f"{entry['sql']}: {error}") from error
+                    continue
+                if entry.get("fails"):
+                    raise AssertionError(f"{entry['sql']} must fail")
+                continue
+            rows = run(entry["query"])
+            if not rows:
+                raise AssertionError(f"{entry['query']}: no row")
+            value = next(iter(rows[0].values()))
+            if value is None:
+                raise AssertionError(f"{entry['query']}: NULL value")
+            if str(value) != entry["want"]:
+                raise AssertionError(f"{entry['query']}: got {value!s}, want {entry['want']}")
+    return {}
+
+
 def _op_sql_exec(step: dict, context: dict) -> dict:
     # An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     statement = (
@@ -3355,6 +3583,7 @@ _DATABASE_OPS = {
     "catalog.insert_row": _op_insert_row,
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
+    "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
