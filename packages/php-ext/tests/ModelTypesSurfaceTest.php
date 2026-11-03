@@ -237,7 +237,7 @@ PHP;
 
     public function testPadInMatchesUserlandForBucketSizesSparseAndStringKeys(): void
     {
-        // Requirements: CPX-4
+        // Requirements: CPX-6
         // These vectors are independent of both the userland oracle and native implementation.
         // Padding targets the least power of two >= input length and repeats the last value.
         foreach (
