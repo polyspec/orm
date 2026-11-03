@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 // The catalog connection (SCH-6a): native table metadata, bounded table pages, validated read-only queries, typed grid reads
 // and explicit row changes over a MySQL, PostgreSQL or SQLite database selected by its DSN. Values follow the Go catalog
 // (packages/go/orm/catalog*.go, catalogValue and catalogBytesValue); grid cells follow the Rust reference (packages/rust/build/src/tool_db/grid.rs
@@ -15,7 +16,6 @@ const PAGE_BYTES = 8 << 20;
 const SNAPSHOT_BYTES = 8 << 20;
 const DEFAULT_QUERY_ROWS = 100000;
 const DEFAULT_QUERY_BYTES = 64 << 20;
-const SQL_BYTES = 256 << 10;
 
 /** The error codes of the catalog connection, registered in docs/spec/errors.yaml. */
 const CODE_READ_ONLY = 'QUERY_READ_ONLY';
@@ -888,7 +888,7 @@ function queryWords(query: string, dialect: DriverName): string[] | undefined {
 
 function validateReadOnly(query: string, dialect: DriverName): void {
   const refused = (): OrmError => err(CODE_READ_ONLY, 'expected one supported non-locking read query');
-  if (query === '' || Buffer.byteLength(query, 'utf8') > SQL_BYTES) throw refused();
+  if (query === '') throw refused();
   const words = queryWords(query, dialect);
   if (words === undefined || words.length === 0) throw refused();
   if (!READ_ONLY_START.has(words[0] ?? '')) throw refused();
@@ -1044,6 +1044,8 @@ class Session {
   /** The rows of a read query: a MySQL or PostgreSQL date, time or datetime is the text of its grid cell (INT-153). */
   public async queryRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise<{ columns: DriverColumn[]; rows: CatalogValue[][] }> {
     return this.collect<CatalogValue>(sql, params, maxRows, maxBytes, (value, column) => {
+      // A value that is not valid UTF-8 is its bytes (INT-153).
+      if (value instanceof Uint8Array && !isUtf8(value)) return { cell: new Uint8Array(value), size: value.length };
       const grid = value !== null && temporalKind(this.dialect, column.type) !== undefined ? gridCell(value, column, this.dialect) : undefined;
       const cell = grid !== undefined && (grid.kind === 'date' || grid.kind === 'time' || grid.kind === 'datetime') ? grid.value : plainValue(value, column);
       return { cell, size: sizeOf(cell) };

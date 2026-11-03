@@ -21,7 +21,6 @@ final class Catalog
     private const DEFAULT_BYTES = 67108864;
     /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
     private const STREAM_END_MARGIN_SECONDS = 6;
-    private const SQL_BYTES = 262144;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
     /** Selects the native kind of a relation by its namespace and name. */
@@ -1024,14 +1023,8 @@ final class Catalog
         }
         if (is_string($value)) {
             if (!self::isUtf8($value)) {
-                // The bytes of a MySQL column whose charset the server did not report are its binary value (INT-157).
-                if ($dialect === 'mysql') {
-                    return new CatalogGridCell('binary', $value);
-                }
-                throw new OrmException(
-                    Code::CATALOG_VALUE,
-                    'unsupported grid value: text of native type "' . $native . '" is not valid UTF-8'
-                );
+                // A value that is not valid UTF-8 is its bytes (INT-153, INT-157).
+                return new CatalogGridCell('binary', $value);
             }
             return new CatalogGridCell('text', $value);
         }
@@ -2651,7 +2644,7 @@ final class Catalog
             Code::QUERY_READ_ONLY,
             'expected one supported non-locking read query'
         );
-        if ($query === '' || strlen($query) > self::SQL_BYTES) {
+        if ($query === '') {
             throw $refused();
         }
         $words = self::words($query, $dialect);

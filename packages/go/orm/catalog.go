@@ -29,7 +29,6 @@ const (
 	catalogSnapshotBytes = 8 << 20
 	catalogDefaultRows   = 100000
 	catalogDefaultBytes  = 64 << 20
-	catalogSQLBytes      = 256 << 10
 )
 
 // Error codes of the catalog connection that the Rust reference names; QUERY_READ_ONLY is the code that tests check.

@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 08d8dbb11d83946326ebb17ac01556ceae1cf057c04146b4e62f94b3a9631657 -->
+<!-- source-sha256: c39652109e743a88b1d9a8716e40e5ba34cad5788106d8694eb0c6358a2b2354 -->
 # 변경 이력
 
 ## Unreleased
 
+- 읽기 전용 query의 유효한 UTF-8이 아닌 값은 SQLite text를 포함해 여섯 runtime 모두에서 그 byte이고, grid 질의에서는 binary cell입니다.
+- 길이나 중첩과 관계없이 읽기 전용 query는 여섯 runtime 모두에서 응답하며, Rust도 다른 runtime처럼 token으로 query를 읽습니다.
 - PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
 - 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
 - plain read-only query는 여섯 runtime 모두에서 binary 값을 그 byte로 돌려주며, INT-153이 이 형식을 정합니다.

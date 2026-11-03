@@ -16,7 +16,6 @@ zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_pag
 #define CAT_SNAPSHOT_BYTES (8 << 20)
 #define CAT_DEFAULT_ROWS 100000
 #define CAT_DEFAULT_BYTES (64 << 20)
-#define CAT_SQL_BYTES (256 << 10)
 #define CAT_PDO_FETCH_NUM 3 /* PDO::FETCH_NUM */
 
 /* The native relation kind and the columns of a relation by dialect (Catalog::KIND_SQL and Catalog::COLUMNS_SQL). */
@@ -1346,7 +1345,7 @@ static bool cat_validate_read_only(zend_string *sql, const char *dialect)
     bool semicolon = false;
     char first[8] = {0};
     size_t first_len = 0;
-    if (n == 0 || n > CAT_SQL_BYTES) goto refuse;
+    if (n == 0) goto refuse;
     for (size_t i = 0; i < n;) {
         char c = q[i];
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v') {
@@ -2166,15 +2165,8 @@ static bool cat_bytes_or_text(zval *v, bool binary, zval *kind_out, zval *value_
         cat_refuse("expected text or binary data");
         return false;
     }
-    if (binary) {
-        ZVAL_STRING(kind_out, "binary");
-    } else {
-        ZVAL_STRING(kind_out, "text");
-        if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
-            cat_refuse("text is not valid UTF-8");
-            return false;
-        }
-    }
+    /* A value that is not valid UTF-8 is its bytes (INT-153). */
+    ZVAL_STRING(kind_out, binary || !cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v)) ? "binary" : "text");
     ZVAL_COPY(value_out, v);
     return true;
 }

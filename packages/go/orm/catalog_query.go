@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 )
 
 // CatalogQueryLimits bounds a read-only query. A zero field takes its default: 100000 rows and 64 MiB of values. A
@@ -82,6 +83,17 @@ func catalogQueryValue(value any, native string, dialect string) (any, error) {
 		}
 		return cell.Value, nil
 	}
+	// A value that is not valid UTF-8 is its bytes, whatever the type the driver reports (INT-153).
+	switch v := value.(type) {
+	case string:
+		if !utf8.ValidString(v) {
+			return []byte(v), nil
+		}
+	case []byte:
+		if !utf8.Valid(v) {
+			return append([]byte(nil), v...), nil
+		}
+	}
 	return catalogValue(value, native)
 }
 
@@ -108,11 +120,11 @@ func (c *CatalogConnection) readOnlyArgs(query string, params []any, limits Cata
 	return args, maxRows, maxBytes, nil
 }
 
-// catalogValidateReadOnly accepts one read query of at most catalogSQLBytes. It tokenizes the query so that keywords inside
+// catalogValidateReadOnly accepts one read query of any length. It tokenizes the query so that keywords inside
 // string literals, quoted identifiers and comments are not seen, and refuses a MySQL executable comment.
 func catalogValidateReadOnly(query, dialect string) error {
 	refused := catalogErr(catalogCodeReadOnly, "expected one supported non-locking read query")
-	if query == "" || len(query) > catalogSQLBytes {
+	if query == "" {
 		return refused
 	}
 	words, ok := catalogWords(query, dialect)
