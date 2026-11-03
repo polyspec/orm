@@ -58345,7 +58345,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -61284,7 +61301,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -75076,6 +75110,9 @@
     },
     {
      "op": "model.query",
+     "order": [
+      "seq"
+     ],
      "connection": "db",
      "model": "TypedValue",
      "where": {
