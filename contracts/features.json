@@ -9344,11 +9344,8 @@
                     "constraint_errors",
                     "external_relation"
                   ],
-                  "symbols": {
-                    "constraint_errors": "TestRecipeConstraintsAndRelationsMysql",
-                    "external_relation": "TestRecipeConstraintsAndRelationsMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "TestRecipeConstraintsAndRelationsMysql"
                 },
                 {
                   "runner": "go",
@@ -9356,10 +9353,8 @@
                   "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "immutable_write": "TestRecipeImmutableWriteMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "TestRecipeImmutableWriteMysql"
                 }
               ],
               "postgres": [
@@ -9370,11 +9365,8 @@
                     "constraint_errors",
                     "external_relation"
                   ],
-                  "symbols": {
-                    "constraint_errors": "TestRecipeConstraintsAndRelationsPostgres",
-                    "external_relation": "TestRecipeConstraintsAndRelationsPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "TestRecipeConstraintsAndRelationsPostgres"
                 },
                 {
                   "runner": "go",
@@ -9382,10 +9374,8 @@
                   "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "immutable_write": "TestRecipeImmutableWritePostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "TestRecipeImmutableWritePostgres"
                 }
               ],
               "sqlite": [
@@ -9396,11 +9386,8 @@
                     "constraint_errors",
                     "external_relation"
                   ],
-                  "symbols": {
-                    "constraint_errors": "TestRecipeConstraintsAndRelationsSqlite",
-                    "external_relation": "TestRecipeConstraintsAndRelationsSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "TestRecipeConstraintsAndRelationsSqlite"
                 },
                 {
                   "runner": "go",
@@ -9408,10 +9395,8 @@
                   "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "immutable_write": "TestRecipeImmutableWriteSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "TestRecipeImmutableWriteSqlite"
                 }
               ]
             },
