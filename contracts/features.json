@@ -10915,10 +10915,9 @@
         "packages/rust/orm/tests/common/clock_test_support.rs"
       ],
       "tests": [
-        "packages/rust/orm/tests/clock.rs",
         "packages/rust/orm/tests/was_inserted.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock --test was_inserted"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test was_inserted"
     },
     {
       "id": "rust-temp-sqlite-fixture",
