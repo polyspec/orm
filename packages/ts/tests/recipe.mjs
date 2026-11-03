@@ -1607,6 +1607,7 @@ class ChainBuild {
       if (name === 'and' || name === 'or') return this.group(m, conn, name, value);
       if (name === 'not') return m[CORE].negated(conn, group => this.predicate(group, '', value));
       if (name === 'placed') {
+        if (value.model !== undefined) return m[CORE].connector(conn, [coreModel(value.model, this.context)]);
         if (!this.joined.has(value)) throw new Error(`placed ${value} names no join`);
         return m[CORE].connector(conn, [this.joined.get(value)]);
       }
@@ -1712,6 +1713,7 @@ class ChainBuild {
       if (join.alias !== undefined) child[CORE].alias = snakeOf(join.alias);
       if (join.on !== undefined) child[CORE].setOn(group => inner.predicate(group, '', join.on));
       inner.query(child, join);
+      if (join.connect === true) child.connect(this.db);
       m[CORE].join(join.kind ?? 'inner', join.match[0], join.match[1], child);
       if (join.as !== undefined) this.joined.set(join.as, child);
     }
@@ -1799,6 +1801,7 @@ function chainBuilt(s, context) {
   const model = coreModel(s.model, context);
   const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
+  if (s.unconnected !== true) build.db = connectionOf(s, context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
   if (!paged && s.offset !== undefined && s.limit !== undefined) m.limit(s.offset, typeof s.limit === 'number' ? s.limit : s.limit.count);
@@ -1865,11 +1868,13 @@ const TABLE_OPS = {
       return { json: plainJson(row.value(s.group_value)) };
     }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
-    if (s.page === true) {
+    if (s.page === true || s.plan_page !== undefined) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
-      if (!(count > 0)) throw new Error('a page needs a limit count above 0');
+      if (s.plan_page === undefined && !(count > 0)) throw new Error('a page needs a limit count above 0');
       const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
-      const page = await m.getsPage(Math.floor(offset / count) + 1, count);
+      const page = s.plan_page === undefined
+        ? await m.getsPage(Math.floor(offset / count) + 1, count)
+        : await m.getsPage(s.plan_page.page, s.plan_page.per_page);
       const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
       if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
       return fields;

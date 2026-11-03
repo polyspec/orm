@@ -139,7 +139,12 @@
   "INT-99",
   "COD-20",
   "DIA-25",
-  "COD-2"
+  "COD-2",
+  "DSL-19",
+  "DSL-47",
+  "DSL-96",
+  "DSL-98",
+  "PRT-14"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -52521,6 +52526,410 @@
       },
       "sqlite": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "errors",
+   "requirements": [
+    "DSL-10",
+    "DSL-19",
+    "DSL-47",
+    "DSL-67",
+    "DSL-96",
+    "DSL-98",
+    "DSL-123",
+    "PRT-14"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "",
+        {
+         "is_close": {
+          "bool": true
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "and"
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "in": {
+        "array": []
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "EMPTY_IN"
+      },
+      "postgres": {
+       "error": "EMPTY_IN"
+      },
+      "sqlite": {
+       "error": "EMPTY_IN"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "unconnected": true,
+     "where": {
+      "name": {
+       "text": "a"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "lock": "update",
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "joins": [
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "connect": true,
+       "as": "u"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "plan_page": {
+      "page": 1,
+      "per_page": 10
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ],
+       "limit": {
+        "offset": 0,
+        "count": 1
+       }
+      }
+     ],
+     "key": {
+      "seq": {
+       "int": "42"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "LIMIT_IN_RELATION"
+      },
+      "postgres": {
+       "error": "LIMIT_IN_RELATION"
+      },
+      "sqlite": {
+       "error": "LIMIT_IN_RELATION"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "name": {
+          "text": "a"
+         }
+        }
+       ],
+       [
+        "or",
+        {
+         "placed": {
+          "model": "User"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "42"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
       }
      }
     }
