@@ -4192,15 +4192,6 @@
         "packages/go/orm/sqlite/sqlite.go"
       ]
     },
-    "aes-json-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ]
-    },
     "feature-coverage/go/mysql": {
       "scope": "suite",
       "needs": [

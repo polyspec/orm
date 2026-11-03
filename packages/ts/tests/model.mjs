@@ -529,75 +529,6 @@ function documentModels(text) {
   return models;
 }
 
-/**
- * Writes a JSON value to an encrypted `ordered_json aes` column, reads it
- * back, rotates the row to the next key version, and updates it with the
- * first key version.
- */
-// Requirements: COD-7.
-async function aesJsonColumn(dialect, dsn, sqlitePath) {
-  const secret = await readFile(join(root, 'contracts/fixtures/secret_config.dbs'), 'utf8');
-  const { secret_config: SecretConfig } = documentModels(secret);
-  const text = '{"b":1,"a":[],"c":{},"n":1.50,"token":"s3cret-token"}';
-  const updatedText = '{"token":"next-token","list":[1,"two",null]}';
-  const open = (keys, version) => Db.connectSchema(dsn, schemaOf(secret), { aesKey: keys.get(version), aesVersion: version, aesKeys: keys });
-  const read = async db => {
-    const rows = [...(await new SecretConfig().connect(db).addAllColumns().gets()).values()];
-    check(rows.length === 1, `rows ${rows.length}`);
-    const config = rows[0][CORE].column('config');
-    check(config instanceof StyledValue && config.kind === 'value' && config.payload() instanceof JsonValue, 'the json aes column reads a styled ordered-json value');
-    return stringifyJson(config.payload());
-  };
-  const one = new Map([[1, 'config-key-one']]);
-  const both = new Map([[1, 'config-key-one'], [2, 'config-key-two']]);
-  const first = await open(one, 1);
-  let seq;
-  try {
-    await first.utils().schema().install(schemaOf(secret));
-    const created = new SecretConfig().connect(first);
-    created[CORE].setValue('config', StyledValue.value(parseJson(text)));
-    seq = (await created.create())[CORE].column('seq');
-    check(await read(first) === text, `read back ${await read(first)}`);
-    const [cell, version] = await storedCell(dialect, dsn, sqlitePath);
-    check(Buffer.from(cell).subarray(0, 9).toString('latin1') === 'ORM-AES2\0' && !Buffer.from(cell).includes('s3cret-token') && Number(version) === 1, `stored version ${version}`);
-  } finally { await first.close(); }
-  const second = await open(both, 2);
-  try {
-    check(await read(second) === text, 'mixed-version read');
-    const keyring = new AesKeyring(both, 2);
-    check(await second.utils().aes().rotate(new SecretConfig(), keyring) === 1, 'rotate');
-    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 2, 'rotated version');
-  } finally { await second.close(); }
-  const rotated = await open(new Map([[2, 'config-key-two']]), 2);
-  try { check(await read(rotated) === text, 'rotated read'); } finally { await rotated.close(); }
-  const again = await open(both, 1);
-  try {
-    const changed = new SecretConfig().connect(again);
-    changed[CORE].setValue('seq', seq);
-    changed[CORE].setValue('config', StyledValue.value(JSON.parse(updatedText)));
-    await changed.update();
-    check(Number((await storedCell(dialect, dsn, sqlitePath))[1]) === 1, 'updated version');
-    check(await read(again) === updatedText, `updated read ${await read(again)}`);
-  } finally { await again.close(); }
-}
-
-/** The stored config cell and key version of the single secret_config row. */
-async function storedCell(dialect, dsn, sqlitePath) {
-  const sql = 'SELECT config, aes_key_version FROM secret_config';
-  if (dialect === 'sqlite') {
-    const { DatabaseSync } = await import('node:sqlite');
-    const db = new DatabaseSync(sqlitePath);
-    try { const row = db.prepare(sql).get(); return [row.config, row.aes_key_version]; } finally { db.close(); }
-  }
-  if (dialect === 'mysql') {
-    const conn = await mysqlConnection(dsn);
-    try { const [rows] = await conn.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await conn.end(); }
-  }
-  const client = postgresClient(dsn);
-  await client.connect();
-  try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
-}
-
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
 
 /**
@@ -647,8 +578,6 @@ modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   }
   check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
 }));
-// The SQLite case connects with a DSN without busy_timeout and reads the stored cells directly from the file.
-modelCase('aesJsonColumn', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, (dsn, database) => aesJsonColumn(dialect, database.dsn, database.path)));
 modelCase('installInsideTransaction', ['mysql'], installed(mysqlInstallInsideTransaction));
 // If the MySQL local value reset at the end of a transaction fails, commit and rollback report that error.
 // A MySQL user variable survives COMMIT and ROLLBACK (mysql.context.user_variable_session_scope).
