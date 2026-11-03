@@ -271,15 +271,36 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	return check(expect, r, s.Styles)
 }
 
-// connectDriver opens the DSN with Connect, closes the connection and returns its driver: the one implementation of
-// dsn.connect (FCV-4).
+// connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
+// and returns its driver: the one implementation of dsn.connect (FCV-4).
 func connectDriver(dsn string) (string, error) {
 	db, err := orm.Connect(dsn, orm.Config{})
 	if err != nil {
 		return "", err
 	}
 	driver := db.Driver()
-	return driver, db.Close()
+	answered := db.Utils().Run(func(f *orm.TxFrame) error {
+		res, err := f.Run(orm.KindUtility, nil, "SELECT 1")
+		if err != nil {
+			return err
+		}
+		if len(res.Rows) != 1 || len(res.Rows[0]) != 1 {
+			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		cell := res.Rows[0][0]
+		if text, isBytes := cell.([]byte); isBytes {
+			cell = string(text)
+		}
+		if fmt.Sprint(cell) != "1" {
+			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		return nil
+	})
+	closed := db.Close()
+	if answered != nil {
+		return "", answered
+	}
+	return driver, closed
 }
 
 func key(s step) string {

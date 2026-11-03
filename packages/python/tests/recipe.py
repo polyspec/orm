@@ -1250,9 +1250,13 @@ def _validate(step: dict, model: Any, database: str) -> None:
 
 
 def _connect_driver(dsn: str) -> str:
-    """Opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4)."""
+    """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+    driver: the one implementation of dsn.connect (FCV-4)."""
     db = Db.connect(dsn)
     try:
+        rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
+        if [[int(cell) for cell in row] for row in rows] != [[1]]:
+            raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
         return db.driver
     finally:
         db.close()
