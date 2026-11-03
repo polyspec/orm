@@ -9483,7 +9483,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9609,7 +9615,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9735,7 +9747,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -28815,11 +28833,9 @@
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "feature-rust-database",
+            "feature-rust-unit",
             "FEATURE_CRATE=packages/rust/tests",
             "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
           ]
         },
