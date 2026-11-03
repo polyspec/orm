@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-check-recipes -->
-<!-- source-sha256: fa1c1b81bcdcf5c8cd72fec6a18fc315cda4a9419532ec4a71665c8dd17c0195 -->
+<!-- source-sha256: d97638efd4b946474a2bd84e8c951a12b2a1fa5d74af463b461aa4b0e5c77aa9 -->
 # 병렬 check runner와 모든 공통 동작의 recipe 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -89,3 +89,4 @@
 | CR59 | make repo-check가 결함 일곱을 찾았다. Makefile의 PHP recipe target 여섯(recipe-unknown-key-check/php, model-queries-check/php, constraints-and-relations-check/php, request-hook-check/php, parameter-chunking-check/php, aes-rotation-check/php)이 선행 조건 php-models 없이 생성된 model을 읽고, scripts/check/databases.test.mts가 부모 환경 전체를 자식에게 넘긴다. Red: make repo-check가 일곱을 지목한다 | Makefile, scripts/check/databases.test.mts | `make repo-check` | [v] |
 | CR15-F | unit dbspec-apply-*, dbspec-render-physical, dbspec-introspect-messages, dbspec-show-create-check-body, dbspec-set-decimal, dbspec-sqlite-lock-result-and-session-restoration은 여섯 runtime 모두에서 recipe의 case다 | tests/dbspec and contracts/fixtures recipes, the op of each in every runner, config/parity.json | `make -s parity-declarations-check` | [~] |
 | CR15-A | CR15 묶음 A: config/parity.json의 connection unit 25개를 recipe case로 옮기고, case가 통과한 뒤 native 시험을 없앤다. | contracts/fixtures/dsn_reject, contracts/fixtures/dsn_connection, the recipe entries of the six runtimes, config/parity.json | `go test -run TestRecipeDsn ./packages/go/orm`, `node --test packages/ts/tests/dsn_reject_checked-none.test.mjs`, `make parity-declarations-check` | [~] |
+| CR15-G | CR15: config/parity.json의 unit mysql-session, mysql-lock-wait-canceled, native-row-cell-bytes, native-driver-error-cause, runtime-invalid-database-cells-return-decode-errors를 recipe case로 옮기고, case 통과 뒤 native를 지운다. | contracts/fixtures/dsn_connection, contracts/fixtures/transactions, contracts/fixtures/conformance_verification, contracts/fixtures/immutable_write, the recipe runners of the six runtimes, config/parity.json | `go test -run TestRecipeDsnConnectionMysql/mysql_session_settings ./packages/go/orm`, `make parity-declarations-check` | [~] |

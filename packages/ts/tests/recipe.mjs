@@ -121,6 +121,10 @@ async function connectDriver(dsn, config = {}) {
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
     }
+    if (config.session_read !== undefined) {
+      const read = await db.utils().run(async frame => frame.run('utility', [], config.session_read.sql));
+      assert.deepEqual(read.rows.map(row => row.map(String)), [config.session_read.row], config.session_read.sql);
+    }
     if (config.tls_version === true) {
       const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
       const version = status.rows[0]?.[1];
@@ -2040,6 +2044,29 @@ const TABLE_OPS = {
     return { value: { bool: await connectionOf(s, context).utils().backendWaitingForLock() } };
   },
   // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+  async 'pool.transactions'(s, context) {
+    // Count transactions at once: the first hold of them stay open until hold have begun, so the pool shows the
+    // connections that they take at once (CFG-4, CFG-5).
+    const db = connectionOf(s, context);
+    let [active, peak, open, begun] = [0, 0, 0, 0];
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    await Promise.all(Array.from({ length: s.transactions }, () => db.transaction(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      open = Math.max(open, db.utils().stats().openConnections);
+      begun += 1;
+      if (begun === s.hold) release();
+      await gate;
+      active -= 1;
+    }, { retry: 0 })));
+    return { json: { peak, open } };
+  },
+  'utils.stats'(s, context) {
+    // The pool counts of the connection (INT-79).
+    const stats = connectionOf(s, context).utils().stats();
+    return { json: { max_open_connections: stats.maxOpenConnections, open_connections: stats.openConnections, in_use: stats.inUse, idle: stats.idle } };
+  },
   'utils.groups'(s, context) {
     const utils = connectionOf(s, context).utils();
     const held = { aes: utils.aes(), privileges: utils.privileges(), schema: utils.schema(), stats: utils.stats() };

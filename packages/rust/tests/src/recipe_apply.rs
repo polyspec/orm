@@ -1,13 +1,13 @@
 //! The ops of the dbspec apply API (docs/spec/feature-coverage.md FCV-4): each command is one call of the public API on a named
 //! connection, and steps nested in its on field run inside the event handler. The handler is a synchronous function and the
 //! command borrows its connection, so the ops run on a multi-thread runtime of their own, where the handler waits for a nested
-//! step with block_in_place, and a statement nested on the connection of the command runs before the next statement of the
-//! command.
+//! step with block_in_place, and a step nested on the connection of the command takes that connection between two statements of
+//! the command.
 
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
@@ -18,6 +18,7 @@ use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
 use tokio::runtime::{Handle, Runtime};
+use tokio::sync::Mutex;
 
 /// The ops that [`ApplyOps::run`] takes.
 pub const OPS: [&str; 9] = [
@@ -103,43 +104,33 @@ impl ApplyConnection for Conn {
     }
 }
 
-/// The connection of a running command: the statements that the event handler queued run before its next statement.
-struct Flushing<'c> {
-    inner: &'c mut Conn,
-    queue: Arc<Mutex<Vec<String>>>,
+/// The connection of a running command, shared with its event handler. The command holds the lock only while a statement runs,
+/// and it calls the handler between statements, so a step nested on this connection reads what the command has done so far.
+struct Shared {
+    inner: Arc<Mutex<Conn>>,
 }
 
-impl Flushing<'_> {
-    async fn flush(&mut self) -> Result<(), sqlx::Error> {
-        let queued = std::mem::take(&mut *self.queue.lock().expect("the queue of the command"));
-        for statement in queued {
-            ApplyConnection::execute(&mut *self.inner, &statement).await?;
-        }
-        Ok(())
-    }
-}
-
-impl CatalogQuerier for Flushing<'_> {
+impl CatalogQuerier for Shared {
     async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.flush().await?;
-        CatalogQuerier::rows(&mut *self.inner, query).await
+        let mut session = self.inner.lock().await;
+        CatalogQuerier::rows(&mut *session, query).await
     }
 }
 
-impl ApplyConnection for Flushing<'_> {
+impl ApplyConnection for Shared {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::execute(&mut *self.inner, statement).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::execute(&mut *session, statement).await
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::execute_bound(&mut *self.inner, statement, args).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::execute_bound(&mut *session, statement, args).await
     }
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::query_bound(&mut *self.inner, query, args).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::query_bound(&mut *session, query, args).await
     }
 }
 
@@ -299,6 +290,17 @@ fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
     }
 }
 
+/// Runs the statement of dbspec.exec on its connection; its value is the rows, when the step expects them.
+async fn exec_on(session: &mut Conn, step: &Value, text: &str) -> Result<Value, String> {
+    if step.get("expect").is_none() {
+        ApplyConnection::execute(session, text).await.map_err(|e| format!("{text}: {e}"))?;
+        return Ok(json!({}));
+    }
+    let rows = ApplyConnection::query_bound(session, text, &[]).await.map_err(|e| format!("{text}: {e}"))?;
+    let array: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(cell).collect::<Vec<_>>() })).collect();
+    Ok(json!({ "value": { "array": array } }))
+}
+
 type OpFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
 
 fn run_op<'a>(state: &'a mut State, step: &'a Value, database: &'a str, dsn: &'a str) -> OpFuture<'a> {
@@ -323,13 +325,7 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             let text = sql_of(step, database, state.step)?;
             let connection = step["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
-            if step.get("expect").is_none() {
-                ApplyConnection::execute(session, &text).await.map_err(|e| format!("{text}: {e}"))?;
-                return Ok(json!({}));
-            }
-            let rows = ApplyConnection::query_bound(session, &text, &[]).await.map_err(|e| format!("{text}: {e}"))?;
-            let array: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(cell).collect::<Vec<_>>() })).collect();
-            Ok(json!({ "value": { "array": array } }))
+            exec_on(session, step, &text).await
         }
         "dbspec.schema" => {
             let connection = step["connection"].as_str().unwrap_or_default();
@@ -398,15 +394,15 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         plans.push(state.plans.get(name).cloned().ok_or_else(|| format!("plan {name} is not bound"))?);
     }
     // The command borrows its connection, so it is out of the map while the nested steps reach the others.
-    let mut session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
-    let queue: Arc<Mutex<Vec<String>>> = Arc::default();
+    let session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
+    let shared = Arc::new(Mutex::new(session));
     let on = step.get("on");
     let mut kinds: HashMap<String, u64> = HashMap::new();
     let mut events = 0_u64;
     let mut ran = false;
     let started = Instant::now();
     let result = {
-        let queued = Arc::clone(&queue);
+        let nested_session = Arc::clone(&shared);
         let mut handler = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
             events += 1;
             *kinds.entry(event.kind.as_str().to_owned()).or_default() += 1;
@@ -426,10 +422,14 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                     continue;
                 }
                 if nested["op"] == "dbspec.exec" && nested["connection"].as_str() == Some(target.as_str()) {
-                    if nested.get("expect").is_some() {
-                        return Err(format!("a nested step on the connection of the command expects no value: {nested}").into());
-                    }
-                    queued.lock().expect("the queue of the command").push(sql_of(nested, database, state.step)?);
+                    let text = sql_of(nested, database, state.step)?;
+                    let got = tokio::task::block_in_place(|| {
+                        Handle::current().block_on(async {
+                            let mut session = nested_session.lock().await;
+                            exec_on(&mut *session, nested, &text).await
+                        })
+                    })?;
+                    checked(nested, database, &got)?;
                     continue;
                 }
                 let got = tokio::task::block_in_place(|| Handle::current().block_on(run_op(&mut *state, nested, database, dsn)))?;
@@ -440,7 +440,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             }
             Ok(())
         };
-        let mut connection = Flushing { inner: &mut session, queue: Arc::clone(&queue) };
+        let mut connection = Shared { inner: Arc::clone(&shared) };
         match step["op"].as_str().unwrap_or_default() {
             "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
             "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
@@ -450,6 +450,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         }
     };
     let elapsed = started.elapsed().as_millis();
+    let session = Arc::into_inner(shared).ok_or("the connection of the command is still held")?.into_inner();
     state.sessions.insert(target, session);
     let code = match &result {
         Ok(()) => "ok".to_owned(),

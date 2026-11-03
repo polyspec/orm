@@ -408,6 +408,10 @@ type dsnConfig struct {
 	PoolLifetimeMs     int  `json:"pool_lifetime_ms"`
 	StatementTimeoutMs int  `json:"statement_timeout_ms"`
 	TLSVersion         bool `json:"tls_version"`
+	SessionRead        *struct {
+		SQL string   `json:"sql"`
+		Row []string `json:"row"`
+	} `json:"session_read"`
 }
 
 // sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
@@ -539,6 +543,24 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 		}
 		if fmt.Sprint(cell) != "1" {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		if config.SessionRead != nil {
+			read, err := f.Run(orm.KindUtility, nil, config.SessionRead.SQL)
+			if err != nil {
+				return err
+			}
+			if len(read.Rows) != 1 || len(read.Rows[0]) != len(config.SessionRead.Row) {
+				return fmt.Errorf("%s returned %v, want %v", config.SessionRead.SQL, read.Rows, config.SessionRead.Row)
+			}
+			for i, want := range config.SessionRead.Row {
+				cell := read.Rows[0][i]
+				if text, isBytes := cell.([]byte); isBytes {
+					cell = string(text)
+				}
+				if fmt.Sprint(cell) != want {
+					return fmt.Errorf("%s cell %d is %v, want %s", config.SessionRead.SQL, i, cell, want)
+				}
+			}
 		}
 		if !config.TLSVersion {
 			return nil

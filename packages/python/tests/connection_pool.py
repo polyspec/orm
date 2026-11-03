@@ -54,8 +54,8 @@ def read_only(db, body):
 class ConnectionPoolTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
-    def each(self, body):
-        for dialect in DIALECTS:
+    def each(self, body, dialects=DIALECTS):
+        for dialect in dialects:
             with (
                 self.subTest(dialect=dialect),
                 case_database(dialect, TEMP["dir"].name, "orm_pool") as dsn,
@@ -212,7 +212,7 @@ class ConnectionPoolTest(unittest.TestCase):
                     f"{options}",
                 )
 
-        self.each(body)
+        self.each(body, ("sqlite",))
 
     def test_concurrent_transactions_and_the_limit(self):
         def body(dialect, dsn):
@@ -355,26 +355,27 @@ class ConnectionPoolTest(unittest.TestCase):
 
     def test_idle_size_and_lifetime(self):
         def body(dialect, dsn):
-            db = models.connect(dsn, poolSize=3, poolIdleSize=1)
-            try:
-                barrier = threading.Barrier(3)
+            if dialect == "sqlite":
+                db = models.connect(dsn, poolSize=3, poolIdleSize=1)
+                try:
+                    barrier = threading.Barrier(3)
 
-                def hold():
-                    read_only(db, lambda: barrier.wait(10))
+                    def hold():
+                        read_only(db, lambda: barrier.wait(10))
 
-                threads = [threading.Thread(target=hold) for _ in range(3)]
-                for thread in threads:
-                    thread.start()
-                for thread in threads:
-                    thread.join(10)
-                stats = db.stats()
-                self.assertEqual(
-                    (stats.open_connections, stats.idle),
-                    (1, 1),
-                    "the idle connections kept",
-                )
-            finally:
-                db.close()
+                    threads = [threading.Thread(target=hold) for _ in range(3)]
+                    for thread in threads:
+                        thread.start()
+                    for thread in threads:
+                        thread.join(10)
+                    stats = db.stats()
+                    self.assertEqual(
+                        (stats.open_connections, stats.idle),
+                        (1, 1),
+                        "the idle connections kept",
+                    )
+                finally:
+                    db.close()
             db = models.connect(dsn, poolSize=1, poolLifetimeMs=200)
             try:
                 # The driver connection of a transaction; a pooler in front of the server reuses its server sessions,

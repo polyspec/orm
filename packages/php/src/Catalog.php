@@ -1493,7 +1493,8 @@ final class Catalog
         ?\Closure $convert = null
     ): array {
         try {
-            if ($this->dialect === 'postgres' && $args === []) {
+            // A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123).
+            if ($this->dialect === 'postgres' && $args === [] && !str_starts_with($sql, 'INSERT ')) {
                 return $this->cursorQuery($pdo, $sql, $maxRows, $maxBytes, $convert);
             }
             $connectionId = $this->dialect === 'mysql' ? $this->mysqlConnectionId($pdo) : null;

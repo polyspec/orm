@@ -1665,6 +1665,10 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return boolOutcome(waiting), nil
+	case "utils.stats":
+		// The pool counts of the connection (INT-79).
+		stats := db.Utils().Stats()
+		return jsonOutcome(map[string]any{"max_open_connections": stats.MaxOpenConnections, "open_connections": stats.OpenConnections, "in_use": stats.InUse, "idle": stats.Idle}), nil
 	case "utils.groups":
 		// The names of the groups that the value of utils() holds (INT-134), each read through its own call.
 		utils := db.Utils()

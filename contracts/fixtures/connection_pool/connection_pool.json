@@ -1,0 +1,323 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-4",
+    "CFG-5",
+    "CFG-5a",
+    "FCV-2",
+    "FCV-3",
+    "FCV-4"
+  ],
+  "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
+  "cases": [
+    {
+      "id": "the_pool_size_is_the_open_maximum",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unset_or_zero_pool_size_opens_at_most_ten",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "unset"
+        },
+        {
+          "op": "utils.stats",
+          "connection": "unset",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 0
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 10,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "transactions_wait_at_the_open_maximum",
+      "requirements": [
+        "CFG-4"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 2
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 2,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 2,
+                "open": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 2,
+                "open": 2
+              }
+            }
+          },
+          "transactions": 6
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 2,
+                "open_connections": 2,
+                "in_use": 0,
+                "idle": 2
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 2,
+                "open_connections": 2,
+                "in_use": 0,
+                "idle": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "the_idle_size_closes_what_it_does_not_keep",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3,
+          "pool_idle_size": 1
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          },
+          "transactions": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_unset_idle_size_keeps_the_pool_size",
+      "requirements": [
+        "CFG-5"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "as": "conn",
+          "pool_size": 3
+        },
+        {
+          "op": "pool.transactions",
+          "connection": "conn",
+          "hold": 3,
+          "expect": {
+            "mysql": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "peak": 3,
+                "open": 3
+              }
+            }
+          },
+          "transactions": 3
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 3,
+                "open_connections": 3,
+                "in_use": 0,
+                "idle": 3
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "an_idle_size_above_the_pool_size_is_refused",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_size": 3,
+            "pool_idle_size": 4
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

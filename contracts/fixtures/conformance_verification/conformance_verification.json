@@ -14481,7 +14481,6 @@
        "int": "6"
       }
      },
-     "order": [],
      "columns": [
       "name"
      ],
@@ -59025,7 +59024,6 @@
        "int": "6"
       }
      },
-     "order": [],
      "columns": [
       "name"
      ],
@@ -59075,7 +59073,6 @@
        "int": "6"
       }
      },
-     "order": [],
      "columns": [
       "name"
      ],
@@ -79001,7 +78998,8 @@
         {
          "start_dt": {
           "le": {
-           "fn": "now"
+           "fn": "now",
+           "args": []
           }
          }
         }
