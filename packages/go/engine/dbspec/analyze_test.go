@@ -19,24 +19,6 @@ var sampleDocument = []string{
 }
 
 // Requirements: DBS-134, DBS-135.
-func TestAnalyzeSampleTokens(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	text := joinLines(sampleDocument, false)
-	got := Analyze(text, nil).Tokens
-	want := []Token{
-		{1, 0, 6, "keyword"}, {1, 7, 8, "number"}, {1, 9, 13, "name"},
-		{2, 0, 5, "keyword"}, {2, 6, 11, "name"}, {2, 12, 13, "punctuation"},
-		{3, 2, 4, "name"}, {3, 5, 8, "type"}, {3, 9, 17, "keyword"},
-		{4, 2, 7, "name"}, {4, 8, 15, "type"}, {4, 15, 16, "punctuation"}, {4, 16, 19, "number"},
-		{4, 19, 20, "punctuation"}, {4, 21, 28, "keyword"}, {4, 29, 32, "string"},
-		{5, 2, 9, "keyword"}, {5, 10, 13, "keyword"}, {5, 14, 15, "punctuation"}, {5, 15, 17, "name"}, {5, 17, 18, "punctuation"},
-		{6, 0, 1, "punctuation"},
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("tokens:\n got %v\nwant %v", got, want)
-	}
-}
-
 // describeTokens renders each token as its line, its source text and its class.
 func describeTokens(text string, tokens []Token) []string {
 	lines := sourceLines(text)

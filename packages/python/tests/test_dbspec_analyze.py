@@ -27,13 +27,6 @@ TABLE_OPENING = [
 
 
 class AnalyzeTest(unittest.TestCase):
-    # Requirements: DBS-134, DBS-135.
-    def test_header_only(self):
-        self.assertEqual(
-            tokens_of("dbspec 1 app\n"),
-            [(1, 0, 6, "keyword"), (1, 7, 8, "number"), (1, 9, 12, "name")],
-        )
-
     def test_table_document(self):
         self.assertEqual(
             tokens_of(TABLE),

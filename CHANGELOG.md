@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The worked token example of the Go analysis test is the case `analyze-worked-example` of `tests/dbspec/rules.json`, and the native header token tests of TypeScript and Python go, because `analyze-header` holds them.
 - The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)

@@ -4919,7 +4919,6 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php/tests/DbspecSetTest.php",
         "packages/go/engine/dbspec/analyze_test.go",
-        "packages/ts/tests/dbspec-analyze.mjs",
         "packages/go/engine/dbspec/set_test.go",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/rust/schema/tests/dbspec_show_create.rs",
@@ -5139,7 +5138,6 @@
           "command": "make dbspec-ts-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/dbspec-analyze.mjs",
             "packages/ts/tests/dbspec-rules.mjs",
             "packages/ts/tests/dbspec-render.mjs",
             "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",

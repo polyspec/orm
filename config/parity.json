@@ -27006,21 +27006,6 @@
           "id": "schema_definition_none::dbspec_analyze_tokens"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeSampleTokens"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-analyze.mjs",
-          "id": "analyze header line tokens"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_header_only"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
           "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
@@ -44009,6 +43994,8 @@
         "DBS-129",
         "DBS-131",
         "DBS-132",
+        "DBS-134",
+        "DBS-135",
         "DBS-144",
         "DBS-145",
         "DBS-146",
