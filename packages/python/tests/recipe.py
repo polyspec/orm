@@ -1850,9 +1850,15 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "pool_lifetime_ms": "poolLifetimeMs",
         "statement_timeout_ms": "statementTimeoutMs",
     }
-    db = Db.connect(
-        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
-    )
+    options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    if "aes_keys" in (config or {}):
+        options["aesKeyring"] = AesKeyring(
+            {int(version): key for version, key in config["aes_keys"].items()},
+            config["aes_version"],
+        )
+        options["aesVersion"] = config["aes_version"]
+        options["aesKey"] = config["aes_key"]
+    db = Db.connect(dsn, options)
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:

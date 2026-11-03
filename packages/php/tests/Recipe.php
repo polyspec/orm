@@ -773,6 +773,9 @@ final class Recipe
             poolIdleSize: $config['pool_idle_size'] ?? 0,
             poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
             statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+            aesKey: $config['aes_key'] ?? '',
+            aesVersion: $config['aes_version'] ?? 1,
+            aesKeys: $config['aes_keys'] ?? [],
         ));
         try {
             $rows = $db->utils()->run(

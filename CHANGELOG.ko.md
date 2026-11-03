@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0a2beff6f1afc2786b614f329e69bcb10cbd55f61771fd5f7fefe39e55c98d61 -->
+<!-- source-sha256: b00d18a173e8a4c81a8d8ab64e8ca39ccde73421dd37de417510f04dd21fe854 -->
 # 변경 이력
 
 ## Unreleased
 
+- 현재 version의 key와 다른 AES key를 가진 연결은 `dsn.connect`의 `config`에 있는 `aes_key`, `aes_version`, `aes_keys`를 통해 여섯 runtime 모두에서 recipe `aes_rotation`의 case `an_aes_key_that_differs_from_the_current_version_is_refused`로 실행한다. Go 시험 `TestAESKeyMustMatchKeyOfCurrentVersion`은 제거했다 (#T334-3-12-2)
 - MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
 - INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)

@@ -149,6 +149,9 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         pool_idle_size: field("pool_idle_size"),
         pool_lifetime_ms: field("pool_lifetime_ms"),
         statement_timeout_ms: field("statement_timeout_ms"),
+        aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
+        aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
+        aes_keys: config["aes_keys"].as_object().map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect()).unwrap_or_default(),
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {

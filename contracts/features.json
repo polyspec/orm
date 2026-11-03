@@ -5948,7 +5948,6 @@
       "tests": [
         "packages/go/orm/codec_test.go",
         "packages/go/orm/aes_rotation_test.go",
-        "packages/go/orm/aes_keys_test.go",
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/codec_case.mjs",
@@ -5998,7 +5997,6 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex|TestRecipeCodecNone' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/aes_keys_test.go",
             "packages/go/orm/aes_rotation_test.go",
             "packages/go/orm/codec_test.go",
             "packages/go/orm/recipe_codec_test.go",

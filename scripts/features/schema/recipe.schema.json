@@ -1826,6 +1826,9 @@
               "pool_idle_size": { "type": "integer" },
               "pool_lifetime_ms": { "type": "integer" },
               "statement_timeout_ms": { "type": "integer" },
+              "aes_key": { "type": "string" },
+              "aes_version": { "type": "integer" },
+              "aes_keys": { "type": "object", "additionalProperties": { "type": "string" } },
               "tls_version": { "const": true, "description": "The connection also reads its Ssl_version, which is TLSv1.2 or TLSv1.3 (CFG-16)." }
             }
           },
