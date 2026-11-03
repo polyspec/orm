@@ -3526,6 +3526,16 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_clock_read(step: dict, _context: dict) -> dict:
+    """A client write takes wall_micros, which stays within 999 microseconds above the wall clock it reads, so
+    the reading bounds it below and the reading plus 999 above (FCV-4)."""
+    if step["edge"] not in ("lower", "upper"):
+        raise AssertionError(f"clock.read has no edge {step['edge']}")
+    micros = time.time_ns() // 1000 + (999 if step["edge"] == "upper" else 0)
+    seconds, fraction = divmod(micros, 1_000_000)
+    return {"value": {"text": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))}.{fraction:06d}"}}
+
+
 def _db_last_affected(step: dict, context: dict) -> dict:
     return {"value": {"int": str(last_affected(_connection_of(step, context)))}}
 
@@ -3983,6 +3993,7 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
+    "clock.read": lambda step, context: _op_clock_read(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
     "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
     "dsn.connect": _op_dsn_connect,

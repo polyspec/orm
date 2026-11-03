@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4d4872916c4f9cad88f6ba185b1f958cf096f9561a6f2f82f23d78735b37e72f -->
+<!-- source-sha256: 334dbe5e7ce4a0d66ea89872e106dcf6306602551dc437d19f55e17a74ce5a82 -->
 # 변경 이력
 
 ## Unreleased
 
+- `clock_microseconds`, `clock_soft_delete_microseconds`, `now_defaults`는 database clock 기준 1분 범위를 허용하던 자리에서, 새 step `clock.read`로 write 앞뒤에 읽은 wall clock 사이에 저장된 clock 값을 잡는다.
 - CR15-F: 저장된 표의 내림차순 행과 NULL을 `grid_column_and_row_order`의 step으로 두었다. Go 시험은 wrapper의 plan만 남기고(SCH-6b), Rust helper 시험은 지우며, Rust commit 분류기는 단일 소유 unit이 된다(INT-118a).
 - `performance_gate`는 각 class가 가리키는 database의 `BENCH_<DATABASE>_DSN`을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - described table 읽기는 유효한 UTF-8이 아닌 값을 여섯 runtime 모두에서 그 byte로 돌려주며, TypeScript는 그런 읽기의 응답 전체를 한 번의 실행에서 가져옵니다.

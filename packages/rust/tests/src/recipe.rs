@@ -3465,6 +3465,14 @@ mod database {
                 Output::fields(ok_value())
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
+            // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
+            // itself: a value written between two readings lies between their texts (FCV-4).
+            "clock.read" => match step["edge"].as_str() {
+                Some("lower" | "upper") => Output::fields(json!({ "value": {
+                    "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } })),
+                other => return Err(format!("clock.read has no edge {other:?}")),
+            },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
                 let name = bound_name(step).map_err(fault)?;

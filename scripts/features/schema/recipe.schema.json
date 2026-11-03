@@ -904,6 +904,7 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
             "utils.aes_rotate",
@@ -1254,6 +1255,9 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/clock.read"
         },
         {
           "$ref": "#/$defs/ops/transaction.attempts"
@@ -7415,6 +7419,31 @@
             "items": {
               "$ref": "#/$defs/hook"
             }
+          }
+        }
+      },
+      "clock.read": {
+        "type": "object",
+        "required": [
+          "op",
+          "edge",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "clock.read"
+          },
+          "edge": {
+            "description": "Which side of a write this read bounds: lower gives the reading of the wall clock, upper the latest value the client can write from that reading.",
+            "enum": [
+              "lower",
+              "upper"
+            ]
+          },
+          "as": {
+            "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
+            "$ref": "#/$defs/name"
           }
         }
       },

@@ -93,6 +93,8 @@ type databaseStep struct {
 	Snapshot       json.RawMessage `json:"snapshot"`
 	Set            json.RawMessage `json:"set"`
 	As             string          `json:"as"`
+	// Edge is the side of a write that clock.read bounds.
+	Edge string `json:"edge"`
 	// The catalog fields: the databases that run the step, the namespace of a table, the binds and page of a query, and
 	// the seq of a row.
 	Only      []string                   `json:"only"`
@@ -1177,6 +1179,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return okOutcome(), nil
 	case "transaction.attempts":
 		return countOutcome(int64(c.attempts)), nil
+	case "clock.read":
+		return clockRead(s.k("edge").Edge)
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
 	case "dbspec.introspect":
@@ -1526,6 +1530,16 @@ func indexOf(names []string, name string) int {
 		}
 	}
 	return -1
+}
+
+// clockRead reads the wall clock as the client does, cut to the microsecond the client writes, so both edges are
+// the reading itself: a value written between two readings lies between their texts (FCV-4).
+func clockRead(edge string) (outcome, error) {
+	if edge != "lower" && edge != "upper" {
+		return outcome{}, fmt.Errorf("clock.read has no edge %q", edge)
+	}
+	text := time.Now().UTC().Format("2006-01-02 15:04:05.000000")
+	return outcome{fields: map[string]any{"value": map[string]any{"text": text}}}, nil
 }
 
 // databaseText is a field that holds SQL or a database-decided value: the string itself, or the entry of the database.

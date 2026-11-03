@@ -779,6 +779,11 @@
       "expect",
       "op"
     ],
+    "clock.read": [
+      "as",
+      "edge",
+      "op"
+    ],
     "transaction.attempts": [
       "expect",
       "op"

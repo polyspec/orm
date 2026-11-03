@@ -2733,6 +2733,14 @@ final class Recipe
                 return ['value' => ['bool' => true]];
             case 'transaction.attempts':
                 return ['value' => ['int' => (string) $context['attempts']]];
+            case 'clock.read':
+                // The client writes the reading of this clock, cut to the microsecond, so both edges are the
+                // reading itself: a value written between two readings lies between their texts (FCV-4).
+                if (!in_array($s['edge'], ['lower', 'upper'], true)) {
+                    Assert::fail('clock.read has no edge ' . json_encode($s['edge']));
+                }
+                return ['value' => ['text' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+                    ->format('Y-m-d H:i:s.u')]];
             case 'transaction.deadlock':
                 return self::transactionDeadlock($s, $context);
             case 'events.server_transactions':
@@ -2822,7 +2830,10 @@ final class Recipe
             case 'catalog.read_only_query':
                 $result = $catalog->readOnlyQuery(
                     self::sqlField($s['sql'], $context),
-                    array_map(self::nativeValue(...), $s['binds'] ?? []),
+                    array_map(
+                        static fn (mixed $bind): mixed => self::nativeValue(self::stepArgument($bind, $context)),
+                        $s['binds'] ?? []
+                    ),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
@@ -4243,10 +4254,12 @@ final class Recipe
     /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
     private static function chainTarget(RecipeStep $s, array $context): Model
     {
+        // A bound row keeps its own connection; the step's connection is still read, so a name that binds none fails.
+        $db = self::connectionOf($s, $context);
         $model = isset($s['row'])
             ? self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)
             : self::chainAssign(
-                self::tableModel($s['model'], self::connectionOf($s, $context), $context),
+                self::tableModel($s['model'], $db, $context),
                 // The key form sets the key on a new model, with no read before it (FCV-4).
                 $s['key'] ?? $s['values'] ?? [],
                 $context,
@@ -4336,6 +4349,7 @@ final class Recipe
                 if (isset($s['row'])) {
                     $bound = self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context);
                     if ($bound instanceof Collection) {
+                        self::connectionOf($s, $context);
                         $bound->delete($recursive);
                         return [];
                     }
