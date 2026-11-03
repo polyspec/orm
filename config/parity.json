@@ -5613,20 +5613,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_without_hook",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_without_hook"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::without_hook"
         }
       ]
     },
@@ -5676,20 +5664,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_read_filter",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_read_filter"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::read_filter"
         }
       ]
     },
@@ -5738,20 +5714,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_invalid_param",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_invalid_param"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::invalid_param"
         }
       ]
     },
@@ -5800,20 +5764,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_no_key",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_no_key"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::restore_no_key"
         }
       ]
     },
@@ -5862,20 +5814,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_rewritten_key",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_rewritten_key"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::restore_rewritten_key"
         }
       ]
     },
@@ -5924,20 +5864,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_hook_set_key",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_hook_set_key"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::restore_hook_set_key"
         }
       ]
     },
@@ -5986,20 +5914,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_restore_rewritten_key_set_scope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_restore_rewritten_key_set_scope"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::restore_rewritten_key_set_scope"
         }
       ]
     },
@@ -6048,20 +5964,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "coverage_request_hook_relation_scope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test request_hook",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_request_hook_relation_scope"
-          ]
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::relation_scope"
         }
       ]
     },
@@ -6273,8 +6177,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "reads_params"
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::reads_params"
         },
         {
           "implementation": "typescript",
