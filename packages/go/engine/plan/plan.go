@@ -44,7 +44,6 @@ type IfParent struct {
 
 // BindSlot tells the executor where the value for one placeholder comes from.
 //   - param:  Params[Param] of the request, optionally passed through Transform
-//   - secret: a key from executor config (Name = "aes")
 //   - parent: the distinct values described by the step's ParentRef (relation IN lists; expands to N placeholders)
 //   - now:    the executor's current UTC time as "YYYY-MM-DD HH:MM:SS.ffffff" truncated to Precision digits (dialects whose ORM clock is the executor clock, HostNow)
 //   - audit: the audit record key of the transaction. The inserts and updates of the audit table write it to the audit column. Name is the audit record table.
@@ -64,7 +63,7 @@ type BindSlot struct {
 	// ColType is the dbspec type of the value that a placeholder takes. A value compared with, or
 	// assigned to, a column has that column's type (a value passed through a host style is stored in the column,
 	// so it is the same). The value a SQL-side style function takes is the type of that function's input;
-	// a value compared with a function is the type of its result; a secret is text; config is the type of the
+	// a value compared with a function is the type of its result; config is the type of the
 	// column that stores the value; now is datetime; and audit is the type of the audit column. A parent
 	// slot carries KeyTypes instead of ColType. A slot with no type does not exist.
 	ColType string `json:"col_type,omitempty"`

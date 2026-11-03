@@ -643,7 +643,8 @@
       "op"
     ],
     "catalog.reconnect": [
-      "op"
+      "op",
+      "user_from_database"
     ],
     "catalog.revision": [
       "as",

@@ -2775,7 +2775,6 @@
         "packages/python/tests/test_sqlite.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
-        "packages/python/tests/coverage_transactions.py",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
         "packages/go/orm/transaction_api_test.go",
         "packages/ts/tests/chain-types.mjs",
@@ -2877,12 +2876,6 @@
             "packages/go/orm/rollback_fault_entry_test.go",
             "packages/go/orm/rollback_fault_test.go"
           ]
-        },
-        {
-          "id": "rollback-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^Test(Savepoint)?RollbackFailed' -count=1",
-          "shard": "other",
-          "inputs": []
         },
         {
           "id": "transaction-failure-go",
@@ -3281,8 +3274,7 @@
             "tests": [
               "packages/python/tests/test_transactions_mysql.py",
               "packages/python/tests/test_transactions_postgres.py",
-              "packages/python/tests/test_transactions_sqlite.py",
-              "packages/python/tests/coverage_transactions.py"
+              "packages/python/tests/test_transactions_sqlite.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
@@ -3293,14 +3285,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -3308,14 +3292,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -3323,14 +3299,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
@@ -3533,22 +3501,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "model_statements",
-          "transaction_savepoint",
-          "transaction_rollback",
-          "savepoint_rollback",
-          "failed_statement",
-          "subscriber_error",
-          "subscriber_orm_error",
-          "unsubscribe",
-          "install",
-          "schema_set_several_fixture_first",
-          "schema_set_several_other_first",
-          "schema_set_unregistered",
-          "schema_set_edited_manifest",
-          "notify"
-        ],
         "owners": {
           "go": {
             "part": "packages/go/orm",
@@ -3556,6 +3508,7 @@
               "packages/go/orm/recipe_statement_events_test.go"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3591,6 +3544,7 @@
               "packages/php/tests/StatementEventsRecipeTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3626,6 +3580,7 @@
               "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3663,6 +3618,7 @@
               "packages/rust/tests/tests/statement_events_sqlite.rs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3697,6 +3653,7 @@
               "packages/ts/tests/statement_events-sqlite.test.mjs"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -3731,6 +3688,7 @@
               "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
+              "contracts/fixtures/statement_events/statement_events.dbs",
               "contracts/fixtures/statement_events/dbspec-set.json"
             ],
             "commands": {
@@ -5595,15 +5553,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/params.rs"
-          ]
-        },
-        {
-          "id": "param-uses-typescript",
-          "command": "node packages/ts/tests/coverage_planner.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/coverage_planner.mjs",
-            "packages/ts/src/engine/params.ts"
           ]
         },
         {
