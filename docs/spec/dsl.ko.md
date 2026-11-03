@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 912b2ffcc26877f3efca8a2d3709070cf1beb847f614ceddd0b8ced8af87713f -->
+<!-- source-sha256: aa7120f06dff9a7430df3e291912e19ca44302d1a2113f1706565e92a1a2bb2f -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -157,6 +157,7 @@ Key   = [Operator] Column
 
 - **DSL-72** `addColumn<Col>()` — 동작: 컬럼 하나 추가
 - **DSL-73** `addColumn<Col>Alias<Name>(fn)` — 동작: 출력 명칭을 지정한 컬럼 함수(10절) 컬럼 추가
+- **DSL-73a** PHP-extension package `polyspec/orm-php-ext`는 `Orm`의 컬럼 함수 factory를 native로 구현하고, 생성된 쿼리에 그 컬럼 함수 metadata를 유지한다(DSL-73).
 - **DSL-74** `addColumn<Name>(fn)` — 동작: 스칼라 서브쿼리 컬럼 추가. 콜백은 호출한 모델을 받아 실행하지 않은 모델을 반환한다
 - **DSL-75** `removeColumn<Col>()` — 동작: 컬럼 하나 제외
 - **DSL-76** `removeAllColumns()` — 동작: 기본 키와 외래 키만 유지

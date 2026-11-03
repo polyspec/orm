@@ -492,6 +492,20 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
 		}
+		if want, ok := expected["rollback"]; ok {
+			var coded *orm.Error
+			if !errors.As(err, &coded) {
+				return fmt.Errorf("error %q is not coded", err.Error())
+			}
+			joined, ok := coded.Cause.(interface{ Unwrap() []error })
+			if !ok || len(joined.Unwrap()) != 2 {
+				return fmt.Errorf("error %q does not keep the callback and rollback errors", err.Error())
+			}
+			rollback := joined.Unwrap()[1]
+			if orm.ErrorCode(rollback) != want || !strings.Contains(err.Error(), rollback.Error()) {
+				return fmt.Errorf("error %q keeps the rollback error %q, want code %v", err.Error(), rollback.Error(), want)
+			}
+		}
 		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
 			return fmt.Errorf("error %q has no driver cause", err.Error())
 		}
@@ -959,6 +973,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "session.end":
+		if err := endSession(s.Table, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
 	case "transaction.attempts":
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
@@ -1155,10 +1174,40 @@ func okOutcome() outcome {
 }
 
 // runNested runs the nested steps of a statements.count or transaction op, each with its own expect (FCV-4).
+// endSession ends the server session that holds a lock on table in the case database (session.end, CFG-15). It connects
+// to that database through the server DSN, not a pooler, which may handle KILL on its own.
+func endSession(table string, c *databaseContext) error {
+	variable := "ORM_TEST_" + strings.ToUpper(c.database) + "_SERVER_DSN"
+	server := os.Getenv(variable)
+	if server == "" {
+		return fmt.Errorf("%s is required; database tests never skip", variable)
+	}
+	raw := testdb.Open(c.t, c.database, testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, c.dsn)))
+	defer testcase.Close(c.t, raw)
+	var id int64
+	if c.database == "postgres" {
+		if err := raw.QueryRow(fmt.Sprintf(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '%s' AND l.pid <> pg_backend_pid() LIMIT 1`, table)).Scan(&id); err != nil {
+			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+		}
+		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		return err
+	}
+	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
+		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+	}
+	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
+	return err
+}
+
 func runNested(raw []json.RawMessage, c *databaseContext) error {
 	for index, nested := range raw {
 		op, err := runRawStep(nested, c)
 		if err != nil {
+			// The error of a public call reaches the enclosing callback as the call returned it, so that a ROLLBACK
+			// message names it (CFG-15).
+			if orm.ErrorCode(err) != "" {
+				return err
+			}
 			return fmt.Errorf("nested step %d (%s): %w", index, op, err)
 		}
 	}

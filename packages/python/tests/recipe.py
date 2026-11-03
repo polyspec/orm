@@ -84,6 +84,7 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_generator
+from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
@@ -766,8 +767,16 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
-            if "rule" in expect and expect["rule"] not in str(error):
-                raise AssertionError(f"the error {error} does not name the rule {expect['rule']}")
+            # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+            if "diagnostics" in expect:
+                prefix = f"{expect['error']}: "
+                if not str(error).startswith(prefix):
+                    raise AssertionError(f"the error {error} does not start with its code")
+                problems = str(error)[len(prefix):].split("; ")
+                _expect_equal(len(problems), len(expect["diagnostics"]), str(error))
+                for problem, want in zip(problems, expect["diagnostics"]):
+                    if not problem.startswith(f"{want}: "):
+                        raise AssertionError(f"the error {error} does not hold the diagnostic {want}")
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],
@@ -2459,6 +2468,36 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+def _op_session_end(step: dict, context: dict) -> dict:
+    """Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+    handle KILL on its own."""
+    database, table = context["database"], step["table"]
+    variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
+    server = os.environ.get(variable)
+    if not server:
+        raise AssertionError(f"{variable} is required; database tests never skip")
+    session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
+    query = (
+        f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
+        if database == "postgres"
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
+    )
+    rows = native_query(database, session, [query])[0]
+    if len(rows) != 1:
+        raise AssertionError(f"the transaction session holds a lock on {table}: {rows}")
+    session_id = int(next(iter(rows[0].values())))
+    native_query(
+        database,
+        session,
+        [
+            f"SELECT pg_terminate_backend({session_id}, 5000)"
+            if database == "postgres"
+            else f"KILL {session_id}"
+        ],
+    )
+    return {}
+
+
 # The statement that every client runs on a new connection (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
 _DDL_CONNECTION_RULES = {
     "mysql": "SET time_zone = '+00:00'",
@@ -2939,7 +2978,11 @@ def _chain_built(step: dict, context: dict) -> Model:
     if "from" in step:
         return _by_key(_bound_value(step["from"], context), step, context)
     db = _connection_of(step, context)
-    model = _new_row(context, db, step["model"])
+    model = (
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"])
+    )
     build = _ChainBuild(context)
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
@@ -3025,10 +3068,15 @@ def _table_model_query(step: dict, context: dict) -> dict:
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:
-        limit = step["limit"]
-        steps = model.get_page_plan_steps(
-            limit["offset"] // limit["count"] + 1, limit["count"]
-        )
+        if "plan_page" in step:
+            steps = model.get_page_plan_steps(
+                step["plan_page"]["page"], step["plan_page"]["per_page"]
+            )
+        else:
+            limit = step["limit"]
+            steps = model.get_page_plan_steps(
+                limit["offset"] // limit["count"] + 1, limit["count"]
+            )
         return {
             "json": [
                 {
@@ -3038,6 +3086,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
+                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
                 }
                 for plan_step in steps
             ]
@@ -3595,6 +3644,7 @@ _DATABASE_OPS = {
     "catalog.insert_row": _op_insert_row,
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
+    "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
@@ -3653,6 +3703,12 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not hold {holds!r}"
             ) from error
+        if "rollback" in expected:
+            rollback = error.rollback
+            if rollback.code != expected["rollback"] or str(rollback) not in str(error):
+                raise AssertionError(
+                    f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
+                ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"

@@ -146,7 +146,7 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
       return error.lines;
     }
   };
-  assert.deepEqual(read(JSON.parse(readFileSync(new URL('../../contracts/fixtures/planner.json', import.meta.url), 'utf8'))), []);
+  assert.deepEqual(read(JSON.parse(readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'))), []);
   assert.notDeepEqual(read({ cases: [{ id: 'a', operation: 'o', expected: 1 }] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);

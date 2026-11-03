@@ -1,5 +1,5 @@
-//go:build featurecoverage
-
+// The measurement of PERF-1 on the three databases: native and client p50, ratio, samples, CPU, wall time and machine. A recipe
+// states results and not time, so these tests stay native; their reads are the cases of the recipe performance_gate.
 package bench
 
 import (
@@ -21,6 +21,27 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// TestPerformanceMeasurementMysql measures the hot path on the seeded bench database of mysql; a missing DSN fails by its name.
+// Requirements: PERF-1.
+func TestPerformanceMeasurementMysql(t *testing.T) {
+	testcase.Start(t, gateDeadline)
+	measureHotPath(t, "mysql")
+}
+
+// TestPerformanceMeasurementPostgres measures the hot path on the seeded bench database of postgres; a missing DSN fails by its name.
+// Requirements: PERF-1.
+func TestPerformanceMeasurementPostgres(t *testing.T) {
+	testcase.Start(t, gateDeadline)
+	measureHotPath(t, "postgres")
+}
+
+// TestPerformanceMeasurementSQLite measures the hot path on the seeded bench database of sqlite; a missing DSN fails by its name.
+// Requirements: PERF-1.
+func TestPerformanceMeasurementSQLite(t *testing.T) {
+	testcase.Start(t, gateDeadline)
+	measureHotPath(t, "sqlite")
+}
+
 // gateDSN is the DSN of the seeded bench database of the entry's database, which the databases need of the run writes after it
 // seeds them. A missing variable fails by its name.
 func gateDSN(t *testing.T, driver string) string {
@@ -28,14 +49,14 @@ func gateDSN(t *testing.T, driver string) string {
 	name := map[string]string{"mysql": "BENCH_MYSQL_DSN", "postgres": "BENCH_POSTGRES_DSN", "sqlite": "BENCH_SQLITE_DSN"}[driver]
 	dsn := os.Getenv(name)
 	if dsn == "" {
-		t.Fatalf("%s is required; it is the seeded bench database of %s", name, driver)
+		t.Fatalf("%s is required; it is the seeded bench database of %s; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run", name, driver)
 	}
 	return dsn
 }
 
-// coverageHotPathGate is the timing of PERF-1 and asserts no correctness: the rows, binds, projection and decoded cells of its
+// measureHotPath is the timing of PERF-1 and asserts no correctness: the rows, binds, projection and decoded cells of its
 // reads are the cases of contracts/fixtures/performance_gate/performance_gate.json.
-func coverageHotPathGate(t *testing.T, driver string) {
+func measureHotPath(t *testing.T, driver string) {
 	t.Helper()
 	dsn := gateDSN(t, driver)
 	db, err := model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
@@ -46,7 +67,7 @@ func coverageHotPathGate(t *testing.T, driver string) {
 	if got := db.Driver(); got != driver {
 		t.Fatalf("ORM connection driver = %s, want %s", got, driver)
 	}
-	raw, err := openCoverageNative(t, driver, dsn)
+	raw, err := openMeasuredNative(t, driver, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +134,7 @@ func coverageHotPathGate(t *testing.T, driver string) {
 	}
 }
 
-func openCoverageNative(t *testing.T, driver, dsn string) (*sql.DB, error) {
+func openMeasuredNative(t *testing.T, driver, dsn string) (*sql.DB, error) {
 	t.Helper()
 	switch driver {
 	case "mysql":

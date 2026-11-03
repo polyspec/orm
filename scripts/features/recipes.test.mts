@@ -152,18 +152,22 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.deepEqual(files.flatMap(file => expectFaults(JSON.parse(readFileSync(resolve(root, file), 'utf8')) as Json).map(fault => `${file}: ${fault}`)), []);
 });
 
-caseTest('every recipe of the parity suites names the recipe schema and is valid against it', COMPUTE, () => {
-  const parity = readParityConfig(resolve(root, 'config/parity.json'));
-  const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
-  assert.ok(files.length > 0, 'config/parity.json names no suite file');
-  for (const file of files) {
-    const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
-    const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
-    if (typeof named !== 'string' || !named.endsWith('/recipe.schema.json')) continue;
+// One subtest per recipe, so that a run reports every invalid recipe and not the first.
+const suiteFiles = (readParityConfig(resolve(root, 'config/parity.json')).suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
+
+caseTest('config/parity.json names the suite files', COMPUTE, () => {
+  assert.ok(suiteFiles.length > 0, 'config/parity.json names no suite file');
+});
+
+for (const file of suiteFiles) {
+  const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
+  const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
+  if (typeof named !== 'string' || !named.endsWith('/recipe.schema.json')) continue;
+  caseTest(`the recipe ${file} names the recipe schema and is valid against it`, COMPUTE, () => {
     assert.equal(resolve(root, dirname(file), named), schema, `${file} names another recipe schema`);
     assert.deepEqual(refused(value, file), [], file);
-  }
-});
+  });
+}
 
 // Requirements: FCV-12.
 caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
@@ -270,6 +274,25 @@ caseTest('a recipe owner runs once and is read from the results its runner write
     // The recipe is the list: a command that names other cases is refused before anything runs.
     assert.match((await outcome(sampleOwner(entry, recipe, ['first']), directory)).text,
       /cases differ from recipe contracts\/fixtures\/sample\/sample\.json: declared first; recipe first,second/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// Requirements: FCV-12.
+caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe elsewhere is refused', 20000, async () => {
+  const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-place-')));
+  const entry = 'packages/ts/tests/entry.mjs';
+  try {
+    await mkdir(join(directory, 'packages/ts/tests'), { recursive: true });
+    await writeFile(join(directory, entry), `import { appendFileSync } from 'node:fs';\nappendFileSync(process.env.ORM_RECIPE_RESULTS, 'CASE first PASS\\n');\n`);
+    for (const recipe of ['tests/sample/sample.json', 'contracts/fixtures/sample/sample.json', 'docs/sample/sample.json']) {
+      await mkdir(join(directory, dirname(recipe)), { recursive: true });
+      await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }] }));
+    }
+    assert.deepEqual((await outcome(sampleOwner(entry, 'tests/sample/sample.json', ['first']), directory)).errors, []);
+    assert.deepEqual((await outcome(sampleOwner(entry, 'contracts/fixtures/sample/sample.json', ['first']), directory)).errors, []);
+    assert.match((await outcome(sampleOwner(entry, 'docs/sample/sample.json', ['first']), directory)).text, /invalid recipe test command/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
