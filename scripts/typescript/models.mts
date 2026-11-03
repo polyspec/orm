@@ -26,7 +26,7 @@ const clientScans = [
 /** The client's models and each fixture model set in its own generated directory. */
 export const generatedModels: readonly GeneratedModels[] = [
   { out: 'src/models', set: '../../contracts/fixtures/bench/dbspec-set.json', scans: clientScans },
-  { out: 'src/models/complex_query', set: '../../contracts/fixtures/complex_query/dbspec-set.json', scans: ['tests/complex-query.mjs', 'tests/complex-query-support.mjs', 'tests/complex-query.types.ts'] },
+  { out: 'src/models/complex_query', set: '../../contracts/fixtures/complex_query/dbspec-set.json', scans: ['tests/complex-query-request.mjs', 'tests/complex-query.types.ts', 'tests/complex-query-request.types.ts'] },
   { out: 'src/models/decimal_fixture', set: '../../contracts/fixtures/dbspec-set.json', scans: ['tests/decimal_model_db.mjs'] },
   { out: 'src/models/markdown_fixture', set: '../../tests/markdown/corpus/dbspec/dbspec-set.json', scans: ['tests/markdown_cases.mjs'] },
   { out: 'src/models/bind_fixture', set: '../../tests/bind/dbspec-set.json', scans: ['tests/recipe.mjs'] },

@@ -4,6 +4,7 @@
 ## Unreleased
 
 - `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
+- The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.
 - TypeScript `toJSONText()` and `JSON.stringify(row)` no longer throw on a row that holds a bigint: both write the exact integer as a JSON number, also inside a styled value.
@@ -164,6 +165,7 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- CR15-2: the add tables and columns behaviour is five cases of the schema_install recipe, `dbspec.add_tables_steps` is a recipe of its own, the native tests are gone, and a refusal case can check its message with `message_contains`.
 - The Rust restore reads the key of the request as the request hook left it, before the planner renumbers its parameters, so a hook that sets the key after the label restores the row again (T326-15-1-1).
 - Every dbspec compare runner refuses a missing recipes directory with its own path before it reads any recipe file of it; an empty directory is still refused with the recipe file it lacks (T334-3-18-3-1).
 - Every dbspec compare and apply runner refuses an unreadable input with its path again: the PHP runners refuse an unreadable plans file instead of ending in a fatal error, the Rust apply runner reads the plans file it is given, and the recipes directory cases expect the recipe file the runner names in it (CR58).
