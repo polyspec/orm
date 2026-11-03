@@ -585,24 +585,21 @@
     },
     {
      "op": "sql.exec",
-     "sql": {
-      "mysql": "CREATE FULLTEXT INDEX ft_product_search ON product (name, short_description, content)"
-     },
-     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+     "sql": "CREATE FULLTEXT INDEX ft_product_search ON product (name, short_description, content)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
     },
     {
      "op": "sql.exec",
-     "sql": {
-      "mysql": "CREATE FULLTEXT INDEX ft_product_lang_search ON product_lang (name, short_description, content)"
-     },
-     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+     "sql": "CREATE FULLTEXT INDEX ft_product_lang_search ON product_lang (name, short_description, content)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
     },
     {
      "op": "sql.exec",
-     "sql": {
-      "mysql": "CREATE FULLTEXT INDEX ft_product_brand_lang_search ON product_brand_lang (name, description)"
-     },
-     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+     "sql": "CREATE FULLTEXT INDEX ft_product_brand_lang_search ON product_brand_lang (name, description)",
+     "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+     "only": ["mysql"]
     },
     {
      "op": "events.subscribe",
@@ -809,14 +806,16 @@
             {
              "display_start_dt": {
               "le": {
-               "fn": "now"
+               "fn": "now",
+              "args": []
               }
              }
             },
             {
              "display_end_dt": {
               "ge": {
-               "fn": "now"
+               "fn": "now",
+              "args": []
               }
              }
             }
@@ -1344,14 +1343,16 @@
             {
              "display_start_dt": {
               "le": {
-               "fn": "now"
+               "fn": "now",
+              "args": []
               }
              }
             },
             {
              "display_end_dt": {
               "ge": {
-               "fn": "now"
+               "fn": "now",
+              "args": []
               }
              }
             }
