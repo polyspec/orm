@@ -1,11 +1,9 @@
 package generator
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -68,7 +66,7 @@ func testScannedModule(t *testing.T) {
 // TestGoGenerationIgnoresMethodsOfRelationResults checks that a method called
 // on a relation getter result is not requested as a model method while the
 // getter does not exist yet.
-// Requirements: DSL-39.
+// Requirements: DSL-9, DSL-39.
 func TestGoGenerationIgnoresMethodsOfRelationResults(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
@@ -265,88 +263,6 @@ func Title() string { return other.Product().Title() }
 	buildScannedModule(t)
 }
 
-// TestGoRelationAliasWithChainPrefix checks that a relation alias that starts
-// with a chain prefix (Match, Join) still gives the parent its getter.
-// Requirements: DBS-118.
-func TestGoRelationAliasWithChainPrefix(t *testing.T) {
-	// The test of DSL-9, DSL-44 (docs/spec).
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasMatch()).
-		Relation(model.Brand().MatchBrandSeqWithSeq().AliasJoin())
-}
-
-func Match(p *model.ProductModel) (*model.BrandModel, error) { return p.GetMatch() }
-
-func Join(p *model.ProductModel) (*model.BrandModel, error) { return p.GetJoin() }
-`)
-	generateModel(t, namesManifest(t, namesDiagram))
-	product := readModelFile(t, "product.go")
-	for _, want := range []string{"func (x *ProductModel) GetMatch() (*BrandModel, error)", "func (x *ProductModel) GetJoin() (*BrandModel, error)"} {
-		if !strings.Contains(string(product), want) {
-			t.Errorf("generated product.go lacks %s", want)
-		}
-	}
-	buildScannedModule(t)
-}
-
-// TestGoNestedRelationAliasAttachesToItsParent checks that the alias of a
-// relation nested in a relation gives its getter to the model it aliases on,
-// and that a call on the result of a getter resolves to that model.
-// Requirements: DBS-118.
-func TestGoNestedRelationAliasAttachesToItsParent(t *testing.T) {
-	// The test of DSL-44 (docs/spec).
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", scanLoadHeader+`		Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore().
-			Relation(model.Product().MatchSeqWithBrandSeq().AliasMatch()))
-}
-
-func Match(p *model.ProductModel) (*model.ProductModel, error) {
-	store, err := p.GetStore()
-	if err != nil {
-		return nil, err
-	}
-	return store.GetMatch()
-}
-`)
-	generateModel(t, namesManifest(t, namesDiagram))
-	brand, err := os.ReadFile("model/brand.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := "func (x *BrandModel) GetMatch() (*ProductModel, error)"; !strings.Contains(string(brand), want) {
-		t.Errorf("generated brand.go lacks %s", want)
-	}
-	buildScannedModule(t)
-}
-
-// TestGoUnattachedGetterStopsGeneration checks that a scanned getter call
-// that no Alias, New or AddColumn call attaches stops generation, naming the
-// model and the method.
-func TestGoUnattachedGetterStopsGeneration(t *testing.T) {
-	// The test of DSL-44 (docs/spec).
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() *model.ProductModel {
-	return model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())
-}
-
-func Ghost(p *model.ProductModel) (*model.BrandModel, error) { return p.GetGhost() }
-`)
-	err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."})
-	if err == nil {
-		t.Fatal("generation accepted a getter call that nothing attaches")
-	}
-	if !strings.Contains(err.Error(), "ProductModel.GetGhost is called") {
-		t.Errorf("the refusal does not name ProductModel.GetGhost: %v", err)
-	}
-}
-
 // fixtureDocument reads a document of contracts/fixtures/external. It must run
 // before scannedModule, which changes the working directory.
 func fixtureDocument(t *testing.T, name string) string {
@@ -356,44 +272,6 @@ func fixtureDocument(t *testing.T, name string) string {
 		t.Fatal(err)
 	}
 	return string(b)
-}
-
-// TestGoRelationGetterOfExternalEntity checks that a relation to an entity of a
-// used external document gives the owned model its getter, typed with the
-// external model of its own package.
-// A relation to an entity of a used external document is a relation to an entity of the set: the member package generates its
-// model (ExtAudit), so the relation argument is that model and its getter is attached as the getter of any entity.
-// Requirements: DSL-44.
-func TestGoRelationGetterOfExternalEntity(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	member := fixtureDocument(t, "member.dbs")
-	core := fixtureDocument(t, "core.dbs")
-	write := scannedModule(t)
-	m, diagnostics := runtimemodel.LoadSet(member, core)
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() *model.ExtPostModel {
-	return model.ExtPost().Relation(model.ExtAudit().MatchAccountSeqWithSeq())
-}
-
-func Audit(row *model.ExtPostModel) (*model.ExtAuditModel, error) { return row.GetExtAuditModel() }
-`)
-	if err := generateGo(m, "model", "", []string{"./example"}); err != nil {
-		t.Fatal(err)
-	}
-	post, err := os.ReadFile("model/ext_post.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := `orm.RelatedAs[*ExtAuditModel]`; !strings.Contains(string(post), want) || !strings.Contains(string(post), `"ext_audit_model")`) {
-		t.Errorf("generated ext_post.go lacks the getter of the external relation %s", want)
-	}
-	buildScannedModule(t)
 }
 
 // TestGoExternalModelsWithoutCallsAreWritten checks that a used external table keeps its model when no scanned source
@@ -432,144 +310,6 @@ func Load() {
 	for _, name := range []string{"ext_session.go"} {
 		if _, err := os.Stat(filepath.Join("model", name)); err != nil {
 			t.Errorf("no model for the used external table of %s that no source calls: %v", name, err)
-		}
-	}
-	buildScannedModule(t)
-}
-
-// TestGoGetterOfNestedRebindingUsesItsOwnModel checks that a getter called on a
-// variable that a nested scope rebinds to another model is attributed to the
-// model of that inner binding, not to the model of the outer one.
-// Requirements: DSL-151.
-func TestGoGetterOfNestedRebindingUsesItsOwnModel(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Scoped() (int, error) {
-	row := model.Product().Relation(model.Brand().MatchBrandSeqWithSeq().AliasStore())
-	if _, err := row.GetStore(); err != nil {
-		return 0, err
-	}
-	count := func() (int, error) {
-		row := model.Brand().Relations(model.Product().MatchSeqWithBrandSeq())
-		products, err := row.GetProductModels()
-		if err != nil {
-			return 0, err
-		}
-		return products.Len(), nil
-	}
-	return count()
-}
-`)
-	generateModel(t, namesManifest(t, namesDiagram))
-	buildScannedModule(t)
-}
-
-// TestGoScanAttributesCallsToTheImportedSet checks that a call on a model of
-// another set's generated package, which shares an entity name with this set,
-// is not a call of this set: its getter is neither declared nor refused here.
-func TestGoScanAttributesCallsToTheImportedSet(t *testing.T) {
-	// Requirements: DSL-151.
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("other/other.go", `package other
-
-import "example.com/ormexample/othermodel"
-
-func Load() *othermodel.ProductModel {
-	return othermodel.Product().Relation(othermodel.Brand().MatchBrandSeqWithSeq().AliasStore())
-}
-
-func Store(p *othermodel.ProductModel) (any, error) { return p.GetStore() }
-`)
-	m := namesManifest(t, namesDiagram)
-	if err := generateGo(m, "othermodel", "", []string{"./other"}); err != nil {
-		t.Fatal(err)
-	}
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-`+scanCheapFunc)
-	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
-		t.Fatalf("a call on another set's model was taken as this set's: %v", err)
-	}
-	product := readModelFile(t, "product.go")
-	if strings.Contains(string(product), "GetStore") || strings.Contains(string(product), "MatchBrandSeqWithSeq") {
-		t.Error("model/product.go declares a method that only another set's model is called with")
-	}
-	buildScannedModule(t)
-}
-
-// TestGoScanFailsOnAFileThatDoesNotParse checks that a scanned file that does
-// not parse stops the generation: nothing is written, and the error names the
-// file with the parser's position and message.
-func TestGoScanFailsOnAFileThatDoesNotParse(t *testing.T) {
-	// Requirements: DSL-152.
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", "package example\n\nconst X = 1\n")
-	write("example/broken.go", "package example\n\nfunc (\n")
-	m := namesManifest(t, namesDiagram)
-	err := generateGo(m, "model", "", []string{"./..."})
-	if err == nil {
-		t.Fatal("an unparsable file is skipped")
-	}
-	var scanned *ScannedSourceError
-	if errors.As(err, &scanned) {
-		t.Errorf("an unparsable file is reported after the models are written: %v", err)
-	}
-	if !regexp.MustCompile(`broken\.go:3:\d+: `).MatchString(err.Error()) {
-		t.Errorf("the error does not name the file and position: %v", err)
-	}
-	if _, statErr := os.Stat("model"); !errors.Is(statErr, os.ErrNotExist) {
-		t.Errorf("the failed generation wrote its output: %v", statErr)
-	}
-}
-
-// TestGoScanResolvesAReassignedVariable checks that a receiver held in a
-// variable resolves through its initializer and its reassignments to its
-// type: a variable initialized from a chain on an imported model and
-// reassigned from its own chain in either branch of a condition still holds
-// that model, so the calls on it after each reassignment are its calls.
-func TestGoScanResolvesAReassignedVariable(t *testing.T) {
-	// Requirements: DSL-151.
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Page(limit *int) *model.ProductModel {
-	page := model.Product().AddAllColumns()
-	conditions := 0
-	if limit != nil {
-		if conditions == 0 {
-			page = page.GtPrice(*limit)
-		} else {
-			page = page.AndGtPrice(*limit)
-		}
-		conditions++
-	}
-	if limit != nil {
-		if conditions == 0 {
-			page = page.LtPrice(*limit)
-		} else {
-			page = page.AndLtPrice(*limit)
-		}
-	}
-	return page
-}
-`)
-	m := namesManifest(t, namesDiagram)
-	generateModel(t, m)
-	product := readModelFile(t, "product.go")
-	for _, method := range []string{"GtPrice", "AndGtPrice", "LtPrice", "AndLtPrice"} {
-		if !strings.Contains(string(product), ") "+method+"[") {
-			t.Errorf("model/product.go lacks %s called on a reassigned variable", method)
 		}
 	}
 	buildScannedModule(t)

@@ -84,7 +84,6 @@ require_once __DIR__ . '/FailingSqliteLockPdo.php';
 require_once __DIR__ . '/NativeByteCellFixture.php';
 require_once __DIR__ . '/phpstan-runner.php';
 require_once __DIR__ . '/dbspec-php-interface-program.php';
-require_once __DIR__ . '/OrmGenScanFailureCase.php';
 require_once dirname(__DIR__) . '/testing/dbspec/apply/runner.php';
 require_once dirname(__DIR__) . '/testing/dbspec/introspect/runner.php';
 require_once __DIR__ . '/OrmGenTestSupport.php';

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.
 - The Go tests that assert only Go mechanics lie in internal test files with their reasons in `config/parity.json`, and `TestGenerateUsesRequestedGoPackageName` is bound to the Go-only generator unit.
 - `make client-db-rust-check` runs only the cases that no other target owns, the crate's public connection test needs no outside variable, the compiler fixtures run in order, and generate.mjs leaves no temporary directory.
 - The eight cases of the generator scan recipe run in all six runtimes: `generator.generate` is implemented by every recipe runner, each case holds the sources of each language in the forms that its native test used, and the option `before` generates another set first, so the imported-set case needs no native test (T334-3-22-2). The TypeScript test of a non-model call no longer names column methods, which DSL-154 declares for every column.

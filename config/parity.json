@@ -331,7 +331,6 @@
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/NativeFixtureVectors.php",
-        "packages/php/tests/OrmGenScanFailureCase.php",
         "packages/php/tests/OrmGenProcessCase.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/PageCacheBoundCases.php",
@@ -6348,128 +6347,6 @@
       }
     },
     {
-      "id": "generator-scan-call-on-another-sets-class",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanAttributesCallsToTheImportedSet"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/imported_set"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_call_on_a_class_of_another_set_is_not_this_sets_call"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_call_on_a_class_of_this_set_is_checked"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_call_on_a_class_of_another_set_is_not_this_sets_call"
-        }
-      ]
-    },
-    {
-      "id": "generator-scan-reassigned-receiver-resolves-to-its-class",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanResolvesAReassignedVariable"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/reassigned_variable"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_receiver_held_in_a_reassigned_name_resolves_to_its_class"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_receiver_held_in_a_reassigned_variable_resolves_to_its_class"
-        }
-      ]
-    },
-    {
-      "id": "generator-scan-unparsable-source-stops-before-writing",
-      "kind": "feature",
-      "requirements": [
-        "DSL-152"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanFailsOnAFileThatDoesNotParse"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanNativeTest.php",
-          "id": "OrmGenScanNativeTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_file_that_does_not_parse_stops_the_generation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/unparsable_file"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_file_that_does_not_parse_fails_the_scan"
-        }
-      ]
-    },
-    {
       "id": "generator-unused-external-tables-keep-their-models",
       "kind": "feature",
       "requirements": [
@@ -12318,45 +12195,6 @@
       }
     },
     {
-      "id": "generator-scan-alias-with-a-chain-prefix-declares-its-getter",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoRelationAliasWithChainPrefix"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testAnAliasNamedMatchDeclaresItsGetter"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/alias_match_getter"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_an_alias_named_match_is_accepted_with_its_getter"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "relation_alias_with_a_chain_prefix_has_its_getter"
-        }
-      ]
-    },
-    {
       "id": "go-generator-model-package-functions",
       "kind": "feature",
       "requirements": [
@@ -12366,7 +12204,7 @@
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoRelationAliasWithChainPrefix"
+          "id": "TestGoGenerationIgnoresMethodsOfRelationResults"
         }
       ],
       "owner": {
@@ -12374,84 +12212,6 @@
         "artifact": "go-module",
         "package": "github.com/polyspec/orm/packages/go"
       }
-    },
-    {
-      "id": "generator-scan-nested-relation-alias-attaches-to-its-parent",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoNestedRelationAliasAttachesToItsParent"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/nested_alias_getter"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_nested_relation_alias_attaches_its_getter"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "nested_relation_alias_attaches_its_getter_to_its_parent"
-        }
-      ]
-    },
-    {
-      "id": "generator-scan-unattached-getter-stops-generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoUnattachedGetterStopsGeneration"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testAGetterCallThatNothingAttachesStopsGeneration"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/unattached_getter"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_getter_call_that_nothing_attaches_stops_generation"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "unattached_getter_stops_generation"
-        }
-      ]
     },
     {
       "id": "go-internal-packages-go-generator-gen-go",
@@ -28078,84 +27838,6 @@
       ]
     },
     {
-      "id": "generator-scan-relation-to-an-external-entity-attaches-its-getter",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoRelationGetterOfExternalEntity"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/external_getter"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "relation_to_an_external_entity_attaches_its_getter"
-        }
-      ]
-    },
-    {
-      "id": "generator-scan-name-is-typed-by-its-binding-in-its-own-scope",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoGetterOfNestedRebindingUsesItsOwnModel"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testANameIsTypedByItsBindingInItsOwnScope"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testANameIsTypedByItsBindingInItsOwnScope"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/scope_binding"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_name_is_typed_by_its_binding_in_its_own_scope"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_name_is_typed_by_its_binding_in_its_own_scope"
-        }
-      ]
-    },
-    {
       "id": "generator-generates-the-scanned-chain-methods",
       "kind": "feature",
       "requirements": [
@@ -32526,6 +32208,25 @@
         "kind": "release-package",
         "artifact": "archive",
         "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "typescript-generator-scan-first-line-parse-position",
+      "kind": "feature",
+      "requirements": [
+        "DSL-158"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/unparsable_first_line"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
       }
     },
     {
