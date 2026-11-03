@@ -5,6 +5,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { parseSync, visitorKeys } from 'oxc-parser';
+import { GENERATOR_SCAN_PARSE } from '../codes.js';
+import { OrmError } from '../runtime_error.js';
 import type { ArrowFunctionExpression, Expression, Function as FunctionNode, ImportDeclaration, ModuleExportName, Node, ParamPattern, Statement, TSType, TSTypeName } from 'oxc-parser';
 
 /** The source files the scan reads; oxc-parser takes the language from the extension. */
@@ -576,7 +578,7 @@ function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, S
     // (docs/spec/dsl.md, DSL-152).
     const label = first.labels[0];
     const where = label === undefined ? '' : `${lineColumn(text, label.start)}:`;
-    throw new Error(`orm-gen --scan: ${path}:${where} does not parse: ${errors.map(error => error.message).join('; ')}`);
+    throw new OrmError(GENERATOR_SCAN_PARSE, `orm-gen --scan: ${path}:${where} does not parse: ${errors.map(error => error.message).join('; ')}`);
   }
   new Scanner(models, out, sites, resolve(path), module).visit(parsed.program);
 }

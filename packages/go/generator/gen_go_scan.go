@@ -100,8 +100,10 @@ func (g *goGen) scan(patterns []string) error {
 		}
 		// A scanned getter call that no alias, new or addColumn call
 		// attaches stops generation (docs/spec/dsl.md, the scan).
+		unattached := false
 		for _, c := range g.getterCalls {
 			if _, ok := c.gm.getters[c.name]; !ok && !c.gm.static[c.name] {
+				unattached = true
 				rest := strings.TrimPrefix(c.name, "Get")
 				g.fail(c.pos, "%s.%s is called, but no Alias%s, New%s or AddColumn call attaches it", c.gm.typ, c.name, rest, rest)
 			}
@@ -109,7 +111,11 @@ func (g *goGen) scan(patterns []string) error {
 		if len(g.errors) > 0 {
 			sort.Strings(g.errors)
 			g.errors = slices.Compact(g.errors)
-			return errors.New(strings.Join(g.errors, "\n"))
+			text := strings.Join(g.errors, "\n")
+			if unattached {
+				return &ScanRefusedError{Code: "GENERATOR_SCAN_UNATTACHED", Text: text}
+			}
+			return errors.New(text)
 		}
 		if !g.pending {
 			return compileErrors(dir, pkgs, overlay)
@@ -224,7 +230,7 @@ func parseErrors(pkgs []*packages.Package, overlay map[string][]byte) error {
 		return nil
 	}
 	sort.Strings(failed)
-	return fmt.Errorf("the scanned files do not parse:\n%s", listErrors(slices.Compact(failed)))
+	return &ScanRefusedError{Code: "GENERATOR_SCAN_PARSE", Text: "the scanned files do not parse:\n" + listErrors(slices.Compact(failed))}
 }
 
 // errorFile returns the file of an error position of the form file:line:col.

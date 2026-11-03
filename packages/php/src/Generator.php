@@ -304,6 +304,7 @@ final class Generator
         $sites = [];
         $declared = [];
         $problems = [];
+        $unattached = false;
         $calls = Scan::calls($scan, $namespace, $classes, $sites, $declared);
         // A new or addColumn call whose value or closure declares no type is refused whether or not its getter is read.
         foreach ($declared as $cls => $getters) {
@@ -374,7 +375,9 @@ final class Generator
                 }
             }
             if (!$declaresAny) {
-                $problems[] = str_starts_with($name, 'get') && strlen($name) > 3 && ctype_upper($name[3])
+                $getter = str_starts_with($name, 'get') && strlen($name) > 3 && ctype_upper($name[3]);
+                $unattached = $unattached || $getter;
+                $problems[] = $getter
                     ? "{$site['classes'][0]}.$name is called, but no alias$key, new$key or addColumn call attaches it"
                     : "{$site['classes'][0]}.$name is not a model method: no column, chain or operator accepts it";
             } elseif (!$accepts && $declaredBy !== null) {
@@ -411,7 +414,10 @@ final class Generator
         }
         if ($problems !== []) {
             sort($problems, SORT_STRING);
-            throw new OrmException(Code::CONFIG, implode('; ', $problems));
+            throw new OrmException(
+                $unattached ? Code::GENERATOR_SCAN_UNATTACHED : Code::CONFIG,
+                implode('; ', $problems)
+            );
         }
         return $tags;
     }

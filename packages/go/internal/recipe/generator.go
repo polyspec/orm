@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -19,10 +20,15 @@ import (
 	"github.com/polyspec/orm/packages/go/generator"
 )
 
-// generatorOptions is the options object of a generator.generate step (FCV-4): the other document sets it uses, and the scanned
+// generatorOptions is the options object of a generator.generate step (FCV-4): the other document sets it uses, another set generated first, and the scanned
 // sources of each language, each a tree of path to text.
 type generatorOptions struct {
-	Used    []string                     `json:"used"`
+	Used   []string `json:"used"`
+	Before *struct {
+		Schema string `json:"schema"`
+		Output string `json:"output"`
+		Scan   string `json:"scan"`
+	} `json:"before"`
 	Sources map[string]map[string]string `json:"sources"`
 }
 
@@ -94,9 +100,12 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 // parsePosition finds the file and line of the first error the scan reports for a file that does not parse.
 var parsePosition = regexp.MustCompile(`\.go:(\d+):(\d+)`)
 
-// generatorErrorCode maps a generation error to its code of docs/spec/errors.yaml. No code of errors.yaml names a generator
-// refusal yet (the pending row T334-3-22-1), so a generator error has no code, and the case fails with its message.
+// generatorErrorCode reads the code of docs/spec/errors.yaml from a refusal of the scan (DSL-44, DSL-152).
 func generatorErrorCode(err error) string {
+	var refused *generator.ScanRefusedError
+	if errors.As(err, &refused) {
+		return refused.Code
+	}
 	return ""
 }
 
@@ -138,18 +147,29 @@ func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[
 	if len(diagnostics) > 0 {
 		return nil, fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
 	}
+	var other []string
+	if o.Before != nil {
+		other, err = documentTexts(dir, []string{o.Before.Schema})
+		if err != nil {
+			return nil, err
+		}
+	}
 	t.Chdir(root)
-	// A source that imports the output of another set takes that output from the same manifest, as the Go native does.
-	for _, text := range o.Sources["go"] {
-		if strings.Contains(text, "example.com/ormexample/othermodel") {
-			if err := generator.Generate(generator.Options{Model: m, OutputDir: filepath.Join(root, "othermodel")}); err != nil {
-				return nil, err
-			}
-			break
+	if o.Before != nil {
+		otherModel, diagnostics := runtimemodel.LoadDocumentSet(other, nil)
+		if len(diagnostics) > 0 {
+			return nil, fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
+		}
+		before := generator.Options{Model: otherModel, OutputDir: filepath.Join(root, o.Before.Output), Scan: []string{"./" + o.Before.Scan}}
+		if err := generator.Generate(before); err != nil {
+			return nil, err
 		}
 	}
 	out := filepath.Join(root, "model")
 	if err := generator.Generate(generator.Options{Model: m, OutputDir: out, Scan: []string{"./..."}}); err != nil {
+		if _, statErr := os.Stat(out); statErr == nil {
+			return nil, fmt.Errorf("a refused generation wrote %s: %s", out, err.Error())
+		}
 		return nil, err
 	}
 	return generatedMethods(out)

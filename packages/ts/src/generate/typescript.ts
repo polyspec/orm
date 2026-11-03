@@ -7,7 +7,9 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import type { Entity, Field as Column, RuntimeModel as Manifest } from '../engine/model.js';
+import { GENERATOR_SCAN_UNATTACHED } from '../codes.js';
 import { Model } from '../model.js';
+import { OrmError } from '../runtime_error.js';
 import { category, checkColumnNames, columnName, functionColumn, numeric, parseChain, pascal, splitPair, validOrder, type ChainKey } from './names.js';
 import { scanModelCalls, type ScanSite } from './scan.js';
 
@@ -358,7 +360,7 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
       const e = entities.get(cls);
       return e !== undefined && (staticNames(e).has(site.name) || g.getters.has(site.name) || g.methods.get(e.name)?.has(site.name) === true);
     });
-    if (!attached) throw new Error(`orm-gen --scan: ${site.classes[0]}.${site.name}() is called, but no alias${site.name.slice(3)}, new${site.name.slice(3)} or addColumn call attaches it`);
+    if (!attached) throw new OrmError(GENERATOR_SCAN_UNATTACHED, `orm-gen --scan: ${site.classes[0]}.${site.name}() is called, but no alias${site.name.slice(3)}, new${site.name.slice(3)} or addColumn call attaches it`);
   }
   return g.write(runtimeImport(outDir));
 }

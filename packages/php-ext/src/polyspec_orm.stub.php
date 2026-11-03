@@ -1199,6 +1199,10 @@ final class Code
     public const string CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const string CONFIG = 'CONFIG';
+    /** generator: a scanned source file that does not parse (docs/spec/dsl.md, DSL-152) */
+    public const string GENERATOR_SCAN_PARSE = 'GENERATOR_SCAN_PARSE';
+    /** generator: a scanned getter call that no alias, new or addColumn call attaches (docs/spec/dsl.md, DSL-44) */
+    public const string GENERATOR_SCAN_UNATTACHED = 'GENERATOR_SCAN_UNATTACHED';
     /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) */
     public const string CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */

@@ -26,6 +26,17 @@ func (e *ScannedSourceError) Error() string {
 	return "the scanned packages do not compile with the generated models:\n" + listErrors(e.Errors)
 }
 
+// ScanRefusedError is a refusal of the scan with its code of
+// docs/spec/errors.yaml (docs/spec/dsl.md, DSL-44 and DSL-152).
+type ScanRefusedError struct {
+	Code string
+	Text string
+}
+
+func (e *ScanRefusedError) Error() string {
+	return e.Code + ": " + e.Text
+}
+
 // listErrors joins sorted, distinct errors and names the number of errors
 // beyond the first twenty.
 func listErrors(errs []string) string {

@@ -841,7 +841,7 @@
   },
   "packages/rust/build/src/generate.rs::Gen": {
     "exported": false,
-    "signature": " struct Gen \u003c 'm \u003e { m : \u0026 'm RuntimeModel , models : Vec \u003c Model \u003c 'm \u003e \u003e , by_type : HashMap \u003c String , usize \u003e , owners : BTreeSet \u003c String \u003e , errors : Vec \u003c String \u003e , }"
+    "signature": " struct Gen \u003c 'm \u003e { m : \u0026 'm RuntimeModel , models : Vec \u003c Model \u003c 'm \u003e \u003e , by_type : HashMap \u003c String , usize \u003e , owners : BTreeSet \u003c String \u003e , errors : Vec \u003c String \u003e , # [doc = \" Whether a typed getter call that nothing attaches is among the errors (DSL-44).\"] unattached : bool , }"
   },
   "packages/rust/build/src/generate.rs::Gen \u003c 'm \u003e::add_getter": {
     "exported": false,
@@ -899,9 +899,13 @@
     "exported": false,
     "signature": "BTreeSet \u003c String \u003e"
   },
+  "packages/rust/build/src/generate.rs::Gen#field.unattached": {
+    "exported": false,
+    "signature": "bool"
+  },
   "packages/rust/build/src/generate.rs::Gen#wire": {
     "exported": false,
-    "signature": "{\"by_type\":\"map\u003cinteger\u003e\",\"errors\":\"list\u003ctext\u003e\",\"m\":\"unsupported:\u0026 'm RuntimeModel\",\"models\":\"list\u003cModel\u003e\",\"owners\":\"BTreeSet\"}"
+    "signature": "{\"by_type\":\"map\u003cinteger\u003e\",\"errors\":\"list\u003ctext\u003e\",\"m\":\"unsupported:\u0026 'm RuntimeModel\",\"models\":\"list\u003cModel\u003e\",\"owners\":\"BTreeSet\",\"unattached\":\"bool\"}"
   },
   "packages/rust/build/src/generate.rs::Getter": {
     "exported": false,
@@ -1126,6 +1130,10 @@
   "packages/rust/build/src/lib.rs::Loaded#wire": {
     "exported": false,
     "signature": "{\"inputs\":\"list\u003cPathBuf\u003e\",\"scanned\":\"Scan\",\"set\":\"DocumentSet\"}"
+  },
+  "packages/rust/build/src/lib.rs::canonical_dir": {
+    "exported": false,
+    "signature": " fn canonical_dir (dir : \u0026 Path) -\u003e Result \u003c PathBuf , String \u003e"
   },
   "packages/rust/build/src/lib.rs::set_inputs": {
     "exported": false,
@@ -1561,7 +1569,7 @@
   },
   "packages/rust/build/src/scan.rs::normalize": {
     "exported": false,
-    "signature": " fn normalize (path : \u0026 Path) -\u003e PathBuf"
+    "signature": "pub (crate) fn normalize (path : \u0026 Path) -\u003e PathBuf"
   },
   "packages/rust/build/src/scan.rs::pat_ident": {
     "exported": false,

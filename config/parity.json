@@ -19568,6 +19568,80 @@
       ]
     },
     {
+      "id": "error-code-generator-scan-parse",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeGeneratorScanParse"
+        },
+        {
+          "implementation": "php",
+          "symbols": [
+            "Polyspec\\Orm\\Code::GENERATOR_SCAN_PARSE"
+          ]
+        },
+        {
+          "implementation": "php-extension",
+          "symbols": [
+            "Polyspec\\Orm\\Code::GENERATOR_SCAN_PARSE"
+          ]
+        },
+        {
+          "implementation": "python",
+          "symbol": "polyspec.orm.codes.GENERATOR_SCAN_PARSE"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::GENERATOR_SCAN_PARSE"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.GENERATOR_SCAN_PARSE:var"
+        }
+      ]
+    },
+    {
+      "id": "error-code-generator-scan-unattached",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeGeneratorScanUnattached"
+        },
+        {
+          "implementation": "php",
+          "symbols": [
+            "Polyspec\\Orm\\Code::GENERATOR_SCAN_UNATTACHED"
+          ]
+        },
+        {
+          "implementation": "php-extension",
+          "symbols": [
+            "Polyspec\\Orm\\Code::GENERATOR_SCAN_UNATTACHED"
+          ]
+        },
+        {
+          "implementation": "python",
+          "symbol": "polyspec.orm.codes.GENERATOR_SCAN_UNATTACHED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::GENERATOR_SCAN_UNATTACHED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.GENERATOR_SCAN_UNATTACHED:var"
+        }
+      ]
+    },
+    {
       "id": "error-code-canceled",
       "kind": "api",
       "requirements": [

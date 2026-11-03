@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The generator refusals of the scan have codes of docs/spec/errors.yaml: `GENERATOR_SCAN_UNATTACHED` for a getter call that nothing attaches (DSL-44) and `GENERATOR_SCAN_PARSE` for a source that does not parse (DSL-152). TypeScript, PHP and Python raise them as their coded errors, Go returns `generator.ScanRefusedError`, and the Rust generator, which returns text, starts its message with the code. A refused Rust generation no longer leaves the output directory and its manifest behind (T334-3-22-1-1).
 - `make client-db-go-check` runs the Go packages that `go-test-check` does not run, and leaves `TestMarkdownConformance` to `markdown-conformance-check/go`, so it no longer fails on tests whose runners and servers another target provides (T334-3-27).
 - The Go test table of the described catalog read expects `CATALOG_VALUE` for a zoned value, the rule of INT-103 that T334-3-3-8 implemented (T334-3-3-16).
 - A PHP process loads the file of a generated model only when it uses that model: `bootstrap.php` names the classes with `Registry::classes`, the runtime model and chain column lookups read the parsed entities, and `Registry::verify` compares a class with its entity at its first use, so an edited class still fails with `CONFIG` before its first statement. Regenerate the models to take this (T358).

@@ -256,6 +256,8 @@ struct Gen<'m> {
     by_type: HashMap<String, usize>,
     owners: BTreeSet<String>,
     errors: Vec<String>,
+    /// Whether a typed getter call that nothing attaches is among the errors (DSL-44).
+    unattached: bool,
 }
 
 impl<'m> Model<'m> {
@@ -741,7 +743,7 @@ pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<S
             errors.push(format!("{}: the entity name collides with a generated item", e.name));
         }
     }
-    let mut g = Gen { m, models: m.entities.iter().map(Model::new).collect(), by_type: HashMap::new(), owners: BTreeSet::new(), errors };
+    let mut g = Gen { m, models: m.entities.iter().map(Model::new).collect(), by_type: HashMap::new(), owners: BTreeSet::new(), errors, unattached: false };
     for (i, gm) in g.models.iter().enumerate() {
         g.by_type.insert(gm.typ.clone(), i);
         for c in &gm.e.fields {
@@ -819,13 +821,15 @@ pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<S
                 continue;
             }
             let typ = g.models[gi].typ.clone();
+            g.unattached |= r.typed;
             g.fail(&r, format!("{typ} has no method {}: no call attaches {rest:?}", call.name));
         }
     }
     if !g.errors.is_empty() {
         g.errors.sort();
         g.errors.dedup();
-        return Err(g.errors.join("\n"));
+        let code = if g.unattached { "GENERATOR_SCAN_UNATTACHED: " } else { "" };
+        return Err(format!("{code}{}", g.errors.join("\n")));
     }
     // A set that uses external documents loads their text from the file beside the manifest text.
     let external_file = (!set.external_text.is_empty()).then(|| std::path::Path::new(manifest_file).with_file_name(crate::EXTERNAL_FILE).display().to_string());

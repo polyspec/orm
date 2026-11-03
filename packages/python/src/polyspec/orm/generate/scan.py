@@ -564,7 +564,7 @@ def _scan_file(path: str, classes: dict, out: dict, sites, set_module: list) -> 
     except SyntaxError as error:
         # A file that does not parse would hide its calls, so it fails the scan (docs/spec/dsl.md, DSL-152).
         raise OrmError(
-            codes.CONFIG,
+            codes.GENERATOR_SCAN_PARSE,
             f"--scan: {path}:{error.lineno}:{error.offset}: does not parse: {error.msg}",
         ) from error
     _scan_tree(tree, classes, out, sites, path, set_module)

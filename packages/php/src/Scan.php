@@ -74,7 +74,11 @@ final class Scan
                 $tree = $parser->parse($code);
             } catch (Error $e) {
                 $at = $e->getStartLine() . ($e->hasColumnInfo() ? ':' . $e->getStartColumn($code) : '');
-                throw new \RuntimeException("--scan: $file:$at: does not parse: " . $e->getRawMessage(), 0, $e);
+                throw new OrmException(
+                    Code::GENERATOR_SCAN_PARSE,
+                    "--scan: $file:$at: does not parse: " . $e->getRawMessage(),
+                    $e
+                );
             }
             $traverser = new NodeTraverser(new NameResolver());
             $tree = $traverser->traverse($tree ?? []);

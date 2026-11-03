@@ -87,16 +87,17 @@ impl Builder {
         let set_path = Self::absolute(&self.set)?;
         let out_dir = self.output_dir()?;
         let loaded = self.load(&set_path)?;
-        std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         // The generated source embeds the manifest file's path with include_str!. However the path was written (`./`, `..`,
         // a trailing `/`, a relative path), the same directory is converted to a canonical path so it gives the same source.
-        let out_dir = std::fs::canonicalize(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
+        let out_dir = canonical_dir(&Self::absolute(&out_dir)?)?;
         let manifest_file = out_dir.join(MANIFEST_FILE);
+        // A refused generation writes nothing, so the source is made before the directory.
+        let source = generate::generate(&loaded.set, &loaded.scanned, &manifest_file.display().to_string())?;
+        std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         write_if_changed(&manifest_file, loaded.set.manifest_text.as_bytes())?;
         if !loaded.set.external_text.is_empty() {
             write_if_changed(&out_dir.join(EXTERNAL_FILE), loaded.set.external_text.as_bytes())?;
         }
-        let source = generate::generate(&loaded.set, &loaded.scanned, &manifest_file.display().to_string())?;
         let out = out_dir.join(MODEL_FILE);
         write_if_changed(&out, source.as_bytes())?;
         for input in &loaded.inputs {
@@ -188,6 +189,26 @@ struct Loaded {
 /// the set file's order, owned documents first.
 fn set_inputs<'a>(set_path: &'a Path, files: &'a dbspec::Set) -> Vec<&'a Path> {
     std::iter::once(set_path).chain(files.documents.iter().chain(&files.external).map(|f| f.path.as_path())).collect()
+}
+
+/// The canonical path of a directory that may not exist yet: that of its nearest existing ancestor, followed by the rest.
+fn canonical_dir(dir: &Path) -> Result<PathBuf, String> {
+    if let Ok(found) = std::fs::canonicalize(dir) {
+        return Ok(found);
+    }
+    let dir = scan::normalize(dir);
+    let mut missing = Vec::new();
+    let mut at = dir.as_path();
+    loop {
+        match std::fs::canonicalize(at) {
+            Ok(found) => return Ok(missing.iter().rev().fold(found, |path: PathBuf, name| path.join(name))),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                missing.push(at.file_name().ok_or_else(|| format!("{}: {e}", dir.display()))?);
+                at = at.parent().ok_or_else(|| format!("{}: {e}", dir.display()))?;
+            }
+            Err(e) => return Err(format!("{}: {e}", at.display())),
+        }
+    }
 }
 
 fn write_if_changed(path: &Path, content: &[u8]) -> Result<(), String> {
