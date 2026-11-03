@@ -17,7 +17,7 @@ final class RecipeGenerator
      *
      * @param array<string, mixed> $step
      */
-    public static function checkFiles(array $step, string $dir): void
+    public static function checkFiles(RecipeStep $step, string $dir): void
     {
         $root = dirname(__DIR__, 3);
         $work = sys_get_temp_dir() . '/orm-recipe-generator-check-' . bin2hex(random_bytes(8));
@@ -66,7 +66,7 @@ final class RecipeGenerator
     }
 
     /** Runs one generator.generate step and checks it against the expect of $database. */
-    public static function check(array $step, string $dir, string $database): void
+    public static function check(RecipeStep $step, string $dir, string $database): void
     {
         $want = $step['expect'][$database] ?? Assert::fail("generator.generate has no expect for $database");
         $root = sys_get_temp_dir() . '/orm-recipe-generator-' . bin2hex(random_bytes(8));
@@ -106,7 +106,7 @@ final class RecipeGenerator
     }
 
     /** @return array{int, string} the exit status and the error output of the generation of the set of the step */
-    private static function generate(array $step, string $dir, string $root): array
+    private static function generate(RecipeStep $step, string $dir, string $root): array
     {
         $options = $step['options'] ?? [];
         foreach ($options['sources']['php'] ?? [] as $path => $text) {
