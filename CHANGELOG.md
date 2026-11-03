@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
 - CR32 gives the times that rule out a harness stop of the tool call.
 - The owners of parameter_chunking declare model_parameter_after_schema_change.
 - catalog_read_budgets names its wait for all three databases, as a recipe's sql must.

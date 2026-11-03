@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 70c0dbb00517effd9dc339f1beef94c7ded1576a370b43696f00e46a75710e14 -->
+<!-- source-sha256: 0bb262c17f6bc9beab8c6d7eea74378cc4b687e18d02e8851f693adba087d757 -->
 # 변경 이력
 
 ## Unreleased
 
+- ordered-json AES 열의 왕복과 회전(COD-7)을 저장된 셀까지 읽는 aes_rotation recipe 사례로 여섯 runtime에 옮겼고 native 시험을 지웠다.
 - value function의 parameter index를 statement event로 읽는 conformance_verification recipe 사례로, ordered-json AES 열의 거부를 invalid recipe 사례로 여섯 runtime에 옮겼다.
 - CR32에 tool call을 끝내는 harness를 제외하는 시각을 적음.
 - parameter_chunking의 owner가 model_parameter_after_schema_change를 선언함.

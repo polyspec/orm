@@ -7890,33 +7890,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumn"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/ordered_json_column_round_trip_and_rotation"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/AesJsonTest.php",
-          "id": "AesJsonTest::testAesJsonColumn"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesJsonTestExtensionTest.php",
-          "id": "AesJsonTestExtensionTest::testAesJsonColumn"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesJsonColumn"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_json.py",
-          "id": "test_aes_json_column_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_json.rs",
-          "id": "aes_json_column"
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::ordered_json_column_round_trip_and_rotation"
         }
       ]
     },

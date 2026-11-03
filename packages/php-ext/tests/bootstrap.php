@@ -130,7 +130,6 @@ require_once __DIR__ . '/DslFixture.php';
 require_once dirname(__DIR__, 2) . '/php/tests/OrmGenCliTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/OrmGenScanTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RecipeGenerator.php';
-require_once dirname(__DIR__, 2) . '/php/tests/AesJsonTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AesVersionCodesTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ClockTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodeCatalogTest.php';
