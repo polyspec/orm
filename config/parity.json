@@ -9794,7 +9794,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9920,7 +9926,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10046,7 +10058,13 @@
         "COD-41",
         "COD-42",
         "DSL-99",
-        "INT-160"
+        "INT-160",
+        "DBS-110",
+        "DBS-85",
+        "DSL-104",
+        "DSL-109",
+        "INT-38",
+        "INT-39"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
