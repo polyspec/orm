@@ -10252,6 +10252,7 @@
     },
     {
       "id": "budget_stop_with_the_kill_refused",
+      "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "INT-115",
         "INT-157",
@@ -10328,6 +10329,7 @@
     },
     {
       "id": "plain_connect_on_a_held_place_is_refused_once",
+      "not_through_pooler": "its own user with one connection is a limit of the server; a pooler knows no such user and shares its server connections",
       "requirements": [
         "CFG-1",
         "CFG-35"

@@ -86,8 +86,8 @@ const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'inst
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
 // The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
 // behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit
-// of config/parity.json, so a new unit is in the pooler lanes when it is declared. No unit is excluded: every one passed alone through
-// both poolers, and a unit that needs a direct server gets a declared exclusion here with its reason.
+// of config/parity.json, so a new unit is in the pooler lanes when it is declared. No unit is excluded: a case that needs a direct
+// server declares it with its reason in not_through_pooler (FCV-10), and the direct lanes run it.
 type ParityUnit = ReturnType<typeof readParityConfig>['units'][number];
 const NAMED_PHP_TEST = /::(\w+)$/;
 export function poolerRecipeUnits(units: readonly ParityUnit[]): ParityUnit[] {

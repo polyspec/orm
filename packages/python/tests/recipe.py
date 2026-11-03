@@ -2301,7 +2301,10 @@ def _database_recipe_tests(path: str, database: str):
             _run_case(path, recipe, case, database, schema, dsn, install_first)
 
     cases = [
-        case for case in recipe["cases"] if database in case.get("only", DATABASES)
+        case
+        for case in recipe["cases"]
+        if database in case.get("only", DATABASES)
+        and not ("not_through_pooler" in case and os.environ.get("ORM_CLIENT_DB_POOLER") == "1")
     ]
     return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 

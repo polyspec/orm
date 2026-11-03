@@ -13,6 +13,7 @@
   "case": [
     "id",
     "install",
+    "not_through_pooler",
     "only",
     "requirements",
     "seed",

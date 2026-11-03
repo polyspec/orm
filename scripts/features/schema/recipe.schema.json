@@ -223,6 +223,11 @@
         },
         "only": {
           "$ref": "#/$defs/only"
+        },
+        "not_through_pooler": {
+          "description": "Why the case needs a direct server. The pooler lane (client-pooler-check) leaves it out; the direct lanes run it.",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

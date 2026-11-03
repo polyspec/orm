@@ -2839,6 +2839,7 @@ mod database {
             .iter()
             .enumerate()
             .filter(|(_, case)| case["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database))))
+            .filter(|(_, case)| case["not_through_pooler"].is_null() || std::env::var("ORM_CLIENT_DB_POOLER").as_deref() != Ok("1"))
             .map(|(index, case)| {
                 let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
                 let mut case = case.clone();

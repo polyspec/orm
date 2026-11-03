@@ -165,7 +165,7 @@ final class Recipe
     public static function report(array $case, string $database): void
     {
         $path = getenv('ORM_RECIPE_RESULTS');
-        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+        if ($path === false || $path === '' || !self::caseRuns($case, $database)) {
             return;
         }
         $named = $database === self::NONE ? '' : " [{$database}]";
@@ -174,11 +174,23 @@ final class Recipe
         }
     }
 
+    /**
+     * A case with `only` runs on the databases that it names, and a case with `not_through_pooler` outside the pooler lane.
+     *
+     * @param array<string, mixed> $case
+     */
+    private static function caseRuns(array $case, string $database): bool
+    {
+        if (isset($case['only']) && !in_array($database, $case['only'], true)) {
+            return false;
+        }
+        return !isset($case['not_through_pooler']) || getenv('ORM_CLIENT_DB_POOLER') !== '1';
+    }
+
     /** Runs the steps of one case on database. */
     public static function run(string $path, array $case, string $database): void
     {
-        // A case with `only` runs on the databases that it names, and no other.
-        if (isset($case['only']) && !in_array($database, $case['only'], true)) {
+        if (!self::caseRuns($case, $database)) {
             return;
         }
         if ($database !== self::NONE) {

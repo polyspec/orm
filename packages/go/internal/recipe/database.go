@@ -51,11 +51,12 @@ type seed struct {
 }
 
 type databaseCase struct {
-	ID      string            `json:"id"`
-	Install *bool             `json:"install"`
-	Only    []string          `json:"only"`
-	Seed    *seed             `json:"seed"`
-	Steps   []json.RawMessage `json:"steps"`
+	ID               string            `json:"id"`
+	Install          *bool             `json:"install"`
+	Only             []string          `json:"only"`
+	NotThroughPooler string            `json:"not_through_pooler"`
+	Seed             *seed             `json:"seed"`
+	Steps            []json.RawMessage `json:"steps"`
 }
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
@@ -288,6 +289,10 @@ func runDatabase(t *testing.T, path, database string) {
 	}
 	for _, c := range f.Cases {
 		// A case with only runs on the databases it names; the others do not register it (TypeScript does the same).
+		// A case that needs a direct server states why; the pooler lane does not register it (FCV-10).
+		if c.NotThroughPooler != "" && os.Getenv("ORM_CLIENT_DB_POOLER") == "1" {
+			continue
+		}
 		if len(c.Only) > 0 && !slices.Contains(c.Only, database) {
 			continue
 		}
