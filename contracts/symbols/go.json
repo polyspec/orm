@@ -8723,6 +8723,14 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.FulltextBooleanNameWithDescription": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(v0 string) *AuthorModel"
+  },
+  "packages/go/model/author.go::AuthorModel.FulltextNameWithDescription": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(v0 string) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.GeReadCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntCmp](v0 T0) *AuthorModel"
@@ -11206,6 +11214,14 @@
   "packages/go/model/composite_account.go::CompositeAccountModel.GetByTenantIdAndAccountId": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func[T0 argIntEq, T1 argIntEq](v0 T0, v1 T1) (*CompositeAccountModel, error)"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.GetCompositeMembershipModel": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func() (*CompositeMembershipModel, error)"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.GetCompositeMembershipModels": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func() (*orm.Collection[*CompositeMembershipModel], error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetCount": {
     "exported": true,

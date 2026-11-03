@@ -2131,7 +2131,7 @@ mod database {
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
         // query.search runs on the generated models of the dispatcher too, as the model ops do (FCV-4).
-        let dispatched = if step["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search") {
+        let dispatched = if step["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search" || op == "query.search_chain") {
             model_call(step, context).await
         } else {
             call(catalog, step, context).await

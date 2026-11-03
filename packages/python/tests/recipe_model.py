@@ -601,9 +601,29 @@ def model_ops(native, database_value, step_argument):
             )
         return {"sql": plan["steps"][0]["sql"], "params": [{"text": value}]}
 
+    def query_search_chain(step, context):
+        """query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, through
+        get_query."""
+        db = connection(step["connection"], context)
+        if step["model"] != "Author":
+            raise AssertionError(
+                f"model {step['model']} has no query.search_chain entry"
+            )
+        author = models.Author().connect(db)
+        if step["mode"] == "fulltext_boolean":
+            chain = author.fulltext_boolean_name_with_description(step["text"])
+        else:
+            chain = author.fulltext_name_with_description(step["text"])
+        statement = chain.get_query()
+        return {
+            "sql": statement["sql"],
+            "params": [{"text": bind} for bind in statement["binds"]],
+        }
+
     return {
         "model.connect": model_connect,
         "query.search": query_search,
+        "query.search_chain": query_search_chain,
         "model.create": model_create,
         "model.creates": model_creates,
         "model.save": model_save,

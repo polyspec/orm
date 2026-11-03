@@ -1014,6 +1014,7 @@
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
+        "packages/rust/tests/tests/fulltext_search/chain.rs",
         "packages/rust/tests/tests/fulltext_search/dispatch.rs",
         "packages/rust/tests/src/bench_models.rs",
         "packages/rust/tests/src/bench_set_dispatch.rs"
@@ -43738,6 +43739,76 @@
         "artifact": "archive",
         "package": "polyspec/orm-php-ext"
       }
+    },
+    {
+      "id": "fulltext-search-chain",
+      "kind": "feature",
+      "requirements": [
+        "DSL-32",
+        "DSL-33"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_fulltext_search_test.go",
+          "id": "TestRecipeFulltextSearchMysql/chain_fulltext_boolean"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/FulltextSearchRecipeTest.php",
+          "id": "FulltextSearchRecipeTest::testMysql with data set \"chain_fulltext_boolean\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/FulltextSearchRecipeTestExtensionTest.php",
+          "id": "FulltextSearchRecipeTestExtensionTest::testMysql with data set \"chain_fulltext_boolean\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/fulltext-search-recipe-mysql.test.mjs",
+          "id": "chain_fulltext_boolean"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_fulltext_search_recipe_mysql.py",
+          "id": "chain_fulltext_boolean"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+          "id": "fulltext_search_recipe_mysql::chain_fulltext_boolean"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_fulltext_search_test.go",
+          "id": "TestRecipeFulltextSearchMysql/chain_fulltext"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/FulltextSearchRecipeTest.php",
+          "id": "FulltextSearchRecipeTest::testMysql with data set \"chain_fulltext\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/FulltextSearchRecipeTestExtensionTest.php",
+          "id": "FulltextSearchRecipeTestExtensionTest::testMysql with data set \"chain_fulltext\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/fulltext-search-recipe-mysql.test.mjs",
+          "id": "chain_fulltext"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_fulltext_search_recipe_mysql.py",
+          "id": "chain_fulltext"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
+          "id": "fulltext_search_recipe_mysql::chain_fulltext"
+        }
+      ]
     }
   ],
   "errors": {

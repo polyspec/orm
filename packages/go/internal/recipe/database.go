@@ -61,6 +61,7 @@ type databaseStep struct {
 	Offset   int64           `json:"offset"`
 	Columns  []string        `json:"columns"`
 	Text     string          `json:"text"`
+	Mode     string          `json:"mode"`
 	SQL      json.RawMessage `json:"sql"`
 	MaxRows  int             `json:"max_rows"`
 	MaxBytes int             `json:"max_bytes"`
@@ -829,6 +830,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{}}, nil
 	case "query.search":
 		return searchOp(s, c)
+	case "query.search_chain":
+		return searchChainOp(s, c)
 	// dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step, opened with Connect.
 	case "dsn.connect":
 		var dsn string

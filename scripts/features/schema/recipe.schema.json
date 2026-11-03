@@ -709,6 +709,7 @@
             "codec.blind_index",
             "sql.exec",
             "query.search",
+            "query.search_chain",
             "ir.validate",
             "ir.answer",
             "markdown.send",
@@ -4773,6 +4774,41 @@
             "items": {
               "$ref": "#/$defs/name"
             }
+          },
+          "text": {
+            "type": "string"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "query.search_chain": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "model",
+          "mode",
+          "text",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "query.search_chain"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "mode": {
+            "enum": [
+              "fulltext_boolean",
+              "fulltext"
+            ]
           },
           "text": {
             "type": "string"

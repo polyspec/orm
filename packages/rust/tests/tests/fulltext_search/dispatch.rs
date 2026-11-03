@@ -13,6 +13,9 @@ use serde_json::{json, Value};
 
 use crate::model::{Author, SCHEMA};
 
+#[path = "chain.rs"]
+mod chain;
+
 /// The factory that the recipe helper calls once for each case.
 pub fn models(dialect: Dialect) -> Box<dyn ModelDispatcher> {
     bench_dispatcher(&SCHEMA, FulltextSearch { dialect })
@@ -27,6 +30,7 @@ impl BenchModels for FulltextSearch {
     async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         match op {
             "query.search" => search(db, self.dialect, step).await,
+            "query.search_chain" => chain::search_chain(db, step).await,
             other => Err(format!("OP_UNKNOWN {other}")),
         }
     }

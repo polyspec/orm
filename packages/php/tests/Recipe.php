@@ -2086,6 +2086,8 @@ final class Recipe
                 return [];
             case 'query.search':
                 return self::querySearch($s, $context);
+            case 'query.search_chain':
+                return self::querySearchChain($s, $context);
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
                 $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
@@ -2484,6 +2486,27 @@ final class Recipe
         $author = (new \Polyspec\Orm\Tests\Model\Author())->connect($db)->{$chain}($s['text']);
         $request = (new \ReflectionMethod(Model::class, 'build'))->invoke($author, 'count', $db);
         $statement = $db->statement($request);
+        return self::statementFields($statement);
+    }
+
+    /** query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, through getQuery. */
+    private static function querySearchChain(array $s, array $context): array
+    {
+        if ($s['model'] !== 'Author') {
+            Assert::fail("model {$s['model']} has no query.search_chain entry");
+        }
+        $author = (new \Polyspec\Orm\Tests\Model\Author())->connect(self::connectionOf($s, $context));
+        $chain = match ($s['mode']) {
+            'fulltext_boolean' => $author->fulltextBooleanNameWithDescription($s['text']),
+            'fulltext' => $author->fulltextNameWithDescription($s['text']),
+        };
+        $statement = $chain->getQuery();
+        return self::statementFields($statement);
+    }
+
+    /** The fields of query.search and query.search_chain: the text of a statement and its bind values. */
+    private static function statementFields(array $statement): array
+    {
         return [
             'sql' => $statement['sql'],
             'params' => array_map(static fn(mixed $v): array => ['text' => $v], $statement['binds']),

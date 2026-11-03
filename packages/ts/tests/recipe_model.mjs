@@ -282,6 +282,17 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       }
       return { sql: plan.steps[0].sql, params: [{ text: value }] };
     },
+    // query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, through getQuery.
+    async 'query.search_chain'(s, context) {
+      const db = connection(s.connection, context);
+      if (s.model !== 'Author') throw new Error(`model ${s.model} has no query.search_chain entry`);
+      const author = new Author().connect(db);
+      const chain = s.mode === 'fulltext_boolean'
+        ? author.fulltextBooleanNameWithDescription(s.text)
+        : author.fulltextNameWithDescription(s.text);
+      const statement = await chain.getQuery();
+      return { sql: statement.sql, params: statement.binds.map(bind => ({ text: bind })) };
+    },
     async 'model.get_by'(s, context) {
       const db = connection(s.connection, context);
       if (s.model === 'Author') {

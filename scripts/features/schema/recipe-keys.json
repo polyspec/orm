@@ -81,6 +81,14 @@
       "op",
       "text"
     ],
+    "query.search_chain": [
+      "connection",
+      "expect",
+      "mode",
+      "model",
+      "op",
+      "text"
+    ],
     "ir.validate": [
       "expect",
       "op",

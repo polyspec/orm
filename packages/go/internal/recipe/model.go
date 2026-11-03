@@ -1112,3 +1112,34 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	return outcome{fields: map[string]any{"sql": compiled.Steps[0].SQL, "params": []any{wrapperOf(value)}}}, nil
 }
+
+// searchChainOp is query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, read through
+// GetQuery on the case connection.
+func searchChainOp(s databaseStep, c *databaseContext) (outcome, error) {
+	if s.Model != "Author" {
+		return outcome{}, fmt.Errorf("model %s has no query.search_chain entry", s.Model)
+	}
+	bound, ok := c.bound[s.Connection]
+	db, isDB := bound.api.(*orm.DB)
+	if !ok || !isDB {
+		return outcome{}, fmt.Errorf("query.search_chain: connection %q is not bound by model.connect", s.Connection)
+	}
+	m := model.Author().Connect(db)
+	switch s.Mode {
+	case "fulltext_boolean":
+		m = m.FulltextBooleanNameWithDescription(s.Text)
+	case "fulltext":
+		m = m.FulltextNameWithDescription(s.Text)
+	default:
+		return outcome{}, fmt.Errorf("query.search_chain: mode %q has no generated method", s.Mode)
+	}
+	statement, err := m.GetQuery()
+	if err != nil {
+		return outcome{}, err
+	}
+	params := make([]any, 0, len(statement.Binds))
+	for _, bind := range statement.Binds {
+		params = append(params, wrapperOf(bind))
+	}
+	return outcome{fields: map[string]any{"sql": statement.SQL, "params": params}}, nil
+}

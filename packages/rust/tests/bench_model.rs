@@ -5,5 +5,12 @@
 pub const SET: &str = "../../../contracts/fixtures/bench/dbspec-set.json";
 
 /// The directories whose sources the generator scans for the chain methods they call.
-pub const SCAN: &[&str] =
-    &["src", "tests/integration", "tests/integration_program", "tests/model_writes", "../../../examples/complex/rust", "../../../examples/thin-slice/rust"];
+pub const SCAN: &[&str] = &[
+    "src",
+    "tests/integration",
+    "tests/integration_program",
+    "tests/model_writes",
+    "tests/fulltext_search/chain.rs",
+    "../../../examples/complex/rust",
+    "../../../examples/thin-slice/rust",
+];
