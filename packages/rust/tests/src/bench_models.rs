@@ -178,7 +178,7 @@ impl<M: BenchModels> CaseModels for Bench<M> {
     }
 
     async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
-        if step["unconnected"].as_bool() == Some(true) {
+        if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
             return self.models.run_unconnected(op, step).await;
         }
         let db = connections.bound(connection)?;

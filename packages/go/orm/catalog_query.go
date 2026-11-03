@@ -108,11 +108,11 @@ func (c *CatalogConnection) readOnlyArgs(query string, params []any, limits Cata
 	return args, maxRows, maxBytes, nil
 }
 
-// catalogValidateReadOnly accepts one read query of at most catalogSQLBytes. It tokenizes the query so that keywords inside
+// catalogValidateReadOnly accepts one read query of any length. It tokenizes the query so that keywords inside
 // string literals, quoted identifiers and comments are not seen, and refuses a MySQL executable comment.
 func catalogValidateReadOnly(query, dialect string) error {
 	refused := catalogErr(catalogCodeReadOnly, "expected one supported non-locking read query")
-	if query == "" || len(query) > catalogSQLBytes {
+	if query == "" {
 		return refused
 	}
 	words, ok := catalogWords(query, dialect)
