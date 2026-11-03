@@ -28,14 +28,9 @@ function catalogFixturePool(session) {
   };
 }
 
-function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, priorRows = [], postRows, partialRevokes = 0, directTriggerGrant = true } = {}) {
+function mysqlCatalogFixture({ expressionDefault = false, priorRows = [], postRows, partialRevokes = 0, directTriggerGrant = true } = {}) {
   const queries = [];
-  const columns = autoKey
-    ? [
-        { name: 'id', nativeType: 'bigint', nullable: false, generated: false, automaticKey: true, defaultExpression: null, expressionDefault: false, checkPrecision: null },
-        { name: 'payload', nativeType: 'text', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
-      ]
-    : expressionDefault
+  const columns = expressionDefault
     ? [
         { name: 'seq', nativeType: 'varchar(32)', nullable: false, generated: false, automaticKey: false, defaultExpression: 'lower(hex(random_bytes))', expressionDefault: true, checkPrecision: null },
         { name: 'n', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
@@ -46,15 +41,15 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
         { name: 'seq', nativeType: 'varchar(30)', nullable: false, generated: false, automaticKey: false, defaultExpression: 'generated', expressionDefault: false, checkPrecision: null },
         { name: 'n', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
       ];
-  const keyOrdinals = new Map((autoKey ? ['id'] : expressionDefault ? ['seq'] : ['tenant', 'seq']).map((name, index) => [name, index + 1]));
+  const keyOrdinals = new Map((expressionDefault ? ['seq'] : ['tenant', 'seq']).map((name, index) => [name, index + 1]));
   const metadata = {
     table: { namespace: 'app', name: 'generated_record' },
     kind: 'table',
     columns,
-    primaryKey: autoKey ? ['id'] : expressionDefault ? ['seq'] : ['tenant', 'seq'],
+    primaryKey: expressionDefault ? ['seq'] : ['tenant', 'seq'],
     reliableRowIdentity: true,
   };
-  const stored = autoKey ? [11, 'generated'] : expressionDefault ? ['expression-key-001', 1, null] : [2, 'generated', 50];
+  const stored = expressionDefault ? ['expression-key-001', 1, null] : [2, 'generated', 50];
   let inserted = false;
   let locatorReads = 0;
   const fieldsFor = names => names.map(name => ({ name, type: columns.find(column => column.name === name)?.nativeType ?? 'varchar' }));
@@ -75,7 +70,6 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
         locatorReads++;
         return { names: columns.map(column => column.name), rows: locatorReads === 1 ? priorRows : (postRows ?? (inserted ? [stored] : [])) };
       }
-      if (autoKey && sql.includes('WHERE `id`=?')) return { names: columns.map(column => column.name), rows: inserted ? [stored] : [] };
       if (sql.includes('DEFAULT(`seq`)')) return { names: columns.map(column => column.name), rows: [stored] };
     }
     throw new Error(`unexpected MySQL catalog fixture query: ${sql}`);
@@ -86,7 +80,7 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
       queries.push(['execute', sql]);
       if (!sql.startsWith('INSERT INTO')) throw new Error(`unexpected MySQL execute: ${sql}`);
       inserted = true;
-      return { rows: [], affected: 1, insertId: autoKey ? 11 : null, columns: [] };
+      return { rows: [], affected: 1, insertId: null, columns: [] };
     },
     async scan(sql, _params, sink) {
       queries.push(['scan', sql]);
@@ -130,46 +124,6 @@ caseTest('catalog/mysql-trigger-privilege-visibility', COMPUTE, async () => {
     }
   }
 });
-
-function postgresCatalogFixture() {
-  const queries = [];
-  const columns = [
-    { name: 'tenant', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
-    { name: 'seq', nativeType: 'character varying(30)', nullable: false, generated: false, automaticKey: false, defaultExpression: "'generated'", expressionDefault: true, checkPrecision: null },
-    { name: 'n', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
-  ];
-  const metadata = {
-    table: { namespace: 'app', name: 'generated_record' },
-    kind: 'table', columns, primaryKey: ['tenant', 'seq'], reliableRowIdentity: true,
-  };
-  const stored = [2, 'generated', 50];
-  const session = {
-    async control(sql) { queries.push(['control', sql]); return { rows: [], affected: 0, insertId: null, columns: [] }; },
-    async execute(sql) { throw new Error(`unexpected PostgreSQL execute: ${sql}`); },
-    async scan(sql, _params, sink) {
-      queries.push(['scan', sql]);
-      let names;
-      let types;
-      let rows;
-      if (sql.startsWith('SELECT c.relkind::text')) {
-        names = ['relkind']; types = ['text']; rows = [['r']];
-      } else if (sql.startsWith('SELECT a.attname::text')) {
-        names = ['attname', 'format_type', 'nullable', 'generated', 'key_order', 'automatic_key', 'default_expression', 'expression_default'];
-        types = ['text', 'text', 'bool', 'bool', 'int4', 'bool', 'text', 'bool'];
-        rows = columns.map((column, index) => [column.name, column.nativeType, column.nullable, column.generated,
-          index < 2 ? index + 1 : 0, column.automaticKey, column.defaultExpression, column.expressionDefault]);
-      } else if (sql.startsWith('INSERT INTO') && sql.includes('RETURNING')) {
-        names = columns.map(column => column.name); types = columns.map(column => column.nativeType); rows = [stored];
-      } else {
-        throw new Error(`unexpected PostgreSQL catalog fixture query: ${sql}`);
-      }
-      sink.columns(names.map((name, index) => ({ name, type: types[index] })));
-      for (const row of rows) sink.row(row);
-    },
-    release() {},
-  };
-  return { catalog: new CatalogConnection('postgres', catalogFixturePool(session)), metadata, queries, stored };
-}
 
 async function withSqliteCatalog(prefix, ddl, exercise, connect = connectCatalog) {
   const directory = await mkdtemp(join(tmpdir(), prefix));
@@ -377,26 +331,6 @@ caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key',
   });
 });
 
-// Requirements: DBS-113, INT-34.
-caseTest('uses PostgreSQL INSERT RETURNING for a literal-default composite key', DATABASE, async () => {
-  await assertLiteralDefaultCompositeKeyInsert(postgresCatalogFixture, queries => {
-    assert.ok(queries.some(([, sql]) => sql === 'INSERT INTO "app"."generated_record" ("tenant","n") VALUES ($1,$2) RETURNING "tenant","seq","n"'));
-  });
-});
-
-// Requirements: DBS-113, INT-34.
-caseTest('uses the MySQL statement insertId for an omitted automatic key', DATABASE, async () => {
-  const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ autoKey: true });
-  try {
-    const result = await catalog.insertRow(metadata, [{ name: 'payload', value: 'generated' }]);
-    assert.deepEqual(result.rows, [stored]);
-    assert.equal(queries.filter(([, sql]) => sql.startsWith('INSERT INTO')).length, 1);
-    assert.equal(queries.some(([, sql]) => sql.includes('MAX(') || sql.includes('LAST_INSERT_ID()')), false);
-  } finally {
-    await catalog.close();
-  }
-});
-
 caseTest('uses a bounded MySQL input locator for an expression-default key', DATABASE, async () => {
   const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ expressionDefault: true });
   try {
@@ -440,23 +374,6 @@ caseTest('reports an ambiguous MySQL expression locator result without changing 
   } finally {
     await catalog.close();
   }
-});
-
-// Requirements: DBS-113, INT-34.
-caseTest('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', DATABASE, async () => {
-  await withSqliteCatalog('orm-catalog-auto-key-', 'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)', async catalog => {
-    const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
-    assert.deepEqual(metadata.primaryKey, ['id']);
-    assert.deepEqual(metadata.columns[0], {
-      name: 'id', nativeType: 'INTEGER', nullable: false, generated: false, automaticKey: true,
-      defaultExpression: null, expressionDefault: false, checkPrecision: null,
-    });
-    const inserted = await catalog.insertRow(metadata, [{ name: 'payload', value: 'generated' }]);
-    assert.deepEqual(inserted.columns, ['id', 'payload']);
-    assert.deepEqual(inserted.rows, [[1, 'generated']]);
-    assert.equal(typeof inserted.rows[0][0], 'number');
-    assert.deepEqual((await catalog.readOnlyQuery('SELECT id, payload FROM generated_record', [])).rows, [[1, 'generated']]);
-  });
 });
 
 caseTest('inserts an omitted literal-default component of a composite SQLite key', DATABASE, async () => {

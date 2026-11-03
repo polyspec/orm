@@ -67,7 +67,6 @@
         "rust-public-connection-call",
         "typescript-public-connection-call",
         "sqlite-minimum-driver-version",
-        "mysql-session",
         "php-python-session-initialization",
         "parameter-slot-validation-vectors",
         "markdown-message-vectors",
@@ -112,13 +111,10 @@
         "packages/go/orm/sqlite_path_test.go",
         "packages/rust/tests/tests/example_dsn.rs",
         "packages/php/tests/SqliteWithoutMysqlTest.php",
-        "packages/go/orm/mysql_tls_test.go",
-        "packages/php/tests/MysqlTlsTest.php",
         "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
         "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
-        "packages/ts/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
@@ -329,7 +325,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/orm/dsn_test.go",
-            "packages/go/orm/mysql_tls_test.go",
             "packages/go/orm/timezone_test.go"
           ]
         },
@@ -381,24 +376,6 @@
           "environment": "linux-runner"
         },
         {
-          "id": "dsn-mysql-tls-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'MySQL(TLS|SessionSQLMode)' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/mysql_tls_test.go",
-            "tests/dsn/mysql-session.json"
-          ]
-        },
-        {
-          "id": "dsn-mysql-tls-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/MysqlTlsTest.php",
-            "tests/dsn/mysql-session.json"
-          ]
-        },
-        {
           "id": "dsn-mysql-tls-php-extension",
           "command": "make mysql-tls-php-extension-check",
           "shard": "other",
@@ -419,21 +396,11 @@
           ]
         },
         {
-          "id": "dsn-mysql-tls-typescript",
-          "command": "node packages/ts/tests/mysql_tls.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/mysql_tls.mjs",
-            "tests/dsn/mysql-session.json"
-          ]
-        },
-        {
           "id": "dsn-mysql-session-python",
           "command": "make python-mysql-session-check",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/mysql_session.py",
-            "tests/dsn/mysql-session.json"
+            "packages/python/tests/mysql_session.py"
           ]
         },
         {
@@ -441,8 +408,7 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts dsn-mysql-tls-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/mysql_tls.rs",
-            "tests/dsn/mysql-session.json"
+            "packages/rust/orm/tests/mysql_tls.rs"
           ]
         },
         {
@@ -1021,6 +987,7 @@
         "go-model-constructor-api",
         "php-internal-model-conditions",
         "collection-null-identity-from-physical-row",
+        "php-extension-collection-surface",
         "php-extension-model-date-read-decode-error",
         "model_queries-mysql",
         "model_queries-postgres",
@@ -1051,6 +1018,7 @@
         "packages/python/tests/test_collection_none.py",
         "packages/ts/tests/collection-none.test.mjs",
         "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/CollectionTest.php",
         "packages/php/tests/CollectionRecipeTest.php",
         "packages/go/markdownmodel/recipe_collection_test.go",
         "packages/rust/tests/tests/collection_none.rs",

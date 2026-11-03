@@ -342,7 +342,6 @@
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
-        "packages/php/tests/MysqlTlsCases.php",
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/php/tests/OrmGenProcessCase.php",
@@ -429,7 +428,7 @@
       "internal": [
         {
           "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement, and holds the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
@@ -646,7 +645,7 @@
         },
         {
           "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query, and the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json"
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query"
         },
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
@@ -7804,6 +7803,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-3",
         "CFG-16",
         "CFG-2",
         "CFG-19",
@@ -9404,7 +9404,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9576,7 +9579,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9748,7 +9754,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -15204,41 +15213,6 @@
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "uses the MySQL statement insertId for an omitted automatic key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "uses PostgreSQL INSERT RETURNING for a literal-default composite key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "inserts an omitted SQLite AUTOINCREMENT key and returns the stored row"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_sqlite_automatic_primary_key_insert_returns_stored_row"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_mysql_automatic_key_uses_insert_acknowledgement"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_postgres_default_composite_key_uses_insert_returning"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_insert_identity.rs",
-          "id": "generated_keys_return_the_inserted_row_on_each_database"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15247,8 +15221,57 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_keys"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_keys"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_keys"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_key_lifecycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_key_lifecycle"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_key_lifecycle"
         }
       ]
+    },
+    {
+      "id": "rust-insert-phases-and-joined-keys",
+      "kind": "feature",
+      "requirements": [
+        "INT-123a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_insert_identity.rs",
+          "id": "insert_phases_and_joined_keys_follow_the_transaction"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
@@ -17834,45 +17857,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/ir_answers.rs",
           "symbol": "ir_answers"
-        }
-      ]
-    },
-    {
-      "id": "mysql-session",
-      "kind": "feature",
-      "requirements": [
-        "CFG-3"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLSessionSQLMode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testSessionSqlMode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "id": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/session_sql_mode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py",
-          "id": "test_session_sql_mode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "session_sql_mode_is_the_declared_one"
         }
       ]
     },
@@ -29029,28 +29013,12 @@
       ]
     },
     {
-      "id": "collection-output-views",
+      "id": "php-extension-collection-surface",
       "kind": "feature",
       "requirements": [
-        "INT-62",
-        "PLN-6",
-        "INT-81",
-        "INT-82",
-        "INT-83",
-        "INT-84",
-        "INT-85"
+        "INT-62a"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestCollectionViewsPreserveOrderAndConnectEveryModel"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testToArrayPreservesCollectionModelOrder"
-        },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CollectionTest.php",
@@ -29060,23 +29028,13 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CollectionTest.php",
           "id": "CollectionTest::testConnectAndInvokeReachEachModelAndReturnTheCollection"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-views/preserve-order-and-connect-every-model"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_collection_views_preserve_order_and_connect_every_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::page_order_tests::collection_views_preserve_model_order_and_connect_every_model"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "dbspec-sqlite-lock-result-and-session-restoration",
@@ -43263,7 +43221,9 @@
         "INT-90",
         "PRT-36",
         "PRT-35",
-        "PRT-69"
+        "PRT-69",
+        "INT-82",
+        "INT-83"
       ],
       "file": "tests/collection/collection.json",
       "cases": "$.cases[*].id",

@@ -1857,6 +1857,11 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
             raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+        session_read = (config or {}).get("session_read")
+        if session_read is not None:
+            read = db.utils().run(lambda frame: frame.run(session_read["sql"], [], "utility"))["rows"]
+            if [[str(cell) for cell in row] for row in read] != [session_read["row"]]:
+                raise AssertionError(f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}")
         if (config or {}).get("tls_version"):
             status = db.utils().run(
                 lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")
@@ -3437,6 +3442,12 @@ def _table_model_update(step: dict, context: dict) -> dict:
     return {}
 
 
+def _collection_connect(step: dict, context: dict) -> dict:
+    """connect of a bound collection (INT-85): true when it returns that collection."""
+    rows = _bound_value(step["row"], context)
+    return {"value": {"bool": rows.connect(_connection_of(step, context)) is rows}}
+
+
 def _table_model_delete(step: dict, context: dict) -> dict:
     recursive = step.get("recursive") is True
     if "row" in step and isinstance(_bound_value(step["row"], context), Collection):
@@ -4495,6 +4506,7 @@ _TABLE_OPS = {
     "model.get_by": _table_model_get_by,
     "model.update": _table_model_update,
     "model.delete": _table_model_delete,
+    "collection.connect": _collection_connect,
     "model.count": _table_model_count,
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,

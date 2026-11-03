@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 64d1e7a740f4a450079179d5118abaf8df1f9d5e198eeb7db8013e25a9d2917f -->
+<!-- source-sha256: 4fdb5b4aa5f0c682bb6ddaf8973009951f1ce986b44a826d5533280513c0f1b3 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -227,6 +227,7 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust�
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
 - **INT-62** `Collection<T>`: 순서가 있는 행, 길이, first, key lookup
+- **INT-62a** PHP-extension package `polyspec/orm-php-ext`의 native collection은 시험이 확인하는 다음을 보장한다: 이미 있는 key의 `put`은 그 자리의 model을 바꾸고, `toJson`과 `jsonSerialize`는 collection 순서로 model을 내주며, connection을 주어 호출한 collection은 `connect`처럼 모든 model을 연결하고 그 collection을 반환한다.
 - **INT-63** `Key`: 논리 타입 tag와 값
 - **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 - **INT-80** `Collection.get(key)`는 `key`와 같은 타입과 값의 key를 가진 모델을 돌려준다. 그 key를 가진 모델이 없으면 결과는 없음이다: Go는 오류 없이 zero value, PHP는 `null`, TypeScript는 `undefined`, Python은 `None`이다. SQL NULL key는 `CODEC_DECODE`로 실패하며, Go는 변환할 수 없는 key에 대해 `KeyOf`의 변환 오류를 반환한다.
@@ -568,7 +569,8 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
-- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
+- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다. 할당이 없는 insert는 기본값만으로 행을 쓰고 생성된 키를 돌려주며, 모든 dialect에서 같다. 거부된 insert는 아무것도 남기지 않으며, 다음 insert는 자기 값으로 판정된다.
+- **INT-123a** `polyspec-orm-build`의 `insert_row`는 성공하면 `Committed`를 마지막에 알리고, `Applied`에서 취소되면 `RolledBack`을 알리며 행은 그대로 남는다. MySQL과 PostgreSQL의 `Locked` 단계에서는 다른 연결이 테이블 잠금을 본다. 한 연결에서 join된 두 insert는 각자의 행과 서로 다른 키를 돌려주며, 변동하는 expression default에서도 같다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림, 취소 flag, 한 연결에서 join된 insert가 없다.
 - **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.

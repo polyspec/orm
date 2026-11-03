@@ -393,9 +393,19 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let rows = Logs::new().connect(db).fetch_value(|row: &Logs| json!(row.get_note().unwrap())).gets().await?;
             let id = |row: Option<&Logs>| row.map(|row| row.get_id()).transpose();
             let keys: Vec<Value> = rows.keys().iter().map(|key| key.to_json()).collect();
+            let mut values = Vec::new();
+            for row in rows.models() {
+                values.push(json!(row.get_id()?));
+            }
+            let mut entries = Vec::new();
+            for (key, row) in rows.iter() {
+                entries.push(json!([key.to_json(), row.get_id()?]));
+            }
             json!({
                 "length": rows.len(),
                 "keys": keys,
+                "values": values,
+                "entries": entries,
                 "first": id(rows.first())?,
                 "get": id(rows.get(1))?,
                 "get_text": id(rows.get("1"))?,
