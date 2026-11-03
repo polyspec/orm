@@ -38,6 +38,7 @@ The server ends a connection when an administrator ends its session (`pg_termina
 
 - **CFG-15** Every client returns `CONNECTION_LOST` for the statement that failed so and does not send it again: the transaction or session state of the connection is gone.
 - **CFG-38** PHP and the PHP extension hold one session on a connection, so a server that ended that session before its first statement fails the statement with `CONNECTION_LOST`, and the statement is sent once.
+- **CFG-39** Go: a transaction whose context is canceled during its callback returns `CANCELED` alone, and the connection keeps no named lock, user variable or SQLite mode of that transaction.
 
 ## DSN parameters and MySQL TLS
 
