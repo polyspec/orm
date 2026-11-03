@@ -1347,7 +1347,13 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     });
     let Some(built) = loaded else {
         let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
-        let named = want["rule"].as_str().is_none_or(|rule| error.to_string().contains(rule));
+        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+        let text = error.to_string();
+        let named = want["diagnostics"].as_array().is_none_or(|diagnostics| {
+            let problems: Vec<&str> = text.strip_prefix(&format!("{}: ", error.code())).unwrap_or_default().split("; ").collect();
+            problems.len() == diagnostics.len()
+                && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
+        });
         return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {

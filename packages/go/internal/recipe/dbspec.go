@@ -228,17 +228,29 @@ func checkDBSpec(s step, dir, database string) error {
 				Name     string `json:"name"`
 				External bool   `json:"external"`
 			} `json:"documents"`
-			Error        string `json:"error"`
-			ManifestHash string `json:"manifest_hash"`
-			Rule         string `json:"rule"`
+			Error        string   `json:"error"`
+			ManifestHash string   `json:"manifest_hash"`
+			Diagnostics  []string `json:"diagnostics"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
 		model, invalid := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
 		if invalid != nil {
-			if invalid.Code() != want.Error || (want.Rule != "" && !strings.Contains(invalid.Message(), want.Rule)) {
+			if invalid.Code() != want.Error {
 				return fmt.Errorf("%v, want %+v", invalid, want)
+			}
+			// Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+			if want.Diagnostics != nil {
+				problems := strings.Split(invalid.Message(), "; ")
+				if len(problems) != len(want.Diagnostics) {
+					return fmt.Errorf("%v, want %+v", invalid, want)
+				}
+				for i, problem := range problems {
+					if !strings.HasPrefix(problem, want.Diagnostics[i]+": ") {
+						return fmt.Errorf("%v, want %+v", invalid, want)
+					}
+				}
 			}
 			return nil
 		}
