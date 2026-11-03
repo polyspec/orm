@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Nine more write cases of the conformance vectors run in the recipe conformance_verification (#T334-3-4-23)
 - The Go request hook natives that the recipe holds are gone; the read of a failing hook also states that no statement runs. The units that stay native are stated in FCV-2 with their reasons.
 - Tests: `make repo-check` passes again: the check `schema-set.mjs` reports through `caseTest`, the `param-uses-typescript` row runs the tracked `coverage_planner.mjs`, the two conformance targets of T334-3-5 are in `CHECK_TARGETS` and the `conformance` CI group, and two failure messages state their fix (#T334-3-18).
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
