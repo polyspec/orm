@@ -1000,6 +1000,7 @@
         "packages/python/tests/recipe.py",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_keys.py",
         "packages/python/tests/recipe_generator.py"
       ],
@@ -9340,6 +9341,10 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_mysql.py"
         }
       ]
     },
@@ -9369,6 +9374,10 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_postgres.py"
         }
       ]
     },
@@ -9398,6 +9407,10 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_sqlite.py"
         }
       ]
     },
