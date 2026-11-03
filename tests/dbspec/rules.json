@@ -47,7 +47,8 @@
     "DBS-171",
     "DBS-181",
     "DBS-134",
-    "DBS-135"
+    "DBS-135",
+    "DBS-141"
   ],
   "cases": [
     {
@@ -4682,6 +4683,3396 @@
                   1,
                   "punctuation"
                 ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-header-stop-keeps-lexical-classes",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec\t1 shop"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-keeps-its-text-from-to-the-line-end",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "   # note",
+            "table t {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  3,
+                  9,
+                  "comment"
+                ],
+                [
+                  4,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  4,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  4,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-column-with-type-options-and-default",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity default now",
+            "  n varchar(9) null default 'a''b'",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  3,
+                  18,
+                  25,
+                  "keyword"
+                ],
+                [
+                  3,
+                  26,
+                  29,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  4,
+                  4,
+                  11,
+                  "type"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "number"
+                ],
+                [
+                  4,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  15,
+                  19,
+                  "keyword"
+                ],
+                [
+                  4,
+                  20,
+                  27,
+                  "keyword"
+                ],
+                [
+                  4,
+                  28,
+                  34,
+                  "string"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-type-parameter-word-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  m varchar(x)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  11,
+                  "type"
+                ],
+                [
+                  3,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  3,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-abandoned-line-is-all-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity foo",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "word"
+                ],
+                [
+                  3,
+                  18,
+                  21,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-tab-is-an-offending-character-and-abandons-its-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "\tid i64",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  1,
+                  3,
+                  "word"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-failed-table-opening-keeps-its-block-lexical",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t { extra",
+            "  id i64 identity",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "word"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "word"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  10,
+                  15,
+                  "word"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-settings-block-with-setting-options-and-names",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    select explicit id",
+            "    entity Foo",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  10,
+                  "setting"
+                ],
+                [
+                  5,
+                  11,
+                  19,
+                  "keyword"
+                ],
+                [
+                  5,
+                  20,
+                  22,
+                  "name"
+                ],
+                [
+                  6,
+                  4,
+                  10,
+                  "setting"
+                ],
+                [
+                  6,
+                  11,
+                  14,
+                  "name"
+                ],
+                [
+                  7,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-unknown-setting-keeps-its-first-word-as-setting",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    bogus x y",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  5,
+                  10,
+                  11,
+                  "word"
+                ],
+                [
+                  5,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  6,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-codec-stages-are-keywords-only-when-they-are-stages",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    codec c aes hex zz",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  5,
+                  10,
+                  11,
+                  "name"
+                ],
+                [
+                  5,
+                  12,
+                  15,
+                  "keyword"
+                ],
+                [
+                  5,
+                  16,
+                  19,
+                  "keyword"
+                ],
+                [
+                  5,
+                  20,
+                  22,
+                  "word"
+                ],
+                [
+                  6,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-state-machine-transition-and-its-form-words",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    state_machine st a -> b require (x)",
+            "    state_machine st initial a",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  17,
+                  "setting"
+                ],
+                [
+                  5,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  5,
+                  21,
+                  22,
+                  "name"
+                ],
+                [
+                  5,
+                  23,
+                  24,
+                  "operator"
+                ],
+                [
+                  5,
+                  24,
+                  25,
+                  "operator"
+                ],
+                [
+                  5,
+                  26,
+                  27,
+                  "name"
+                ],
+                [
+                  5,
+                  28,
+                  35,
+                  "keyword"
+                ],
+                [
+                  5,
+                  36,
+                  37,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  37,
+                  38,
+                  "name"
+                ],
+                [
+                  5,
+                  38,
+                  39,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  4,
+                  17,
+                  "setting"
+                ],
+                [
+                  6,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  6,
+                  21,
+                  28,
+                  "keyword"
+                ],
+                [
+                  6,
+                  29,
+                  30,
+                  "name"
+                ],
+                [
+                  7,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-foreign-key-with-actions",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  foreign key fk (id) references p (id) on delete cascade on update zz",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  4,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  4,
+                  14,
+                  16,
+                  "name"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  22,
+                  32,
+                  "keyword"
+                ],
+                [
+                  4,
+                  33,
+                  34,
+                  "name"
+                ],
+                [
+                  4,
+                  35,
+                  36,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  36,
+                  38,
+                  "name"
+                ],
+                [
+                  4,
+                  38,
+                  39,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  40,
+                  42,
+                  "keyword"
+                ],
+                [
+                  4,
+                  43,
+                  49,
+                  "keyword"
+                ],
+                [
+                  4,
+                  50,
+                  57,
+                  "keyword"
+                ],
+                [
+                  4,
+                  58,
+                  60,
+                  "keyword"
+                ],
+                [
+                  4,
+                  61,
+                  67,
+                  "keyword"
+                ],
+                [
+                  4,
+                  68,
+                  70,
+                  "word"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-index-with-directions",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  index ix (id desc, id asc)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  14,
+                  "name"
+                ],
+                [
+                  4,
+                  15,
+                  19,
+                  "keyword"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  21,
+                  23,
+                  "name"
+                ],
+                [
+                  4,
+                  24,
+                  27,
+                  "keyword"
+                ],
+                [
+                  4,
+                  27,
+                  28,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-check-with-a-predicate",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (a = 1 and a is not null)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "name"
+                ],
+                [
+                  4,
+                  14,
+                  15,
+                  "operator"
+                ],
+                [
+                  4,
+                  16,
+                  17,
+                  "number"
+                ],
+                [
+                  4,
+                  18,
+                  21,
+                  "keyword"
+                ],
+                [
+                  4,
+                  22,
+                  23,
+                  "name"
+                ],
+                [
+                  4,
+                  24,
+                  26,
+                  "keyword"
+                ],
+                [
+                  4,
+                  27,
+                  30,
+                  "keyword"
+                ],
+                [
+                  4,
+                  31,
+                  35,
+                  "keyword"
+                ],
+                [
+                  4,
+                  35,
+                  36,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-check-function-name-is-word-and-the-rest-is-lexical",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (f(a) = 1)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  4,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  14,
+                  15,
+                  "word"
+                ],
+                [
+                  4,
+                  15,
+                  16,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "number"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-null-operand-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (null = 1)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  16,
+                  "word"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "number"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-between-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (a between 1 and 2)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "name"
+                ],
+                [
+                  4,
+                  14,
+                  21,
+                  "word"
+                ],
+                [
+                  4,
+                  22,
+                  23,
+                  "number"
+                ],
+                [
+                  4,
+                  24,
+                  27,
+                  "word"
+                ],
+                [
+                  4,
+                  28,
+                  29,
+                  "number"
+                ],
+                [
+                  4,
+                  29,
+                  30,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-use-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "use other { t1, t2 }"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  3,
+                  "keyword"
+                ],
+                [
+                  2,
+                  4,
+                  9,
+                  "name"
+                ],
+                [
+                  2,
+                  10,
+                  11,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  12,
+                  14,
+                  "name"
+                ],
+                [
+                  2,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  16,
+                  18,
+                  "name"
+                ],
+                [
+                  2,
+                  19,
+                  20,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-diagram-with-negative-coordinate",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "diagram d {",
+            "  users at 1 -2",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  7,
+                  "keyword"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "name"
+                ],
+                [
+                  2,
+                  10,
+                  11,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  10,
+                  "keyword"
+                ],
+                [
+                  3,
+                  11,
+                  12,
+                  "number"
+                ],
+                [
+                  3,
+                  13,
+                  14,
+                  "operator"
+                ],
+                [
+                  3,
+                  14,
+                  15,
+                  "number"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-value-word-other-than-the-value-words-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  n i64 default foo",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  3,
+                  8,
+                  15,
+                  "keyword"
+                ],
+                [
+                  3,
+                  16,
+                  19,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-cr-before-lf-is-the-line-end-bare-cr-is-offending",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {\r",
+            "  id i64\rx",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  10,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-table-document",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "# note"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  6,
+                  "comment"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-name-takes-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table 12 {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  8,
+                  "name"
+                ],
+                [
+                  3,
+                  9,
+                  10,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-abandoned-line-words",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 primary key",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  4,
+                  9,
+                  16,
+                  "word"
+                ],
+                [
+                  4,
+                  17,
+                  20,
+                  "word"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-unclosed-block",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-header-failure",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app x"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "word"
+                ],
+                [
+                  1,
+                  13,
+                  14,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-before-header",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "# c",
+            "dbspec 1 app"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  3,
+                  "comment"
+                ],
+                [
+                  2,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  2,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  2,
+                  9,
+                  12,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-minus-before-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 default -1",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  16,
+                  "keyword"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  18,
+                  19,
+                  "number"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-value-keywords",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  ok bool default true",
+            "  primary key (ok)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  9,
+                  "type"
+                ],
+                [
+                  4,
+                  10,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  18,
+                  22,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-tab-abandons-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "\tid i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  1,
+                  3,
+                  "word"
+                ],
+                [
+                  4,
+                  4,
+                  7,
+                  "word"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "format-invalid-refused",
+      "requirements": [
+        "DBS-141"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 bogus",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 10,
+                  "line": 4,
+                  "rule": "syntax"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "format-idempotent",
+      "requirements": [
+        "DBS-141"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 app",
+                "",
+                "table t {",
+                "  id i64",
+                "  primary key (id)",
+                "}"
               ]
             }
           }

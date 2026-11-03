@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The token and format cases of Go `TestAnalyzeClasses` and Python `test_dbspec_analyze.py` are cases of `tests/dbspec/rules.json`, so all six runtimes run them; only a text that a JSON line cannot hold stays native.
 - The load of a document set of SCH-12 is the recipe `tests/dbspec/load-set.json` in all six runtimes, through the new op `dbspec.load_set`, and its native tests go.
 - The default select set of PRT-9 is the recipe `tests/planner/default-select-set.json` in all six runtimes, and its native tests go.
 - The worked token example of the Go analysis test is the case `analyze-worked-example` of `tests/dbspec/rules.json`, and the native header token tests of TypeScript and Python go, because `analyze-header` holds them.

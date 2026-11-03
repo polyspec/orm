@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- Go `TestAnalyzeClasses`와 Python `test_dbspec_analyze.py`의 token과 format case는 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다. JSON 줄에 담을 수 없는 text만 native에 남는다.
 - SCH-12의 문서 set 읽기는 새 op `dbspec.load_set`으로 여섯 runtime 모두에서 recipe `tests/dbspec/load-set.json`이고, native 시험은 사라진다.
 - PRT-9의 기본 select 집합은 여섯 runtime 모두에서 recipe `tests/planner/default-select-set.json`이고, native 시험은 사라진다.
 - Go 분석 시험의 token 예제는 `tests/dbspec/rules.json`의 case `analyze-worked-example`이고, TypeScript와 Python의 native header token 시험은 `analyze-header`가 담으므로 사라진다.
