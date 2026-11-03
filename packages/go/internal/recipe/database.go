@@ -125,6 +125,9 @@ type databaseStep struct {
 	Name  string                 `json:"name"`
 	Value json.RawMessage        `json:"value"`
 	Masks map[string][]eventMask `json:"masks"`
+	// The channel and payload of a db.notify (FCV-4).
+	Channel string `json:"channel"`
+	Payload string `json:"payload"`
 }
 
 // eventMask replaces one bind of one captured event with a name, for a value that no recipe can fix (FCV-4).

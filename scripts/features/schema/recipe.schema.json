@@ -837,7 +837,8 @@
             "model.chain",
             "utils.lock",
             "utils.set_local",
-            "utils.local"
+            "utils.local",
+            "db.notify"
           ]
         }
       },
@@ -1090,6 +1091,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.set_local"
+        },
+        {
+          "$ref": "#/$defs/ops/db.notify"
         },
         {
           "$ref": "#/$defs/ops/utils.local"
@@ -5904,6 +5908,31 @@
           "name": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      },
+      "db.notify": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "channel",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.notify"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload": {
+            "type": "string"
           }
         }
       },

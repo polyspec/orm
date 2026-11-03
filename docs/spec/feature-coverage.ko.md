@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: b3437831adc7f678188c599132e57c26aa24948a4935df9fade3dbee0f12c92c -->
+<!-- source-sha256: b97d8a5d7c7698ceadf75f1d4646409adfab2116d8273d55ce8378eb910fe0f2 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -142,6 +142,7 @@
   - table 경로 필드. `where`는 `{"chain": [[<connector>, <predicate>], [<connector>], ...]}`(명시적 연결자, 단독 `[<connector>]`는 DSL-14의 별도 연결자)와 `{"placed": <join as>}`(그 `as`로 묶은 join의 DSL-17 group)도 받는다. join은 `match`(열 쌍), `alias`, `where`를 받고(DSL-91~DSL-95), relation은 `many`와 `alias`를 받으며 `as`는 선택이다(DSL-80, DSL-81, DSL-83). `columns` 항목은 `{"expr", "as"}`일 수 있고, `add_columns`와 `remove_columns`는 DSL-72~DSL-75의 호출이며, `order` 항목은 `{"fn", "dir"}`일 수 있고(DSL-135), `limit`은 정수 또는 `limit` 객체이고, `aggregate`는 DSL-61~DSL-63의 종결 호출이고, `pick`은 결과 행에서 비교할 필드를 제한하며, `compile: true`는 getQuery로 쿼리를 읽는다(DSL-65). `set` 값은 `{"arith": {"operation", "amount"}}`일 수 있다(DSL-102). `model.creates`는 크기를 명시하는 batch 한도 case를 위해 `rows` 대신 `rows_sequence {column, from, count, values}`를 받는다.
   - `{"json": <plain JSON>}`은 table 경로 결과의 expect다. 행은 쿼리 순서의 객체이고 scalar는 그 값 자체다. 객체는 member를 기록된 순서로 비교한다.
   - `model.chain {connection, model, as, ...}`은 실행하지 않고 쿼리를 만들고, 뒤의 `model.query`나 `model.count`가 `from`으로 이어 간다(DSL-69). `utils.lock`, `utils.set_local`, `utils.local {connection, name, ...}`은 transaction 안에서 같은 이름의 공개 유틸리티를 호출한다. `transaction`의 빈 `steps`는 문장을 보내지 않는 transaction이다.
+  - `db.notify {connection, channel, payload}`는 연결의 public notify를 호출합니다(DIA-193). 그 문은 모든 문처럼 공개됩니다(INT-91).
   - `events.captured`의 `masks`는 `{<database>: [{"event", "bind", "value"}]}`이다. 그 위치의 bind는 `value`에 적힌 표식으로 비교하며, 표식은 `$AES`(AES 값의 임의 nonce), `$TS`(`updated_ts`에서 읽은 시각), `$NOW`(시계) 중 하나다. mask는 recipe가 고정할 수 없는 값만 가리고 vector가 고정한 값은 가리지 않는다.
   - `model.query`와 `model.count`의 `where`에 있는 array 값은 IN 목록(DSL-46; suite conformance-mysql, conformance-postgres, conformance-sqlite의 API unit)이며 client가 bind 한도에서 나눈다(PRT-76). `model.query`는 `page: true`를 받으며, 이때 `limit`과 `offset`으로 `GetsPage`를 호출하고 `{"rows": [...], "total": <정수>}`를 반환한다. `page`가 false인 `limit`은 statement의 공개 `Limit`이므로, 나뉜 목록에 건 limit은 `IR_INVALID`로 실패한다(PRT-76). 그 `relation`은 `many`를 받으며, true이면 부모마다 자식 각각에, false이면 부모마다 첫 자식에 한 행을 만든다.
 

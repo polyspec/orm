@@ -608,6 +608,12 @@
       "name",
       "op"
     ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
+    ],
     "utils.set_local": [
       "connection",
       "name",

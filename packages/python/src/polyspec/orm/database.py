@@ -1820,8 +1820,23 @@ class Db:
                 codes.DRIVER,
                 "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000",
             )
-        self._connection.execute(
-            "SELECT pg_notify($1, $2)", [channel, payload], self._cancellation
+        sql = "SELECT pg_notify($1, $2)"
+        values = [channel, payload]
+        frame = _active_for(self)
+        if frame is not None:
+            frame.run(sql, values)
+            return
+        self.events.send(
+            "utility",
+            (),
+            None,
+            values,
+            sql,
+            lambda: self._sent(
+                lambda: _execute_cancellable(
+                    self._connection, sql, values, self._cancellation
+                )
+            ),
         )
 
     def listen(self, channel: str) -> Subscription:

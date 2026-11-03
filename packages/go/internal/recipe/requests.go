@@ -93,6 +93,12 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
 	case "utils.lock", "utils.set_local", "utils.local":
 		return utilsOp(s, c)
+	case "db.notify":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{}}, db.Notify(s.Channel, s.Payload)
 	case "utils.aes_status", "utils.aes_rotate":
 		db, err := connectionOf(s, c)
 		if err != nil {

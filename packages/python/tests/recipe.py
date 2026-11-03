@@ -2651,6 +2651,11 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _db_notify(step: dict, context: dict) -> dict:
+    _connection_of(step, context).notify(step["channel"], step["payload"])
+    return {}
+
+
 def _utils_set_local(step: dict, context: dict) -> dict:
     _connection_of(step, context).utils().set_local(
         step["name"], _chain_value(step["value"], context)
@@ -3340,6 +3345,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
