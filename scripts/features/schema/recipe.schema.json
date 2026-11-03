@@ -673,6 +673,11 @@
             "error": {
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "message_suffix": {
+              "description": "The end of the message of the error, when the code alone does not tell the refusals of the case apart.",
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -3919,6 +3924,13 @@
               },
               "pick": {
                 "description": "The fields of each result row that the expect names; a field the expect does not name is not compared.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "derived_integers": {
+                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
                 "type": "array",
                 "items": {
                   "$ref": "#/$defs/name"

@@ -1929,9 +1929,13 @@ final class Recipe
         }
     }
 
-    /** The value with the members of every object sorted by name. */
+    /** The value with the members of every object sorted by name and each integral number as an integer. */
     private static function sortedMembers(mixed $value): mixed
     {
+        if (is_float($value) && floor($value) === $value && abs($value) < 2 ** 53) {
+            // JSON has one number form, and getSum returns a binary64 (DSL-66) where the recipe writes 17540.
+            return (int) $value;
+        }
         if (!is_array($value)) {
             return $value;
         }
@@ -3032,6 +3036,18 @@ final class Recipe
         return $out;
     }
 
+    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+    private static function derivedIntegers(array $row, array $names): array
+    {
+        foreach ($names as $name) {
+            if (is_string($row[$name])) {
+                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
+                $row[$name] = (int) $row[$name];
+            }
+        }
+        return $row;
+    }
+
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(array $s, array $context): bool
     {
@@ -3267,7 +3283,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {
