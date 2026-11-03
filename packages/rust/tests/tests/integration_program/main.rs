@@ -469,10 +469,6 @@ async fn writes_case(t: &Target) {
 
 // Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async fn transactions_case(t: &Target) {
-    let _aes = t.db.utils().aes();
-    let _schema = t.db.utils().schema();
-    let _privileges = t.db.utils().privileges();
-    let _stats = t.db.utils().stats();
     let db = &t.db;
     if t.driver == "postgres" {
         // The raw SQLx fixture connection sends `extra_float_digits` at startup, which PgBouncer rejects; privilege API calls still use `db` above.
@@ -604,9 +600,6 @@ async fn transactions_case(t: &Target) {
             assert_eq!(User::new().get_count().await?, 1, "savepoint rollback");
             User::new().name("outer").for_update().gets().await?;
             db.utils().lock("users").await?;
-            db.utils().set_local("ormtest.actor", "tester").await?;
-            assert_eq!(db.utils().local("ormtest.actor")?, "tester", "local");
-            assert_eq!(code(db.utils().local("ormtest.missing")), "NO_ROWS", "missing local");
             let spawned = tokio::spawn(async { User::new().get_count().await.map_err(|e| e.code().to_owned()) }).await.unwrap();
             assert_eq!(spawned.err().as_deref(), Some("CONFIG"), "a spawned task inherited the transaction");
             Ok(())

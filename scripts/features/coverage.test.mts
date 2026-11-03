@@ -39,7 +39,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CatalogConnectionSurfaceTest.php', python: 'packages/python/tests/test_utils_statements.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';

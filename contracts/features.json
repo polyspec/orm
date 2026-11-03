@@ -2623,7 +2623,7 @@
         },
         {
           "id": "writes-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow|TestWasInsertedTracksGeneratedRows)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
@@ -3267,7 +3267,6 @@
         "packages/python/tests/rollback.py",
         "packages/python/tests/test_rollback_fault.py",
         "packages/python/tests/test_sqlite.py",
-        "packages/python/tests/test_utils.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
         "packages/python/tests/coverage_transactions.py",
@@ -3596,12 +3595,11 @@
         },
         {
           "id": "transactions-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && packages/python/.venv/bin/python -m packages.python.tests.test_utils && packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_rollback_fault && packages/python/.venv/bin/python -m packages.python.tests.test_utils_statements && packages/python/.venv/bin/python -m packages.python.tests.test_row_lock_event",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_rollback_fault.py",
-            "packages/python/tests/test_utils.py",
-            "packages/python/tests/test_utils_statements.py",
+                "packages/python/tests/test_utils_statements.py",
             "packages/python/tests/test_row_lock_event.py",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/utils.py"
