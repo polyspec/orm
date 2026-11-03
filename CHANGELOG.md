@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: a driver error and its native cause (PRT-79) are the case `immutable_write` in every runtime, raised by each database; the natives that built the error are gone.
 - A connection with an AES key that differs from the key of its current version is the case `an_aes_key_that_differs_from_the_current_version_is_refused` of the recipe `aes_rotation` in all six runtimes, through `aes_key`, `aes_version` and `aes_keys` in the `config` of `dsn.connect`, and the Go test `TestAESKeyMustMatchKeyOfCurrentVersion` is gone (#T334-3-12-2)
 - CR15-F: the TypeScript and Python tests of the MySQL insert statements return from c55a726cf as owner units (INT-123b, INT-123c), which hold only the statements a fake driver observes.
 - CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.

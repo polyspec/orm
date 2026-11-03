@@ -1604,7 +1604,7 @@ rust-compiler-fixtures-check/unit: lease-tool
 .PHONY: native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
 native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
 native-error-cause-check/go:
-	$(GO_TEST) -v -timeout 0 ./packages/go/orm -run '^(TestMapDriverErrorPreservesNativeCause|TestCellScanCopiesLosslessNativeBytes|TestMarkdownConnectRefused)$$' -count=1
+	$(GO_TEST) -v -timeout 0 ./packages/go/orm -run '^(TestCellScanCopiesLosslessNativeBytes|TestMarkdownConnectRefused)$$' -count=1
 native-error-cause-check/typescript-driver: typescript-build
 	$(READ_TYPESCRIPT)
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
@@ -1630,7 +1630,7 @@ native-error-cause-check/php-extension: php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir"; \
 	$(call php_ext_build,"$$run_dir/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'DriverErrorTest|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testNativeMarkdownConnectionRefusesConnectError' packages/php-ext/tests/DriverErrorTest.php packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/OrmExceptionNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'DriverErrorTest|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testNativeMarkdownConnectionRefusesConnectError' packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/OrmExceptionNativeTest.php
 client-unit-check/model-methods: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
 client-unit-check/client-generics: php-vendor-check php-models

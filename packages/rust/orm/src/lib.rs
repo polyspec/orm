@@ -328,23 +328,3 @@ mod sqlite_code_tests {
         }
     }
 }
-
-#[cfg(test)]
-mod driver_error_tests {
-    use super::*;
-    use crate::test_support::DatabaseErrorStub;
-    use std::error::Error as StdError;
-
-    // Requirements: PRT-79.
-    #[test]
-    fn unknown_database_error_keeps_the_native_source_chain() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mapped = Error::from(sqlx::Error::Database(Box::new(DatabaseErrorStub::new("trigger refused the write", "trigger refused the write", None))));
-        assert_eq!(mapped.code(), codes::DRIVER);
-        assert!(mapped.to_string().contains("trigger refused the write"));
-        let sqlx_source = StdError::source(&mapped).expect("mapped error keeps sqlx error");
-        assert!(sqlx_source.is::<sqlx::Error>());
-        assert_eq!(sqlx_source.to_string(), "error returned from database: trigger refused the write");
-        assert_eq!(StdError::source(sqlx_source).unwrap().to_string(), "trigger refused the write");
-    }
-}

@@ -1,14 +1,16 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "DBS-84"
+    "DBS-84",
+    "PRT-79"
   ],
   "fixture": "contracts/fixtures/immutable_write/dbspec-set.json",
   "cases": [
     {
       "id": "immutable_write",
       "requirements": [
-        "DBS-84"
+        "DBS-84",
+        "PRT-79"
       ],
       "steps": [
         {

@@ -47,24 +47,6 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 	}
 }
 
-// Requirements: PRT-79.
-func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	driverErr := &mysql.MySQLError{Number: 1644, Message: "trigger refused the write"}
-	mapped := mapDriverErr(driverErr)
-	var ormErr *ir.Error
-	if !errors.As(mapped, &ormErr) {
-		t.Fatalf("mapped error = %T, want *ir.Error", mapped)
-	}
-	if ormErr.Code != CodeDriver || ormErr.Msg != "Error 1644: trigger refused the write" {
-		t.Fatalf("mapped error = (%q, %q), want DRIVER and the native message", ormErr.Code, ormErr.Msg)
-	}
-	var nativeCause *mysql.MySQLError
-	if !errors.Is(mapped, driverErr) || !errors.As(ormErr.Cause, &nativeCause) || nativeCause != driverErr {
-		t.Fatalf("mapped error does not preserve the exact driver cause: %#v", ormErr.Cause)
-	}
-}
-
 func TestMapDriverErrorContextKeepsCanceledCode(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	_, mapped := mapCanceledDriverError()

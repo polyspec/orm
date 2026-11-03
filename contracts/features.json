@@ -68,6 +68,7 @@
         "typescript-public-connection-call",
         "sqlite-minimum-driver-version",
         "php-python-session-initialization",
+        "php-extension-pgsql-adapter-statement-sqlstate",
         "parameter-slot-validation-vectors",
         "markdown-message-vectors",
         "py-test-placeholders",
@@ -2475,6 +2476,7 @@
         "php-internal-rollback-rollback-fault",
         "transaction-failure-savepoint-end",
         "transaction-control-methods-are-private",
+        "sqlite-locked-is-driver",
         "php-extension-failed-statement-closes-cursor",
         "transaction-execution-flow-context",
         "transaction-flow-overlap-rejected",
@@ -6557,6 +6559,7 @@
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",
         "packages/go/orm/sqlite/sqlite_test.go",
+        "packages/go/orm/sqlite/sqlite_locked_test.go",
         "packages/go/orm/driver_error_test.go",
         "packages/go/orm/driver_error_internal_test.go",
         "packages/go/orm/pg/pg_test.go",
@@ -6609,7 +6612,8 @@
             "packages/go/orm/driver_error_test.go",
             "packages/go/orm/driver_error_internal_test.go",
             "packages/go/orm/pg/pg_test.go",
-            "packages/go/orm/sqlite/sqlite_test.go"
+            "packages/go/orm/sqlite/sqlite_test.go",
+            "packages/go/orm/sqlite/sqlite_locked_test.go"
           ]
         },
         {
@@ -7330,7 +7334,6 @@
         "public-interface-signed",
         "postgres-listen-notify",
         "native-public-package-entry",
-        "native-driver-error-cause",
         "code-catalog-matches-errors-yaml",
         "rust-value-types-native-contract",
         "rust-row-value-decoding-native-contract",
@@ -7398,7 +7401,6 @@
         "packages/python/tests/identity_load.py",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/python/tests/test_rollback_fault.py",
-        "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ListenNotifyNativeTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",

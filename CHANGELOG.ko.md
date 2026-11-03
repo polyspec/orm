@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 66140fe0f49acfe036d84011951cfcecf2ce8e81ab7920cc7d6e58d6f9fd68d5 -->
+<!-- source-sha256: ad874712464878f20ce6a93944c87bb9927f1fb86d19be7082582cebb4804d26 -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: driver 오류와 native cause(PRT-79)는 모든 runtime에서 각 database가 일으킨 오류로 case `immutable_write`가 확인하며, 오류를 만들어 쓰던 native는 사라졌다.
 - 현재 version의 key와 다른 AES key를 가진 연결은 `dsn.connect`의 `config`에 있는 `aes_key`, `aes_version`, `aes_keys`를 통해 여섯 runtime 모두에서 recipe `aes_rotation`의 case `an_aes_key_that_differs_from_the_current_version_is_refused`로 실행한다. Go 시험 `TestAESKeyMustMatchKeyOfCurrentVersion`은 제거했다 (#T334-3-12-2)
 - CR15-F: MySQL insert 문장을 보는 TypeScript와 Python 시험을 c55a726cf에서 소유 unit으로 되살린다(INT-123b, INT-123c). 가짜 driver가 관찰하는 문장만 맡는다.
 - CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
