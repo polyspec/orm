@@ -4395,7 +4395,11 @@
                     "failed_statement",
                     "subscriber_error",
                     "unsubscribe",
-                    "install"
+                    "install",
+                    "schema_set_several_fixture_first",
+                    "schema_set_several_other_first",
+                    "schema_set_unregistered",
+                    "schema_set_edited_manifest"
                   ],
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
@@ -4413,6 +4417,10 @@
                     "subscriber_error",
                     "unsubscribe",
                     "install",
+                    "schema_set_several_fixture_first",
+                    "schema_set_several_other_first",
+                    "schema_set_unregistered",
+                    "schema_set_edited_manifest",
                     "notify"
                   ],
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
@@ -4430,7 +4438,11 @@
                     "failed_statement",
                     "subscriber_error",
                     "unsubscribe",
-                    "install"
+                    "install",
+                    "schema_set_several_fixture_first",
+                    "schema_set_several_other_first",
+                    "schema_set_unregistered",
+                    "schema_set_edited_manifest"
                   ],
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
@@ -5944,7 +5956,13 @@
           "add_tables_differs",
           "add_tables_index",
           "add_tables_transaction",
-          "add_tables_edited_manifest"
+          "add_tables_edited_manifest",
+          "schema_empty",
+          "schema_exists_and_installed",
+          "schema_exists_literal_underscore",
+          "schema_inspection_invalid_names",
+          "install_renders_triggers",
+          "install_differs"
         ],
         "owners": {
           "go": {
@@ -5969,7 +5987,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "TestRecipeSchemaInstallMysql"
@@ -5991,7 +6015,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "TestRecipeSchemaInstallPostgres"
@@ -6013,7 +6043,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "TestRecipeSchemaInstallSqlite"
@@ -6043,7 +6079,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testMysql"
@@ -6065,7 +6107,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testPostgres"
@@ -6087,7 +6135,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testSqlite"
@@ -6119,7 +6173,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6140,7 +6200,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6161,7 +6227,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6192,7 +6264,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6213,7 +6291,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6234,7 +6318,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6265,7 +6355,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6286,7 +6382,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6307,7 +6409,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json"
                 }
@@ -6336,7 +6444,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testMysql"
@@ -6358,7 +6472,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testPostgres"
@@ -6380,7 +6500,13 @@
                     "add_tables_differs",
                     "add_tables_index",
                     "add_tables_transaction",
-                    "add_tables_edited_manifest"
+                    "add_tables_edited_manifest",
+                    "schema_empty",
+                    "schema_exists_and_installed",
+                    "schema_exists_literal_underscore",
+                    "schema_inspection_invalid_names",
+                    "install_renders_triggers",
+                    "install_differs"
                   ],
                   "recipe": "contracts/fixtures/schema_install/schema_install.json",
                   "symbol": "testSqlite"

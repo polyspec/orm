@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d262a2919f7941c2644c33745b10b33c2c3bf07c2760c25d55b64f651c2a3329 -->
+<!-- source-sha256: 6faa4d0a94a13f8d30d8c1146087dc8aa992a99a8e9c0c0fadd19180e33eb41a -->
 # 변경 이력
 
 ## Unreleased
@@ -223,6 +223,7 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- CR15-2: recipe schema는 `connection` 없는 `model.create`와 `model.count`를 받고 FCV-4는 이를 case 연결에서 실행하며, schema_install과 statement_events의 owner 목록은 recipe의 모든 case를 담는다.
 - CR15-2: 한 연결의 여러 set, 등록되지 않은 set, 수정된 manifest는 statement_events recipe의 case가 되었고, 연결을 지정하지 않은 model op은 모든 runtime에서 case 연결로 실행된다.
 - CR15-2: `sqlite-row-lock-restoration`은 FCV-2 항목으로 native에 남는다. 공개 호출로는 `PRAGMA busy_timeout`을 실패하게 할 수 없기 때문이다.
 - CR15-2: `schema.empty`, `schema.exists`, `schema.installed`는 recipe op이 되었고, schema 비어 있음, 존재, 렌더된 install은 schema_install의 case가 되었으며, PERF-1은 timing의 `BENCH_*` 변수를 적는다.

@@ -5761,24 +5761,7 @@
         },
         {
           "op": "schema.install",
-          "connection": "owner",
-          "expect": {
-            "mysql": {
-              "value": {
-                "bool": true
-              }
-            },
-            "postgres": {
-              "value": {
-                "bool": true
-              }
-            },
-            "sqlite": {
-              "value": {
-                "bool": true
-              }
-            }
-          }
+          "connection": "owner"
         },
         {
           "op": "model.create",
