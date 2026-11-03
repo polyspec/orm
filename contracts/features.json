@@ -9258,7 +9258,10 @@
         "coverage-constraints-and-relations-constraint-errors",
         "constraints_and_relations-mysql",
         "constraints_and_relations-postgres",
-        "constraints_and_relations-sqlite"
+        "constraints_and_relations-sqlite",
+        "immutable_write-mysql",
+        "immutable_write-postgres",
+        "immutable_write-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -9268,7 +9271,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+        "contracts/fixtures/immutable_write/immutable_write.json"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",

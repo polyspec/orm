@@ -698,6 +698,8 @@ async function runStep(s, context) {
     if (expected?.error === undefined || typeof code !== 'string') throw error;
     assert.equal(code, expected.error, `the error code (${error.message})`);
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
+    if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
   if (s.as !== undefined) {

@@ -1797,6 +1797,10 @@ pub use database::{database_trials, database_trials_with_models, database_trials
 /// its objects and a column list is written in the order of the recipe (FCV-4).
 const WRITTEN_ORDER: &str = "__written_order";
 
+/// The mark that the text of a failed model op ends with when its error keeps the error of the driver as its source;
+/// the text of an op is a string, and an expect of driver_cause reads this mark (FCV-4).
+const DRIVER_CAUSE: &str = "\u{1f}driver_cause";
+
 mod database {
     use std::collections::HashMap;
     use std::future::Future;
@@ -2379,12 +2383,22 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
+                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                    Some(text) => (text.to_owned(), true),
+                    None => (message, false),
+                };
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
+                let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
-                        _ => Ok(()),
+                        _ => match holds {
+                            Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
+                            _ if wants_cause && !cause => Err(format!("error {message:?} has no driver cause")),
+                            _ => Ok(()),
+                        },
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
                     None => Err(format!("error without a code ({message}), want {want}")),
@@ -3370,7 +3384,8 @@ mod tables {
 
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
     fn orm(error: OrmError) -> String {
-        format!("{}: {error}", error.code())
+        let cause = if std::error::Error::source(&error).is_some() { super::DRIVER_CAUSE } else { "" };
+        format!("{}: {error}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.

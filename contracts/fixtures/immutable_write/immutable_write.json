@@ -1,0 +1,136 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-84"
+  ],
+  "fixture": "contracts/fixtures/immutable_write/dbspec-set.json",
+  "cases": [
+    {
+      "id": "immutable_write",
+      "requirements": [
+        "DBS-84"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "RefusedRow",
+          "values": {
+            "amount": {
+              "int": "1"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "RefusedRow",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "amount": {
+              "int": "2"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            },
+            "postgres": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "RefusedRow",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            },
+            "postgres": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            },
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "table refused_row is immutable",
+              "driver_cause": true
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "RefusedRow",
+          "where": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "order": [
+            "seq"
+          ],
+          "columns": [
+            "amount"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
