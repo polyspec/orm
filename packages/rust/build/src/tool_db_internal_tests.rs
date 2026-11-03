@@ -61,6 +61,6 @@ fn grid_value_decoders_preserve_conversion_causes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     assert_eq!(super::decode_bytes(Some(vec![0xff])).expect("bytes that are not text"), super::Val::Binary(vec![0xff]));
 
-    let error = super::decode_unsigned(Some(u64::MAX)).expect_err("out-of-range unsigned database integer must fail");
-    assert!(error.to_string().contains("number too large to fit in target type"), "{error}");
+    assert_eq!(super::decode_unsigned(Some(u64::MAX)).unwrap(), Val::Unsigned(u64::MAX));
+    assert_eq!(super::decode_unsigned(Some(7)).unwrap(), Val::Int(7));
 }

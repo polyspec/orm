@@ -1089,7 +1089,7 @@ class Session {
       if (ordinal > 0) keys.push({ ordinal, index: columns.length });
       columns.push(column);
     }
-    if (this.dialect === 'sqlite') {
+    if (this.dialect === 'sqlite' && kind === 'table') {
       // The dbspec renderer writes the fraction digits of a TIME or DATETIME column into a CHECK of the table's own definition.
       const tables = (await this.plainRows("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ref.name], 2, METADATA_BYTES)).rows;
       const [tableRow] = tables;

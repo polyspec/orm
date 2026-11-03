@@ -24,6 +24,7 @@ impl From<Val> for GridCell {
         match value {
             Val::Null => Self::Null,
             Val::Int(value) => Self::Integer(value),
+            Val::Unsigned(value) => Self::Unsigned(value),
             Val::Float(value) => Self::Float64(value.to_bits()),
             Val::Text(value) => Self::Text(value),
             Val::Bool(value) => Self::Boolean(value),

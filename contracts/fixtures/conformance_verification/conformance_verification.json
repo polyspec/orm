@@ -59665,7 +59665,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -62596,7 +62613,24 @@
          }
         }
        ],
-       "batch": 5
+       "batch": 5,
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "5"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "5"
+         }
+        }
+       }
       },
       {
        "op": "model.query",
@@ -76348,6 +76382,9 @@
     },
     {
      "op": "model.query",
+     "order": [
+      "seq"
+     ],
      "connection": "db",
      "model": "TypedValue",
      "where": {
@@ -77787,6 +77824,106 @@
       },
       "sqlite": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "query_now_and_random_order",
+   "requirements": [
+    "DSL-99",
+    "DSL-137"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "start_dt": {
+          "le": {
+           "fn": "now"
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "random": true
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
       }
      }
     }

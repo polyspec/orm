@@ -30,6 +30,8 @@ pub(crate) fn validate_param_refs<'a>(values: impl Iterator<Item = &'a P>, diale
 pub enum Val {
     Null,
     Int(i64),
+    /// A MySQL unsigned value beyond the signed 64-bit range (INT-102)
+    Unsigned(u64),
     /// A PostgreSQL real, held as the float32 value that the server stores, widened to a double.
     Float(f64),
     Text(String),
@@ -43,6 +45,7 @@ impl Val {
         match self {
             Val::Null => String::new(),
             Val::Int(n) => n.to_string(),
+            Val::Unsigned(n) => n.to_string(),
             Val::Float(f) => f.to_string(),
             Val::Text(s) => s.clone(),
             Val::Bool(b) => b.to_string(),
@@ -62,6 +65,7 @@ impl Val {
             Val::Int(n) => Ok(*n),
             Val::Bool(b) => Ok(i64::from(*b)),
             Val::Text(s) => s.parse().map_err(|error| sqlx::Error::Decode(format!("Invalid tool integer: {error}").into())),
+            Val::Unsigned(n) => i64::try_from(*n).map_err(|error| sqlx::Error::Decode(Box::new(error))),
             Val::Float(_) => Err(sqlx::Error::Decode("Invalid tool integer: a float".into())),
             Val::Binary(_) => Err(sqlx::Error::Decode("Invalid tool integer: binary".into())),
             Val::Null => Err(sqlx::Error::Decode("Required tool integer is NULL".into())),
@@ -104,7 +108,7 @@ pub(crate) fn unsupported_value(detail: impl std::fmt::Display) -> sqlx::Error {
 }
 
 fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
-    value.map(i64::try_from).transpose().map(|value| value.map_or(Val::Null, Val::Int)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
+    Ok(value.map_or(Val::Null, |value| i64::try_from(value).map_or(Val::Unsigned(value), Val::Int)))
 }
 
 macro_rules! cell_common {

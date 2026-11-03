@@ -39,7 +39,7 @@ class OrmGenCliTest extends TestCase
             ?? throw new \RuntimeException('cannot start ' . implode(' ', $command));
     }
 
-    // Requirements: DBS-175.
+    // Requirements: DBS-175, DBS-183.
     public function testGenCheckComparesTheModelsWithoutWriting(): void
     {
         $work = self::$work;
@@ -84,42 +84,6 @@ class OrmGenCliTest extends TestCase
             array_map(fn($f) => file_get_contents($f), glob("$dir/model/*.php")) === $before,
             'gen --check wrote files'
         );
-    }
-
-    // Requirements: DBS-4, DBS-27, DBS-155.
-    public function testGenRejectsAFileWithoutTheDbspecSignature(): void
-    {
-        $work = self::$work;
-        // The byte check rejects the DbSchema project XML and the empty file before the parse, and every
-        // file's diagnostic is printed.
-        $set = OrmGenTestSupport::setFile("$work/signature", ['dbschema.dbs', 'empty.dbs']);
-        foreach (['dbschema.dbs', 'empty.dbs'] as $name) {
-            copy(dirname(__DIR__, 3) . "/tests/dbspec/files/$name", "$work/signature/$name");
-        }
-        $dir = "$work/signature/model";
-        [$code, $out, $err] = self::tool(
-            ['gen', '--set', $set, '--out', $dir, '--namespace', 'Polyspec\\Orm\\Tests\\Example']
-        );
-        $want = "orm-gen: SCHEMA_INVALID: $work/signature/dbschema.dbs:1:1: "
-            . "signature: $work/signature/dbschema.dbs is not a dbspec document\n"
-            . "$work/signature/empty.dbs:1:1: signature: $work/signature/empty.dbs is not a dbspec document\n";
-        self::assertTrue($code === 1 && $out === '' && $err === $want, "$code $out $err");
-        self::assertTrue(!file_exists($dir), "gen wrote $dir");
-    }
-
-    // Requirements: DBS-19, DBS-25, DBS-27, SCH-1, ORES-36.
-    public function testGenPrintsEveryErrorOfTheSetFileAndWritesNothing(): void
-    {
-        $work = self::$work;
-        $dir = "$work/set-errors";
-        $set = OrmGenTestSupport::setFile($dir, ['gone.dbs', 'sub\\x.dbs']);
-        [$code, $out, $err] = self::tool(
-            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
-        );
-        $want = "orm-gen: CONFIG: set.file: $dir/gone.dbs: gone.dbs is not a name that $dir/ lists\n"
-            . "set.path: $set: the documents path \"sub\\\\x.dbs\" has no normal form\n";
-        self::assertTrue($code === 1 && $out === '' && $err === $want, "$code $out $err");
-        self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
     // Requirements: DBS-5, DBS-98, SCH-1, ORES-21.

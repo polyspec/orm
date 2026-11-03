@@ -59,14 +59,6 @@ name = "tool_columns"
 required-features = ["live-db"]
 
 [[test]]
-name = "grid_numbers"
-required-features = ["live-db"]
-
-[[test]]
-name = "grid_decimals"
-required-features = ["live-db"]
-
-[[test]]
 name = "row_snapshot"
 required-features = ["live-db"]
 

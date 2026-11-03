@@ -46,7 +46,7 @@ from polyspec.orm import (
 )
 from polyspec.orm.core import styled_field
 from polyspec.orm.engine.model import field_of
-from polyspec.orm.testing import last_affected
+from polyspec.orm.testing import fail_next_rollback, last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -86,7 +86,7 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
-from .recipe_generator import check_generated_files, check_generator
+from .recipe_generator import check_generated_files, check_refused_generation, check_generator
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -187,6 +187,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "generator.check":
                     check_generated_files(step, ROOT / Path(path).parent)
+                    continue
+                if step["op"] == "generator.refused":
+                    check_refused_generation(step, ROOT / Path(path).parent)
                     continue
                 if step["op"] in _DBSPEC_OPS:
                     _dbspec(step, bound, database)
@@ -2509,6 +2512,12 @@ def _op_revision(step: dict, context: dict) -> dict:
     return {"value": {"text": _step_argument(step["snapshot"], context).revision}}
 
 
+def _op_revision_compare(step: dict, context: dict) -> dict:
+    revision = _step_argument(step["snapshot"], context).revision
+    other = _step_argument(step["other"], context).revision
+    return {"json": {"length": len(revision), "differs": revision != other}}
+
+
 def _op_row_cells(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     types = [column.native_type for column in snapshot.metadata.columns]
@@ -2555,6 +2564,39 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
             columns = [first, *page.metadata.columns[1:]]
             page = dataclasses.replace(
                 page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
+        with_ = step["page_with"]
+        if "primary_key" in with_:
+            page = dataclasses.replace(
+                page,
+                metadata=dataclasses.replace(
+                    page.metadata, primary_key=with_["primary_key"]
+                ),
+            )
+        if "limit" in with_:
+            page = dataclasses.replace(page, limit=with_["limit"])
+        if "result_column_name" in with_:
+            first = dataclasses.replace(
+                page.result.columns[0], name=with_["result_column_name"]
+            )
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, columns=[first, *page.result.columns[1:]]
+                ),
+            )
+        if "drop_last_cell" in with_ or "fill_last_cell" in with_:
+            row = list(page.result.rows[0])
+            if "drop_last_cell" in with_:
+                row.pop()
+            if "fill_last_cell" in with_:
+                fill = with_["fill_last_cell"]
+                row[-1] = fill["fill"] * fill["count"]
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, rows=[row, *page.result.rows[1:]]
+                ),
             )
     else:
         page = _step_argument(step["page"], context)
@@ -3007,7 +3049,9 @@ class _ChainBuild:
         if "where" in q:
             self.predicate(model, "", q["where"])
         for entry in q.get("order", []):
-            if isinstance(entry, str):
+            if isinstance(entry, dict) and entry.get("random") is True:
+                model.order_by_random()
+            elif isinstance(entry, str):
                 model.core.order_by(entry.removeprefix("-"), entry.startswith("-"), [])
             elif "fn" in entry:
                 model.core.order_by(
@@ -3422,6 +3466,11 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
     return {"bind": _Subscription(stop, recording)}
 
 
+def _op_fault_next_rollback(step: dict, context: dict) -> dict:
+    fail_next_rollback(_connection_of(step, context))
+    return {}
+
+
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
     refusal: Exception = RuntimeError("subscriber refused the event")
@@ -3770,12 +3819,14 @@ _DATABASE_OPS = {
     "transaction": lambda step, context: _op_transaction(step, context),
     "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
+    "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,
     "catalog.revision": _op_revision,
+    "catalog.revision_compare": _op_revision_compare,
     "catalog.row_cells": _op_row_cells,
     "model.read_bind_cell": _op_read_bind_cell,
     "catalog.current_namespace": _op_current_namespace,
@@ -3792,6 +3843,7 @@ _DATABASE_OPS = {
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
+    "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,
@@ -4174,6 +4226,53 @@ def _op_transaction(step: dict, context: dict) -> dict:
 
 def _op_transaction_attempts(_: dict, context: dict) -> dict:
     return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_server_transactions(step: dict, context: dict) -> dict:
+    """events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+    server transactions of each run. The probe runs in a frame of its own, so its cost is measured first."""
+    db = _connection_of(step, context)
+
+    def frame_rows(text: str) -> list:
+        return db.utils().run(
+            lambda frame: frame.run(text, [], kind="utility", tables=[])
+        )["rows"]
+
+    def probe() -> int:
+        return int(frame_rows(step["probe"])[0][0])
+
+    fields: dict = {}
+    if context["database"] == "postgres":
+        [[setting, source]] = frame_rows(
+            "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'"
+        )
+        # Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+        pooled = os.environ.get("ORM_TEST_POSTGRES_DSN") != os.environ.get(
+            "ORM_TEST_POSTGRES_SERVER_DSN"
+        )
+        fields["time_zone"] = setting
+        fields["time_zone_from_startup"] = pooled or source == "client"
+    first = probe()
+    before = probe()
+    cost = before - first
+    for run in ("first", "second"):
+        texts: list = []
+        stop = db.subscribe(lambda event: texts.append(event.sql))
+        try:
+            for nested in step["steps"]:
+                _run_database_step(nested, context)
+        finally:
+            stop()
+        after = probe()
+        spent = after - before - cost
+        before = after
+        distinct = len(set(texts))
+        prepares = run == "first" and "python" in step["first_run_prepare_clients"]
+        fields[f"{run}_excess"] = spent - len(texts) - (distinct if prepares else 0)
+        fields["events"] = len(texts)
+        fields["texts"] = distinct
+    fields["probe_cost"] = cost
+    return fields
 
 
 def _op_transaction_deadlock(step: dict, context: dict) -> dict:

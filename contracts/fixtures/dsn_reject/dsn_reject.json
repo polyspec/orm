@@ -65,6 +65,23 @@
       ]
     },
     {
+      "id": "timezone_mysql_system",
+      "requirements": [
+        "CFG-2"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost/orm_example?timezone=SYSTEM",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "timezone_unknown_zone",
       "requirements": [
         "CFG-2"

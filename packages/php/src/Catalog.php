@@ -987,7 +987,12 @@ final class Catalog
                 case 'FLOAT8':
                     return self::float64Cell($value);
                 case 'NUMERIC':
-                    return new CatalogGridCell('decimal', self::gridText($value));
+                    // PostgreSQL writes NaN and the infinities of numeric as text.
+                    $text = self::gridText($value);
+                    if ($text === 'NaN' || str_contains($text, 'Infinity')) {
+                        throw self::refused("PostgreSQL numeric $text is not finite");
+                    }
+                    return new CatalogGridCell('decimal', $text);
                 case 'TIMESTAMPTZ':
                 case 'TIMETZ':
                     throw self::refused("PostgreSQL $native is unsupported");
