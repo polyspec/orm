@@ -21103,7 +21103,6 @@
             "Polyspec\\Orm\\Config::keyring",
             "Polyspec\\Orm\\Db::DRIVERS",
             "Polyspec\\Orm\\Db::NOW",
-            "Polyspec\\Orm\\Db::SECRET",
             "Polyspec\\Orm\\Db::driver",
             "Polyspec\\Orm\\Orm",
             "Polyspec\\Orm\\Orm::connect",
@@ -21130,7 +21129,6 @@
             "Polyspec\\Orm\\Config::__construct",
             "Polyspec\\Orm\\Config::keyring",
             "Polyspec\\Orm\\Db::NOW",
-            "Polyspec\\Orm\\Db::SECRET",
             "Polyspec\\Orm\\Db::driver",
             "Polyspec\\Orm\\Orm",
             "Polyspec\\Orm\\Orm::connect",
@@ -21739,8 +21737,7 @@
             "polyspec_orm::db::RequestHook",
             "polyspec_orm::db::RequestParams",
             "polyspec_orm::db::RequestParams::add",
-            "polyspec_orm::db::RequestParams::get",
-            "polyspec_orm::db::SECRET_MASK"
+            "polyspec_orm::db::RequestParams::get"
           ]
         },
         {
@@ -36437,7 +36434,6 @@
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Role",
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.SQL",
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Tables",
-            "github.com/polyspec/orm/packages/go/orm.Secret",
             "github.com/polyspec/orm/packages/go/orm.Statement",
             "github.com/polyspec/orm/packages/go/orm.Statement.Binds",
             "github.com/polyspec/orm/packages/go/orm.Statement.SQL"
