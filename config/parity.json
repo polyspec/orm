@@ -720,7 +720,6 @@
         "packages/ts/tests/mysql-test-options.mjs",
         "packages/ts/tests/bench-set.mjs",
         "packages/ts/tests/codec_case.mjs",
-        "packages/ts/tests/conformance_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/plan_case.mjs",
@@ -832,10 +831,6 @@
         {
           "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
           "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/conformance_vector_count.test.mts",
-          "reason": "harness: an internal test that verifies the TypeScript conformance runner covers every declared vector, not ORM behaviour itself (K313)"
         },
         {
           "glob": "packages/ts/tests/parse_documents.test.mjs",
@@ -1003,7 +998,6 @@
         "packages/python/tests/models/__init__.py",
         "packages/python/tests/bench_set.py",
         "packages/python/tests/case_database.py",
-        "packages/python/tests/conformance_case.py",
         "packages/python/tests/coverage_case.py",
         "packages/python/tests/dbspec_apply_runner.py",
         "packages/python/tests/dbspec_introspect.py",
@@ -6733,7 +6727,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
+          "id": "ModelTest::testLoadedRowShortConnectionCall"
         }
       ],
       "owner": {
@@ -8626,12 +8620,13 @@
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8670,12 +8665,13 @@
       "id": "utils-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8714,12 +8710,13 @@
       "id": "utils-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -9287,7 +9284,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9453,7 +9456,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9619,7 +9628,13 @@
         "DIA-25",
         "COD-2",
         "INT-91",
-        "PRT-78"
+        "PRT-78",
+        "PLN-10",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43",
+        "DBS-118",
+        "PLN-35"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10552,26 +10567,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs"
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py"
+          "test": "packages/python/tests/test_conformance_verification_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "symbol": "conformance_verification_mysql"
         }
       ]
     },
@@ -10764,26 +10779,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationPostgresRecipeTest::testPostgres"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs"
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py"
+          "test": "packages/python/tests/test_conformance_verification_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "symbol": "conformance_verification_postgres"
         }
       ]
     },
@@ -10977,26 +10992,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationSqliteRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "symbol": "conformance_verification_sqlite"
         }
       ]
     },
@@ -14124,58 +14139,78 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "datetime_p0_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_p0_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "time_p3_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::time_p3_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_precision_rejected"
         }
       ]
     },
@@ -14203,58 +14238,78 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "datetime_p0_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_p0_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "time_p3_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::time_p3_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_precision_rejected"
         }
       ]
     },
@@ -25276,11 +25331,6 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::lock_not_held_at_transaction_end_is_reported"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::panicking_callback_ends_its_transaction"
         },
         {
@@ -26326,13 +26376,43 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"creates_and_save\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "conditions_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "relations"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
         },
         {
           "implementation": "python",
@@ -26356,23 +26436,43 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_TEST=coverage_conformance_vector_sqlite"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::conditions_values"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::relations"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::functions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::creates_and_save"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"creates_and_save\""
         }
       ]
     },
@@ -27494,60 +27594,6 @@
         "feature": "dsn_connection",
         "part": "owner/python"
       }
-    },
-    {
-      "id": "model-connection-and-join-methods",
-      "kind": "feature",
-      "requirements": [
-        "PLN-10",
-        "DBS-118",
-        "PLN-35",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestJoinsAndRelations"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "joinsAndRelations"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "joins_and_relations",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=joins_and_relations"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_sqlite.py",
-          "id": "test_joined_child_refuses_its_own_connection"
-        }
-      ]
     },
     {
       "id": "aes-current-version-write",
@@ -29537,55 +29583,6 @@
         "feature": "model_writes",
         "part": "owner/python"
       }
-    },
-    {
-      "id": "relation-model-output-under-relation-name",
-      "kind": "feature",
-      "requirements": [
-        "DBS-118"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestJoinsAndRelations"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testJoinsAndRelations"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "joinsAndRelations"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_related_output.py",
-          "id": "test_relation_model_is_written_under_its_relation_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "joins_and_relations",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=joins_and_relations"
-          ]
-        }
-      ]
     },
     {
       "id": "statement-subscriber-failure-preserves-error",

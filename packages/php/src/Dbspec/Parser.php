@@ -1344,7 +1344,7 @@ final class Parser
             $this->error('type', $this->line, $column, match (true) {
                 in_array($name, ColumnType::SIMPLE, true) => "type `$name` has no parameters",
                 isset(ColumnType::PARAMETERIZED[$name]) => "type `$name` needs its parameters",
-                default => "unknown type `$name`",
+                default => "type \"$name\" is not a dbspec type",
             });
             return [null, $parenthesis ? $this->skipParentheses($i + 1) : $i + 1];
         }

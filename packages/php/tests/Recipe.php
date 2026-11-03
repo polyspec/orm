@@ -4002,6 +4002,9 @@ final class Recipe
     private static function chainRelation(array $relation, object $build, array $context): Model
     {
         $child = self::chainModel($relation['model'], $context);
+        if (isset($relation['connection'])) {
+            $child->connect(self::connectionOf(['connection' => $relation['connection']], $context));
+        }
         foreach ($relation['match'] ?? [] as [$left, $right]) {
             $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
         }
