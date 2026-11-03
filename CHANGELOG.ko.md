@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 523fd2623be75d4818a5b276dc44917676722f95a447d84d9530ed5ebd8b6e24 -->
+<!-- source-sha256: 30dc0afba5581531be8c4e5317c445ec08df7fbc9645d254b4e9010a7705cc1e -->
 # 변경 이력
 
 ## Unreleased
 
+- 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
+- catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)
+- feature checker는 Go owner를 일반 go test의 tag로 build하므로, 일반 실행이 담는 시험을 정확한 이름으로 읽는다 (#T334-3-6-2)
+- apply의 cleanup error(PLN-97~PLN-101, PLN-106)와 plan 밖의 기록된 step rollback은 주입한 statement로 모든 runtime에서 `dbspec.apply_fault` recipe의 case이고, native 시험은 없앴다 (#T334-3-18).
+- `conformance-generated-methods-check`는 본문 `now_defaults`, `delete_recursive`, `affected_counts`도 그 recipe case의 expect와 비교한다.
 - group_rows_db native와 physical check를 없앤다. recipe가 값과 읽기 전용 statement를 그대로 담는다 (#T334-3-4-25)
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - Python의 `active_frame()`은 native 시험을 갖춘 명시된 요구사항(INT-161)이 되었고, recipe `utils`는 트랜잭션 밖의 `setLocal`을 거부하며, recipe `aes_rotation`은 여러 키 버전의 status 개수를 담는다.

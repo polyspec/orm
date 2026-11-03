@@ -2002,10 +2002,6 @@
         "model-codec-columns",
         "model-ip-input-rejects-whitespace",
         "coverage-model-create-parts",
-        "ts-revision-update-match",
-        "ts-revision-update-mismatch",
-        "ts-revision-delete-match",
-        "ts-revision-delete-mismatch",
         "ts-styled-value-checks-setter",
         "ts-styled-value-checks-output",
         "ts-styled-value-checks-encoding",
@@ -2097,11 +2093,6 @@
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
         "packages/python/tests/test_sqlite.py",
-        "packages/go/orm/revision_test.go",
-        "packages/php/tests/RevisionTest.php",
-        "packages/ts/tests/revision.mjs",
-        "packages/python/tests/test_revision.py",
-        "packages/rust/orm/tests/revision.rs",
         "packages/php-ext/tests/ModelWriteSurfaceTest.php",
         "packages/rust/orm/tests/unit/time_precision.rs",
         "packages/php-ext/tests/DecimalModelDbNativeTest.php",
@@ -2109,7 +2100,6 @@
         "packages/php-ext/tests/ClockTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
-        "packages/php-ext/tests/RevisionTestExtensionTest.php",
         "packages/go/orm/recipe_model_writes_test.go",
         "packages/php/tests/ModelWritesRecipeTest.php",
         "packages/php-ext/tests/ModelWritesRecipeTestExtensionTest.php",
@@ -2725,7 +2715,8 @@
         "utils-mysql",
         "utils-postgres",
         "utils-sqlite",
-        "connection-first-statement-lost"
+        "connection-first-statement-lost",
+        "connection-cancelled-transaction-session-state"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -2766,10 +2757,6 @@
         "packages/ts/tests/rollback.mjs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
-        "packages/ts/tests/session_state.mjs",
-        "packages/python/tests/session_state.py",
-        "packages/php/tests/SessionStateTest.php",
-        "packages/rust/orm/tests/session_state.rs",
         "packages/go/orm/transaction_end_test.go",
         "packages/ts/tests/coverage_transactions.mjs",
         "packages/go/orm/rollback_fault_test.go",
@@ -2815,7 +2802,6 @@
         "packages/rust/orm/tests/compiler_fixtures.rs",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/php-ext/tests/RollbackTestExtensionTest.php",
-        "packages/php-ext/tests/SessionStateTestExtensionTest.php",
         "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
         "packages/php-ext/tests/StatementFaultTestExtensionTest.php",
         "packages/go/orm/recipe_transactions_test.go",
@@ -3018,17 +3004,6 @@
             "packages/go/orm/transaction_end_test.go",
             "packages/go/orm/context_reset_test.go",
             "packages/go/orm/cancelled_session_test.go"
-          ]
-        },
-        {
-          "id": "session-state",
-          "command": "make session-state-check",
-          "shard": "rust",
-          "inputs": [
-            "packages/ts/tests/session_state.mjs",
-            "packages/python/tests/session_state.py",
-            "packages/php/tests/SessionStateTest.php",
-            "packages/rust/orm/tests/session_state.rs"
           ]
         },
         {
@@ -4240,6 +4215,11 @@
         "tests/dbspec/schema-definition.json"
       ],
       "tests": [
+        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
         "packages/go/internal/dialects/apply_clients_physical_test.go",
         "packages/go/internal/dialects/apply_physical_test.go",
         "packages/go/internal/dialects/ddl_physical_test.go",

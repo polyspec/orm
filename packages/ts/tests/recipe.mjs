@@ -2474,8 +2474,12 @@ async function checkApplyFault(step, bound, database) {
   let reads = 0;
   let failAt = 0;
   let cause;
+  let fail = new Map();
   const connection = {
-    exec: sql => db.exec(sql),
+    exec(sql) {
+      if (fail.has(sql)) throw fail.get(sql);
+      return db.exec(sql);
+    },
     prepare(sql) {
       if (sql.startsWith('SELECT type, name, tbl_name')) {
         reads++;
@@ -2491,11 +2495,27 @@ async function checkApplyFault(step, bound, database) {
       cause = new Error('catalog read failed');
       failAt = reads + step.fail_catalog_read;
     }
+    fail = new Map((step.fail_statements ?? []).map(f => [
+      f.statement,
+      Object.assign(new Error(f.message), f.sqlite_result === undefined ? {} : { errcode: f.sqlite_result }),
+    ]));
     const kinds = [];
     const call = step.call === 'rollback' ? rollbackPlans : applyPlans;
-    const failure = await call(connection, 'sqlite', plans, now, event => { kinds.push(event.kind); }).then(() => null, error => error);
-    assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
-    assert.equal(failure.code, expect.code);
+    const events = event => {
+      kinds.push(event.kind);
+      if (step.stop_on_applied !== undefined && event.kind === 'applied') throw new Error(step.stop_on_applied);
+    };
+    const error = await call(connection, 'sqlite', plans, now, events).then(() => null, failed => failed);
+    assert.notEqual(error, null, 'the call succeeded');
+    // An AggregateError holds the failure, then the cleanup errors in order (PLN-99, PLN-106).
+    const [failure, ...cleanup] = error instanceof AggregateError ? error.errors : [error];
+    if (expect.code !== undefined) {
+      assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
+      assert.equal(failure.code, expect.code);
+    }
+    if (expect.failure !== undefined) assert.equal(failure.message, expect.failure);
+    if (expect.failure_ends_with !== undefined) assert.ok(failure.message.endsWith(expect.failure_ends_with), failure.message);
+    if (expect.cleanup !== undefined) assert.deepEqual(cleanup.map(e => e.message), expect.cleanup);
     if (cause !== undefined) assert.equal(failure.cause, cause);
     if (expect.history_state !== undefined) assert.equal(db.prepare('SELECT state FROM "dbspec$plans"').get().state, expect.history_state);
     for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);
