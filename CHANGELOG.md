@@ -321,6 +321,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The drop step refuses a binary log purge that the replica did not apply, and names the replica SQL thread state and its last error; the start of the test servers no longer reuses a MySQL replica whose SQL thread stopped, and reports it with its last error (G5.55-2).
 - CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.
 - CR15-2: `install` over some tables of a set has one message in every runtime: Go, PHP, the PHP extension and Rust each had their own text, and SCH-10 states it and that of a differing database.
+- CR15-2: several sets on a connection, an unregistered set and an edited manifest are cases of the statement_events recipe, and a model op with no connection runs on the case connection in every runtime.
 
 ## 0.0.21
 

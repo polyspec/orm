@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8a281d0ebb3d456fba73d79969bbd18f3c967c3ded92cfedd1a28b8d03def9ff -->
+<!-- source-sha256: 2487f42d0c82dbd4cef7b6240f413823ac89fe421b99433012f8abc282ca321a -->
 # 변경 이력
 
 ## Unreleased
@@ -319,6 +319,7 @@
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - CR15-2: `schema.empty`, `schema.exists`, `schema.installed`는 recipe op이 되었고, schema 비어 있음, 존재, 렌더된 install은 schema_install의 case가 되었으며, PERF-1은 timing의 `BENCH_*` 변수를 적는다.
 - CR15-2: set의 일부 테이블 위의 `install`은 모든 runtime에서 message가 하나다. Go, PHP, PHP extension, Rust는 각자 다른 text를 썼고, SCH-10이 그 message와 set과 다른 database의 message를 적는다.
+- CR15-2: 한 연결의 여러 set, 등록되지 않은 set, 수정된 manifest는 statement_events recipe의 case가 되었고, 연결을 지정하지 않은 model op은 모든 runtime에서 case 연결로 실행된다.
 
 ## 0.0.21
 
