@@ -105,7 +105,6 @@ require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
 require_once __DIR__ . '/CatalogMysqlVisibilityCases.php';
 require_once __DIR__ . '/CatalogPostgresTemporalPdo.php';
 require_once __DIR__ . '/CatalogPostgresTemporalCases.php';
-require_once __DIR__ . '/StatementEventsCoverageCases.php';
 require_once __DIR__ . '/dbspec_limit_cases.php';
 require_once __DIR__ . '/DbspecSqliteLockCases.php';
 require_once __DIR__ . '/DbspecApplyLockWaitPDO.php';

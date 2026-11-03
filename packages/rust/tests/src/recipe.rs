@@ -212,10 +212,10 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
         return Err(format!("the terminal sent {message} before its error"));
     }
     let expect = &step["expect"][database];
-    let (code, contains) = (expect["error"].as_str().unwrap_or_default(), expect["message_contains"].as_str().unwrap_or_default());
+    let (code, message) = (expect["error"].as_str().unwrap_or_default(), expect["message"].as_str().unwrap_or_default());
     match result {
-        Err(error) if error.code() == code && error.to_string().contains(contains) => Ok(()),
-        Err(error) => Err(format!("the terminal returned {error}, want {code} with {contains}")),
+        Err(error) if error.code() == code && error.to_string() == message => Ok(()),
+        Err(error) => Err(format!("the terminal returned {error}, want {code} {message}")),
         Ok(()) => Err(format!("the terminal returned no error, want {code}")),
     }
 }
@@ -2465,6 +2465,7 @@ mod database {
         "model.query",
         "model.save",
         "model.chain",
+        "db.notify",
         "utils.lock",
         "utils.set_local",
         "utils.local",
@@ -4491,6 +4492,10 @@ mod tables {
                         ["pending", { "int": status.pending.to_string() }],
                         ["versions", { "object": versions }],
                     ] } }))
+                }
+                "db.notify" => {
+                    db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    Ok(json!({}))
                 }
                 "utils.lock" => {
                     db.utils().lock(step["name"].as_str().unwrap_or_default()).await.map_err(orm)?;

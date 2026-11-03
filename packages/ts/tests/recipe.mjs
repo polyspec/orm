@@ -496,6 +496,7 @@ const callbackError = new Error('the transaction callback failed');
 /** Records one statement event as a recipe object (FCV-4): transactions are numbered from 1 in order of appearance. */
 function recordEvent(subscription, event) {
   if (!(typeof event.elapsed === 'number' && event.elapsed >= 0)) subscription.negative = true;
+  if (event.error !== null && !(event.error instanceof OrmError)) subscription.uncoded = true;
   let transaction = null;
   if (event.transaction !== null) {
     if (!subscription.numbers.has(event.transaction)) subscription.numbers.set(event.transaction, subscription.numbers.size + 1);
@@ -1682,6 +1683,10 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  async 'db.notify'(s, context) {
+    await connectionOf(s, context).notify(s.channel, s.payload);
+    return {};
+  },
   async 'utils.lock'(s, context) {
     await connectionOf(s, context).utils().lock(s.name);
     return {};
@@ -1871,6 +1876,7 @@ Object.assign(OPS, {
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
+    if (subscription.uncoded) throw new Error('an event has an error that is not an OrmError');
     const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
     const events = records.map(eventObject);
     // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
@@ -2245,8 +2251,8 @@ async function checkBuilder(step, database) {
   }
   if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
   const expect = step.expect[database];
-  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
-    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || callError.message !== expect.message) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} ${expect.message}`, { cause: callError });
   }
 }
 
