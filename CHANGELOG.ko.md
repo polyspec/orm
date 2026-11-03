@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 964fc7f9cffe4a181e3740f35554cac089c17326927bc4ac53b737b4a743e64b -->
+<!-- source-sha256: a60bd20f2e9e36063c10ea070b0f4e700ae114249286942c66f16f7d9c85115e -->
 # 변경 이력
 
 ## Unreleased
 
+- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - TypeScript는 `transactionConflict(message)`를, Python은 `transaction_conflict(message)`를 내보낸다. 이는 INT-48의 재시도 대상 `DEADLOCK` 오류이며 지금까지 다른 runtime에만 있었다. 두 runtime의 utility가 이를 쓰고 recipe helper가 이를 호출한다. recipe `model_queries_chain`은 join한 child의 scalar SUM을 INT-160의 정수로 읽고 NULL collection key의 메시지를 비교한다.
 - recipe `tests/dbspec/runtime-model.json`과 새 op `dbspec.runtime_model`은 Rust `dbspec_runtime.rs`가 entity 이름, 테이블, key, setting, field 값에 대해 검사하던 내용을 담고 여섯 런타임이 모두 실행한다(DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set`은 manifest text를 다시 읽어 그 hash가 나오는지도 검사한다(DBS-100, DBS-103). Rust만 노출하는 것은 native로 남고 FCV-2에 적었다.
 - recipe `tests/planner/runtime-model.json`은 Go `runtime_model_test.go`가 담던 내용을 담고 여섯 런타임이 모두 실행한다. i16 read와 plus, default 또는 빠진 필수 컬럼의 insert(PRT-81), audit 쓰기의 audit slot(PRT-32, PRT-82)이다. `planner.compile`은 audit slot을 `name`과 함께, `assemble_types`이면 출력 타입도 비교한다.

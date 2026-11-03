@@ -147,7 +147,7 @@ caseTest('the performance gates run every gate after a failed one and name the f
     const result = f.run(['scripts/perf-test.mts']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.deepEqual(f.ran().map(line => line.match(/-run (\S+)|tests\/(PerfGateTest)\.php/)?.slice(1).find(Boolean)), [
-      '^TestNative', '^TestHotPathGate(UnderLoad)?$', '^TestCoveragePerformanceGate$', 'PerfGateTest', 'PerfGateTest',
+      '^TestNative', '^TestHotPathGate(UnderLoad)?$', '^TestPerformanceMeasurementMysql$', 'PerfGateTest', 'PerfGateTest',
     ], f.ran().join('\n'));
     assert.match(result.stderr, /perf-test: failed:\n {2}node tests\/go-test\.mts .*TestNative.* \(exit 3\)/);
   } finally {

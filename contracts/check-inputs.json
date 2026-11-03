@@ -2484,7 +2484,7 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/bench/coverage_performance_gate_test.go",
+        "packages/go/bench/performance_measurement_test.go",
         "scripts/perf-test.mts"
       ]
     },

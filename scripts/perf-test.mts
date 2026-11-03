@@ -11,7 +11,7 @@ const phpunit = (env?: Record<string, string>): Command => ({
 const STEPS: Command[] = [
   { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestNative', '-count=1'], cwd: root },
   { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestHotPathGate(UnderLoad)?$', '-count=1'], cwd: root },
-  { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', '-tags', 'featurecoverage', './packages/go/bench', '-run', '^TestCoveragePerformanceGate$', '-count=1'], cwd: root },
+  { program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', './packages/go/bench', '-run', '^TestPerformanceMeasurementMysql$', '-count=1'], cwd: root },
   phpunit(),
   phpunit({ ORM_PERF_CPU_LOAD: '1' }),
 ];
