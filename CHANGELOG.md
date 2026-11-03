@@ -322,6 +322,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.
 - CR15-2: `install` over some tables of a set has one message in every runtime: Go, PHP, the PHP extension and Rust each had their own text, and SCH-10 states it and that of a differing database.
 - CR15-2: several sets on a connection, an unregistered set and an edited manifest are cases of the statement_events recipe, and a model op with no connection runs on the case connection in every runtime.
+- CR15-2: `sqlite-row-lock-restoration` stays native as an FCV-2 entry, since no public call makes `PRAGMA busy_timeout` fail.
 
 ## 0.0.21
 
