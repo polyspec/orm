@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+- CR15-F: the rows of a stored table in descending order, with a NULL, are steps of `grid_column_and_row_order`; the Go test keeps the plan of its wrapper (SCH-6b), the Rust helper test is removed, and the Rust commit classifier is a single-owner unit (INT-118a).
+- `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
+- A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.
+- A value of a read-only query that is not valid UTF-8 is its bytes in all six runtimes, and a binary cell in a grid query, including a SQLite text.
+- A read-only query of any length or nesting answers in all six runtimes, and Rust reads a query by its tokens as the others do.
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - The expected fields of the conformance vector files are gone with their chains and calls: `tests/conformance/vectors.json` keeps the vector names and requirements, and `vectors.postgres.json` and `vectors.sqlite.json` fold into the expects of the recipe `conformance_verification`.
 - CR15-F: generated keys are held by the recipe cases `generated_keys` and `generated_key_lifecycle`; the TypeScript and Python natives that repeated them over fake drivers are removed, and the Rust test keeps the phases, cancellation and joined inserts of INT-123a.
 - CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
@@ -19,6 +25,9 @@
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
 - The Python conformance modules that read the vector files are gone with the target `conformance-check/python`: the bindings of their units name the recipe test `conformance_verification` of each database.
 - The TypeScript conformance tests that read the vector files are gone: each vector is a case of the recipe `conformance_verification`, and the TypeScript bindings of its units name that recipe test.
+- The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
+- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
+- The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
 - Docs: FCV-2 states the Rust compile fixtures of `ts-dbspec-plan` and `ts-dbspec-render-dialect` in the form the native-binding rule reads.
 - PHP and the PHP extension refuse a number stored in a SQLite TIME or DATETIME column of a described read with GRID_TEMPORAL_VALUE, as the other runtimes do, and temporal_write_and_limits holds the temporal writes, keys and limits.
 - A Rust page of exactly its byte budget answers, and all runtimes state a budget refusal in the same message, which INT-115 states.
@@ -49,8 +58,9 @@
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
-- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - A connection that the server refuses is `DRIVER` in every client; PHP and its extension reported `CONFIG`, and the Rust catalog an uncoded text.
 - A catalog retries a connection that `max_user_connections` refuses only within 2 s of closing one of its own, and a budget stop in Go reports `CATALOG_LIMIT` alone, with no rollback attempted.
 - The case `a_rollback_fault_is_consumed_by_the_next_failed_rollback` of the recipe transactions states INT-72 in every runtime through the new op `fault.next_rollback`: the fault outlives a committed transaction, the next failed callback reports ROLLBACK carrying FAULT, and the transaction after it reports only the callback error.
