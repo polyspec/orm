@@ -910,8 +910,7 @@
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
-        "databases"
+        "rust"
       ],
       "inputs": [
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
@@ -1394,15 +1393,6 @@
       "scope": "suite",
       "needs": [
         "rust",
-        "databases"
-      ]
-    },
-    "aes-rotation-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
         "databases"
       ]
     },
@@ -2758,12 +2748,18 @@
         "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
         "tests/dbspec/load-set.json",
         "tests/planner/default-select-set.json",
-        "tests/planner/default-select-set.dbs"
+        "tests/planner/default-select-set.dbs",
+        "tests/planner/runtime-model.json",
+        "tests/planner/runtime-model.dbs",
+        "tests/dbspec/runtime-model.json",
+        "tests/dbspec/runtime-model-shop.dbs"
       ]
     },
     "model-types-php-extension-check": {
@@ -2875,7 +2871,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]

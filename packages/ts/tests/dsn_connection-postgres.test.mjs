@@ -1,4 +1,4 @@
-// Requirements: FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14.
+// Requirements: FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14, CFG-19.
 // The suite unit dsn_connection-postgres (docs/spec/feature-coverage.md FCV-3).
 import { runRecipe } from './recipe.mjs';
 

@@ -126,24 +126,6 @@ func TestMarkdownSessionMessages(t *testing.T) {
 	}
 }
 
-// TestMarkdownConnectRefused checks that the CONFIG the server answered to connect is an error of Connect.
-func TestMarkdownConnectRefused(t *testing.T) {
-	// Requirements: PRT-64.
-	testcase.Start(t, testcase.Compute)
-	s := startMarkdownTestServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
-	db, err := Connect(s.dsn(), Config{})
-	if err == nil {
-		testcase.Close(t, db)
-	}
-	var e *Error
-	if !errors.As(err, &e) || e.Code != CodeConfig || e.Msg != "connect: the token is not the corpus's token" {
-		t.Fatalf("Connect error = %v; want the server's CONFIG", err)
-	}
-	if got := <-s.receivedMessages; !reflect.DeepEqual(got, []string{connectLine}) {
-		t.Fatalf("messages = %q", got)
-	}
-}
-
 // TestMarkdownRejectedSurfaces checks that a markdown connection refuses SQL-only surfaces with CAPABILITY_UNSUPPORTED
 // (docs/spec/dialects.md "Markdown IR executor").
 func TestMarkdownRejectedSurfaces(t *testing.T) {

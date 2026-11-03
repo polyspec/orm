@@ -106,7 +106,10 @@ final class Orm
                 }
             }
         } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+            $prefix = $sslCa !== null && str_contains($e->getMessage(), 'SSL')
+                ? 'mysql TLS connection failed: '
+                : 'cannot connect: ';
+            throw new OrmException(Code::CONFIG, $prefix . $e->getMessage(), $e);
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
         if ($driver === 'mysql') {
@@ -345,7 +348,7 @@ final class Orm
                 }
                 return [$driver, $pdo, $user, $password, [], null];
             default:
-                if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
+                if (!str_starts_with($dsn, 'sqlite:///') || $path === '' || $path === '/') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
                 }
                 $pragmas = [];
@@ -362,7 +365,10 @@ final class Orm
                         continue;
                     }
                     $value = urldecode($value);
-                    if (preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1) {
+                    if (
+                        preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1
+                        || ($pragma[1] === 'busy_timeout' && !ctype_digit($pragma[2]))
+                    ) {
                         throw new OrmException(Code::CONFIG, "sqlite DSN _pragma $value is invalid");
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];
