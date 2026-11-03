@@ -76,6 +76,11 @@
           "connection": "db"
         },
         {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
           "op": "model.query",
           "model": "ChunkAuthor",
           "columns": [
@@ -121,6 +126,27 @@
             }
           },
           "connection": "db"
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
         }
       ]
     },

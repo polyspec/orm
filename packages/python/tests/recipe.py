@@ -41,6 +41,7 @@ from polyspec.orm import (
     connect_catalog,
     orm,
     register_model,
+    codes,
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
@@ -3572,6 +3573,8 @@ _DATABASE_OPS = {
     ),
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
+    "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
+    "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
@@ -3631,6 +3634,16 @@ def _run_database_step(step: dict, context: dict) -> None:
         if suffix is not None and not str(error).endswith(suffix):
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
+            ) from error
+        message = expected.get("message")
+        if message is not None and str(error) != message:
+            raise AssertionError(
+                f"error message {str(error)!r}, want {message!r}"
+            ) from error
+        cause = expected.get("cause")
+        if cause is not None and str(error.cause) != cause:
+            raise AssertionError(
+                f"error cause {error.cause!r}, want {cause!r}"
             ) from error
         holds = expected.get("message_holds")
         if holds is not None and holds not in str(error):
@@ -3928,22 +3941,115 @@ def _op_statements_count(step: dict, context: dict) -> dict:
 
 
 def _op_transaction(step: dict, context: dict) -> dict:
+    attempts = [0]
+
     def run() -> None:
+        attempts[0] += 1
         for nested in step["steps"]:
             _run_database_step(nested, context)
         if step.get("fail"):
             raise CallbackError("the transaction callback failed")
+        if attempts[0] <= step.get("conflicts", 0):
+            raise transaction_conflict("the recipe conflict")
 
-    # The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-    options = {"retry": 0}
+    # The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG. An absent
+    # retry passes 0 unless default_retry leaves it out (INT-43).
+    options = {} if step.get("default_retry") else {"retry": step.get("retry", 0)}
     if "isolation" in step:
         options["isolation"] = step["isolation"]
     if step.get("read_only") is True:
         options["readOnly"] = True
+    if "timeout_ms" in step:
+        options["timeoutMs"] = step["timeout_ms"]
     if "audit" in step:
         options["audit"] = dict(_assignments(step["audit"], context))
-    _connection_of(step, context).transaction(run, options)
+    try:
+        _connection_of(step, context).transaction(run, options)
+    finally:
+        context["attempts"] = attempts[0]
     return {"value": {"bool": True}}
+
+
+def _op_transaction_attempts(_: dict, context: dict) -> dict:
+    return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_transaction_deadlock(step: dict, context: dict) -> dict:
+    """Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so
+    the database ends one flow with its deadlock error, the client retries it, and both commit."""
+    held = threading.Barrier(2)
+    counted = {"attempts": 0, "deadlocks": 0}
+    guard = threading.Lock()
+    errors: list[BaseException] = []
+
+    def write(connection: str, key: dict, name: str) -> None:
+        _MODEL_OPS["model.update"](
+            {
+                "op": "model.update",
+                "connection": connection,
+                "model": step["model"],
+                "key": key,
+                "set": {step["column"]: {"text": name}},
+            },
+            context,
+        )
+
+    def flow(index: int, connection: str) -> None:
+        name = f"flow-{index}"
+        runs = [0]
+
+        def callback() -> None:
+            runs[0] += 1
+            first = runs[0] == 1
+            with guard:
+                counted["attempts"] += 1
+            try:
+                write(connection, step["rows"][index], name)
+            finally:
+                if first:
+                    held.wait()
+            try:
+                write(connection, step["rows"][1 - index], name)
+            except OrmError as error:
+                if first and error.code == codes.DEADLOCK:
+                    with guard:
+                        counted["deadlocks"] += 1
+                raise
+
+        try:
+            _bound_value(connection, context).transaction(
+                callback, {"isolation": "read_committed", "retry": 3}
+            )
+        except BaseException as error:  # noqa: BLE001 - the step reports the error of a flow after both end
+            errors.append(error)
+
+    threads = [
+        threading.Thread(target=flow, args=(index, connection))
+        for index, connection in enumerate(step["connections"])
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+    names = [
+        _MODEL_OPS["model.get_by"](
+            {
+                "op": "model.get_by",
+                "connection": step["connections"][0],
+                "model": step["model"],
+                "key": key,
+                "columns": [step["column"]],
+            },
+            context,
+        )["rows"][0][0]["text"]
+        for key in step["rows"]
+    ]
+    return {
+        **counted,
+        "same_flow": names[0] == names[1] and names[0] in ("flow-0", "flow-1"),
+    }
 
 
 def _audit_source_of(step: dict, context: dict) -> dict:
