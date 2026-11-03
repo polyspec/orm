@@ -2301,7 +2301,7 @@
           ],
           "bindings": [
             {
-              "test": "tests/conformance/check/main.test.mts",
+              "test": "tests/conformance/check/recipe_vectors.test.mts",
               "id": "TestPHPExtensionCommandLine"
             }
           ]
@@ -10896,7 +10896,7 @@
         "DBS-117",
         "CPX-3"
       ],
-      "file": "tests/conformance/vectors.postgres.json",
+      "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
       "bindings": [
         {
@@ -11109,7 +11109,7 @@
         "CPX-3",
         "DBS-115"
       ],
-      "file": "tests/conformance/vectors.sqlite.json",
+      "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
       "bindings": [
         {
@@ -13742,45 +13742,6 @@
       ]
     },
     {
-      "id": "mysql-lock-wait-canceled",
-      "kind": "feature",
-      "requirements": [
-        "CFG-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesLockWaitTimeout"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::testMysqlLockWaitTimeoutIsCanceled"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
-          "id": "ConnectionTimeoutCleanupTest::testMysqlLockWaitTimeoutMapsToCanceledAndClosesCursor"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
-          "id": "driver-error/lock-wait-timeout/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_mysql_errors_have_the_codes_of_the_catalog"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/lib.rs",
-          "id": "mysql_code_tests::mysql_lock_wait_timeout_is_canceled"
-        }
-      ]
-    },
-    {
       "id": "native-row-cell-bytes",
       "kind": "feature",
       "requirements": [
@@ -13858,6 +13819,25 @@
           "id": "dsn_reject_none::markdown_connect_refused"
         }
       ]
+    },
+    {
+      "id": "php-extension-failed-statement-closes-cursor",
+      "kind": "feature",
+      "requirements": [
+        "CFG-6a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
+          "id": "ConnectionTimeoutCleanupTest::testNativeFailedStatementClosesCursorAndReusesConnection"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "transactions",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "native-driver-error-cause",
@@ -41744,6 +41724,7 @@
       "id": "transactions-mysql",
       "kind": "suite",
       "requirements": [
+        "CFG-6",
         "CFG-24",
         "DSL-118",
         "DSL-119",
@@ -41804,6 +41785,7 @@
       "id": "transactions-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-6",
         "CFG-24",
         "DSL-118",
         "DSL-119",
@@ -41864,6 +41846,7 @@
       "id": "transactions-sqlite",
       "kind": "suite",
       "requirements": [
+        "CFG-6",
         "CFG-24",
         "DSL-118",
         "DSL-119",

@@ -96,11 +96,10 @@
     "vectorContract": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "required_databases", "database_expectations", "minimum_vectors"],
+      "required": ["source", "required_databases", "minimum_vectors"],
       "properties": {
         "source": { "const": "tests/conformance/vectors.json" },
         "required_databases": { "const": ["mysql", "postgres", "sqlite"] },
-        "database_expectations": { "$ref": "#/$defs/paths", "type": "array", "minItems": 3, "maxItems": 3 },
         "minimum_vectors": { "type": "integer", "minimum": 1 }
       }
     },

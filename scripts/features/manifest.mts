@@ -19,7 +19,7 @@ export type CoverageDependent = { id: string; language: Language; part: string; 
 /** The coverage of a feature. */
 export type Coverage = { kind: 'database' | 'independent'; execution?: 'parallel' | 'exclusive'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
 /** The vector contract of a feature. */
-export type VectorContract = { source: string; required_databases: string[]; database_expectations: string[]; minimum_vectors: number };
+export type VectorContract = { source: string; required_databases: string[]; minimum_vectors: number };
 /** A feature of the manifest. */
 export type ManifestFeature = {
   id: string; title: string; title_ko: string; status: 'planned' | 'partial' | 'implemented'; description: string; description_ko: string;

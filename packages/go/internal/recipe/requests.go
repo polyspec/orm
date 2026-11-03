@@ -117,7 +117,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 		}
 		errs := make(chan error, s.k("transactions").Transactions)
-		for range s.Transactions {
+		for range s.k("transactions").Transactions {
 			go func() {
 				errs <- db.Transaction(func() error {
 					note(&peak, active.Add(1))
@@ -131,7 +131,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 				})
 			}()
 		}
-		for range s.Transactions {
+		for range s.k("transactions").Transactions {
 			if err := <-errs; err != nil {
 				return outcome{}, err
 			}

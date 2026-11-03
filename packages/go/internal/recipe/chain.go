@@ -22,7 +22,7 @@ import (
 var chainOps = map[string]bool{
 	"model.query": true, "model.count": true, "model.get_by": true, "model.create": true, "model.creates": true,
 	"model.save": true, "model.duplicate_create": true, "model.update": true, "model.delete": true, "model.restore": true,
-	"model.chain": true,
+	"model.chain":        true,
 	"collection.connect": true,
 }
 

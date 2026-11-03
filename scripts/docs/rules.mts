@@ -133,8 +133,7 @@ for (const file of allDocs) {
   }
 }
 
-// The implementation count of the documents is the declared implementations of config/parity.json, and the conformance
-// runners of tests/conformance/check/main.mts (requiredLanguages) must be that same list. A document that counts clients,
+// The implementation count of the documents is the declared implementations of config/parity.json. A document that counts clients,
 // implementations, runners, planners or outputs in English or Korean states that number; history (CHANGELOG, the
 // checklist) is not checked.
 type Parity = { implementations: { name: string }[] };
@@ -145,12 +144,7 @@ const isParity = (value: unknown): value is Parity =>
 const parityData: unknown = JSON.parse(await readFile(path.join(root, 'config/parity.json'), 'utf8'));
 if (!isParity(parityData)) fail('docs.implementation-count', 'config/parity.json does not match { implementations: [{ name: string }] }');
 const clients = isParity(parityData) ? parityData.implementations.map(implementation => implementation.name) : [];
-const runnerSource = await readFile(path.join(root, 'tests/conformance/check/main.mts'), 'utf8');
-const runners = [...(/export const requiredLanguages = \[([^\]]*)\]/.exec(runnerSource)?.[1] ?? '').matchAll(/'([^']+)'/g)].map(match => match[1] ?? '');
 if (clients.length === 0) fail('docs.implementation-count', 'config/parity.json declares no implementation');
-const runnersFromParity = /export const requiredLanguages = implementationLanguages\(\)/.test(runnerSource);
-if (!runnersFromParity && JSON.stringify([...clients].sort()) !== JSON.stringify([...runners].sort()))
-  fail('docs.implementation-count', `tests/conformance/check/main.mts requiredLanguages (${runners.join(', ')}) differs from the declared implementations of config/parity.json (${clients.join(', ')})`);
 for (const file of [...sources, ...translations.values()]) {
   if (file.includes(`${path.sep}docs${path.sep}plans${path.sep}`) || path.basename(file).startsWith('CHANGELOG')) continue;
   const text = prose(await readFile(file, 'utf8'));

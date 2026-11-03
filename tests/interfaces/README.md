@@ -29,11 +29,7 @@ node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
 
-Check the conformance results against the common state contracts (`sequences` of `contracts/interfaces.json`): `make conformance-check` runs the conformance runners into a directory of its own run and then
-
-```sh
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
-```
+The common state contracts (`sequences` of `contracts/interfaces.json`) hold in the recipe case of the same name on each database: `tests/conformance/check/recipe_vectors.test.mts` compares each one with the statement kinds and the expects of that case, and each runtime runs the case.
 
 A sequence lists the kinds of the statements it sends, in order, except utility statements, whose number and place differ per dialect (the conformance vectors list them exactly). A difference names the added and missing statements with their position, kind and SQL, a different result with both values, and a missing output with its path.
 
