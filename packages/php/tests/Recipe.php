@@ -350,12 +350,17 @@ final class Recipe
         if (isset($outcome['error'])) {
             foreach ($dialects as $dialect) {
                 $code = 'no error';
+                $message = '';
                 try {
                     (new Engine($model, $dialect, 8))->compile($request);
                 } catch (OrmException $error) {
                     $code = $error->code_;
+                    $message = $error->getMessage();
                 }
                 Assert::assertSame($outcome['error'], $code, "$dialect planner.compile");
+                if (isset($outcome['message'])) {
+                    Assert::assertSame($outcome['message'], $message, "$dialect planner.compile message");
+                }
             }
             return;
         }
@@ -761,8 +766,9 @@ final class Recipe
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
         $message = '';
+        $port = parse_url($server[2], PHP_URL_PORT);
         try {
-            self::connectDriver($server[2]);
+            self::connectDriver("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}");
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
@@ -2383,6 +2389,11 @@ final class Recipe
                         }
                     }
                 }
+                foreach ([$recipe['seed']['after'] ?? null, $case['seed']['after'] ?? null] as $after) {
+                    if ($after !== null && (!isset($after['only']) || in_array($database, $after['only'], true))) {
+                        self::databaseStep($after, $context);
+                    }
+                }
                 foreach ($case['steps'] as $index => $step) {
                     // A step with `only` runs on the databases that it names, and no other.
                     if (isset($step['only']) && !in_array($database, $step['only'], true)) {
@@ -2718,7 +2729,7 @@ final class Recipe
             case 'catalog.read_only_grid_query':
                 $result = $catalog->readOnlyGridQuery(
                     self::sqlField($s['sql'], $context),
-                    [],
+                    array_map(self::nativeValue(...), $s['binds'] ?? []),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
@@ -3958,7 +3969,9 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(array $s, array $context, \Closure $terminal): array
     {
-        $table = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+        $table = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
         $model = self::chainAssign($table, $s['values'] ?? [], $context);
         foreach ($s['attached'] ?? [] as $name => $value) {
             $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));
@@ -4337,6 +4350,9 @@ final class Recipe
         }
         if (is_bool($value)) {
             return ['bool' => $value];
+        }
+        if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
+            return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];

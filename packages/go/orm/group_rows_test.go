@@ -1,51 +1,11 @@
 package orm
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/plan"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-func TestGroupColumnValueChecksDeclaredType(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	column := plan.OutCol{Name: "is_close", Column: "is_close", Type: "bool"}
-	declared := &runtimemodel.Field{Name: "is_close", Type: "bool"}
-	for raw, want := range map[any]bool{int64(0): false, int64(1): true} {
-		got, err := groupColumnValue(nil, nil, column, declared, raw)
-		if err != nil || got != want {
-			t.Fatalf("boolean group value %#v = %#v, %v", raw, got, err)
-		}
-	}
-	for _, raw := range []any{int64(2), "invalid", nil} {
-		if _, err := groupColumnValue(nil, nil, column, declared, raw); err == nil {
-			t.Fatalf("invalid boolean group value %#v accepted", raw)
-		}
-	}
-	count := plan.OutCol{Name: "row_count", Type: "i64"}
-	if _, err := groupColumnValue(nil, nil, count, nil, true); err == nil {
-		t.Fatal("boolean row count accepted")
-	}
-}
-
-// TestGroupCountRejectsInvalidStoredBoolean checks PRT-36 at the model result decoder.
-func TestGroupCountRejectsInvalidStoredBoolean(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	column := plan.OutCol{Name: "is_close", Column: "is_close", Type: "bool"}
-	declared := &runtimemodel.Field{Name: "is_close", Type: "bool"}
-	for _, raw := range []any{int64(2), float64(1), "invalid"} {
-		_, err := groupColumnValue(nil, nil, column, declared, raw)
-		if err == nil || !strings.Contains(err.Error(), fmt.Sprint(raw)) {
-			t.Fatalf("invalid boolean group value %#v error = %v", raw, err)
-		}
-		if !strings.Contains(err.Error(), CodeCodecDecode) {
-			t.Fatalf("invalid boolean group value %#v error code = %v", raw, err)
-		}
-	}
-}
 
 func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

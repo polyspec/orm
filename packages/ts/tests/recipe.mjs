@@ -533,6 +533,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -567,6 +568,9 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {
@@ -745,7 +749,7 @@ const OPS = {
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
-    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
@@ -1182,8 +1186,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }
@@ -1831,7 +1837,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);

@@ -1541,13 +1541,19 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
     if "error" in outcome:
         for dialect in _PLAN_DIALECTS:
             got = None
+            message = ""
             try:
                 Engine(model, dialect).compile(request)
             except OrmError as error:
                 got = error.code
+                message = str(error)
             if got != outcome["error"]:
                 raise AssertionError(
                     f"{dialect}: got {got or 'a plan'}, want {outcome['error']}"
+                )
+            if "message" in outcome and message != outcome["message"]:
+                raise AssertionError(
+                    f"{dialect}: message {message}, want {outcome['message']}"
                 )
         return
     got = {}
@@ -2379,6 +2385,9 @@ def _run_case_on(
                             f"recipe {path}, case {case['id']}, {part} seed row {index} of {table}, database {database}: "
                             f"{error!r}"
                         ) from error
+        for owner in (recipe, case):
+            if "after" in owner.get("seed", {}):
+                _run_database_step(owner["seed"]["after"], context)
         for index, step in enumerate(case["steps"]):
             try:
                 _run_database_step(step, context)
@@ -2460,7 +2469,7 @@ def _op_read_only_grid_query(step: dict, context: dict) -> dict:
     }
 
 
-def _op_connect(step: dict, _context: dict) -> dict:
+def _op_connect(step: dict, context: dict) -> dict:
     """A DSN that the library refuses fails with its code. A SQLite file that the case does not create is refused and must
     not exist afterwards: the connect creates no file."""
     dsn = step["dsn"]
@@ -2472,8 +2481,9 @@ def _op_connect(step: dict, _context: dict) -> dict:
         try:
             connect_catalog(f"sqlite://{path}").close()
         except OrmError:
-            if path.exists():
-                raise AssertionError("the connect created the SQLite file")
+            want = step["expect"][context["database"]].get("file_created", False)
+            if path.exists() != want:
+                raise AssertionError(f"file_created is {path.exists()}, want {want}")
             raise
     raise AssertionError("the connect to an absent SQLite file succeeded")
 
@@ -3136,7 +3146,11 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
     """A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result."""
     db = _connection_of(step, context)
     model = _chain_assign(
-        _new_row(context, db, step["model"]), step.get("values"), context
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"]),
+        step.get("values"),
+        context,
     )
     for name, value in step.get("attached", {}).items():
         model.core.set_new(name, _chain_value(value, context))
