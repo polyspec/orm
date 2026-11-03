@@ -4379,6 +4379,11 @@ final class Recipe
         if (is_bool($value)) {
             return ['bool' => $value];
         }
+        if (is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
+            && filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
+            return ['int' => $value];
+        }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];
         }

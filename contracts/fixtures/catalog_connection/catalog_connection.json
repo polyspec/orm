@@ -11011,6 +11011,24 @@
               ]
             }
           }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(18446744073709551615 AS UNSIGNED)",
+          "only": [
+            "mysql"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "18446744073709551615"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     }

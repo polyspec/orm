@@ -1639,6 +1639,8 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"null": true}, nil
 	case int64:
 		return map[string]any{"int": strconv.FormatInt(v, 10)}, nil
+	case uint64:
+		return map[string]any{"int": strconv.FormatUint(v, 10)}, nil
 	case bool:
 		return map[string]any{"bool": v}, nil
 	case float64:

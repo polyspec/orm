@@ -3,7 +3,8 @@
 
 ## Unreleased
 
-- The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone, except the driver cause of a plain unsigned read (INT-102a).
+- `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
+- The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
 - Python and PHP, library and extension, refuse a nonfinite PostgreSQL numeric grid cell with `CATALOG_VALUE`, as the catalog grid section of `docs/spec/interfaces.md` states; they returned `NaN` as a decimal cell. The recipe case `grid_decimal_values` holds it.
 - The row baseline and the verification of a native update are the recipe cases `row_update_verification`, `row_baseline_key_order` and `row_baseline_rejected` of `catalog_connection` in all six runtimes on the three databases, with the op `catalog.revision_compare` and more replacements of `page_with`; the Rust tests of them are gone, except what only the forms of Rust hold (`rust-row-snapshot-cell-forms`). TypeScript no longer refuses a SQLite view as a table without one definition text.
 - TypeScript describes a SQLite view: it read the view's definition from `sqlite_master` with `type = 'table'`, found no row and refused the view with `TABLE_METADATA_INVALID`; the recipe case `view_table_page` of `catalog_connection` holds it (INT-113).

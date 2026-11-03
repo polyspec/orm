@@ -15153,25 +15153,6 @@
       ]
     },
     {
-      "id": "rust-plain-query-unsigned-driver-cause",
-      "kind": "feature",
-      "requirements": [
-        "INT-102a"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_numbers.rs",
-          "id": "plain_query_keeps_the_driver_cause_of_an_unsigned_value"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "git-tag",
-        "package": "polyspec-orm-build"
-      }
-    },
-    {
       "id": "catalog-queries-use-database-enforced-read-only-scopes",
       "kind": "feature",
       "requirements": [

@@ -871,6 +871,18 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
                 ZVAL_COPY(out, v);
                 return true;
             }
+            /* A MySQL unsigned value beyond the PHP integer keeps its exact digits (INT-102). */
+            size_t digits = Z_STRLEN_P(v);
+            for (size_t at = 0; at < Z_STRLEN_P(v); at++) {
+                if (Z_STRVAL_P(v)[at] < '0' || Z_STRVAL_P(v)[at] > '9') {
+                    digits = 0;
+                    break;
+                }
+            }
+            if (digits > 0) {
+                ZVAL_COPY(out, v);
+                return true;
+            }
             db_throw_orm("TABLE_METADATA_INVALID", "expected an integer, got %s", zend_zval_type_name(v));
             return false;
         }

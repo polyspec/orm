@@ -2236,9 +2236,10 @@ final class Catalog
         }
         return match (self::typeClass($nativeType)) {
             'binary', 'decimal' => $value,
+            // A MySQL unsigned value beyond the PHP integer keeps its exact digits (INT-102).
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
                 ? (int) $value
-                : ($dialect === 'sqlite'
+                : ($dialect === 'sqlite' || ctype_digit($value)
                     ? $value
                     : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\"")),
             'float' => is_numeric($value)

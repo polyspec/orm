@@ -436,10 +436,10 @@ func catalogConvert(raw catalogRaw, nativeTypes []string) ([][]any, error) {
 }
 
 // catalogValue converts one driver value to the catalog value of its native type. Text is a string, binary a copy of its
-// bytes, integers int64, floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
+// bytes, integers int64 (uint64 for a MySQL unsigned value beyond it), floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
 func catalogValue(value any, nativeType string) (any, error) {
 	switch v := value.(type) {
-	case nil, bool, int64, float64, time.Time:
+	case nil, bool, int64, uint64, float64, time.Time:
 		return v, nil
 	case string:
 		if !utf8.ValidString(v) {
@@ -469,6 +469,10 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	case strings.Contains(t, "INT"):
 		n, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
+			// A MySQL unsigned value beyond the signed 64-bit range keeps its exact digits (INT-102).
+			if unsigned, unsignedErr := strconv.ParseUint(string(value), 10, 64); unsignedErr == nil {
+				return unsigned, nil
+			}
 			return nil, catalogErr(catalogCodeValue, "integer of native type %q: %v", nativeType, err)
 		}
 		return n, nil

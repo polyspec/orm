@@ -3950,6 +3950,7 @@ mod database {
         match value {
             Val::Null => json!({ "null": true }),
             Val::Int(n) => json!({ "int": n.to_string() }),
+            Val::Unsigned(n) => json!({ "int": n.to_string() }),
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
