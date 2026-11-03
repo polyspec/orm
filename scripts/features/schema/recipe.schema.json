@@ -752,6 +752,7 @@
             "dsn.connect",
             "keyring.versions",
             "dbspec.introspect_sqlite",
+            "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
             "codec.decode",
@@ -845,6 +846,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_shown"
         },
         {
           "$ref": "#/$defs/ops/markdown.builder"
@@ -1334,6 +1338,73 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.introspect_shown": {
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_shown"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "checks",
+                      "unsupported"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "checks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "unsupported": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
           }
         }
       },

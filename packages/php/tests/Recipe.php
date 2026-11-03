@@ -140,6 +140,10 @@ final class Recipe
                     self::dsnConnectStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'dbspec.introspect_shown') {
+                    self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+                    continue;
+                }
                 if ($step['op'] === 'dbspec.introspect_sqlite') {
                     self::dbspecIntrospectSqliteStep($step, $database);
                     continue;
@@ -1234,6 +1238,47 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one dbspec.introspect_shown step (FCV-4): the public Dbspec::introspect on the canned catalog of a case of
+     * the vectors file, whose check lines and unsupported objects, or error, it compares (DIA-84). A reason compares
+     * by its rule, the text before the first ": ", since its text differs between the clients.
+     *
+     * @param array<string, mixed> $step
+     */
+    private static function dbspecIntrospectShownStep(array $step, string $dir, string $database): void
+    {
+        $vectors = json_decode((string) file_get_contents($dir . '/' . $step['vectors']), true, 512, JSON_THROW_ON_ERROR);
+        $found = null;
+        foreach ($vectors['cases'] as $vector) {
+            if ($vector['id'] === $step['case']) {
+                $found = $vector;
+            }
+        }
+        Assert::assertNotNull($found, 'the vectors have the case');
+        $pdo = new CannedCatalogPdo($vectors['catalog'], implode("\n", $found['create']) . "\n", $found['name']);
+        $expect = $step['expect'][$database];
+        try {
+            $result = Dbspec::introspect($pdo, 'mysql', 'introspected');
+        } catch (RuntimeException $error) {
+            Assert::assertSame($expect['error'] ?? null, $error->getMessage());
+            return;
+        }
+        Assert::assertArrayNotHasKey('error', $expect, 'the introspection returned no error');
+        $checks = [];
+        foreach (explode("\n", Dbspec::emit($result->document)) as $line) {
+            $line = trim($line);
+            if (str_starts_with($line, 'check ')) {
+                $checks[] = $line;
+            }
+        }
+        $reasons = array_map(
+            static fn($item): string => "$item->kind $item->name: " . explode(': ', $item->reason, 2)[0],
+            $result->unsupported
+        );
+        Assert::assertSame($expect['checks'], $checks, 'checks');
+        Assert::assertSame($expect['unsupported'], $reasons, 'unsupported');
     }
 
     /**

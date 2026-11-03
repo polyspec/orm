@@ -19,6 +19,12 @@
     "steps"
   ],
   "step": {
+    "dbspec.introspect_shown": [
+      "case",
+      "expect",
+      "op",
+      "vectors"
+    ],
     "dbspec.introspect_sqlite": [
       "expect",
       "op",

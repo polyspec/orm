@@ -163,6 +163,80 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The rows that the canned catalog of a dbspec.introspect_shown vector answers to `query`.
+fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, String> {
+    use dbspec::CatalogValue;
+    let text = |value: &Value| CatalogValue::Text(value.as_str().unwrap_or_default().to_owned());
+    let t = || text(&catalog["table"]);
+    let s = |value: &str| CatalogValue::Text(value.to_owned());
+    Ok(if query.contains("information_schema.TABLES") {
+        vec![vec![t(), s("BASE TABLE"), s("")]]
+    } else if query.contains("information_schema.COLUMNS") {
+        let columns = catalog["columns"].as_array().ok_or("the catalog has no columns")?;
+        columns
+            .iter()
+            .map(|c| vec![t(), text(&c["name"]), text(&c["type"]), text(&c["nullable"]), CatalogValue::Null, s(""), text(&c["charset"]), text(&c["collation"]), s("")])
+            .collect()
+    } else if query.contains("information_schema.STATISTICS") {
+        vec![vec![t(), s("PRIMARY"), CatalogValue::Int(0), text(&catalog["primary_key"]), s("A"), CatalogValue::Int(0), CatalogValue::Int(0), s("BTREE")]]
+    } else if query.contains("REFERENTIAL_CONSTRAINTS") {
+        Vec::new()
+    } else if query.contains("CHECK_CONSTRAINTS") {
+        vec![vec![s(name), text(&catalog["stored_clause"])]]
+    } else if query.contains("TABLE_CONSTRAINTS") {
+        vec![vec![t(), s(name), s("YES")]]
+    } else if query.contains("information_schema.TRIGGERS") || query.contains("information_schema.ROUTINES") || query.contains("information_schema.EVENTS") {
+        Vec::new()
+    } else if query.contains("SHOW CREATE TABLE") {
+        vec![vec![t(), s(create)]]
+    } else {
+        return Err(format!("the canned catalog has no answer for the query {query:?}"));
+    })
+}
+
+/// The dbspec.introspect_shown op (FCV-4): the public catalog queries and read_catalog on the canned catalog of a case of the
+/// vectors file, whose check lines and unsupported objects, or error, it compares with the expect of `database` (DIA-84). A
+/// reason compares by its rule, the text before the first ": ", since its text differs between the clients.
+fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let path = dir.join(step["vectors"].as_str().unwrap_or_default());
+    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?).map_err(|error| error.to_string())?;
+    let id = step["case"].as_str().unwrap_or_default();
+    let cases = vectors["cases"].as_array().ok_or("the vectors have no cases")?;
+    let case = cases.iter().find(|case| case["id"] == id).ok_or_else(|| format!("the vectors have no case {id}"))?;
+    let lines: Vec<&str> = case["create"].as_array().ok_or("the case has no create")?.iter().filter_map(Value::as_str).collect();
+    let create = format!("{}\n", lines.join("\n"));
+    let name = case["name"].as_str().unwrap_or_default();
+    let catalog = &vectors["catalog"];
+    let mut results = Vec::new();
+    for query in dbspec::catalog_queries(Dialect::MySql) {
+        results.push(shown_catalog_rows(catalog, name, &create, query)?);
+    }
+    for query in dbspec::catalog_followups(Dialect::MySql, &results)? {
+        results.push(shown_catalog_rows(catalog, name, &create, &query)?);
+    }
+    let read = dbspec::read_catalog(Dialect::MySql, &results, "introspected");
+    let expect = &step["expect"][database];
+    if let Some(want) = expect["error"].as_str() {
+        return match read {
+            Err(got) if got == want => Ok(()),
+            Err(got) => Err(format!("error {got:?}, want {want:?}")),
+            Ok(_) => Err(format!("read the catalog, want the error {want:?}")),
+        };
+    }
+    let introspection = read?;
+    let checks: Vec<String> = dbspec::emit(&introspection.document).lines().map(str::trim).filter(|line| line.starts_with("check ")).map(str::to_owned).collect();
+    let unsupported: Vec<String> = introspection
+        .unsupported
+        .iter()
+        .map(|item| format!("{} {}: {}", item.kind, item.name, item.reason.split_once(": ").map_or(item.reason.as_str(), |(rule, _)| rule)))
+        .collect();
+    if json!(checks) == expect["checks"] && json!(unsupported) == expect["unsupported"] {
+        Ok(())
+    } else {
+        Err(format!("checks {checks:?} and unsupported {unsupported:?}, want {expect}"))
+    }
+}
+
 /// The dbspec.introspect_sqlite op (FCV-4): the statements on a memory SQLite connection of its own, then the
 /// public introspect, whose unsupported objects it compares with the expect of `database` (DIA-191).
 fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> {
@@ -238,6 +312,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),

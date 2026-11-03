@@ -92,6 +92,9 @@ type step struct {
 	ProcessZone string                     `json:"process_zone"`
 	// SQL is the statements of dbspec.introspect_sqlite.
 	SQL []string `json:"sql"`
+	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -243,6 +246,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "keyring.versions" {
 		return checkKeyring(s, database)
+	}
+	if s.Op == "dbspec.introspect_shown" {
+		return checkIntrospectShown(t, o.dir, s, database)
 	}
 	if s.Op == "dbspec.introspect_sqlite" {
 		return checkIntrospectSQLite(t, s, database)

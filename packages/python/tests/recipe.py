@@ -155,6 +155,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
                     continue
+                if step["op"] == "dbspec.introspect_shown":
+                    _dbspec_introspect_shown(step, ROOT / Path(path).parent, database)
+                    continue
                 if step["op"] == "dbspec.introspect_sqlite":
                     _dbspec_introspect_sqlite(step, database)
                     continue
@@ -911,6 +914,86 @@ def _send(step: dict, call=None) -> None:
         raise AssertionError(
             f"message {json.dumps(got)}, want {json.dumps(expect['message'])} (message {received[0]})"
         )
+
+
+class _ShownCatalogConnection:
+    """Answers the catalog queries of the MySQL introspection from a case of the vectors of
+    dbspec.introspect_shown."""
+
+    def __init__(self, catalog: dict, case: dict) -> None:
+        self.catalog = catalog
+        self.case = case
+
+    def execute(self, sql: str, _values: Any = None) -> dict:
+        catalog, case = self.catalog, self.case
+        table = catalog["table"]
+        if "information_schema.TABLES" in sql:
+            rows = [[table, "BASE TABLE", ""]]
+        elif "information_schema.COLUMNS" in sql:
+            rows = [
+                [
+                    table,
+                    column["name"],
+                    column["type"],
+                    column["nullable"],
+                    None,
+                    "",
+                    column["charset"],
+                    column["collation"],
+                    "",
+                ]
+                for column in catalog["columns"]
+            ]
+        elif "information_schema.STATISTICS" in sql:
+            rows = [[table, "PRIMARY", 0, catalog["primary_key"], "A", 0, 0, "BTREE"]]
+        elif "REFERENTIAL_CONSTRAINTS" in sql:
+            rows = []
+        elif "information_schema.CHECK_CONSTRAINTS" in sql:
+            rows = [[case["name"], catalog["stored_clause"]]]
+        elif "information_schema.TABLE_CONSTRAINTS" in sql:
+            rows = [[table, case["name"], "YES"]]
+        elif "SHOW CREATE TABLE" in sql:
+            rows = [[table, "\n".join(case["create"]) + "\n"]]
+        elif (
+            "information_schema.TRIGGERS" in sql
+            or "information_schema.ROUTINES" in sql
+            or "information_schema.EVENTS" in sql
+        ):
+            rows = []
+        else:
+            raise AssertionError(f"no canned answer for {sql}")
+        return {"rows": rows}
+
+
+def _dbspec_introspect_shown(step: dict, recipe_dir: Path, database: str) -> None:
+    """Runs the dbspec.introspect_shown op (FCV-4): the public introspect_dbspec on the canned catalog
+    of a case of the vectors file, whose check lines and unsupported objects, or error, it compares
+    (DIA-84). A reason compares by its rule, the text before the first ": ", since its text differs
+    between the clients."""
+    vectors = json.loads((recipe_dir / step["vectors"]).read_text(encoding="utf-8"))
+    case = next(c for c in vectors["cases"] if c["id"] == step["case"])
+    connection = _ShownCatalogConnection(vectors["catalog"], case)
+    expect = step["expect"][database]
+    if "error" in expect:
+        try:
+            introspect_dbspec(connection, "mysql", "introspected")
+        except ValueError as error:
+            if str(error) != expect["error"]:
+                raise AssertionError(f"error {error}, want {expect['error']}") from error
+            return
+        raise AssertionError(f"no error, want {expect['error']}")
+    result = introspect_dbspec(connection, "mysql", "introspected")
+    checks = [
+        line.strip()
+        for line in emit_dbspec(result["document"]).splitlines()
+        if line.strip().startswith("check ")
+    ]
+    unsupported = [
+        f"{item['kind']} {item['name']}: {item['reason'].split(': ', 1)[0]}"
+        for item in result["unsupported"]
+    ]
+    if checks != expect["checks"] or unsupported != expect["unsupported"]:
+        raise AssertionError(f"checks {checks}, unsupported {unsupported}, want {expect}")
 
 
 class _SqliteCatalogConnection:

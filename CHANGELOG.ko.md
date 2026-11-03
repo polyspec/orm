@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d2bba63b60ca125c9142ab7478b22d9b5f42688ecd811828e705cd0ee853a88b -->
+<!-- source-sha256: a04016590b4c255e86ec3076144ce9a8dee61eab2310d5b1676b767b7fb9172f -->
 # 변경 이력
 
 ## Unreleased
 
+- SHOW CREATE TABLE check의 MySQL introspection은 여섯 runtime 모두에서 op `dbspec.introspect_shown`을 쓰는 recipe `tests/dbspec/show-create-introspect.json`이고, 그 recipe가 `tests/dbspec/show-create.json`의 각 case가 기대하는 것을 담는다
 - DIA-191의 SQLite unsupported column 사유는 여섯 runtime 모두에서 op `dbspec.introspect_sqlite`를 쓰는 recipe `tests/dbspec/introspect-messages.json`이고, 각 runtime은 unsupported 객체의 전체 목록을 비교한다. 한 runtime의 시험은 없앴다
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.

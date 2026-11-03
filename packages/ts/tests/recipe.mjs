@@ -61,6 +61,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
@@ -2038,6 +2039,41 @@ async function checkSend(step, wrappedExpect) {
     if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
+}
+
+// shownCatalogRows answers one catalog query of the MySQL introspection from a case of the vectors of dbspec.introspect_shown.
+function shownCatalogRows(sql, catalog, vector) {
+  if (sql.includes('information_schema.TABLES')) return [[catalog.table, 'BASE TABLE', '']];
+  if (sql.includes('information_schema.COLUMNS')) {
+    return catalog.columns.map(column => [catalog.table, column.name, column.type, column.nullable, null, '', column.charset, column.collation, '']);
+  }
+  if (sql.includes('information_schema.STATISTICS')) return [[catalog.table, 'PRIMARY', 0, catalog.primary_key, 'A', 0, 0, 'BTREE']];
+  if (sql.includes('REFERENTIAL_CONSTRAINTS')) return [];
+  if (sql.includes('information_schema.CHECK_CONSTRAINTS')) return [[vector.name, catalog.stored_clause]];
+  if (sql.includes('information_schema.TABLE_CONSTRAINTS')) return [[catalog.table, vector.name, 'YES']];
+  if (sql.includes('SHOW CREATE TABLE')) return [[catalog.table, vector.create.join('\n') + '\n']];
+  if (sql.includes('information_schema.TRIGGERS') || sql.includes('information_schema.ROUTINES') || sql.includes('information_schema.EVENTS')) return [];
+  throw new Error(`no canned answer for ${sql}`);
+}
+
+// checkIntrospectShown runs a dbspec.introspect_shown step: the public introspectDbspec on the canned catalog of a case of the
+// vectors file, whose check lines and unsupported objects, or error, it compares with the expect of database (DIA-84). A reason
+// compares by its rule, the text before the first ": ", since its text differs between the clients.
+async function checkIntrospectShown(step, dir, database) {
+  const vectors = JSON.parse(readFileSync(resolve(dir, step.vectors), 'utf8'));
+  const vector = vectors.cases.find(c => c.id === step.case);
+  if (vector === undefined) throw new Error(`${step.vectors} has no case ${step.case}`);
+  const connection = { query: async ({ sql }) => [shownCatalogRows(sql, vectors.catalog, vector)] };
+  const expect = step.expect[database];
+  if (expect.error !== undefined) {
+    await assert.rejects(introspectDbspec(connection, 'mysql', 'introspected'), error => error.message === expect.error);
+    return;
+  }
+  const result = await introspectDbspec(connection, 'mysql', 'introspected');
+  const checks = emitDbspec(result.document).split('\n').map(line => line.trim()).filter(line => line.startsWith('check '));
+  const unsupported = result.unsupported.map(item => `${item.kind} ${item.name}: ${item.reason.split(': ', 1)[0]}`);
+  assert.deepEqual(checks, expect.checks, 'introspected checks');
+  assert.deepEqual(unsupported, expect.unsupported, 'introspected unsupported objects');
 }
 
 // checkIntrospectSqlite runs a dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the

@@ -932,7 +932,7 @@ dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-ch
 dbspec-rust-check/show-create/unit:
 	$(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-schema --lib show_create_tests
 dbspec-rust-check/show-create/vectors:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_show_create -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test dbspec_show_create_introspect_none -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 # The run directory of a part is that of the top target (if $@ contains a /, the directory gets one more level).
@@ -2644,7 +2644,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec-render-physical.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach

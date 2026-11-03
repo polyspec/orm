@@ -1,0 +1,194 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DIA-84"
+  ],
+  "cases": [
+    {
+      "id": "non-ascii-literal",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "non-ascii-literal",
+          "expect": {
+            "none": {
+              "checks": [],
+              "unsupported": [
+                "check ck_café: name.format"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "literal-with-quote",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "literal-with-quote",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_q (name <> 'it''s')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "literal-with-backslash",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "literal-with-backslash",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_bs (name <> 'a\\b')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "literal-with-parentheses",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "literal-with-parentheses",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_par (name <> 'a)b(')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "two-checks-target-non-ascii",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "two-checks-target-non-ascii",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_two (name <> 'naïve\\''x')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "two-checks-target-ascii",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "two-checks-target-ascii",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_one (a > 0)"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "literal-ends-with-backslash",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "literal-ends-with-backslash",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_end (name <> 'x\\')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "non-ascii-literal-with-quote",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "non-ascii-literal-with-quote",
+          "expect": {
+            "none": {
+              "checks": [
+                "check ck_qq (name <> 'café''s')"
+              ],
+              "unsupported": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "name-without-check",
+      "requirements": [
+        "DIA-84"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.introspect_shown",
+          "vectors": "show-create.json",
+          "case": "name-without-check",
+          "expect": {
+            "none": {
+              "error": "check t.ck_missing has no CHECK in SHOW CREATE TABLE"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
