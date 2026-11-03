@@ -3147,6 +3147,9 @@ mod database {
                         return Err(format!("error message {message:?} keeps the rollback error {kept:?}, want code {rollback}"));
                     }
                 }
+                if expected.as_ref().and_then(|e| e.get("keeps_callback")).and_then(Value::as_bool) == Some(true) && !message.contains(CALLBACK_FAILED) {
+                    return Err(format!("error message {message:?} does not keep the error of the callback"));
+                }
                 let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {

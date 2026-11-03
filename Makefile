@@ -12,7 +12,6 @@
 .PHONY: rust-causes-check rust-closed-executor-check
 .PHONY: php-go-text-check
 .PHONY: go-catalog-session-error-check
-.PHONY: catalog-row-baseline-go-check
 .PHONY: catalog-described-temporal-go-check
 .PHONY: go-sqlite-version-check
 .PHONY: catalog-php-extension-surface-check
@@ -511,7 +510,6 @@ dbspec-introspect-python-helper-check: python-venv-check
 
 catalog-mutation-helper-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mutation_helper
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_row_baseline
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_mysql_visibility
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_catalog_described_temporal
 
@@ -3523,12 +3521,6 @@ rust-closed-executor-check: lease-tool
 go-catalog-session-error-check:
 	$(GO_TEST) ./packages/go/orm -run '^(TestCatalogSessionEnd|TestCatalogInsertVerifiesMySQLTriggerVisibility)$$' -count=1
 
-catalog-row-baseline-go-check:
-	$(GO_TEST) ./packages/go/orm -run '^TestCatalogRowBaselineComparesExactTypedValues$$' -count=1
-
-CHECK_TARGETS += catalog-row-baseline-go-check
-CI_TARGETS_static += catalog-row-baseline-go-check
-
 # catalog-described-temporal-go-check runs the unit tests of the dbspec text that a Go read of a described table returns for
 # its date, time and datetime cells (INT-103) and of the exact comparison of a catalog write (INT-117, INT-123).
 catalog-described-temporal-go-check:
@@ -3581,7 +3573,7 @@ transaction-failure-php-extension-check: php-vendor-check php-models orm-install
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
 transaction-failure-go-check:
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestRollbackFaultSQLite$$|^TestSavepointReportsFailedEnd$$') -count=1
+	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestSavepointReportsFailedEnd$$') -count=1
 
 # Runs the TypeScript transaction and savepoint cleanup failure cases against a temporary SQLite database.
 
