@@ -73,10 +73,15 @@ export function runRecipe(path, database) {
   }
 }
 
-// connectDriver opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+// connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+// driver: the one implementation of dsn.connect (FCV-4).
 async function connectDriver(dsn) {
   const db = await Db.connect(dsn);
   try {
+    const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
+    if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
+      throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
     return db.driver;
   } finally {
     await db.close();
@@ -594,6 +599,10 @@ const OPS = {
   },
   async 'catalog.row_snapshot'(s, context) {
     const page = s.page_with === undefined ? stepArgument(s.page, context) : { ...bound(s.page_with.page.ref, context), orderBy: s.page_with.order_by };
+    if (s.page_with?.column_name !== undefined) {
+      const [first, ...rest] = page.metadata.columns;
+      page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
   },
@@ -631,9 +640,10 @@ const OPS = {
       await nativeQuery(context.database, context.dsn, [statement]);
       return {};
     }
-    // Any driver error of the refused statement passes.
-    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => false, () => true);
-    if (!refused) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    // Any driver error of the refused statement passes, unless the step names its text.
+    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => null, error => error);
+    if (refused === null) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    if (s.refused_message !== undefined && !refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the database refused the statement for another reason: ${refused.message}`);
     return {};
   },
   // The request hook and AES ops of FCV-4 (T334-3-4): each calls the public API of the same name on a bound connection.

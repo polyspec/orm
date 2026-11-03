@@ -1217,8 +1217,9 @@ export class CatalogConnection {
   /** @internal */
   public constructor(public readonly dialect: DriverName, private readonly pool: DriverPool) {}
 
-  /** Releases the connection pool. An operation after close fails with CATALOG_CLOSED and sends no statement. */
+  /** Releases the connection pool, once: a second close does nothing. An operation after close fails with CATALOG_CLOSED and sends no statement. */
   public async close(): Promise<void> {
+    if (this.closed) return;
     this.closed = true;
     await this.pool.close();
   }

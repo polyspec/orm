@@ -337,6 +337,29 @@ class MarkdownConformanceTest extends TestCase
                     ->getsCount()
                     ->toArray();
             },
+            'group_count_views' => static function (Served $s): mixed {
+                $rows = (new People())->connect($s->db)->groupByActive()->groupByAge()->orderByAgeDesc()->getsCount();
+                $counts = [];
+                $first = null;
+                foreach ($rows as $row) {
+                    $counts[] = $row->count();
+                    if ($first === null) {
+                        $unselected = null;
+                        try {
+                            $row->value('name');
+                        } catch (OrmException $error) {
+                            $unselected = $error->code_;
+                        }
+                        $first = [
+                            'count' => $row->count(),
+                            'active' => $row->value('active'),
+                            'age' => $row->value('age'),
+                            'unselected' => $unselected,
+                        ];
+                    }
+                }
+                return ['length' => count($rows), 'counts' => $counts, 'rows' => $rows->toArray(), 'first' => $first];
+            },
             'sum' => static function (Served $s): mixed {
                 return (new Tasks())->connect($s->db)->sumPoints()->getSum();
             },

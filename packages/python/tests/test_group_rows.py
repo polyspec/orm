@@ -4,76 +4,44 @@ import unittest
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
-from polyspec.orm.group_rows import GroupRow, GroupRows
+from polyspec.orm.group_rows import GroupRow
 from polyspec.orm.model_exec import _group_value
 from . import testcase
 
 
-class GroupRowCountTest(unittest.TestCase):
-    # Requirements: INT-90.
-    def test_negative_row_count_is_codec_decode(self):
-        for count in (-1, "-1", -1.0):
-            with self.subTest(count=count):
-                with self.assertRaises(OrmError) as caught:
-                    GroupRow([("status", "open"), ("row_count", count)])
-                self.assertEqual(caught.exception.code, codes.CODEC_DECODE)
-
-    # Requirements: INT-90.
-    def test_missing_row_count_is_internal(self):
-        with self.assertRaises(OrmError) as caught:
-            GroupRow([("status", "open")])
-        self.assertEqual(caught.exception.code, codes.INTERNAL)
-
-    # Requirements: PRT-69, INT-90. The grouped row exposes its count as an exact nonnegative value.
-    def test_count_exactness(self):
+class GroupRowDriverCellFormsTest(unittest.TestCase):
+    # The forms of a count that only a driver cell holds: a text, a float and a repeated column. The answer of a listener holds
+    # none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the collection recipe cannot write
+    # them (FCV-2). Requirements: INT-68, INT-90.
+    def test_driver_cell_forms(self):
         for count in (
-            True,
-            1.5,
-            -1,
-            9007199254740992,
-            9007199254740992.0,
+            "three",
+            "-1",
+            "00",
+            "+1",
+            "",
             "9007199254740992",
+            1.5,
+            -1.0,
+            9007199254740992.0,
         ):
             with self.subTest(count=count):
                 with self.assertRaises(OrmError) as caught:
                     GroupRow([("row_count", count)])
                 self.assertEqual(caught.exception.code, codes.CODEC_DECODE)
-        with self.assertRaises(OrmError) as caught:
-            GroupRow([("selected", "x")])
-        self.assertEqual(caught.exception.code, codes.INTERNAL)
         for count, want in (
-            (0, 0),
             ("0", 0),
-            (9007199254740991, 9007199254740991),
             ("9007199254740991", 9007199254740991),
+            (3.0, 3),
+            (9007199254740991.0, 9007199254740991),
         ):
             with self.subTest(valid_count=count):
                 row = GroupRow([("row_count", count)])
                 self.assertEqual(row.count, want)
                 self.assertEqual(row.to_array()["row_count"], want)
-
-
-class GroupRowsOwnerTest(unittest.TestCase):
-    # Requirements: INT-69, INT-70, INT-71.
-    def test_group_rows_length_and_to_array_follow_result_order(self):
-        first = GroupRow([("is_close", False), ("row_count", 3)])
-        second = GroupRow([("is_close", True), ("row_count", 2)])
-        nullable = GroupRow([("price", None), ("row_count", 0)])
-        self.assertEqual(first.value("is_close"), False)
-        self.assertIsNone(nullable.value("price"))
         with self.assertRaises(OrmError) as caught:
-            first.value("name")
-        self.assertEqual(caught.exception.code, codes.COLUMN_UNSELECTED)
-        rows = GroupRows([first, second, nullable])
-        self.assertEqual(rows.length, 3)
-        self.assertEqual(
-            rows.to_array(),
-            [
-                {"is_close": False, "row_count": 3},
-                {"is_close": True, "row_count": 2},
-                {"price": None, "row_count": 0},
-            ],
-        )
+            GroupRow([("row_count", 1), ("row_count", 2)])
+        self.assertEqual(caught.exception.code, codes.CONFIG)
 
 
 class GroupBooleanValueTest(unittest.TestCase):

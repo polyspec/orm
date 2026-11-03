@@ -91,6 +91,7 @@ const RESERVED_COLUMNS: &[&str] = &[
     "get",
     "gets",
     "gets_page",
+    "get_page_plan_steps",
     "get_query",
     "limit",
     "alias",

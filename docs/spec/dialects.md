@@ -400,7 +400,7 @@ The surfaces of the markdown executor and their rulings are those of the capabil
 - **DIA-182** `orderByRandom` — Result: Supported; Rule: the order is not seeded
 - **DIA-183** a transaction with audit values — Result: `CAPABILITY_UNSUPPORTED`
 - **DIA-184** `isolation`, `timeoutMs` options — Result: `CAPABILITY_UNSUPPORTED`
-- **DIA-185** `getQuery()`, statement events, `subscribe()` — Result: `CAPABILITY_UNSUPPORTED`; Rule: there is no SQL text
+- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement events, `subscribe()` — Result: `CAPABILITY_UNSUPPORTED`; Rule: there is no SQL text
 - **DIA-186** `force_index` — Result: `CAPABILITY_UNSUPPORTED`; Rule: indexes are derived, not named
 - **DIA-187** `fulltext` — Result: `OPERATOR_NOT_ALLOWED`; Rule: SQLite has no full-text index on a table (orm dialects.md)
 - **DIA-188** lock, local-setting, privilege and AES-rotation utilities — Result: `CAPABILITY_UNSUPPORTED`

@@ -610,7 +610,7 @@ static bool md_answer_value(zval *value, zend_string *type, zend_string *where, 
     if (!ok) {
         zend_string *encoded = NULL;
         if (!md_json_error(value, &encoded)) encoded = zend_string_init("null", sizeof("null") - 1, 0);
-        md_answer_errorf("%s: the answer value %s is not a %s value", ZSTR_VAL(where), ZSTR_VAL(encoded), ZSTR_VAL(type));
+        md_error("CODEC_DECODE", strpprintf(0, "%s: the answer value %s is not a %s value", ZSTR_VAL(where), ZSTR_VAL(encoded), ZSTR_VAL(type)));
         zend_string_release(encoded); return false;
     }
     if (zend_string_equals_literal(type, "f64") && Z_TYPE_P(value) == IS_LONG) ZVAL_DOUBLE(out, (double)Z_LVAL_P(value));

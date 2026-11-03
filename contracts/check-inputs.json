@@ -2093,6 +2093,36 @@
         "packages/ts/tests/markdown_cases.mjs"
       ]
     },
+    "collection-recipe-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/collection/collection.json",
+        "scripts/features/schema/recipe.schema.json",
+        "packages/go/markdownmodel/recipe_collection_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/php/tests/CollectionRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/python/tests/test_collection_none.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/chain_answer.py",
+        "packages/rust/tests/tests/collection_none.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/ts/tests/collection-none.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/markdown_cases.mjs"
+      ]
+    },
     "fuzz-check": {
       "scope": "owner",
       "needs": [
@@ -4218,6 +4248,28 @@
         "config/parity.json",
         "contracts/fixtures/**",
         "packages/**"
+      ]
+    },
+    "conformance-refusal-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/model/refusal_test.go",
+        "packages/php/tests/RefusalBeforeRequestTest.php",
+        "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
+        "packages/ts/tests/refusal-before-request.mjs",
+        "packages/python/tests/test_refusal.py",
+        "packages/rust/tests/tests/refusal_before_request.rs",
+        "packages/rust/testing/compiler-fixtures/cases.json"
       ]
     },
     "recipe-unknown-key-check": {

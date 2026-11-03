@@ -14,6 +14,7 @@ use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogColumn;
 use Polyspec\Orm\Chain;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\CatalogGridCell;
@@ -40,6 +41,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\TxFrame;
 use Polyspec\Orm\Validator;
 use RuntimeException;
 
@@ -484,11 +486,24 @@ final class Recipe
         throw new \RuntimeException('the listener received no request message');
     }
 
-    /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */
+    /**
+     * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+     * driver: the one implementation of dsn.connect (FCV-4).
+     */
     private static function connectDriver(string $dsn): string
     {
         $db = Orm::connect($dsn, new Config());
         try {
+            $rows = $db->utils()->run(
+                static fn (TxFrame $frame): array => $frame->run(
+                    StatementEvent::UTILITY,
+                    [],
+                    'SELECT 1',
+                ),
+            );
+            Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
+            Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
+            Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             return $db->driver();
         } finally {
             $db->close();
@@ -2034,6 +2049,34 @@ final class Recipe
                         $s['page_with']['order_by'],
                         $page->hasMore,
                     );
+                    if (isset($s['page_with']['column_name'])) {
+                        $columns = $page->metadata->columns;
+                        $first = $columns[0];
+                        $columns[0] = new CatalogColumn(
+                            $s['page_with']['column_name'],
+                            $first->nativeType,
+                            $first->nullable,
+                            $first->generated,
+                            $first->automaticKey,
+                            $first->defaultExpression,
+                            $first->expressionDefault,
+                            $first->checkPrecision,
+                        );
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $columns,
+                                $page->metadata->primaryKey,
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2173,8 +2216,11 @@ final class Recipe
                     }
                     try {
                         $pdo->exec($statement);
-                    } catch (\PDOException) {
-                        // Any driver error of the refused statement passes.
+                    } catch (\PDOException $error) {
+                        // Any driver error of the refused statement passes, unless the step names its text.
+                        if (isset($s['refused_message'])) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        }
                         return [];
                     }
                     throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");

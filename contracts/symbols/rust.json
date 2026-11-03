@@ -747,6 +747,10 @@
     "exported": false,
     "signature": "pub async fn get_count (\u0026 self) -\u003e polyspec_orm :: Result \u003c i64 \u003e"
   },
+  "packages/rust/build/src/fixed.rs.txt::T::get_page_plan_steps": {
+    "exported": true,
+    "signature": "pub async fn get_page_plan_steps (\u0026 self , page : u32 , per_page : u32) -\u003e polyspec_orm :: Result \u003c Vec \u003c polyspec_orm :: QueryPlanStep \u003e \u003e"
+  },
   "packages/rust/build/src/fixed.rs.txt::T::get_query": {
     "exported": false,
     "signature": "pub async fn get_query (\u0026 self) -\u003e polyspec_orm :: Result \u003c polyspec_orm :: Statement \u003e"
@@ -3878,6 +3882,26 @@
   "packages/rust/orm/src/db.rs::PoolOwner": {
     "exported": false,
     "signature": "# [doc = \" The connection a pool belongs to, set once the connection exists. The\"] # [doc = \" release hook of the pool reads its idle count through it.\"] type PoolOwner = Arc \u003c std :: sync :: OnceLock \u003c std :: sync :: Weak \u003c DbInner \u003e \u003e \u003e ;"
+  },
+  "packages/rust/orm/src/db.rs::QueryPlanStep": {
+    "exported": true,
+    "signature": "pub struct QueryPlanStep  { pub role : String , pub tables : Vec \u003c String \u003e , pub sql : String , }"
+  },
+  "packages/rust/orm/src/db.rs::QueryPlanStep#field.role": {
+    "exported": true,
+    "signature": "String"
+  },
+  "packages/rust/orm/src/db.rs::QueryPlanStep#field.sql": {
+    "exported": true,
+    "signature": "String"
+  },
+  "packages/rust/orm/src/db.rs::QueryPlanStep#field.tables": {
+    "exported": true,
+    "signature": "Vec \u003c String \u003e"
+  },
+  "packages/rust/orm/src/db.rs::QueryPlanStep#wire": {
+    "exported": true,
+    "signature": "{\"role\":\"text\",\"sql\":\"text\",\"tables\":\"list\u003ctext\u003e\"}"
   },
   "packages/rust/orm/src/db.rs::RequestHook": {
     "exported": true,
@@ -7263,6 +7287,10 @@
     "exported": false,
     "signature": "pub (crate) fn binds_audit (st : \u0026 crate :: plan :: Step) -\u003e bool"
   },
+  "packages/rust/orm/src/model.rs::checked_lock": {
+    "exported": false,
+    "signature": "fn checked_lock (ex : \u0026 Executor , req : \u0026 Req) -\u003e Result \u003c String \u003e"
+  },
   "packages/rust/orm/src/model.rs::clone_model": {
     "exported": false,
     "signature": " fn clone_model (template : \u0026 Core , m : \u0026 dyn AnyModel) -\u003e Result \u003c Box \u003c dyn AnyModel \u003e \u003e"
@@ -7322,6 +7350,10 @@
   "packages/rust/orm/src/model.rs::get_count": {
     "exported": true,
     "signature": "pub async fn get_count (c : \u0026 Core) -\u003e Result \u003c i64 \u003e"
+  },
+  "packages/rust/orm/src/model.rs::get_page_plan_steps": {
+    "exported": true,
+    "signature": "pub async fn get_page_plan_steps (c : \u0026 Core , page : u32 , per_page : u32) -\u003e Result \u003c Vec \u003c QueryPlanStep \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::get_query": {
     "exported": true,
@@ -7394,6 +7426,10 @@
   "packages/rust/orm/src/model.rs::new_boxed": {
     "exported": true,
     "signature": "pub fn new_boxed \u003c M : Model \u003e (core : Core) -\u003e Box \u003c dyn AnyModel \u003e"
+  },
+  "packages/rust/orm/src/model.rs::page_request": {
+    "exported": false,
+    "signature": "fn page_request (c : \u0026 Core , page : u32 , per_page : u32) -\u003e Result \u003c (Executor , Core , Req) \u003e"
   },
   "packages/rust/orm/src/model.rs::param_val": {
     "exported": false,

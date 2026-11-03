@@ -124,14 +124,19 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
     }
 }
 
-/// Opens a DSN with Db::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
-/// A refused DSN returns its error code and message.
+/// Opens a DSN with Db::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its driver:
+/// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
 async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
     match polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await {
         Ok(db) => {
             let driver = db.driver().to_owned();
+            let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
             db.close().await;
-            Ok(driver)
+            match answer {
+                Ok(rows) if matches!(rows.as_slice(), [row] if matches!(row.as_slice(), [Val::I64(1)])) => Ok(driver),
+                Ok(rows) => Err(("STEP".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
+                Err(error) => Err((error.code().to_owned(), error.to_string())),
+            }
         }
         Err(error) => Err((error.code().to_owned(), error.to_string())),
     }
@@ -2592,6 +2597,9 @@ mod database {
                         let Bound::Page(page, _) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                         let mut page = page.clone();
                         page.order_by = strings(&with["order_by"]).map_err(fault)?;
+                        if let Some(name) = with["column_name"].as_str() {
+                            page.metadata.columns[0].name = name.to_owned();
+                        }
                         Some(page)
                     }
                     None => None,
@@ -2650,8 +2658,14 @@ mod database {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
                     if step["refused"].as_bool() == Some(true) {
-                        if done.is_ok() {
-                            return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}")));
+                        match done {
+                            Ok(_) => return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}"))),
+                            Err(error) => {
+                                let text = step["refused_message"].as_str().unwrap_or_default();
+                                if !error.to_lowercase().contains(text) {
+                                    return Err(fault(format!("the database refused the statement for another reason: {error}")));
+                                }
+                            }
                         }
                     } else {
                         done.map_err(Failure::Call)?;

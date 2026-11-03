@@ -461,10 +461,6 @@
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
-          "reason": "harness: checks the PHP library Catalog class ownership and names of shared coverage helper methods; it does not execute or assert catalog query behavior"
-        },
-        {
           "glob": "packages/php/tests/ClientGenericsTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
@@ -636,10 +632,6 @@
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
           "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
-        },
-        {
-          "glob": "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
-          "reason": "harness: checks that the native Catalog class is internal and that the shared recipe entry methods of catalog_connection exist; it does not execute catalog query behavior, which the recipe entries run on each database"
         },
         {
           "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
@@ -1222,6 +1214,7 @@
   "suites": [
     "contracts/fixtures/**/!(dbspec-set|complex_query|composite_key_collision).json",
     "tests/codec/*.json",
+    "tests/collection/collection.json",
     "tests/conformance/*.json",
     "tests/dbspec/*.json",
     "tests/dsn/sqlite-paths.json",
@@ -15800,51 +15793,6 @@
       ]
     },
     {
-      "id": "group-row-count-exactness",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelReadNativeTest.php",
-          "id": "ModelReadNativeTest::testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/count_exactness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_count_exactness"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_count_exactness_tests::count_exactness_matches_the_safe_integer_contract"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -16294,6 +16242,11 @@
           ]
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
@@ -16327,31 +16280,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/catalog/temporal.rs",
           "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCatalogTemporalPrecisionLimit"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testMysqlTemporalPrecisionLimit"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "mysql rejects temporal precision above 6"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_mysql_temporal_precision_refused"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_mysql_temporal_precision_limit"
         }
       ]
     },
@@ -22170,6 +22098,7 @@
             "@polyspec/orm!Model#forShareNoWait:member(1)",
             "@polyspec/orm!Model#forUpdate:member(1)",
             "@polyspec/orm!Model#forUpdateNoWait:member(1)",
+            "@polyspec/orm!Model#getPagePlanSteps:member(1)",
             "@polyspec/orm!Model#getQuery:member(1)",
             "@polyspec/orm!Model#groupLimit:member(1)",
             "@polyspec/orm!Model#limit:member(1)",
@@ -24076,112 +24005,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_queries::coverage_collection_null_identity"
           ]
-        }
-      ]
-    },
-    {
-      "id": "group-rows-negative-count",
-      "kind": "feature",
-      "requirements": [
-        "INT-90"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowNegativeCountIsCodecDecode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/negative_count_codec_decode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_negative_row_count_is_codec_decode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
-        }
-      ]
-    },
-    {
-      "id": "group-row-owner",
-      "kind": "feature",
-      "requirements": [
-        "INT-68",
-        "INT-69",
-        "INT-70",
-        "INT-71"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnDeclarationRejectsMissingAndDuplicateCount"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
-          "id": "GroupRowsTestExtensionTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowsUseAKeyPreservingSnapshotIterator"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/owner"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_count_exactness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_rows_length_and_to_array_follow_result_order"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_result_preserves_exact_i64_value"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
         }
       ]
     },
@@ -28409,9 +28232,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
@@ -28519,9 +28339,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
@@ -28629,9 +28446,6 @@
           "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
           "id": "hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "node",
             "--conditions=orm-test",
             "--test",
@@ -28705,47 +28519,6 @@
           "owner/typescript"
         ]
       }
-    },
-    {
-      "id": "group-row-output-collections",
-      "kind": "feature",
-      "requirements": [
-        "INT-69",
-        "INT-70",
-        "INT-71"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testOwner"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupRowsUseAKeyPreservingSnapshotIterator"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/owner"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_rows_length_and_to_array_follow_result_order"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/collection.rs",
-          "id": "collection::group_tests::grouped_rows_contain_only_group_values_and_checked_counts"
-        }
-      ]
     },
     {
       "id": "group-rows-database-query-preserves-values",
@@ -29545,6 +29318,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/result_chains.rs",
           "id": "result_chains::generated_terminal_returns_first_builder_error_without_sending_sql"
+        }
+      ]
+    },
+    {
+      "id": "get-page-plan-steps",
+      "kind": "feature",
+      "requirements": [
+        "DSL-159"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/complexquery/page_plan_steps_test.go",
+          "id": "TestGetPagePlanSteps"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryDbTest.php",
+          "id": "ComplexQueryDbTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+          "id": "ComplexQueryNativeTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex-query-request.mjs",
+          "id": "getPagePlanSteps gives the steps of the plan that getsPage runs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+          "id": "coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
         }
       ]
     },
@@ -36992,6 +36804,7 @@
         "DSL-62",
         "DSL-63",
         "DSL-65",
+        "DSL-159",
         "DSL-66",
         "DSL-68"
       ],
@@ -37003,6 +36816,7 @@
             "github.com/polyspec/orm/packages/go/model.AccountModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.AccountModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.AccountModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AccountModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AccountModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AccountModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AccountModel.Gets",
@@ -37011,6 +36825,7 @@
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.Get",
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AccountProjectModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AccountProjectModel.Gets",
@@ -37019,6 +36834,7 @@
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.Get",
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AuditRecordModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AuditRecordModel.Gets",
@@ -37027,6 +36843,7 @@
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.Get",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteHistoryModel.Gets",
@@ -37035,6 +36852,7 @@
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.Get",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AuditedNoteModel.Gets",
@@ -37045,6 +36863,7 @@
             "github.com/polyspec/orm/packages/go/model.AuthorModel.GetByName",
             "github.com/polyspec/orm/packages/go/model.AuthorModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.AuthorModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.AuthorModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.AuthorModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.AuthorModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.AuthorModel.Gets",
@@ -37056,6 +36875,7 @@
             "github.com/polyspec/orm/packages/go/model.BindCellModel.Get",
             "github.com/polyspec/orm/packages/go/model.BindCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.BindCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.BindCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.BindCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.BindCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.BindCellModel.Gets",
@@ -37065,6 +36885,7 @@
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.ClockCellModel.Gets",
@@ -37074,6 +36895,7 @@
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetByTenantIdAndAccountId",
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.CompositeAccountModel.Gets",
@@ -37082,6 +36904,7 @@
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.Get",
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.CompositeMembershipModel.Gets",
@@ -37090,6 +36913,7 @@
             "github.com/polyspec/orm/packages/go/model.DayCellModel.Get",
             "github.com/polyspec/orm/packages/go/model.DayCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.DayCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.DayCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.DayCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.DayCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.DayCellModel.Gets",
@@ -37099,6 +36923,7 @@
             "github.com/polyspec/orm/packages/go/model.HexCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.HexCellModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.HexCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.HexCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.HexCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.HexCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.HexCellModel.Gets",
@@ -37107,6 +36932,7 @@
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.Get",
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.IpHexCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.IpHexCellModel.Gets",
@@ -37115,6 +36941,7 @@
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.Get",
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.NoteReaderModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.NoteReaderModel.Gets",
@@ -37123,6 +36950,7 @@
             "github.com/polyspec/orm/packages/go/model.ProjectModel.Get",
             "github.com/polyspec/orm/packages/go/model.ProjectModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.ProjectModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.ProjectModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.ProjectModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.ProjectModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.ProjectModel.Gets",
@@ -37131,6 +36959,7 @@
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.Get",
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.ServiceMemberModel.Gets",
@@ -37140,6 +36969,7 @@
             "github.com/polyspec/orm/packages/go/model.ServiceModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.ServiceModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.ServiceModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.ServiceModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.ServiceModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.ServiceModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.ServiceModel.Gets",
@@ -37148,6 +36978,7 @@
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.Get",
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.ServiceRegionModel.Gets",
@@ -37156,6 +36987,7 @@
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.Get",
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.SharedNoteModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.SharedNoteModel.Gets",
@@ -37164,6 +36996,7 @@
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.Get",
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.SoftLinkModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.SoftLinkModel.Gets",
@@ -37173,6 +37006,7 @@
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.SoftRecordModel.Gets",
@@ -37181,6 +37015,7 @@
             "github.com/polyspec/orm/packages/go/model.TaskModel.Get",
             "github.com/polyspec/orm/packages/go/model.TaskModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.TaskModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.TaskModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.TaskModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.TaskModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.TaskModel.Gets",
@@ -37189,6 +37024,7 @@
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.Get",
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.TimeCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.TimeCellModel.Gets",
@@ -37198,6 +37034,7 @@
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.UpsertCellModel.Gets",
@@ -37207,6 +37044,7 @@
             "github.com/polyspec/orm/packages/go/model.UserModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.UserModel.GetBySeq",
             "github.com/polyspec/orm/packages/go/model.UserModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.UserModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.UserModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.UserModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.UserModel.Gets",
@@ -37215,6 +37053,7 @@
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.Get",
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.GetAvg",
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.GetCount",
+            "github.com/polyspec/orm/packages/go/model.UuidCellModel.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.GetQuery",
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.GetSum",
             "github.com/polyspec/orm/packages/go/model.UuidCellModel.Gets",
@@ -37223,12 +37062,17 @@
             "github.com/polyspec/orm/packages/go/orm.Core.Get",
             "github.com/polyspec/orm/packages/go/orm.Core.GetAvg",
             "github.com/polyspec/orm/packages/go/orm.Core.GetCount",
+            "github.com/polyspec/orm/packages/go/orm.Core.GetPagePlanSteps",
             "github.com/polyspec/orm/packages/go/orm.Core.GetQuery",
             "github.com/polyspec/orm/packages/go/orm.Core.GetSum",
             "github.com/polyspec/orm/packages/go/orm.Gets",
             "github.com/polyspec/orm/packages/go/orm.GetsCount",
             "github.com/polyspec/orm/packages/go/orm.GetsPage",
             "github.com/polyspec/orm/packages/go/orm.NowBind",
+            "github.com/polyspec/orm/packages/go/orm.QueryPlanStep",
+            "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Role",
+            "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.SQL",
+            "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Tables",
             "github.com/polyspec/orm/packages/go/orm.Secret",
             "github.com/polyspec/orm/packages/go/orm.Statement",
             "github.com/polyspec/orm/packages/go/orm.Statement.Binds",
@@ -37241,6 +37085,7 @@
             "Polyspec\\Orm\\Model::get",
             "Polyspec\\Orm\\Model::getAvg",
             "Polyspec\\Orm\\Model::getCount",
+            "Polyspec\\Orm\\Model::getPagePlanSteps",
             "Polyspec\\Orm\\Model::getQuery",
             "Polyspec\\Orm\\Model::getSum",
             "Polyspec\\Orm\\Model::gets",
@@ -37254,6 +37099,7 @@
             "Polyspec\\Orm\\Model::get",
             "Polyspec\\Orm\\Model::getAvg",
             "Polyspec\\Orm\\Model::getCount",
+            "Polyspec\\Orm\\Model::getPagePlanSteps",
             "Polyspec\\Orm\\Model::getQuery",
             "Polyspec\\Orm\\Model::getSum",
             "Polyspec\\Orm\\Model::gets",
@@ -37267,6 +37113,7 @@
             "polyspec.orm.model.Model.get",
             "polyspec.orm.model.Model.get_avg",
             "polyspec.orm.model.Model.get_count",
+            "polyspec.orm.model.Model.get_page_plan_steps",
             "polyspec.orm.model.Model.get_query",
             "polyspec.orm.model.Model.get_sum",
             "polyspec.orm.model.Model.gets",
@@ -37279,6 +37126,8 @@
             "polyspec_orm::model::get",
             "polyspec_orm::model::get_avg",
             "polyspec_orm::model::get_count",
+            "polyspec_orm::QueryPlanStep",
+            "polyspec_orm::model::get_page_plan_steps",
             "polyspec_orm::model::get_query",
             "polyspec_orm::model::get_sum",
             "polyspec_orm::model::gets",
@@ -42847,6 +42696,112 @@
       }
     },
     {
+      "id": "conformance-errors-refusal",
+      "kind": "feature",
+      "requirements": [
+        "DSL-10",
+        "DSL-19",
+        "DSL-47",
+        "DSL-67",
+        "DSL-96",
+        "DSL-98",
+        "DSL-123",
+        "PRT-14"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/refusal_test.go",
+          "id": "TestRefusalBeforeAnyRequest"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/refusal_test.go",
+          "id": "TestRefusalIsATypedError"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RefusalBeforeRequestTest.php",
+          "id": "RefusalBeforeRequestTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
+          "id": "RefusalBeforeRequestExtensionTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/refusal-before-request.mjs",
+          "id": "each chain of the errors vector is refused before any request"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/refusal-before-request.mjs",
+          "id": "tsc accepts each chain of the errors vector as a promise and refuses it as rows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_refusal.py",
+          "id": "test_each_chain_of_the_errors_vector_is_refused_before_any_request"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/refusal_before_request.rs",
+          "id": "refusal_before_request"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-chains-typed-positive"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-missing-connector-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-dangling-connector-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-empty-list-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-no-connection-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-lock-outside-transaction-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-join-child-with-connection-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-page-with-limit-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-relation-with-limit-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-unjoined-model-placement-e0308"
+        }
+      ]
+    },
+    {
       "id": "recipe-unknown-keys",
       "kind": "feature",
       "requirements": [
@@ -43707,6 +43662,105 @@
           "owner/python"
         ]
       }
+    },
+    {
+      "id": "collection-recipe",
+      "kind": "suite",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71",
+        "INT-90",
+        "PRT-69"
+      ],
+      "file": "tests/collection/collection.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/markdownmodel/recipe_collection_test.go",
+          "symbol": "TestRecipeCollectionNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\CollectionRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CollectionRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/collection-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/collection_none.rs",
+          "symbol": "collection_none"
+        }
+      ]
+    },
+    {
+      "id": "group-row-driver-cell-forms",
+      "kind": "feature",
+      "requirements": [
+        "INT-68",
+        "INT-90"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupColumnDeclarationRejectsMissingAndDuplicateCount"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GroupRowsTest.php",
+          "id": "GroupRowsTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
+          "id": "GroupRowsTestExtensionTest::testGroupRowDriverCellForms"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelReadNativeTest.php",
+          "id": "ModelReadNativeTest::testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "group_rows/driver_cell_forms"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_driver_cell_forms"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/collection.rs",
+          "id": "collection::group_tests::driver_cell_forms"
+        }
+      ]
     },
     {
       "id": "dbspec-limits",
