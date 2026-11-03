@@ -8,7 +8,7 @@
     "PLN-104",
     "PLN-105"
   ],
-  "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
+  "fixture": "none",
   "cases": [
     {
       "id": "history_records_each_plan",
@@ -16,7 +16,6 @@
         "PLN-91",
         "PLN-92"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.plan",
@@ -644,7 +643,6 @@
         "PLN-91",
         "PLN-92"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.connect",
@@ -769,7 +767,6 @@
         "PLN-91",
         "PLN-92"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.connect",
@@ -894,7 +891,6 @@
         "PLN-91",
         "PLN-92"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.connect",
@@ -1019,7 +1015,6 @@
         "PLN-91",
         "PLN-92"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.connect",
@@ -1143,7 +1138,6 @@
       "requirements": [
         "PLN-89"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.plan",
@@ -1473,7 +1467,6 @@
       "requirements": [
         "PLN-104"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.plan",
@@ -6136,7 +6129,6 @@
       "only": [
         "postgres"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.plan",
@@ -6253,7 +6245,6 @@
       "only": [
         "postgres"
       ],
-      "install": false,
       "steps": [
         {
           "op": "dbspec.plan",

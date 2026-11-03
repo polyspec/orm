@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from polyspec.orm import codes
 from polyspec.orm.aes import AesKeyring, _stored_version
-from polyspec.orm.errors import OrmError
+from polyspec.orm.errors import OrmError, transaction_conflict
 from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
@@ -98,7 +98,7 @@ class Utils:
         if driver == "mysql":
             rows = frame.run("SELECT GET_LOCK(?, 50)", [key], "utility")["rows"]
             if not rows or rows[0][0] != 1:
-                raise OrmError(codes.DEADLOCK, f"lock {key} was not acquired")
+                raise transaction_conflict(f"lock {key} was not acquired")
             frame.locks.append(key)
         elif driver == "postgres":
             frame.run(POSTGRES_ADVISORY_LOCK, [key], "utility")
@@ -563,9 +563,8 @@ class AesUtils:
                         update, params, "utility", tables=(entity.table,)
                     )
                     if result["affected"] != 1:
-                        raise OrmError(
-                            codes.DEADLOCK,
-                            f"aes rotation of {entity.table} changed {result['affected']} rows",
+                        raise transaction_conflict(
+                            f"aes rotation of {entity.table} changed {result['affected']} rows"
                         )
                     rotated += 1
 

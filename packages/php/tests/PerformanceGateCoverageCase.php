@@ -19,14 +19,12 @@ abstract class PerformanceGateCoverageCase extends TestCase
 
     public function testHotPathGate(): void
     {
-        $database = getenv('ORM_FEATURE_DATABASE');
-        $dsn = getenv('ORM_FEATURE_DSN');
-        if (!is_string($database) || $database === '' || !is_string($dsn) || $dsn === '') {
-            throw new RuntimeException(
-                'ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are required; run this case through make feature-check',
-            );
+        $database = static::DRIVER;
+        $name = 'BENCH_' . strtoupper($database) . '_DSN';
+        $dsn = getenv($name);
+        if (!is_string($dsn) || $dsn === '') {
+            throw new RuntimeException("$name is required; run make orm-test-servers, which starts the databases and writes it");
         }
-        Assert::assertSame(static::DRIVER, $database, 'the supplied feature database');
         if (static::NATIVE_EXTENSION) {
             Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
             $extension = getenv('POLYSPEC_ORM_EXTENSION');
@@ -54,6 +52,7 @@ abstract class PerformanceGateCoverageCase extends TestCase
         }
         // Keep the declared empty list present in the child environment.
         $env['ORM_PERF_REFUSED_LOADED'] = ',';
+        $env['ORM_PERF_DATABASE'] = $database;
         if (static::NATIVE_EXTENSION) {
             $env['ORM_PHP_MODE'] = 'extension';
         }

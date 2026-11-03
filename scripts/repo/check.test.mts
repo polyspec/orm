@@ -954,7 +954,7 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'interface-check:',
     '\tPATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test',
     'perf-check:',
-    '\t$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && node scripts/perf-test.mts',
+    '\t$(WITH_TEST_ENV) export ORM_BENCH_DSN="$$ORM_BENCH_MYSQL_DSN" && node scripts/perf-test.mts',
     'fuzz-check:',
     "\tgo test ./packages/go/engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
     '',

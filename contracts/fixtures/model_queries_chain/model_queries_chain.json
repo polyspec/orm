@@ -587,26 +587,20 @@
          "expr": {
           "sub": {
            "model": "Author",
-           "columns": [
-            "read_count"
-           ],
+           "aggregate": {
+            "agg": "sum",
+            "column": "read_count"
+           },
            "where": {
             "user_seq": {
              "eq": {
               "outer": "seq"
              }
             }
-           },
-           "order": [
-            "seq"
-           ],
-           "limit": {
-            "offset": 0,
-            "count": 1
            }
           }
          },
-         "as": "first_read"
+         "as": "read_total"
         }
        ],
        "order": [
@@ -623,21 +617,21 @@
         {
          "user_model": {
           "name": "user-2",
-          "first_read": 30,
+          "read_total": 70,
           "seq": 2
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         }
@@ -648,21 +642,21 @@
         {
          "user_model": {
           "name": "user-2",
-          "first_read": 30,
+          "read_total": 70,
           "seq": 2
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         }
@@ -673,21 +667,21 @@
         {
          "user_model": {
           "name": "user-2",
-          "first_read": 30,
+          "read_total": 70,
           "seq": 2
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         },
         {
          "user_model": {
           "name": "user-1",
-          "first_read": 10,
+          "read_total": 30,
           "seq": 1
          }
         }
@@ -728,13 +722,16 @@
      "key_by": "price",
      "expect": {
       "mysql": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
       },
       "postgres": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
       },
       "sqlite": {
-       "error": "CODEC_DECODE"
+       "error": "CODEC_DECODE",
+       "message_suffix": "collection row identity contains SQL NULL"
       }
      }
     },

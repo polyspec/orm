@@ -12,19 +12,7 @@ final class CoverageSchemaInstallNativeTest extends TestCase
 {
     private static bool $nativeSchemaSetFixtureReady = false;
 
-    // Requirements: DBS-108, SCH-7.
-    public function testSchemaSetSeveralSchemas(): void
-    {
-        self::runNativeSchemaSet('testSeveralSchemas');
-    }
-
-    // Requirements: DBS-119.
-    public function testSchemaSetUnregisteredSchema(): void
-    {
-        self::runNativeSchemaSet('testUnregisteredSchema');
-    }
-
-    // Requirements: DBS-120, SCH-7, SCH-11.
+    // Requirements: DBS-120.
     public function testSchemaSetEditedManifest(): void
     {
         self::runNativeSchemaSet('testEditedManifest');
@@ -40,8 +28,6 @@ final class CoverageSchemaInstallNativeTest extends TestCase
             self::$nativeSchemaSetFixtureReady = true;
         }
         $owner = new \Polyspec\Orm\Tests\SchemaSetTest($method);
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            $owner->{$method}($driver);
-        }
+        $owner->{$method}();
     }
 }

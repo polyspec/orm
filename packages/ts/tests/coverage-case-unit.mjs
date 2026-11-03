@@ -77,7 +77,7 @@ caseTest('coverage_case/uses-the-exact-database-assigned-to-the-owner-run', COMP
   process.env.ORM_FEATURE_DATABASE = 'sqlite';
   process.env.BENCH_SQLITE_DSN = 'sqlite:///selected.sqlite';
   try {
-    const items = featureItems('coverage_constraints_and_relations.mjs');
+    const items = featureItems('coverage_performance_gate_sqlite.mjs');
     assert.ok(items.length > 0, 'the test file has declared SQLite coverage items');
     assert.ok(items.every(item => item.database === 'sqlite' && item.dsn === 'sqlite:///selected.sqlite'));
   } finally {
