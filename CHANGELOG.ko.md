@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d72ae40e0191c919c50f4386771624a8b3e5582e2c0cf98ac9d1ace32037d314 -->
+<!-- source-sha256: 781b5efbec3abf625521f86a1824b896481724e695a83098785d269468d61b25 -->
 # 변경 이력
 
 ## Unreleased
@@ -333,6 +333,8 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- 공백이 든 `ip` column의 조건 값은 Go와 TypeScript처럼 PHP, PHP extension, Python, Rust에서도 조건을 만들 때 `CODEC_ENCODE`로 실패한다(COD-38). `INET6_ATON`으로 SQL에서 인코딩하는 MySQL에서는 NULL로 읽혀 어떤 행과도 맞지 않았고, SQLite와 PostgreSQL의 Python은 `OrmError`가 아닌 `CodecError`를 올렸다.
+- `model-ip-input-rejects-whitespace`, `model-codec-columns`, `coverage-model-create-parts`의 native 시험을 없앤다. recipe `model_writes_chain`이 그 값을 담으며, 거부되는 count, SQL NULL 쓰기, `IS NULL` 조건을 더했다.
 - 값 타입, styled SQL NULL 읽기, decimal 왕복의 native 시험은 typed getter가 돌려주는 값만 남긴다. 저장된 값, 거부, 조건, row 출력은 `conformance_verification`의 case `core_value_types`, `core_styled_null`, `core_styled_states`, `core_decimal_values`로, `i16`에 넣는 소수는 bind vector `i16-fraction`으로 옮긴다.
 - CR15-2: `scripts/features/recipes.test.mts`는 helper가 읽지 않는 recipe schema key를 거부하고, Go, Python, Rust는 `file_created`를 비교하며, PHP는 `markdown.connect`의 `corpus`와 `token`으로 연결한다.
 - 타입 값, styled null, decimal 값은 새 표 `typed_value`와 `decimal_value`의 새 case `core_value_types`, `core_styled_null`, `core_decimal_values`이고, 중첩된 ordered JSON 값은 `model_writes_chain`의 case이다. Go의 native ordered JSON 시험은 없어졌다. FCV-2는 native value unit 세 개가 남는 이유를 적는다. Go recipe 읽기의 temporal cell은 다른 runtime처럼 value model 텍스트이고, 범위를 벗어난 `i16`은 쓰기에 닿아 `CODEC_ENCODE`로 거부된다.
