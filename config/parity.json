@@ -16542,34 +16542,12 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogBytesValuePreservesNativeTimeAsText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogBytesValuePreservesNativeTimeAsText",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCatalogBytesValuePreservesNativeTimeAsText"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_temporal_test.go",
-          "id": "TestCatalogDescribedTemporalText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogDescribedTemporalText",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCatalogDescribedTemporalText"
         },
         {
           "implementation": "php",
@@ -29640,18 +29618,7 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_grid_order_test.go",
-          "id": "TestCoverageCatalogGridOrder",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCatalogGridOrder",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCoverageCatalogGridOrder"
         },
         {
           "implementation": "go",
