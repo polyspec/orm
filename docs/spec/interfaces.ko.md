@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 07ded08f84572b4b5f65ffff5bb5d6cbf0fb48ccfe2c7167667be0cdeececdae -->
+<!-- source-sha256: 21db48e4b1fd90949ced51f91819bbe85db744fcf789b14afce6040bf32e7275 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -132,7 +132,7 @@ classDiagram
 - **INT-27** Go 정적 모델 타입은 scan된 소스 코드에서 모델 생성이 찾은 각 체인을 선언한다. 그리고 Rust 정적 모델 타입도 같은 동작을 하며, TypeScript 정적 모델 타입도 같다. PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
 - **INT-28** `polyspec/orm` PHP 생성기 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다. 그리고 PHP client `polyspec/orm`의 `__call`은 동적으로 호출 이름을 해석하며, PHP-extension client `polyspec/orm-php-ext`도 같은 동작을 한다. 그리고 Python package `polyspec-orm`의 `__getattr`도 실행 시 호출 이름을 해석한다.
 
-공유 vector `terminal_by`(`tests/conformance/vectors.json`)는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
+recipe `conformance_verification`의 case `terminal_by`는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
 
 ### 5.3 실행 메서드
 

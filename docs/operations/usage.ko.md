@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: caedb94a57f6146e3fb1e0093a32303a4e5ede94270cca592f680319da79b754 -->
+<!-- source-sha256: 3faca199441db30d557595d59b2a5f1ac01cd193b22b6a36657036b1b945cef5 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -567,8 +567,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # configured implementations, identical results on MySQL
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
+make conformance-check                                   # the native conformance bodies
 ```
 
 예제: [`examples/thin-slice`](../../examples/thin-slice)(Go·PHP·Rust, 같은 JSON), [`examples/complex`](../../examples/complex)(조인·그룹·2단 관계·집계).

@@ -469,8 +469,6 @@ export function runnerIdentity(segment: string): string | undefined {
   if (wrapped) return runnerIdentity(wrapped[1] ?? '');
   // tests/go-run.mts builds and runs a Go program (checker). It is not a test runner.
   if (/^node\s+tests\/go-run\.mts\b/.test(command)) return undefined;
-  // tests/conformance/check/main.mts is a checker that builds and runs the runner, then compares and records its output. It is not a test runner.
-  if (/^node\s+tests\/conformance\/check\/main\.mts\b/.test(command)) return undefined;
   if (/^(?:go\s+test|node\s+tests\/go-test\.mts)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';

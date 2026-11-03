@@ -24,8 +24,6 @@ const readers = [
   'scripts/features/check.mts',
   'scripts/features/coverage.mts',
   'scripts/decimal-physical-check.mts',
-  'tests/conformance/check/main.mts',
-  'tests/conformance/check/result.physical.test.mts',
 ];
 // A hand-written list is a literal array that names every client implementation; a subset (such as implementedLanguages
 // of coverage.mts, which leaves Python out by feature) is not the set this test guards.
