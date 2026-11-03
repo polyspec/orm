@@ -4034,7 +4034,6 @@
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
-        "packages/php/tests/CoverageTransactionsTest.php",
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/php/models.txt"
       ]

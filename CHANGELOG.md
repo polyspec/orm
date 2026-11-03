@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `docs/spec/interfaces.md` states the savepoint of the `transaction_send` form of the Rust crate as INT-46a, and the native transactions coverage of Go, PHP and Rust is gone; the recipe `transactions` holds it.
 - The recipe `transactions` holds what the native transaction tests held: a model on no connection, the four row locks, every isolation level, a read-only write, `timeoutMs`, retry attempts, the default retry, a retry of 0, a real two-flow deadlock and the SQLite busy writer.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.

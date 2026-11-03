@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: df2502efd558309c4f5d4737e6d2a0c9b4971f24b57ce3ea32015a31ecc624a9 -->
+<!-- source-sha256: e57f50829c572748e240aa012def2972eb97fd68c6c151108148d531b95e74d3 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -107,7 +107,7 @@
   - `model.update`와 `model.delete`의 `affected` expect(F15)는 `{"value": {"int": <count>}}`이며, 연결의 마지막 쓰기가 일치시킨 행 수로, runtime의 test entry point가 보고한다(PRT-58 ~ PRT-62): Go `orm.LastAffected`, Rust `polyspec_orm::testing::last_affected`, TypeScript `lastAffected`, PHP와 PHP extension `Faults::lastAffected`, Python `polyspec.orm.testing.last_affected`. 공개 쓰기 호출은 개수를 반환하지 않는다. MySQL의 개수는 found rows이므로(CFG-10) 행이 이미 가진 값을 쓰는 쓰기도 그 행을 포함한다. API unit: client-model-terminal-write(INT-35, INT-37).
   - 시간 창 expect(F16): `{"within": {"seconds": <정수>}}`은 step 결과의 시각 값에 대한 expect 형식 하나다. 값이 database의 현재 시각과 `seconds` 이하의 절댓값 차이이면 통과한다. database의 현재 시각은 expect를 검사할 때 같은 연결에서 읽으며, 어떤 runtime도 값을 자기 벽시계와 비교하지 않는다. API: DSL-137(clock-now-condition).
   - `utils.aes_status {connection, model, keyring}`(F19)는 공개 생성자가 `keyring`(`model.connect`의 객체)으로 만든 키링과 함께 연결의 AES 유틸리티(`Utils().Aes()`, API unit `aes-utils-status`, INT-60, `aes-rotation-status`, INT-75)의 `Status`를 모델에 대해 호출한다. 생성 오류가 그 step의 오류다. expect는 `{"value": {"object": [["current", <int>], ["total", <int>], ["pending", <int>], ["versions", {"object": [["<version>", <int>], ...]}]]}}` 또는 `{"error": <code>}`다.
-  - `transaction` step 안의 중첩 `transaction` step(F20)은 savepoint다. 안쪽 실패는 바깥 callback이 오류를 돌려주지 않는 한 안쪽 작업만 되돌린다. API unit: coverage-transactions-transaction-savepoint(INT-46).
+  - `transaction` step 안의 중첩 `transaction` step(F20)은 savepoint다. 안쪽 실패는 바깥 callback이 오류를 돌려주지 않는 한 안쪽 작업만 되돌린다. API unit: `transactions-<database>`(INT-46).
   - T334-3-5 1b 단계의 query field와 op. 각 field는 그것을 지정하는 op에서 선택 사항이며 추가만 된다. 각 field는 API unit의 공개 호출에 대응하며, 어떤 field도 SQL을 담지 않는다.
   - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
   - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).

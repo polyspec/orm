@@ -3185,8 +3185,9 @@
         }
       ],
       "parity": [
-        "coverage-transactions-transaction-rollback",
-        "coverage-transactions-transaction-savepoint",
+        "transactions-mysql",
+        "transactions-postgres",
+        "transactions-sqlite",
         "transaction-failure-rollback",
         "transaction-failure-rollback-fault",
         "php-internal-rollback-rollback-fault",
@@ -3194,10 +3195,13 @@
         "transaction-control-methods-are-private",
         "mysql-lock-wait-canceled",
         "transaction-execution-flow-context",
-        "transaction-flow-overlap-rejected"
+        "transaction-flow-overlap-rejected",
+        "transaction-audit-lazy-fake-pdo",
+        "transaction-send-savepoint"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
+        "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/model/coverage_helpers_test.go",
@@ -3239,9 +3243,6 @@
         "packages/php/tests/SessionStateTest.php",
         "packages/rust/orm/tests/session_state.rs",
         "packages/go/orm/transaction_end_test.go",
-        "packages/go/model/coverage_transactions_test.go",
-        "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/rust/tests/tests/integration/coverage_transactions.rs",
         "packages/ts/tests/coverage_transactions.mjs",
         "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
@@ -3290,7 +3291,20 @@
         "packages/php-ext/tests/RollbackTestExtensionTest.php",
         "packages/php-ext/tests/SessionStateTestExtensionTest.php",
         "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
-        "packages/php-ext/tests/StatementFaultTestExtensionTest.php"
+        "packages/php-ext/tests/StatementFaultTestExtensionTest.php",
+        "packages/go/orm/recipe_transactions_test.go",
+        "packages/php/tests/TransactionsRecipeTest.php",
+        "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+        "packages/ts/tests/transactions-mysql.test.mjs",
+        "packages/ts/tests/transactions-postgres.test.mjs",
+        "packages/ts/tests/transactions-sqlite.test.mjs",
+        "packages/python/tests/test_transactions_mysql.py",
+        "packages/python/tests/test_transactions_postgres.py",
+        "packages/python/tests/test_transactions_sqlite.py",
+        "packages/rust/tests/tests/transactions_mysql.rs",
+        "packages/rust/tests/tests/transactions_postgres.rs",
+        "packages/rust/tests/tests/transactions_sqlite.rs",
+        "packages/php-ext/tests/AuditLazyFakePdoTest.php"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -3595,27 +3609,27 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "transaction_rollback",
-          "transaction_savepoint"
+          "transactions"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_transactions_test.go"
+              "packages/go/orm/recipe_transactions_test.go"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                    "transactions": "TestRecipeTransactionsMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3623,14 +3637,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                    "transactions": "TestRecipeTransactionsPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3638,14 +3650,12 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
+                    "transactions": "TestRecipeTransactionsSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3655,20 +3665,21 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageTransactionsTest.php"
+              "packages/php/tests/TransactionsRecipeTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3676,14 +3687,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3691,14 +3700,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3708,20 +3715,23 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_transactions.rs"
+              "packages/rust/tests/tests/transactions_mysql.rs",
+              "packages/rust/tests/tests/transactions_postgres.rs",
+              "packages/rust/tests/tests/transactions_sqlite.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_mysql.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                    "transactions": "transactions_mysql::transactions"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3729,14 +3739,12 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_postgres.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                    "transactions": "transactions_postgres::transactions"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3744,14 +3752,12 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_sqlite.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
+                    "transactions": "transactions_sqlite::transactions"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3761,16 +3767,29 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/transactions-mysql.test.mjs",
+              "packages/ts/tests/transactions-postgres.test.mjs",
+              "packages/ts/tests/transactions-sqlite.test.mjs",
               "packages/ts/tests/coverage_transactions.mjs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-mysql.test.mjs",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3778,10 +3797,17 @@
               "postgres": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-postgres.test.mjs",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3789,10 +3815,17 @@
               "sqlite": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3802,16 +3835,29 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
+              "packages/python/tests/test_transactions_mysql.py",
+              "packages/python/tests/test_transactions_postgres.py",
+              "packages/python/tests/test_transactions_sqlite.py",
               "packages/python/tests/coverage_transactions.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_mysql.py",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3819,10 +3865,17 @@
               "postgres": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_postgres.py",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3830,10 +3883,17 @@
               "sqlite": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_sqlite.py",
+                  "cases": [
+                    "transactions"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3843,23 +3903,22 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageTransactionsExtensionTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/AuditLazyFakePdoTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageTransactionsTest.php"
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3867,14 +3926,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3882,14 +3939,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "transactions"
                   ],
                   "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
+                    "transactions": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
