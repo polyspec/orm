@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: e89bdece03fcf3bbab1cd49c48eea00857f4703dd78ceb4b5bdc789df8b0fa0b -->
+<!-- source-sha256: 7a633a462c1e8b99f213fe4f4397b43dc2a87e3541b124623c0bed703373106c -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
