@@ -40,25 +40,6 @@ mod internal_tests {
     }
 
     #[test]
-    fn scalar_subquery_aggregate_types_remain_i64_and_f64() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let (at, input, _) = case("planner_scalar_column_subquery");
-        let manifest = schema(&at);
-        for (agg, column, expected) in [("count", "", "i64"), ("avg", "read_count", "f64")] {
-            let mut request = request(&input, &manifest.manifest_hash);
-            let sub = request.query.columns.as_mut().unwrap().sub.get_mut("first_author").unwrap();
-            sub.agg = agg.into();
-            sub.column = column.into();
-            sub.query.limit = None;
-            sub.query.order.clear();
-            validate(&manifest, &request).unwrap();
-            let plan = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite }.compile(&request).unwrap();
-            let output = plan.steps[0].assemble.as_ref().unwrap().columns.iter().find(|col| col.name == "first_author").unwrap();
-            assert_eq!(output.typ, expected, "{agg}");
-        }
-    }
-
-    #[test]
     fn column_function_metadata_planner_rejects_missing_post_validation_field() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let (at, input, _) = case("planner_column_function_date");

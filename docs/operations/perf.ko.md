@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: c2a07d17a0dd6ab528872873c646c09ea47835c6e6b829f18f5b919fcc458ac5 -->
+<!-- source-sha256: 757b7e3cf9cc4f363a63d7f31f12e5b62ab803dd9eaac7beb1098e2f3146ee13 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -42,7 +42,7 @@
 
 SQL projection과 bind, 기대한 PK 결과와 정렬된 결과는 세 데이터베이스에서 `conformance_verification`의 case `core_projected_reads`다. 이 case는 시간을 재지 않으며 측정 case를 대신하지 않는다.
 
-`make perf-check`의 별도 Go/PHP 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드한 MySQL 벤치 데이터베이스를 읽고, feature coverage의 timing은 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다. 필요한 DSN이 없으면 검사에 실패하며, 요청하지 않은 로컬/다른 database로 대체하지 않는다.
+`make perf-check`의 별도 Go/PHP 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드한 MySQL 벤치 데이터베이스를 읽고, `make perf-check`가 함께 실행하는 Go 측정과 feature coverage의 timing은 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다. 필요한 DSN이 없으면 검사에 실패하며, 요청하지 않은 로컬/다른 database로 대체하지 않는다.
 
 변환을 포함한 기준 코드에서 PHP 8.4.25 로컬 소켓은 PK 비율 1.20–1.31, 100행 비율 1.06–1.12를 보였다. PK 비율은 쿼리당 약 10.5µs인 요청 조립과 계획 고정 비용이 지배한다.
 

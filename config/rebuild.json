@@ -206,10 +206,6 @@
       "kind": "ecosystem",
       "tool": "node:net listening on port 0, which the operating system answers with a free port"
     },
-    "scripts/group-rows-physical-check.mts": {
-      "kind": "policy",
-      "reason": "the physical rule of this repository that the grouped-result owners leave the same database state twice"
-    },
     "scripts/install-cli.mts": {
       "kind": "policy",
       "reason": "installs dbspec-fmt under a declared prefix without a symbolic link, the path rule of polyspec (as polyspec/template installs template-fmt); npm link would make a symlink"

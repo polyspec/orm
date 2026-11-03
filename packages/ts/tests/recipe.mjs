@@ -11,6 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
+import { lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -21,10 +22,11 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
-import { withCaseDatabase } from './case-database.mjs';
+import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
+import { applyOps } from './recipe_apply.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -531,7 +533,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -764,6 +766,22 @@ const OPS = {
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
   },
+  // Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+  // handle KILL on its own.
+  async 'session.end'(s, context) {
+    const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
+    const server = process.env[variable];
+    if (!server) throw new Error(`${variable} is required; database tests never skip`);
+    const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
+    const postgres = context.database === 'postgres';
+    const [rows] = await nativeQuery(context.database, session, [postgres
+      ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+    if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
+    const id = Number(Object.values(rows[0])[0]);
+    await nativeQuery(context.database, session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    return {};
+  },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
   // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
   // fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it.
@@ -834,11 +852,14 @@ const OPS = {
   },
 };
 
+// The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
+const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
+
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
 const OP_DEADLINE_MS = 20000;
 
 async function runStep(s, context) {
-  const op = OPS[s.op] ?? MODEL_OPS[s.op];
+  const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
@@ -850,7 +871,7 @@ async function runStep(s, context) {
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
   let actual;
   try {
-    actual = await within(Promise.resolve().then(() => op(s, context)), OP_DEADLINE_MS, `${s.op} on ${context.database}`);
+    actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;
@@ -859,6 +880,10 @@ async function runStep(s, context) {
     if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
     if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    if (expected.rollback !== undefined) {
+      assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
+      assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
+    }
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
@@ -1880,6 +1905,7 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  'db.last_affected': (s, context) => ({ value: { int: String(lastAffected(connectionOf(s, context))) } }),
   async 'db.notify'(s, context) {
     await connectionOf(s, context).notify(s.channel, s.payload);
     return {};
@@ -2046,7 +2072,9 @@ Object.assign(OPS, {
   },
   async 'events.fail_subscriber'(s, context) {
     const stop = connectionOf(s, context).subscribe(event => {
-      if (event.kind === s.kind) throw new Error('subscriber refused the event');
+      if (event.kind === s.kind) {
+        throw s.refusal === undefined ? new Error('subscriber refused the event') : new OrmError(s.refusal.code, s.refusal.message);
+      }
     });
     return { bind: { stop } };
   },
@@ -2321,7 +2349,13 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
-        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
+        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+        if (expect.diagnostics !== undefined) {
+          assert.ok(error.message.startsWith(`${expect.error}: `), error.message);
+          const problems = error.message.slice(expect.error.length + 2).split('; ');
+          assert.equal(problems.length, expect.diagnostics.length, error.message);
+          problems.forEach((problem, i) => assert.ok(problem.startsWith(`${expect.diagnostics[i]}: `), error.message));
+        }
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');

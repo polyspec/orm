@@ -104,6 +104,25 @@
               "error": "CONFIG"
             }
           }
+        },
+        {
+          "op": "utils.set_local",
+          "connection": "conn",
+          "name": "ormtest.actor",
+          "value": {
+            "text": "tester"
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
         }
       ]
     },
