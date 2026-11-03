@@ -2854,8 +2854,10 @@
         "tests/dbspec/schema-definition.json",
         "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
-        "tests/dbspec/rules.json"
+        "tests/dbspec/rules.json",
+        "tests/dbspec/dialect-refusal.json"
       ]
     },
     "model-types-php-extension-check": {

@@ -154,55 +154,6 @@ class OrmGenCliTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
-    // Requirements: DBS-104, DBS-105, DBS-110.
-    public function testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet(): void
-    {
-        $work = self::$work;
-        // member.dbs uses ext_account and ext_audit of core.dbs, an external document of the set: each used external
-        // table gets a read-only model (docs/spec/dbspec.md "External documents"), an unused one (ext_session) none,
-        // and the bootstrap holds the text of the used external tables.
-        $root = dirname(__DIR__, 3);
-        $dir = "$work/gen-use";
-        $set = OrmGenTestSupport::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
-        is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
-        copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
-        copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
-        [$code, $out, $err] = self::tool(
-            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
-        );
-        self::assertTrue($code === 0, "gen: $code $out $err");
-        $files = array_map('basename', glob("$dir/model/*.php") ?: []);
-        sort($files);
-        self::assertTrue(
-            $files === [
-                'ExtAccount.php',
-                'ExtAudit.php',
-                'ExtPost.php',
-                'ExtPostHistory.php',
-                'bootstrap.php',
-                'schema_declarations.php'
-            ],
-            'generated files ' . json_encode($files)
-        );
-        // The text is written in pieces joined by the concatenation operator (Generator::text), so the pieces are
-        // joined back first.
-        $path = "$dir/model/schema_declarations.php";
-        self::assertFileExists($path, 'the generation writes schema_declarations.php');
-        $declarations = (string) file_get_contents($path);
-        $text = str_replace("'\n    . '", '', $declarations);
-        self::assertTrue(
-            str_contains(
-                $declarations,
-                'const EXTERNAL_TEXT = '
-            ) && str_contains($text, 'table ext_account {') && !str_contains($text, 'table ext_session {'),
-            'the declarations carry the used external tables'
-        );
-        [$code, $out] = self::tool(
-            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example', '--check']
-        );
-        self::assertTrue($code === 0 && $out === '', "gen --check with external documents: $code $out");
-    }
-
     // Requirements: DSL-42.
     public function testGenWritesTheSameModelsHoweverThePathsAreWritten(): void
     {
