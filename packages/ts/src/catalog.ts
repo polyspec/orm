@@ -775,7 +775,8 @@ function declaredTemporalPrecision(column: CatalogColumn, dialect: string): numb
 }
 
 function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string, dialect: string): Array<{ index: number; value: DriverValue }> {
-  if (values.length === 0 || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
+  // A key of defaults alone takes no assignment (INT-123).
+  if ((values.length === 0 && code !== CODE_INSERT_INVALID) || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
   const params = checkParams(values.map(assignment => assignment.value), CODE_PARAM);
   const seen = new Set<string>();
   return values.map((assignment, position) => {
@@ -1087,7 +1088,7 @@ class Session {
       if (ordinal > 0) keys.push({ ordinal, index: columns.length });
       columns.push(column);
     }
-    if (this.dialect === 'sqlite') {
+    if (this.dialect === 'sqlite' && kind === 'table') {
       // The dbspec renderer writes the fraction digits of a TIME or DATETIME column into a CHECK of the table's own definition.
       const tables = (await this.plainRows("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ref.name], 2, METADATA_BYTES)).rows;
       const [tableRow] = tables;
@@ -1503,7 +1504,10 @@ export class CatalogConnection {
       }
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
       const marks = changes.map((_, index) => placeholder(index + 1, this.dialect));
-      const insert = `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`;
+      const target = `INSERT INTO ${qualified(descriptor.table, this.dialect)}`;
+      const insert = names.length > 0
+        ? `${target} (${names.join(',')}) VALUES (${marks.join(',')})`
+        : this.dialect === 'mysql' ? `${target} () VALUES ()` : `${target} DEFAULT VALUES`;
       let after: CatalogValue[][];
       if (omittedKeys.length > 0 && this.dialect !== 'mysql') {
         const returning = quoteList(descriptor.columns.map(column => column.name), this.dialect);

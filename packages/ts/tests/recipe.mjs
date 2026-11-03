@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { lastAffected } from '../dist/testing.js';
+import { failNextRollback, lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -22,9 +22,10 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
+import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
 import { classesFromModel } from './registered_models.mjs';
@@ -79,6 +80,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
+          else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
@@ -86,6 +88,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
+          else if (step.op === 'generator.refused') checkRefusedGeneration(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -145,6 +148,32 @@ async function checkMarkdownConnect(step, database) {
     await server.close();
   }
   if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
+// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+async function checkMarkdownSession(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).on('line', line => {
+      received.push(line);
+      if (received.length <= step.replies.length) socket.write(`${step.replies[received.length - 1]}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  let failure;
+  try {
+    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+    await db.transaction(() => undefined).catch(error => { failure = error; });
+  } finally {
+    await db.close();
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, step.messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(step.messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
   if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
 }
@@ -505,6 +534,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -539,6 +569,9 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {
@@ -682,6 +715,10 @@ const OPS = {
     const snapshot = stepArgument(s.snapshot, context);
     return { value: { text: snapshot.revision } };
   },
+  async 'catalog.revision_compare'(s, context) {
+    const { revision } = stepArgument(s.snapshot, context);
+    return { json: { length: revision.length, differs: revision !== stepArgument(s.other, context).revision } };
+  },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
   },
@@ -717,7 +754,7 @@ const OPS = {
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
-    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
@@ -725,6 +762,18 @@ const OPS = {
     if (s.page_with?.column_name !== undefined) {
       const [first, ...rest] = page.metadata.columns;
       page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
+    if (s.page_with?.primary_key !== undefined) page.metadata = { ...page.metadata, primaryKey: s.page_with.primary_key };
+    if (s.page_with?.limit !== undefined) page.limit = s.page_with.limit;
+    if (s.page_with?.result_column_name !== undefined) {
+      const [first, ...rest] = page.result.columns;
+      page.result = { ...page.result, columns: [{ ...first, name: s.page_with.result_column_name }, ...rest] };
+    }
+    if (s.page_with?.drop_last_cell === true || s.page_with?.fill_last_cell !== undefined) {
+      const [first, ...rest] = page.result.rows;
+      const row = s.page_with.drop_last_cell === true ? first.slice(0, -1) : [...first];
+      if (s.page_with.fill_last_cell !== undefined) row[row.length - 1] = s.page_with.fill_last_cell.fill.repeat(s.page_with.fill_last_cell.count);
+      page.result = { ...page.result, rows: [row, ...rest] };
     }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
@@ -1154,8 +1203,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }
@@ -1546,8 +1597,11 @@ function chainValue(raw, context) {
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
   if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
+  const field = m[CORE].ent.entity.fields.find(entry => entry.name === column);
+  // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+  if ('null' in raw && field !== undefined && styledField(field)) return StyledValue.sqlNull();
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
+  return styledArgument(raw, field?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1580,6 +1634,7 @@ class ChainBuild {
       if (name === 'and' || name === 'or') return this.group(m, conn, name, value);
       if (name === 'not') return m[CORE].negated(conn, group => this.predicate(group, '', value));
       if (name === 'placed') {
+        if (value.model !== undefined) return m[CORE].connector(conn, [coreModel(value.model, this.context)]);
         if (!this.joined.has(value)) throw new Error(`placed ${value} names no join`);
         return m[CORE].connector(conn, [this.joined.get(value)]);
       }
@@ -1685,13 +1740,15 @@ class ChainBuild {
       if (join.alias !== undefined) child[CORE].alias = snakeOf(join.alias);
       if (join.on !== undefined) child[CORE].setOn(group => inner.predicate(group, '', join.on));
       inner.query(child, join);
+      if (join.connect === true) child.connect(this.db);
       m[CORE].join(join.kind ?? 'inner', join.match[0], join.match[1], child);
       if (join.as !== undefined) this.joined.set(join.as, child);
     }
     for (const relation of q.relations ?? []) m[CORE].relation(relation.many === true, this.relation(relation));
     if (q.where !== undefined) this.predicate(m, '', q.where);
     for (const entry of q.order ?? []) {
-      if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
+      if (entry.random === true) m.orderByRandom();
+      else if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
       else if (entry.fn !== undefined) m[CORE].orderBy(fnColumn(entry.fn), entry.dir === 'desc', [chainFunc(entry.fn)]);
       else m[CORE].orderBy(entry.column, entry.dir === 'desc', []);
     }
@@ -1772,6 +1829,7 @@ function chainBuilt(s, context) {
   const model = coreModel(s.model, context);
   const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
+  if (s.unconnected !== true) build.db = connectionOf(s, context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
   if (!paged && s.offset !== undefined && s.limit !== undefined) m.limit(s.offset, typeof s.limit === 'number' ? s.limit : s.limit.count);
@@ -1797,7 +1855,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
@@ -1838,11 +1897,13 @@ const TABLE_OPS = {
       return { json: plainJson(row.value(s.group_value)) };
     }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
-    if (s.page === true) {
+    if (s.page === true || s.plan_page !== undefined) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
-      if (!(count > 0)) throw new Error('a page needs a limit count above 0');
+      if (s.plan_page === undefined && !(count > 0)) throw new Error('a page needs a limit count above 0');
       const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
-      const page = await m.getsPage(Math.floor(offset / count) + 1, count);
+      const page = s.plan_page === undefined
+        ? await m.getsPage(Math.floor(offset / count) + 1, count)
+        : await m.getsPage(s.plan_page.page, s.plan_page.per_page);
       const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
       if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
       return fields;
@@ -2059,6 +2120,10 @@ Object.assign(OPS, {
     subscription.stop = connectionOf(s, context).subscribe(event => recordEvent(subscription, event));
     return { bind: subscription };
   },
+  async 'fault.next_rollback'(s, context) {
+    failNextRollback(connectionOf(s, context));
+    return {};
+  },
   async 'events.fail_subscriber'(s, context) {
     const stop = connectionOf(s, context).subscribe(event => {
       if (event.kind === s.kind) {
@@ -2086,6 +2151,42 @@ Object.assign(OPS, {
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
+  // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+  // server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+  async 'events.server_transactions'(s, context) {
+    const db = connectionOf(s, context);
+    const frameRows = async text => (await db.utils().run(frame => frame.run('utility', [], text, []))).rows;
+    const probe = async () => Number((await frameRows(s.probe))[0][0]);
+    const fields = {};
+    if (context.database === 'postgres') {
+      const [[setting, source]] = await frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+      // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+      const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+      fields.time_zone = setting;
+      fields.time_zone_from_startup = pooled || source === 'client';
+    }
+    const first = await probe();
+    let before = await probe();
+    const cost = before - first;
+    for (const run of ['first', 'second']) {
+      const texts = [];
+      const stop = db.subscribe(event => { texts.push(event.sql); });
+      try {
+        for (const nested of s.steps) await runStep(nested, context);
+      } finally {
+        stop();
+      }
+      const after = await probe();
+      const spent = after - before - cost;
+      before = after;
+      const distinct = new Set(texts).size;
+      fields[`${run}_excess`] = spent - texts.length - (run === 'first' && s.first_run_prepare_clients.includes('typescript') ? distinct : 0);
+      fields.events = texts.length;
+      fields.texts = distinct;
+    }
+    fields.probe_cost = cost;
+    return fields;
   },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
@@ -2443,12 +2544,37 @@ async function withProcessZone(zone, work) {
   }
 }
 
+// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+function refusedSurface(surface, db) {
+  const empty = () => undefined;
+  const calls = {
+    audit: () => db.transaction(empty, { audit: { actor: 'tester' } }),
+    isolation: () => db.transaction(empty, { isolation: 'serializable' }),
+    timeout_ms: () => db.transaction(empty, { timeoutMs: 100 }),
+    get_query: () => new Slots().connect(db).getQuery(),
+    subscribe: async () => db.subscribe(empty),
+    lock: () => db.utils().lock('k'),
+    set_local: () => db.utils().setLocal('k', 'v'),
+    local: () => db.utils().local('k'),
+    backend_waiting_for_lock: () => db.utils().backendWaitingForLock(),
+    privileges: () => db.utils().privileges().inspectTable('public.items'),
+    aes_status: () => db.utils().aes().status(null, null),
+    aes_rotate: () => db.utils().aes().rotate(null, null),
+    schema_install: () => db.utils().schema().install(null),
+    schema_evolution: () => db.utils().schema().addTablesAndColumns(null),
+    schema_exists: () => db.utils().schema().exists('orm'),
+  };
+  if (calls[surface] === undefined) throw new Error(`markdown.send surface ${surface} has no call in the TypeScript cases`);
+  return calls[surface]();
+}
+
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
   await checkFirst(async db => {
-    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    if (step.surface !== undefined) await refusedSurface(step.surface, db);
+    else if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
 }
@@ -2480,6 +2606,7 @@ async function checkApplyFault(step, bound, database) {
   let failAt = 0;
   let cause;
   let fail = new Map();
+  let noRow = [];
   const connection = {
     exec(sql) {
       if (fail.has(sql)) throw fail.get(sql);
@@ -2490,6 +2617,7 @@ async function checkApplyFault(step, bound, database) {
         reads++;
         if (reads === failAt) throw cause;
       }
+      if (noRow.includes(sql)) return { all: () => [], get: () => undefined, setReturnArrays: () => undefined };
       return db.prepare(sql);
     },
   };
@@ -2500,6 +2628,7 @@ async function checkApplyFault(step, bound, database) {
       cause = new Error('catalog read failed');
       failAt = reads + step.fail_catalog_read;
     }
+    noRow = step.no_row_queries ?? [];
     fail = new Map((step.fail_statements ?? []).map(f => [
       f.statement,
       Object.assign(new Error(f.message), f.sqlite_result === undefined ? {} : { errcode: f.sqlite_result }),

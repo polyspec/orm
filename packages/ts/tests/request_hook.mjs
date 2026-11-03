@@ -10,7 +10,7 @@ import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { cases, runOn } from './request_hook_run.mjs';
 
 // Requirements by case of request_hook_run.mjs (what the recipe request_hook cannot state, FCV-4):
-// without_hook: INT-78.
+// without_hook: INT-78a.
 // reads_params: INT-78.
 let failures = 0;
 for (const [name, run] of Object.entries(cases)) {

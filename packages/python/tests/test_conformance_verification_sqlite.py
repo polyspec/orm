@@ -1,4 +1,4 @@
-# Requirements: DIA-11, DIA-14, DIA-37, DSL-137, DSL-139, DSL-144, PRT-77.
+# Requirements: DIA-11, DIA-14, DIA-37, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, PRT-77.
 # The suite unit conformance_verification-sqlite (docs/spec/feature-coverage.md FCV-3): the recipe
 # contracts/fixtures/conformance_verification/conformance_verification.json on sqlite.
 from .recipe import recipe_tests

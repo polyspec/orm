@@ -46,6 +46,7 @@ type chainOrder struct {
 	Column string   `json:"column"`
 	Fn     *chainFn `json:"fn"`
 	Dir    string   `json:"dir"`
+	Random bool     `json:"random"`
 }
 
 // UnmarshalJSON reads an order entry: an object, or a column name that is descending when it begins with "-" (FCV-4).
@@ -90,11 +91,12 @@ type chainFn struct {
 
 type chainJoin struct {
 	chainQuery
-	Kind  string          `json:"kind"`
-	Match []string        `json:"match"`
-	On    json.RawMessage `json:"on"`
-	As    string          `json:"as"`
-	Alias string          `json:"alias"`
+	Kind    string          `json:"kind"`
+	Match   []string        `json:"match"`
+	On      json.RawMessage `json:"on"`
+	As      string          `json:"as"`
+	Alias   string          `json:"alias"`
+	Connect bool            `json:"connect"`
 }
 
 type chainRelation struct {
@@ -167,6 +169,7 @@ type chainBuild struct {
 	c      *databaseContext
 	joined map[string]*orm.Core
 	outer  *orm.Core
+	db     *orm.DB // the connection of the step, for a join that names connect
 }
 
 // snakeOf is the table of a model name as the generator spells it: CompositeAccount is composite_account.
@@ -357,6 +360,13 @@ func (b *chainBuild) predicate(core *orm.Core, conn string, raw json.RawMessage)
 			core.AddNegatedGroup(conn, g)
 			return nil
 		case "placed":
+			var unjoined struct {
+				Model string `json:"model"`
+			}
+			if err := json.Unmarshal(members[0].value, &unjoined); err == nil {
+				core.Connector(conn, []any{chainCore(unjoined.Model, b.c).Self()})
+				return nil
+			}
 			var name string
 			if err := json.Unmarshal(members[0].value, &name); err != nil {
 				return err
@@ -729,6 +739,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 		if kind == "" {
 			kind = "inner"
 		}
+		if j.Connect {
+			child.Connect(b.db)
+		}
 		core.Join(kind, j.Match[0], j.Match[1], child.Self())
 		if j.As != "" {
 			b.joined[j.As] = child
@@ -747,6 +760,10 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 		}
 	}
 	for _, o := range q.Order {
+		if o.Random {
+			core.OrderByRandom()
+			continue
+		}
 		var fn []orm.Func
 		column := o.Column
 		if o.Fn != nil {
@@ -972,7 +989,7 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	if s.Page {
 		q.Limit = nil
 	}
-	build := &chainBuild{c: c, joined: map[string]*orm.Core{}}
+	build := &chainBuild{c: c, joined: map[string]*orm.Core{}, db: db}
 	if err := build.query(core, q); err != nil {
 		return nil, err
 	}
@@ -1076,7 +1093,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		if s.Limit != nil {
 			limit = chainLimit{Offset: limit.Offset + s.Offset + s.Limit.Offset, Count: s.Limit.Count}
 		}
-		return chainPage(s, core, limit, c)
+		return chainPage(s, core, limit.Offset/max(limit.Count, 1)+1, limit.Count, c)
+	case s.PlanPage != nil:
+		return chainPage(s, core, s.PlanPage.Page, s.PlanPage.PerPage, c)
 	}
 	rows, err := orm.Gets[*tableRow](core)
 	if err != nil {
@@ -1230,11 +1249,11 @@ func chainPlanSteps(steps []orm.QueryPlanStep, texts []string, withSQL bool) []a
 }
 
 // chainPage runs GetsPage: the keys and the counts of the page, and the rows and total of a rows expect.
-func chainPage(s chainStep, core *orm.Core, limit chainLimit, c *databaseContext) (outcome, error) {
-	if limit.Count <= 0 {
+func chainPage(s chainStep, core *orm.Core, number, count int, c *databaseContext) (outcome, error) {
+	if count <= 0 && s.PlanPage == nil {
 		return outcome{}, fmt.Errorf("a page needs a limit count above 0")
 	}
-	page, err := orm.GetsPage[*tableRow](core, limit.Offset/limit.Count+1, limit.Count)
+	page, err := orm.GetsPage[*tableRow](core, number, count)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -1312,7 +1331,9 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 // terminal. The written model is bound with as, and its toArray is the result.
 func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	core := chainCore(s.Model, c)
-	core.Connect(db)
+	if !s.Unconnected {
+		core.Connect(db)
+	}
 	if err := chainAssign(core, s.Values, c); err != nil {
 		return outcome{}, err
 	}

@@ -159,6 +159,10 @@ final class Recipe
                     RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
                     continue;
                 }
+                if ($step['op'] === 'generator.refused') {
+                    RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
@@ -189,6 +193,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'dbspec.introspect_sqlite') {
                     self::dbspecIntrospectSqliteStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.session') {
+                    self::markdownSessionStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'markdown.connect') {
@@ -346,12 +354,17 @@ final class Recipe
         if (isset($outcome['error'])) {
             foreach ($dialects as $dialect) {
                 $code = 'no error';
+                $message = '';
                 try {
                     (new Engine($model, $dialect, 8))->compile($request);
                 } catch (OrmException $error) {
                     $code = $error->code_;
+                    $message = $error->getMessage();
                 }
                 Assert::assertSame($outcome['error'], $code, "$dialect planner.compile");
+                if (isset($outcome['message'])) {
+                    Assert::assertSame($outcome['message'], $message, "$dialect planner.compile message");
+                }
             }
             return;
         }
@@ -757,8 +770,9 @@ final class Recipe
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
         $message = '';
+        $port = parse_url($server[2], PHP_URL_PORT);
         try {
-            self::connectDriver($server[2]);
+            self::connectDriver("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}");
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
@@ -770,6 +784,64 @@ final class Recipe
         );
         Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
         Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+    }
+
+    /**
+     * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+     */
+    private static function markdownSessionStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
+        $db = Orm::connect($server[2], new Config());
+        $code = null;
+        $message = '';
+        $empty = static function (): void {
+        };
+        $db->transaction(static function () use ($db, $empty): void {
+            $db->transaction($empty);
+        }, readOnly: true);
+        try {
+            $db->transaction($empty);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        $db->close();
+        Assert::assertSame(
+            $step['messages'],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'], $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+    }
+
+    /** The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189). */
+    private static function refusedSurface(string $surface, mixed $db): void
+    {
+        $empty = static function (): void {
+        };
+        $model = new \Polyspec\Orm\Tests\BindModel\Slots();
+        $keyring = new \Polyspec\Orm\AesKeyring([1 => 'key'], 1);
+        $schema = new \Polyspec\Orm\Schema('', '');
+        match ($surface) {
+            'audit' => $db->transaction($empty, audit: ['actor' => 'tester']),
+            'isolation' => $db->transaction($empty, isolation: 'serializable'),
+            'timeout_ms' => $db->transaction($empty, timeoutMs: 100),
+            'get_query' => $model->connect($db)->getQuery(),
+            'subscribe' => $db->subscribe($empty),
+            'lock' => $db->utils()->lock('k'),
+            'set_local' => $db->utils()->setLocal('k', 'v'),
+            'local' => $db->utils()->local('k'),
+            'backend_waiting_for_lock' => $db->utils()->backendWaitingForLock(),
+            'privileges' => $db->utils()->privileges()->inspectTable('public.items'),
+            'aes_status' => $db->utils()->aes()->status($model, $keyring),
+            'aes_rotate' => $db->utils()->aes()->rotate($model, $keyring),
+            'schema_install' => $db->utils()->schema()->install($schema),
+            'schema_evolution' => $db->utils()->schema()->addTablesAndColumns($schema),
+            'schema_exists' => $db->utils()->schema()->exists('orm'),
+        };
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -1533,7 +1605,9 @@ final class Recipe
     {
         self::loadBindModels();
         [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
-            if (array_key_exists('begin', $step)) {
+            if (array_key_exists('surface', $step)) {
+                self::refusedSurface($step['surface'], $db);
+            } elseif (array_key_exists('begin', $step)) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
@@ -1557,7 +1631,8 @@ final class Recipe
             . "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
         $plans = [self::dbspecBound($step['plan'], $bound)];
         $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable('2026-10-01T00:00:00Z');
-        $pdo = dbspec_failing_pdo('dbspec_apply_fault', []);
+        $noRow = array_fill_keys($step['no_row_queries'] ?? [], 'SELECT 1 WHERE 0');
+        $pdo = dbspec_failing_pdo('dbspec_apply_fault', [], $noRow);
         if (($step['applied_first'] ?? false) === true) {
             Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         }
@@ -2318,6 +2393,11 @@ final class Recipe
                         }
                     }
                 }
+                foreach ([$recipe['seed']['after'] ?? null, $case['seed']['after'] ?? null] as $after) {
+                    if ($after !== null && (!isset($after['only']) || in_array($database, $after['only'], true))) {
+                        self::databaseStep($after, $context);
+                    }
+                }
                 foreach ($case['steps'] as $index => $step) {
                     // A step with `only` runs on the databases that it names, and no other.
                     if (isset($step['only']) && !in_array($database, $step['only'], true)) {
@@ -2564,6 +2644,8 @@ final class Recipe
                 return ['value' => ['int' => (string) $context['attempts']]];
             case 'transaction.deadlock':
                 return self::transactionDeadlock($s, $context);
+            case 'events.server_transactions':
+                return self::serverTransactions($s, $context);
             case 'catalog.connect':
                 return self::connectOp($s, $context);
             case 'catalog.close':
@@ -2588,6 +2670,12 @@ final class Recipe
             case 'catalog.revision':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 return ['value' => ['text' => $snapshot->revision()]];
+            case 'catalog.revision_compare':
+                $revision = self::stepArgument($s['snapshot'], $context)->revision();
+                return ['json' => [
+                    'length' => strlen($revision),
+                    'differs' => $revision !== self::stepArgument($s['other'], $context)->revision(),
+                ]];
             case 'catalog.row_cells':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2653,7 +2741,7 @@ final class Recipe
             case 'catalog.read_only_grid_query':
                 $result = $catalog->readOnlyGridQuery(
                     self::sqlField($s['sql'], $context),
-                    [],
+                    array_map(self::nativeValue(...), $s['binds'] ?? []),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
@@ -2704,6 +2792,44 @@ final class Recipe
                             $page->hasMore,
                         );
                     }
+                    $with = $s['page_with'];
+                    if (isset($with['primary_key'])) {
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $page->metadata->columns,
+                                $with['primary_key'],
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
+                    if (isset($with['limit']) || isset($with['result_column_name']) || isset($with['drop_last_cell']) || isset($with['fill_last_cell'])) {
+                        $columns = $page->result->columns;
+                        $rows = $page->result->rows;
+                        if (isset($with['result_column_name'])) {
+                            $columns[0] = $with['result_column_name'];
+                        }
+                        if (isset($with['drop_last_cell'])) {
+                            array_pop($rows[0]);
+                        }
+                        if (isset($with['fill_last_cell'])) {
+                            $rows[0][array_key_last($rows[0])] = str_repeat($with['fill_last_cell']['fill'], $with['fill_last_cell']['count']);
+                        }
+                        $page = new CatalogTablePage(
+                            $page->metadata,
+                            new CatalogResult($columns, $rows),
+                            $with['limit'] ?? $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2734,6 +2860,10 @@ final class Recipe
                 $recording = new RecipeRecording();
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'fault.next_rollback':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
+                return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
                 $refusal = $s['refusal'] ?? null;
@@ -3366,6 +3496,60 @@ final class Recipe
     }
 
     /**
+     * events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+     * server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+     *
+     * @param array<string, mixed> $s
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    private static function serverTransactions(array $s, array &$context): array
+    {
+        $db = self::connectionOf($s, $context);
+        $frameRows = static fn (string $text): array => $db->utils()->run(
+            static fn (TxFrame $frame): array => $frame->run('utility', [], $text, [])
+        );
+        $probe = static fn (): int => (int) array_values($frameRows($s['probe'])[0])[0];
+        $client = getenv('ORM_PHP_MODE') === 'extension' ? 'php-extension' : 'php';
+        $fields = [];
+        if ($context['database'] === 'postgres') {
+            [$setting, $source] = array_values(
+                $frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'")[0]
+            );
+            // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+            $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
+            $fields['time_zone'] = $setting;
+            $fields['time_zone_from_startup'] = $pooled || $source === 'client';
+        }
+        $first = $probe();
+        $before = $probe();
+        $cost = $before - $first;
+        foreach (['first', 'second'] as $run) {
+            $texts = [];
+            $stop = $db->subscribe(static function (StatementEvent $e) use (&$texts): void {
+                $texts[] = $e->sql;
+            });
+            try {
+                foreach ($s['steps'] as $nested) {
+                    self::databaseStep($nested, $context);
+                }
+            } finally {
+                $stop();
+            }
+            $after = $probe();
+            $spent = $after - $before - $cost;
+            $before = $after;
+            $distinct = count(array_unique($texts));
+            $prepares = $run === 'first' && in_array($client, $s['first_run_prepare_clients'], true);
+            $fields[$run . '_excess'] = $spent - count($texts) - ($prepares ? $distinct : 0);
+            $fields['events'] = count($texts);
+            $fields['texts'] = $distinct;
+        }
+        $fields['probe_cost'] = $cost;
+        return $fields;
+    }
+
+    /**
      * Two flows write two rows in opposite order (PLN-24), each a child process, as the request of PHP is one flow: each
      * holds its first row until the other holds its own, so the database ends one flow with its deadlock error, the client
      * retries it, and both commit.
@@ -3507,6 +3691,10 @@ final class Recipe
                     });
                     return;
                 case 'placed':
+                    if (is_array($value)) {
+                        $model->{$conn === '' ? 'and' : $conn}(self::chainModel($value['model'], $context));
+                        return;
+                    }
                     if (!isset($build->joined[$value])) {
                         Assert::fail("placed $value names no join");
                     }
@@ -3602,7 +3790,7 @@ final class Recipe
     /** The state of building one query. */
     private static function chainState(?Model $outer = null): object
     {
-        return (object) ['joined' => [], 'outer' => $outer];
+        return (object) ['joined' => [], 'outer' => $outer, 'db' => null];
     }
 
     /** One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name. */
@@ -3671,6 +3859,9 @@ final class Recipe
                 });
             }
             self::chainQuery($child, $join, $inner, $context);
+            if (($join['connect'] ?? false) === true) {
+                $child->connect($build->db);
+            }
             $method = (($join['kind'] ?? 'inner') === 'left' ? 'leftJoin' : 'join')
                 . self::pascal($join['match'][0]) . 'With' . self::pascal($join['match'][1]);
             $model->$method($child);
@@ -3686,6 +3877,10 @@ final class Recipe
             self::chainPredicate($model, '', $q['where'], $build, $context);
         }
         foreach ($q['order'] ?? [] as $entry) {
+            if (is_array($entry) && ($entry['random'] ?? false) === true) {
+                $model->orderByRandom();
+                continue;
+            }
             if (is_string($entry)) {
                 $descending = str_starts_with($entry, '-');
                 $model->{'orderBy' . self::pascal(ltrim($entry, '-')) . ($descending ? 'Desc' : 'Asc')}();
@@ -3761,6 +3956,7 @@ final class Recipe
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
+        $build->db = $db;
         $paged = ($s['page'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
         if (!$paged && isset($s['offset'], $s['limit'])) {
@@ -3863,6 +4059,9 @@ final class Recipe
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
             } elseif (isset($value['styled'])) {
                 $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
+            } elseif (array_key_exists('null', $value) && RuntimeModel::styled($model::meta()['columns'][$column] ?? ['codec' => []])) {
+                // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+                $model->{'set' . $name}(StyledValue::sqlNull());
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
@@ -3882,7 +4081,9 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(array $s, array $context, \Closure $terminal): array
     {
-        $table = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+        $table = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
         $model = self::chainAssign($table, $s['values'] ?? [], $context);
         foreach ($s['attached'] ?? [] as $name => $value) {
             $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));
@@ -4074,14 +4275,16 @@ final class Recipe
                 default => $model->getsCount()->toArray(),
             }];
         }
-        if (($s['page'] ?? false) === true) {
+        if (($s['page'] ?? false) === true || isset($s['plan_page'])) {
             $limit = $s['limit'] ?? 0;
             $count = is_int($limit) ? $limit : $limit['count'];
-            if ($count <= 0) {
+            if ($count <= 0 && !isset($s['plan_page'])) {
                 Assert::fail('a page needs a limit count above 0');
             }
             $offset = ($s['offset'] ?? 0) + (is_array($limit) ? ($limit['offset'] ?? 0) : 0);
-            $page = $model->getsPage(intdiv($offset, $count) + 1, $count);
+            $page = isset($s['plan_page'])
+                ? $model->getsPage($s['plan_page']['page'], $s['plan_page']['per_page'])
+                : $model->getsPage(intdiv($offset, $count) + 1, $count);
             $fields = ['json' => [
                 'total' => $page->totalCount,
                 'pages' => $page->totalPages,
@@ -4259,6 +4462,14 @@ final class Recipe
         }
         if (is_bool($value)) {
             return ['bool' => $value];
+        }
+        if (is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
+            && filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
+            return ['int' => $value];
+        }
+        if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
+            return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];

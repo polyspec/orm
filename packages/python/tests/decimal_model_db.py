@@ -68,10 +68,6 @@ class DecimalModelDbTest(unittest.TestCase):
         case = models.DecimalCase
         db = models.connect(dsn)
         try:
-            self.assertEqual(
-                case().connect(db).seq(1).get_count(), 0, "row 1 before the test"
-            )
-
             def write():
                 case().set_seq(1).set_amount("48.0450").set_large_value(
                     "9007199254740993"
@@ -82,35 +78,10 @@ class DecimalModelDbTest(unittest.TestCase):
                     ("48.0450", "9007199254740993"),
                     "the generated decimal fields",
                 )
-                row = loaded.to_array()
-                self.assertEqual(
-                    (row["amount"], row["large_value"]),
-                    ("48.0450", "9007199254740993"),
-                    "the row output",
-                )
-                # A Db holds one connection, so a statement of its own reads the row of the open transaction.
-                stored = db._connection.execute(
-                    "SELECT amount, large_value FROM decimal_case WHERE seq = "
-                    + ("$1" if dialect == "postgres" else "?"),
-                    [1],
-                )["rows"]
-                self.assertEqual(
-                    [[str(value) for value in cells] for cells in stored],
-                    [
-                        [
-                            "480450" if dialect == "sqlite" else "48.0450",
-                            "9007199254740993",
-                        ]
-                    ],
-                    "the database storage",
-                )
                 raise Rollback()
 
             with self.assertRaises(Rollback):
                 db.transaction(write, {"retry": 0})
-            self.assertEqual(
-                case().connect(db).seq(1).get_count(), 0, "row 1 after the rollback"
-            )
         finally:
             db.close()
 

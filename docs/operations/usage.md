@@ -461,7 +461,7 @@ The same statement produces the same result on all three databases, although sta
 
 ### Statement events
 
-Every client publishes one event for each statement it sends to the database: the statements of models, transaction control, the statements of schema utilities and every other statement of a utility. Subscribers register on the connection. The shared vector `tests/events/vectors.json` runs one sequence on MySQL, PostgreSQL and SQLite and states the events every client publishes.
+Every client publishes one event for each statement it sends to the database: the statements of models, transaction control, the statements of schema utilities and every other statement of a utility. Subscribers register on the connection. The recipe `statement_events` runs one sequence on MySQL, PostgreSQL and SQLite and states the events every client publishes.
 
 | Client | Subscribe and unsubscribe | Event |
 |---|---|---|

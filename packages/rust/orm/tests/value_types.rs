@@ -1,7 +1,7 @@
-//! The value types and select sets of the runtime model (docs/spec/dbspec.md, "Runtime model"): `i16`,
-//! `uuid`, `time(p)`, and `date` values come back unchanged; a `select explicit` column is left out of the default
-//! select set; leaving out a column that has a default uses the database default, and leaving out a NOT NULL column that has no default
-//! fails. On SQLite, MySQL, and PostgreSQL, each database uses its own
+//! The typed reads of the runtime model (docs/spec/dbspec.md, "Runtime model"), which a recipe does not call: `i16` and
+//! `date` values, `time(p)` text with its own digits, a database default, and a styled SQL NULL. The stored values are in
+//! the cases `core_value_types` and `core_styled_null` of the recipe `conformance_verification`. On SQLite, MySQL, and
+//! PostgreSQL, each database uses its own
 //! case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.
 
@@ -12,10 +12,6 @@ use polyspec_orm_test_support::model_row;
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
-
-#[path = "common/result_code.rs"]
-mod result_code;
-use result_code::code;
 
 use std::collections::BTreeMap;
 
@@ -68,7 +64,7 @@ fn connected(db: &Db) -> Record {
 }
 
 #[tokio::test]
-// Requirements: INT-99, INT-142, DBS-68, COD-20.
+// Requirements: INT-99, COD-20.
 async fn runtime_value_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
@@ -83,38 +79,14 @@ async fn runtime_value_types() {
         row.core_mut().set("code", Param::from(uuid));
         row.core_mut().set("opens", Param::from("08:30:00.250"));
         row.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
-        row.core_mut().set("note", Param::from("hidden"));
         polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
 
         let got = polyspec_orm::model::get(&connected(&db)).await.or_panic(|e| format!("{driver}: get: {e}")).expect("the created row");
         assert_eq!(got.values["small"].as_i16().unwrap(), i16::MIN, "{driver}: i16");
         assert_eq!(got.values["rank"].as_i16().unwrap(), 3, "{driver}: an omitted column takes the database default");
-        assert_eq!(got.values["code"].as_string().unwrap(), uuid, "{driver}: uuid text");
         assert_eq!(got.values["opens"].as_string().unwrap(), "08:30:00.250", "{driver}: time(3) text");
         assert_eq!(got.values["day"].as_date().unwrap(), day, "{driver}: date");
         assert!(got.values["payload"].is_null(), "{driver}: a selected styled SQL NULL remains SQL NULL on read");
-        assert!(!got.values.contains_key("note"), "{driver}: select explicit leaves the column out of the default select set");
-        let mut all = connected(&db);
-        all.core_mut().add_column("note");
-        let got = polyspec_orm::model::get(&all).await.or_panic(|e| format!("{driver}: get note: {e}")).expect("the created row");
-        assert_eq!(got.values["note"].as_string().unwrap(), "hidden", "{driver}: an added select explicit column");
-
-        let mut short = connected(&db);
-        short.core_mut().set("small", Param::from(1i16));
-        short.core_mut().set("code", Param::from(uuid));
-        short.core_mut().set("opens", Param::from("08:30:00.2501"));
-        short.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
-        assert_eq!(code(polyspec_orm::model::create(&mut short).await), polyspec_orm::codes::CODEC_ENCODE, "{driver}: time text with a non-zero digit past p");
-        let mut missing = connected(&db);
-        missing.core_mut().set("code", Param::from(uuid));
-        missing.core_mut().set("opens", Param::from("08:30:00.250"));
-        missing.core_mut().set("day", Param::Str(day.format("%Y-%m-%d").to_string()));
-        assert_eq!(
-            code(polyspec_orm::model::create(&mut missing).await),
-            polyspec_orm::codes::IR_INVALID,
-            "{driver}: an omitted non-null column without a default"
-        );
-
         db.close().await;
         database.drop().await;
         polyspec_orm_testcase::step(format_args!("runtime_value_types {driver}"));

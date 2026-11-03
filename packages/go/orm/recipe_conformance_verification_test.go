@@ -1,7 +1,7 @@
-// Requirements: PRT-77.
+// Requirements: DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14, PRT-77.
 package orm_test
 
-// Requirements: FCV-2, FCV-3, FCV-4.
+// Requirements: FCV-2, FCV-3, FCV-4, DBS-115, DIA-11, DIA-14, DIA-24, DIA-37, DSL-137, DSL-139, DSL-144, INT-39.
 
 import (
 	"testing"
