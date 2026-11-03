@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python coverage files of request_hook and statement_events and the statement runner are removed: their cases are the recipes, which take their databases from their run (FCV-9), so nothing in those files reads `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`. The Python performance gate reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)

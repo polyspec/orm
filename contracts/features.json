@@ -4362,14 +4362,7 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_statement_events_mysql.py",
                   "cases": [
-                    "model_statements",
-                    "transaction_savepoint",
-                    "transaction_rollback",
-                    "savepoint_rollback",
-                    "failed_statement",
-                    "subscriber_error",
-                    "unsubscribe",
-                    "install"
+                    "statement_events"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4379,14 +4372,7 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_statement_events_postgres.py",
                   "cases": [
-                    "model_statements",
-                    "transaction_savepoint",
-                    "transaction_rollback",
-                    "savepoint_rollback",
-                    "failed_statement",
-                    "subscriber_error",
-                    "unsubscribe",
-                    "install"
+                    "statement_events"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4396,14 +4382,7 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_statement_events_sqlite.py",
                   "cases": [
-                    "model_statements",
-                    "transaction_savepoint",
-                    "transaction_rollback",
-                    "savepoint_rollback",
-                    "failed_statement",
-                    "subscriber_error",
-                    "unsubscribe",
-                    "install"
+                    "statement_events"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14056,8 +14035,7 @@
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/php/tests/CoverageStatementRunnerTest.php",
         "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
-        "packages/ts/tests/coverage_statement_runner.mjs",
-        "packages/python/tests/coverage_statement_runner.py"
+        "packages/ts/tests/coverage_statement_runner.mjs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -14359,13 +14337,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_runner.py"
+              "packages/python/tests/test_statement_runner_mysql.py",
+              "packages/python/tests/test_statement_runner_postgres.py",
+              "packages/python/tests/test_statement_runner_sqlite.py"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_sqlite.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14375,7 +14355,7 @@
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_mysql.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14385,7 +14365,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_postgres.py",
                   "cases": [
                     "statement_runner"
                   ],

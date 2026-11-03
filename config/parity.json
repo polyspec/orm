@@ -26797,28 +26797,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "model_statements"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "model_statements"
-        },
-        {
-          "implementation": "python",
           "test": "packages/python/tests/test_statement_events_sqlite.py",
           "id": "model_statements"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "transaction_savepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "transaction_savepoint"
         },
         {
           "implementation": "python",
@@ -26827,28 +26807,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "transaction_rollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "transaction_rollback"
-        },
-        {
-          "implementation": "python",
           "test": "packages/python/tests/test_statement_events_sqlite.py",
           "id": "transaction_rollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "savepoint_rollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "savepoint_rollback"
         },
         {
           "implementation": "python",
@@ -26857,28 +26817,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "failed_statement"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "failed_statement"
-        },
-        {
-          "implementation": "python",
           "test": "packages/python/tests/test_statement_events_sqlite.py",
           "id": "failed_statement"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "subscriber_error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "subscriber_error"
         },
         {
           "implementation": "python",
@@ -26887,28 +26827,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "unsubscribe"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "unsubscribe"
-        },
-        {
-          "implementation": "python",
           "test": "packages/python/tests/test_statement_events_sqlite.py",
           "id": "unsubscribe"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_mysql.py",
-          "id": "install"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_events_postgres.py",
-          "id": "install"
         },
         {
           "implementation": "python",
@@ -42124,8 +42044,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_runner.py",
-          "id": "test_statement_runner"
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "rust",
