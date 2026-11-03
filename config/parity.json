@@ -428,7 +428,7 @@
       "internal": [
         {
           "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement, and holds the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
@@ -645,7 +645,7 @@
         },
         {
           "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query, and the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json"
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query"
         },
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",

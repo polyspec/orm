@@ -6107,6 +6107,33 @@
               },
               {
                 "op": "dbspec.exec",
+                "connection": "conn",
+                "sql": {
+                  "mysql": "SELECT COUNT(*) FROM `dbspec$plans` WHERE state = 'applying' AND step = {step}",
+                  "postgres": "SELECT COUNT(*) FROM \"dbspec$plans\" WHERE state = 'applying' AND step = {step}",
+                  "sqlite": "SELECT COUNT(*) FROM \"dbspec$plans\" WHERE state = 'applying' AND step = {step}"
+                },
+                "expect": {
+                  "sqlite": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "1"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "only": [
+                  "sqlite"
+                ]
+              },
+              {
+                "op": "dbspec.exec",
                 "connection": "watch",
                 "sql": "SELECT COUNT(*) FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE a.application_name = 'dbspec_stress' AND a.datname = current_database() AND l.locktype = 'relation'",
                 "expect": {
@@ -8180,6 +8207,582 @@
                       },
                       {
                         "text": "16"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "finalize_of_an_applied_add_and_drop_plan",
+      "requirements": [
+        "PLN-94"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 bootstrap",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table legacy {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "bootstrap"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 add_and_drop",
+            "from sha256:3599dc8cb9c4bbdcf4dbb23f81ba20f96e99012bd50edcd9fbc0e8a04d0ab236",
+            "allow drop table legacy",
+            "allow drop column users.age",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  nick varchar(32) null",
+            "  status varchar(8) default 'new'",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_mail (mail <> '')",
+            "}"
+          ],
+          "as": "add_and_drop"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "bootstrap",
+            "add_and_drop"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "15"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "3"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "bootstrap",
+            "add_and_drop"
+          ],
+          "count": [
+            "finalize",
+            "done"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "6"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "6"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "17"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "3"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "bootstrap",
+            "add_and_drop"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "6"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "6"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "add_and_drop"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "17"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "bootstrap"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "3"
                       }
                     ]
                   }
