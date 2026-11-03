@@ -5,7 +5,6 @@
 // Usage: node --test packages/ts/tests/dbspec-rules.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { analyzeDbspec, emitDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import * as api from '../dist/index.js';
 
 // TIMEOUT is the deadline (ms) of one case. One rule case parses several documents in memory.

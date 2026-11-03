@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.
 - The limit and stress units of dbspec are the cases of the recipe `tests/dbspec/limits.json`, whose documents are written by the `repeat` and `fill` line forms of `dbspec.format`; the native limit tests and the round-trip-only stress tests are gone, and the parse time measurements of `make dbspec-stress-bench` stay.
 - The audit transactions, the selected audit columns and the restore of a soft-deleted row are the cases of the recipe `audit_triggers`, which all six runtimes run on MySQL, PostgreSQL and SQLite; their hand-written tests are gone, and the Go context of the audit source (CFG-8a) and the Rust transaction forms (INT-44a) stay native (T334-3-4-11).
