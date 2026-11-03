@@ -1459,7 +1459,7 @@ recipe-unknown-key-check/typescript: recipe-keys-check
 	$(RUN_TESTS) node -- packages/ts/tests/recipe_keys.test.mjs
 recipe-unknown-key-check/python: recipe-keys-check python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_recipe_keys
-recipe-unknown-key-check/php: recipe-keys-check php-vendor-check
+recipe-unknown-key-check/php: recipe-keys-check php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RecipeKeysTest.php
 recipe-unknown-key-check/rust: recipe-keys-check lease-tool
 	cd packages/rust && $(CARGO_TEST) recipe-unknown-key-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --lib recipe_keys
@@ -2935,7 +2935,7 @@ model-queries-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_model_queries_sqlite
-model-queries-check/php: lease-tool php-vendor-check
+model-queries-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelQueriesRecipeTest.php
 model-queries-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php
@@ -2957,7 +2957,7 @@ constraints-and-relations-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_mysql
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_postgres
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_constraints_and_relations_sqlite
-constraints-and-relations-check/php: lease-tool php-vendor-check
+constraints-and-relations-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ConstraintsAndRelationsRecipeTest.php
 constraints-and-relations-check/php-extension: lease-tool php-vendor-check build-php-ext
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$(abspath var/php-ext/polyspec_orm.so)" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php
@@ -3053,7 +3053,7 @@ parameter-chunking-check/python: lease-tool python-venv-check
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database, with the native cases that a declarative step
 # cannot observe in request_hook_cases.php (feature coverage, not this check).
 .PHONY: request-hook-check/php
-request-hook-check/php: lease-tool php-vendor-check
+request-hook-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookMysqlRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookPostgresRecipeTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookSqliteRecipeTest.php
@@ -3061,7 +3061,7 @@ request-hook-check/php: lease-tool php-vendor-check
 # parameter-chunking-check/php runs the recipe contracts/fixtures/parameter_chunking/parameter_chunking.json on the three
 # databases in PHP (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: parameter-chunking-check/php
-parameter-chunking-check/php: lease-tool php-vendor-check
+parameter-chunking-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ParameterChunkingSqliteTest.php
@@ -3077,7 +3077,7 @@ parameter-chunking-check/php-extension: lease-tool php-vendor-check build-php-ex
 # aes-rotation-check/php runs the recipe contracts/fixtures/aes_rotation/aes_rotation.json on the three databases in PHP
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), one entry per database.
 .PHONY: aes-rotation-check/php
-aes-rotation-check/php: lease-tool php-vendor-check
+aes-rotation-check/php: lease-tool php-vendor-check php-models
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationMysqlTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationPostgresTest.php
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/AesRotationSqliteTest.php

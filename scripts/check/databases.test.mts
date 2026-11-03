@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { purgeBinlogs } from './databases.mts';
 
@@ -25,7 +26,7 @@ caseTest('the drop refusal names the last error of the replica', COMPUTE, () => 
     writeFileSync(join(bin, 'mysql'), FAKE_MYSQL);
     chmodSync(join(bin, 'mysql'), 0o755);
     const servers = { ORM_RUN_MYSQL_DSN: 'mysql://root@127.0.0.1:1/orm_run', ORM_TEST_MYSQL_REPLICA_DSN: 'mysql://root@127.0.0.1:2/orm_test' };
-    const env = { ...process.env, ...servers, PATH: `${bin}:${process.env.PATH ?? ''}` };
+    const env = isolatedEnvironment({ ...servers, PATH: `${bin}:${process.env.PATH ?? ''}` });
     const errors: string[] = [];
     const original = console.error;
     console.error = (...parts: unknown[]) => { errors.push(parts.join(' ')); };
