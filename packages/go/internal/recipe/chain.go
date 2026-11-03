@@ -96,6 +96,7 @@ type chainRelation struct {
 	chainQuery
 	Match      [][2]string     `json:"match"`
 	Many       bool            `json:"many"`
+	Connect    bool            `json:"connect"`
 	Alias      string          `json:"alias"`
 	GroupLimit int             `json:"group_limit"`
 	KeyBy      string          `json:"key_by"`
@@ -112,6 +113,7 @@ type chainStep struct {
 	As              string                     `json:"as"`
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
+	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Values          json.RawMessage            `json:"values"`
@@ -795,6 +797,27 @@ func chainRows(rows []*tableRow, pick []string) ([]any, error) {
 	return out, nil
 }
 
+// derivedIntegers reads the named fields of each row as a derived integer (COD-45): the text of an integer is its number.
+func derivedIntegers(rows []any, names []string) error {
+	for _, row := range rows {
+		fields, ok := row.(map[string]any)
+		if !ok {
+			return fmt.Errorf("a row with a derived integer is %T", row)
+		}
+		for _, name := range names {
+			text, ok := fields[name].(string)
+			if !ok {
+				continue
+			}
+			if _, err := strconv.ParseInt(text, 10, 64); err != nil {
+				return fmt.Errorf("%s is an invalid derived integer: %w", name, err)
+			}
+			fields[name] = json.Number(text)
+		}
+	}
+	return nil
+}
+
 // jsonOutcome is the outcome of a step whose expect is {"json": <value>}.
 func jsonOutcome(value any) outcome {
 	return outcome{fields: map[string]any{"json": value}}
@@ -903,8 +926,10 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 		if err != nil {
 			return nil, err
 		}
-		// This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-		child.Connect(db)
+		// Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+		if r.Connect {
+			child.Connect(db)
+		}
 		core.Relation(r.Many, child.Self())
 	}
 	return chainByKey(core, s, c)
@@ -966,6 +991,9 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	}
 	value, err := chainRows(rows.Slice(), s.Pick)
 	if err != nil {
+		return outcome{}, err
+	}
+	if err := derivedIntegers(value, s.DerivedIntegers); err != nil {
 		return outcome{}, err
 	}
 	out := jsonOutcome(value)
@@ -1051,6 +1079,8 @@ func tableCells(r *tableRow, columns []string) ([]any, error) {
 			out[i] = map[string]any{"text": x}
 		case int64:
 			out[i] = map[string]any{"int": strconv.FormatInt(x, 10)}
+		case int32:
+			out[i] = map[string]any{"int": strconv.FormatInt(int64(x), 10)}
 		case int:
 			out[i] = map[string]any{"int": strconv.Itoa(x)}
 		default:

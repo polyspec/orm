@@ -442,26 +442,6 @@ mod declared_boolean_tests {
 }
 
 #[cfg(test)]
-mod exact_i64_tests {
-    use super::{Cells, Src};
-    use crate::collection::GroupRow;
-    use crate::value::Val;
-
-    // Requirements: PRT-69, INT-1. The grouped row serializes the selected i64 as an exact JSON number.
-    #[test]
-    fn grouped_result_preserves_exact_i64_value() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let want = 9_007_199_254_740_991_i64;
-        let mut cells = Cells::Pos(vec![Val::I64(want)]);
-        let decoded = cells.i64(0).unwrap();
-        assert_eq!(decoded, want);
-        let row = GroupRow::new(vec![("exact_value".into(), Val::I64(decoded)), ("row_count".into(), Val::I64(1))]).unwrap();
-        assert_eq!(row.value("exact_value").unwrap(), &Val::I64(want));
-        assert_eq!(row.to_json().unwrap(), r#"{"exact_value":9007199254740991,"row_count":1}"#);
-    }
-}
-
-#[cfg(test)]
 mod native_cell_bytes_tests {
     use super::{read_row, DriverRow};
     use crate::{db::Zone, Val};

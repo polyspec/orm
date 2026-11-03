@@ -40,6 +40,13 @@ final class RecipeGenerator
             foreach ($want['value']['excludes'] as $name) {
                 Assert::assertNotContains($name, $names, "generated code declares $name");
             }
+            $text = implode('', array_map(file_get_contents(...), glob("$root/model/*") ?: []));
+            foreach ($want['value']['text']['includes'] ?? [] as $part) {
+                Assert::assertStringContainsString($part, $text, "generated text lacks $part");
+            }
+            foreach ($want['value']['text']['excludes'] ?? [] as $part) {
+                Assert::assertStringNotContainsString($part, $text, "generated text holds $part");
+            }
         } finally {
             self::remove($root);
         }

@@ -42,6 +42,10 @@ type generatorExpect struct {
 	Value *struct {
 		Includes []string `json:"includes"`
 		Excludes []string `json:"excludes"`
+		Text     *struct {
+			Includes []string `json:"includes"`
+			Excludes []string `json:"excludes"`
+		} `json:"text"`
 	} `json:"value"`
 	Error    string `json:"error"`
 	Message  string `json:"message"`
@@ -67,7 +71,7 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 			return fmt.Errorf("generator.generate options: %w", err)
 		}
 	}
-	names, err := generateScanned(t, dir, s.Schema, o)
+	names, text, err := generateScanned(t, dir, s.Schema, o)
 	if want.Error != "" {
 		if err == nil {
 			return fmt.Errorf("generation succeeded, want error %s", want.Error)
@@ -102,6 +106,18 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 			return fmt.Errorf("generated code declares %s", name)
 		}
 	}
+	if want.Value.Text != nil {
+		for _, part := range want.Value.Text.Includes {
+			if !strings.Contains(text, part) {
+				return fmt.Errorf("generated text lacks %q", part)
+			}
+		}
+		for _, part := range want.Value.Text.Excludes {
+			if strings.Contains(text, part) {
+				return fmt.Errorf("generated text holds %q", part)
+			}
+		}
+	}
 	return nil
 }
 
@@ -119,8 +135,8 @@ func generatorErrorCode(err error) string {
 
 // generateScanned writes the scanned Go sources of the case under a temporary module that requires this ORM, generates the
 // models of the schema into its model directory with the public generator.Generate, and returns the method names of the
-// generated models as table.name (the snake_case identifier without its language prefix, FCV-4).
-func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[string]bool, error) {
+// generated models as table.name and the text of their files (the snake_case identifier without its language prefix, FCV-4).
+func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[string]bool, string, error) {
 	t.Helper()
 	root := t.TempDir()
 	t.Setenv("GOWORK", "off")
@@ -129,61 +145,66 @@ func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[
 	pkgGo := filepath.Join(filepath.Dir(self), "..", "..")
 	gomod, err := os.ReadFile(filepath.Join(pkgGo, "go.mod"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	requires := strings.SplitN(string(gomod), "\n", 2)[1]
 	module := "module example.com/ormexample\n" + strings.Replace(requires, "require (", "require (\n\tgithub.com/polyspec/orm/packages/go v0.0.0", 1) + "\nreplace github.com/polyspec/orm/packages/go => " + pkgGo + "\n"
 	sum, err := os.ReadFile(filepath.Join(pkgGo, "go.sum"))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := writeTree(root, map[string]string{"go.mod": module, "go.sum": string(sum)}); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := writeTree(root, o.Sources["go"]); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	owned, err := documentTexts(dir, []string{schema})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if o.SchemaReplace != nil {
 		owned[0] = strings.ReplaceAll(owned[0], o.SchemaReplace.From, o.SchemaReplace.To)
 	}
 	external, err := documentTexts(dir, o.Used)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	m, diagnostics := runtimemodel.LoadDocumentSet(owned, external)
 	if len(diagnostics) > 0 {
-		return nil, fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
+		return nil, "", fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
 	}
 	var other []string
 	if o.Before != nil {
 		other, err = documentTexts(dir, []string{o.Before.Schema})
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	t.Chdir(root)
 	if o.Before != nil {
 		otherModel, diagnostics := runtimemodel.LoadDocumentSet(other, nil)
 		if len(diagnostics) > 0 {
-			return nil, fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
+			return nil, "", fmt.Errorf("SCHEMA_INVALID: %s", runtimemodel.DiagnosticsError(diagnostics))
 		}
 		before := generator.Options{Model: otherModel, OutputDir: filepath.Join(root, o.Before.Output), Scan: []string{"./" + o.Before.Scan}}
 		if err := generator.Generate(before); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	out := filepath.Join(root, "model")
 	if err := generator.Generate(generator.Options{Model: m, OutputDir: out, Scan: []string{"./..."}}); err != nil {
 		if _, statErr := os.Stat(out); statErr == nil {
-			return nil, fmt.Errorf("a refused generation wrote %s: %s", out, err.Error())
+			return nil, "", fmt.Errorf("a refused generation wrote %s: %s", out, err.Error())
 		}
-		return nil, err
+		return nil, "", err
 	}
-	return generatedMethods(out)
+	names, err := generatedMethods(out)
+	if err != nil {
+		return nil, "", err
+	}
+	text, err := generatedText(out)
+	return names, text, err
 }
 
 // documentTexts reads the .dbs documents named relative to the recipe directory dir.
@@ -249,6 +270,23 @@ func generatedMethods(out string) (map[string]bool, error) {
 		}
 	}
 	return names, nil
+}
+
+// generatedText is the text of the generated files of out.
+func generatedText(out string) (string, error) {
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		return "", err
+	}
+	var text strings.Builder
+	for _, entry := range entries {
+		body, err := os.ReadFile(filepath.Join(out, entry.Name()))
+		if err != nil {
+			return "", err
+		}
+		text.Write(body)
+	}
+	return text.String(), nil
 }
 
 // receiverName is the type name of a method receiver, without its pointer.
