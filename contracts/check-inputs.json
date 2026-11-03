@@ -1613,6 +1613,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/go/orm/recipe_schema_install_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
@@ -1627,6 +1628,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/ts/tests/schema_install-mysql.test.mjs",
         "packages/ts/tests/schema_install-postgres.test.mjs",
         "packages/ts/tests/schema_install-sqlite.test.mjs",
@@ -1642,6 +1644,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/python/tests/test_schema_install_mysql.py",
         "packages/python/tests/test_schema_install_postgres.py",
         "packages/python/tests/test_schema_install_sqlite.py",
@@ -1658,6 +1661,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/php/tests/SchemaInstallRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
@@ -1676,6 +1680,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/SchemaInstallRecipeTest.php",
@@ -1692,6 +1697,7 @@
       ],
       "inputs": [
         "contracts/fixtures/schema_install/**",
+        "contracts/fixtures/add_tables_and_columns/**",
         "packages/rust/tests/tests/schema_install_mysql.rs",
         "packages/rust/tests/tests/schema_install_postgres.rs",
         "packages/rust/tests/tests/schema_install_sqlite.rs",

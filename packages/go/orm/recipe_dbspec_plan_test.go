@@ -44,3 +44,10 @@ func TestRecipeDbspecPlanComparisons(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../tests/dbspec/plan-comparisons.json", recipe.None)
 }
+
+// TestRecipeDbspecAddTablesSteps runs the add tables steps recipe, tests/dbspec/add-tables-steps.json, without a database (FCV-3).
+// Requirements: INT-56, SCH-8.
+func TestRecipeDbspecAddTablesSteps(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	recipe.Run(t, "../../../tests/dbspec/add-tables-steps.json", recipe.None)
+}

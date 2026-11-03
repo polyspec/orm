@@ -60,6 +60,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -1189,6 +1190,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1228,6 +1230,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),

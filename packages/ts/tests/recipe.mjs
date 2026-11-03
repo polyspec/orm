@@ -13,7 +13,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
-import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
+import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -933,7 +933,7 @@ function checkPlanner(step, recipeDir, database) {
 }
 
 // dbspecOps are the ops of the schema and plan calls (FCV-4), which checkDbspec runs without a database.
-const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain', 'dbspec.compare'];
+const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain', 'dbspec.compare'];
 
 // checkDbspec runs one dbspec op through the public call that FCV-4 names, binds the result of its as for a later ref, and checks
 // what the call returned, as JSON, with the expect of database. A null source is the empty schema of diffPlan.
@@ -955,6 +955,9 @@ function checkDbspec(step, bound, database) {
       break;
     case 'dbspec.plan_steps':
       got = dbspecPlanSteps(step, bound);
+      break;
+    case 'dbspec.add_tables_steps':
+      got = dbspecAddTablesSteps(step, bound);
       break;
     case 'dbspec.chain':
       got = dbspecChain(step, bound);
@@ -1017,6 +1020,12 @@ function dbspecChain(step, bound) {
   const result = chainPlans(step.plans.map(raw => dbspecPlan(raw, bound)));
   if (result.diagnostics.length > 0) return { messages: messagesOf(result.diagnostics, 'chain') };
   return { order: (result.plans ?? []).map(p => p.name) };
+}
+
+// dbspecAddTablesSteps runs addTablesAndColumnsSteps with no unsupported items for one dialect, and returns {added, statements, differences}.
+function dbspecAddTablesSteps(step, bound) {
+  const result = addTablesAndColumnsSteps(dbspecDocument(step.source, bound), [], dbspecDocument(step.target, bound), step.dialect);
+  return { added: result.added, statements: result.steps.map(s => s.statement), differences: result.differences };
 }
 
 // dbspecCompare runs compareSchemas and returns {differences, diagnostics}, whose diagnostics carry their message for every rule.

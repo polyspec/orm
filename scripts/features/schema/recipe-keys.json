@@ -438,6 +438,13 @@
       "plan",
       "source"
     ],
+    "dbspec.add_tables_steps": [
+      "dialect",
+      "expect",
+      "op",
+      "source",
+      "target"
+    ],
     "utils.aes_status": [
       "connection",
       "expect",
