@@ -29,6 +29,7 @@ import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
+import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -647,6 +648,12 @@ const connectionOf = (s, context) => (s.connection === undefined ? context.db : 
 /** The one recipe fixture that generates models (packages/ts/src/models). A model op of any other fixture names a model of a table of its own (FCV-4). */
 const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 
+/** The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the case database, without a password. */
+function userFromDatabaseDsn(dsn, prefix) {
+  const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+  return dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${prefix}${database.slice(-28)}@`);
+}
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
@@ -702,14 +709,26 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    let dsn = context.dsn;
-    if (s.user_from_database !== undefined) {
-      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
-      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    const dsn = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    if (s.refused_message !== undefined) {
+      const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
+      if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
+      if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+      if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
+      return {};
     }
-    context.catalog = await connectCatalog(dsn);
+    const catalog = await connectCatalog(dsn);
+    context.namespace = await catalog.currentNamespace();
+    context.catalog = catalog;
     context.closed = false;
-    context.namespace = await context.catalog.currentNamespace();
+    return {};
+  },
+  async 'sql.hold_connection'(s, context) {
+    context.held = await nativeSession(context.database, userFromDatabaseDsn(context.dsn, s.user_from_database));
+    return {};
+  },
+  async 'sql.release_connection'(_, context) {
+    await context.held.close();
     return {};
   },
   async 'catalog.revision'(s, context) {
@@ -876,6 +895,9 @@ const OPS = {
     } finally { await session.close(); }
     return {};
   },
+  async 'dbspec.introspect'(s, context) {
+    return introspectStep(s, context);
+  },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
@@ -949,6 +971,7 @@ async function runStep(s, context) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
       assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
     }
+    if (expected.keeps_callback === true) assert.equal(error.cause, callbackError, `the error ${JSON.stringify(error.message)} keeps the error of the callback`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
@@ -1945,6 +1968,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.json_output === true && row !== null) return { json: row.toJSONText() };
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
@@ -2387,7 +2411,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.introspect_refusal', 'dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2407,6 +2431,16 @@ async function checkDbspecFiles(step, dir, database) {
       assert.deepEqual(diagnostics, [], 'the document set has a manifest');
       assert.ok(expect.manifest_hash, 'the expect names a manifest hash');
       assert.equal(manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.introspect_refusal': {
+      const connection = new DatabaseSync(':memory:');
+      try {
+        await assert.rejects(introspectDbspec(connection, step.dialect, 'introspected'), { name: 'TypeError', message: new RegExp(step.dialect) });
+      } finally {
+        connection.close();
+      }
+      assert.deepEqual({ refused: step.dialect }, expect, 'refused dialect');
       break;
     }
     case 'dbspec.render': {

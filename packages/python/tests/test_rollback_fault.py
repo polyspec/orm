@@ -1,6 +1,6 @@
 # The rollback of a transaction fails deterministically through the test entry point
 # polyspec.orm.testing.fail_next_rollback, and a failed rollback reports both the callback error and
-# the rollback error (docs/spec/protocol.md "Errors" and "Test faults", packages/ts/tests/rollback.mjs,
+# the rollback error (docs/spec/protocol.md "Errors" and "Test faults", packages/ts/tests/transaction-failure.mjs,
 # packages/php/tests/RollbackTest.php).
 import os
 import sqlite3
@@ -20,11 +20,6 @@ from .test_sqlite import generate_document, installed_sqlite
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
-
-
-FAULT_MESSAGE = (
-    "test fault: the rollback of the transaction ran and is reported as failed"
-)
 
 
 class _TransactionRecordingConnection:
@@ -163,30 +158,6 @@ class RollbackFaultTest(unittest.TestCase):
         check_rollback(self, error, subject)
 
     # Requirements: INT-72.
-    def test_the_fault_reports_the_next_failed_rollback(self):
-        fail_next_rollback(self.db)
-        committed = self.raised(
-            lambda: self.db.transaction(
-                lambda: self.probe("committed").create(), {"retry": 0}
-            )
-        )
-        self.assertIsNone(
-            committed, "a committed transaction with an armed fault raises nothing"
-        )
-        error, run = self.failed_rollback("rolled back")
-        self.assertEqual(error.rollback.code, "FAULT")
-        self.assertEqual(str(error.rollback), f"FAULT: {FAULT_MESSAGE}")
-        self.assertEqual(
-            self.count(), 1, "the faulted rollback keeps only the committed row"
-        )
-        again = self.raised(run)
-        self.assertIs(
-            again,
-            error.cause,
-            "the transaction after the consumed fault raises the callback error",
-        )
-        self.assertEqual(self.count(), 1)
-
     def test_a_savepoint_rollback_does_not_consume_the_fault(self):
         fail_next_rollback(self.db)
         inner = RuntimeError("savepoint callback failed")

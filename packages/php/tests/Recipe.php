@@ -86,7 +86,7 @@ final class Recipe
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
         'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
-        'dbspec.compare',
+        'dbspec.compare', 'dbspec.introspect_refusal',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
@@ -297,6 +297,12 @@ final class Recipe
      * names (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool:
      * true}} for an accepted request, {error: CODE} for a request that fails with CODE.
      */
+    private static function userFromDatabaseDsn(string $dsn, string $prefix): string
+    {
+        preg_match('#/([^/?]+)(?:\?.*)?$#', $dsn, $name);
+        return (string) preg_replace('#^mysql://[^@]+@#', 'mysql://' . $prefix . substr($name[1], -28) . '@', $dsn);
+    }
+
     private static function validateStep(array $step, string $path, string $database): void
     {
         $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
@@ -520,6 +526,13 @@ final class Recipe
                 'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
                 'differences' => $result[2],
             ];
+        } elseif ($op === 'dbspec.introspect_refusal') {
+            $got = self::dialectRefusal(
+                $step['dialect'],
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+            );
+            Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+            return;
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -2527,6 +2540,9 @@ final class Recipe
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
+            if (($expected['keeps_callback'] ?? false) === true) {
+                Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
+            }
             if (isset($expected['rollback'])) {
                 Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
                 Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
@@ -2696,14 +2712,18 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = $context['dsn'];
-                if (isset($s['user_from_database'])) {
-                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
-                    $reconnectDsn = (string) preg_replace(
-                        '#^mysql://[^@]+@#',
-                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
-                        $reconnectDsn
-                    );
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                    : $context['dsn'];
+                if (isset($s['refused_message'])) {
+                    try {
+                        Catalog::connect($reconnectDsn);
+                    } catch (OrmException $error) {
+                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                        return [];
+                    }
+                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
@@ -3090,6 +3110,8 @@ final class Recipe
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
+            case 'dbspec.introspect':
+                return RecipeIntrospect::step($s, $context);
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
@@ -3126,6 +3148,12 @@ final class Recipe
                         throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
                     }
                 }
+                return [];
+            case 'sql.hold_connection':
+                $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
+                return [];
+            case 'sql.release_connection':
+                unset($context['held']);
                 return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
@@ -4222,6 +4250,9 @@ final class Recipe
                     $row = $model->{'getBy' . $name}(...$args);
                 } else {
                     $row = $model->get();
+                }
+                if (($s['json_output'] ?? false) === true && $row !== null) {
+                    return ['json' => $row->toJson()];
                 }
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];

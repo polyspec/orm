@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 7d9fa4a5e880eea5a30ad0636753338366a86870a4399be22ec85d61585e4bea -->
+<!-- source-sha256: 35ade09331356c99ac125e3f6a6dcdf8c05fde1393b4cab4ac55fe7454666835 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. 모든 클라이언트에서 host 인코딩과 blind index는 host 단계 목록이 비었거나 값이 텍스트·바이트가 아니면 `CODEC_ENCODE`를 반환한다: host 단계는 텍스트의 UTF-8이나 받은 바이트를 받고 값을 그 종류대로 bind하므로, 정수·실수·bool은 평문이 아니다(`tests/codec/codec.json`의 case `host_values_by_kind`). SQL NULL은 host 단계를 SQL NULL로 지난다. `aes`, `hex`, `ip`가 아닌 style은 `serialize` 같은 codec style을 포함해 값을 읽기 전에 `CODEC_UNSUPPORTED`를 반환하고, hex가 아닌 `hex` cell과 header, nonce, tag보다 짧은 `aes` cell은 `CODEC_DECODE`를 반환한다(case `host_stage_errors`). 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -79,6 +79,7 @@ table service_config {
 - **COD-24** `ordered_json` 컬럼 getter — Go: `orm.StyledValue` containing `*orderedjson.Value`; Rust: `StyledValue<polyspec_orm::ordered_json::Value>`; PHP: `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue`; TypeScript: `ordered-json`의 `StyledValue<Value>`; Python: `polyspec.ordered_json.Value`를 담은 `polyspec.orm.StyledValue`
 - **COD-25** 값 스타일 컬럼 setter 입력 — Go: portable 값이나 ordered-json 값을 담은 `orm.StyledValue`; Rust: `StyledValue<T>`; `T`는 스타일 값; PHP: 스타일 값을 담은 `Polyspec\Orm\StyledValue`; TypeScript: `StyledValue<T>`; `T`는 스타일 값; Python: 스타일 값을 담은 `polyspec.orm.StyledValue`
 - **COD-26** 모델 JSON 출력 — Go: `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; Rust: `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현; PHP: `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패; TypeScript: `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현; Python: `to_json_text()`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현, `json.dumps`는 `TypeError`로 실패
+- **COD-68** `polyspec-orm` Python package의 `to_json_text()`는 JavaScript가 순서를 바꿀 member의 자리를 지키고, collection을 행 text의 array로, 빈 collection을 `[]`로, 관계 행을 관계 이름 아래에 쓴다. 다른 값은 `JSON.stringify`처럼 쓰고 JSON이 쓸 수 없는 값은 `CODEC_ENCODE`로 실패하며, model의 `json.dumps`는 `TypeError`로 실패한다.
 - **COD-27** `polyspec-orm` Rust 패키지의 `to_array()`는 serde_json 태그 값을 반환하며 `1e400`처럼 serde_json이 문서를 표현할 수 없으면 `CODEC_ENCODE`로 실패한다. Go: `ToArray()`는 값 스타일 컬럼의 태그 값을 반환; PHP: `toArray()`는 값 스타일 컬럼의 태그 값을 반환; TypeScript: `toArray()`는 값 스타일 컬럼의 태그 값을 반환; Python: `to_array()`는 값 스타일 컬럼의 태그 값을 반환.
 
 - **COD-28** PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. `json` style은 object의 member를 그 순서대로 쓰는 `ordered_json`이므로(COD-16), 그 encoding은 모든 클라이언트에서 같은 바이트이다.

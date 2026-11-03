@@ -2798,17 +2798,20 @@
             "mysql": {
               "error": "ROLLBACK",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT"
+              "rollback": "FAULT",
+              "keeps_callback": true
             },
             "postgres": {
               "error": "ROLLBACK",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT"
+              "rollback": "FAULT",
+              "keeps_callback": true
             },
             "sqlite": {
               "error": "ROLLBACK",
               "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
-              "rollback": "FAULT"
+              "rollback": "FAULT",
+              "keeps_callback": true
             }
           }
         },

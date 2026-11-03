@@ -51,7 +51,6 @@ mod tests {
 
     // Explicit and default projections read the AES version column once, visibly when selected and hidden otherwise.
     #[test]
-    // Requirements: CPX-2.
     fn paginate_plan_places_count_before_relation_steps() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let (set, manifest) = bench_fixture();
@@ -192,7 +191,6 @@ mod tests {
     // SQLite and PostgreSQL inserts set the executor clock on an unassigned `default now` column, as the column's
     // fractional digits (for multi-row inserts, per row). MySQL leaves it to the database default.
     #[test]
-    // The test of DIA-24 (docs/spec).
     fn sqlite_insert_binds_the_clock_for_default_now() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = include_str!("../../../../../contracts/fixtures/clock.dbs");

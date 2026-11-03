@@ -1084,6 +1084,13 @@ ZEND_METHOD(Polyspec_Orm_Model, writeColumn)
         ZVAL_UNDEF(&parsed);
         if (!model_time_value(s, input, &parsed)) {
             zval_ptr_dtor(&meta); zval_ptr_dtor(&value); zval_ptr_dtor(&set_value);
+            /* A text that no time form reads is refused as a write (PRT-67); model_time_value reports a read. */
+            zend_object *previous = EG(exception);
+            GC_ADDREF(previous);
+            zend_clear_exception();
+            zend_string *text = strpprintf(0, "%s: invalid date value %s", ZSTR_VAL(column), Z_STRVAL_P(input));
+            orm_throw_exception_previous("CODEC_ENCODE", text, previous);
+            zend_string_release(text);
             RETURN_THROWS();
         }
         zval_ptr_dtor(&value);
