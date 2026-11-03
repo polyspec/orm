@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CR15-F: the TypeScript and Python tests of the MySQL insert statements return from c55a726cf as owner units (INT-123b, INT-123c), which hold only the statements a fake driver observes.
 - CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
 - `clock_microseconds`, `clock_soft_delete_microseconds` and `now_defaults` hold a stored clock value between a wall-clock read before the write and one after it, through the new step `clock.read`, where they allowed one minute of the database clock.
 - CR15-F: the rows of a stored table in descending order, with a NULL, are steps of `grid_column_and_row_order`; the Go test keeps the plan of its wrapper (SCH-6b), the Rust helper test is removed, and the Rust commit classifier is a single-owner unit (INT-118a).

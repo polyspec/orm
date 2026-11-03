@@ -15275,6 +15275,44 @@
       }
     },
     {
+      "id": "ts-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123b"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "uses the MySQL statement insertId for an omitted automatic key"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "py-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123c"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "test_mysql_automatic_key_uses_insert_acknowledgement"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
       "requirements": [

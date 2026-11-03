@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- CR15-F: MySQL insert 문장을 보는 TypeScript와 Python 시험을 c55a726cf에서 소유 unit으로 되살린다(INT-123b, INT-123c). 가짜 driver가 관찰하는 문장만 맡는다.
 - CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
 - `clock_microseconds`, `clock_soft_delete_microseconds`, `now_defaults`는 database clock 기준 1분 범위를 허용하던 자리에서, 새 step `clock.read`로 write 앞뒤에 읽은 wall clock 사이에 저장된 clock 값을 잡는다.
 - CR15-F: 저장된 표의 내림차순 행과 NULL을 `grid_column_and_row_order`의 step으로 두었다. Go 시험은 wrapper의 plan만 남기고(SCH-6b), Rust helper 시험은 지우며, Rust commit 분류기는 단일 소유 unit이 된다(INT-118a).
