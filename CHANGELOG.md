@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - The verification errors of apply and rollback are the recipe `tests/dbspec/apply-verification-errors.json` in all six runtimes, through the op `dbspec.apply_fault`, in place of a native test in each runtime; the cases of a rollback on real drift now run in every runtime (PLN-92, PLN-93, PLN-96).
 - The decimal document set of `contracts/fixtures/dbspec-set.json` is the recipe `tests/dbspec/set-decimal.json` on the three databases in all six runtimes: it installs the set and creates and reads its two amounts exactly, in place of a native test in each runtime (DBS-108, SCH-7).
 - The physical run of the rendered statements of `tests/dbspec/ddl.json` is the recipe `tests/dbspec/render-physical.json` on the three databases in all six runtimes, through the op `dbspec.ddl_behavior`, in place of a native test in each runtime (DIA-113).

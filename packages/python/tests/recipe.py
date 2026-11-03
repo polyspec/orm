@@ -2926,7 +2926,11 @@ def _chain_built(step: dict, context: dict) -> Model:
     if "from" in step:
         return _by_key(_bound_value(step["from"], context), step, context)
     db = _connection_of(step, context)
-    model = _new_row(context, db, step["model"])
+    model = (
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"])
+    )
     build = _ChainBuild(context)
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
@@ -3012,10 +3016,15 @@ def _table_model_query(step: dict, context: dict) -> dict:
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:
-        limit = step["limit"]
-        steps = model.get_page_plan_steps(
-            limit["offset"] // limit["count"] + 1, limit["count"]
-        )
+        if "plan_page" in step:
+            steps = model.get_page_plan_steps(
+                step["plan_page"]["page"], step["plan_page"]["per_page"]
+            )
+        else:
+            limit = step["limit"]
+            steps = model.get_page_plan_steps(
+                limit["offset"] // limit["count"] + 1, limit["count"]
+            )
         return {
             "json": [
                 {
@@ -3025,6 +3034,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
+                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
                 }
                 for plan_step in steps
             ]
