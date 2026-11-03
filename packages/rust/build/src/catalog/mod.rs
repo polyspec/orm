@@ -153,7 +153,7 @@ impl CatalogConnection {
             "postgres" => "BEGIN READ ONLY",
             _ => "BEGIN",
         };
-        connection.exec(begin, &[]).await.map_err(|error| error.to_string())?;
+        begin_session(&mut connection, begin).await?;
         let thread = if matches!(connection, Conn::MySql(_)) {
             let rows = connection.query("SELECT CONNECTION_ID()", &[]).await.map_err(|error| error.to_string())?;
             match rows.as_slice() {
@@ -189,6 +189,18 @@ impl CatalogConnection {
         }
     }
 }
+/// Opens the transaction of a session. On PostgreSQL the session then releases the named statements of its server connection: a
+/// catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection already
+/// holds never reaches the server, so a plan from before the change would fail with "cached plan must not change result type". The
+/// transaction holds that server connection for the whole session (CFG-28).
+pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<(), String> {
+    connection.exec(begin, &[]).await.map_err(|error| error.to_string())?;
+    if matches!(connection, Conn::Postgres(_)) {
+        connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -> Result<T, String> {
     let cleanup = connection.rollback().await.map_err(|error| error.to_string());
     match (result, cleanup) {

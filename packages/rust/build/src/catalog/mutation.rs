@@ -43,7 +43,7 @@ pub(super) async fn begin_mutation(pool: &Pool, dialect: &str, cancellation: &At
     let mut connection = Conn::acquire(pool).await.map_err(|e| e.to_string())?;
     connection.discard_on_drop();
     cancelled(cancellation)?;
-    connection.exec(write_transaction_statement(dialect), &[]).await.map_err(|e| e.to_string())?;
+    super::begin_session(&mut connection, write_transaction_statement(dialect)).await?;
     Ok(connection)
 }
 
