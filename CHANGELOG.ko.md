@@ -1,11 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 13a2204a8b9627ab0ca94bc4db601d0575fd43ca9abf1da4d3c8892861257d9e -->
+<!-- source-sha256: d0666f0fe239771185b0dd388be1b73355a053f561a48e72e4723c77f954c6d3 -->
 # 변경 이력
 
 ## Unreleased
 
 - Rust catalog 읽기의 예산 중단은 ProxySQL을 거쳐도 즉시 `CATALOG_LIMIT`을 반환한다: MySQL과 PostgreSQL에서 읽기는 `ROLLBACK` 없이 반환하고 그 연결은 닫힌다.
-- CFG-28은 model 연결이 이름 있는 문을 유지하므로 PgBouncer를 거친 schema 변경 뒤에 `RECONNECT`를 실행한다고 명시한다.
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
