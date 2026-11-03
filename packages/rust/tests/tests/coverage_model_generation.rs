@@ -21,7 +21,6 @@ fn generate(out: &Path) -> (String, String, String) {
 
 #[test]
 // Requirements: INT-100.
-// Requirements: DBS-175.
 // Requirements: SCH-1.
 fn coverage_model_generation_check() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -89,7 +89,6 @@ require_once __DIR__ . '/OrmGenProcessCase.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';
-require_once __DIR__ . '/ComplexQueryDbCase.php';
 require_once __DIR__ . '/PageCacheBoundCases.php';
 require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testing/required_dsn.php';

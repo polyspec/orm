@@ -208,6 +208,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "markdown.connect":
                     _markdown_connect(step, database)
                     continue
+                if step["op"] == "markdown.session":
+                    _markdown_session(step, database)
+                    continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
                     continue
@@ -1014,6 +1017,29 @@ def _send_in_process_zone(step: dict) -> None:
         time.tzset()
 
 
+def _refused_surface(surface: str, models, db) -> None:
+    """Runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189)."""
+    utils = db.utils()
+    calls = {
+        "audit": lambda: db.transaction(lambda: None, {"audit": {"actor": "tester"}}),
+        "isolation": lambda: db.transaction(lambda: None, {"isolation": "serializable"}),
+        "timeout_ms": lambda: db.transaction(lambda: None, {"timeoutMs": 100}),
+        "get_query": lambda: models.Slots().connect(db).get_query(),
+        "subscribe": lambda: db.subscribe(lambda event: None),
+        "lock": lambda: utils.lock("k"),
+        "set_local": lambda: utils.set_local("k", "v"),
+        "local": lambda: utils.local("k"),
+        "backend_waiting_for_lock": lambda: utils.backend_waiting_for_lock(),
+        "privileges": lambda: utils.privileges().inspect_table("public.items"),
+        "aes_status": lambda: utils.aes().status(None, None),
+        "aes_rotate": lambda: utils.aes().rotate(None, None),
+        "schema_install": lambda: utils.schema().install(None),
+        "schema_evolution": lambda: utils.schema().add_tables_and_columns(None),
+        "schema_exists": lambda: utils.schema().exists("orm"),
+    }
+    calls[surface]()
+
+
 def _send(step: dict, call=None) -> None:
     """Runs one markdown.send step and checks its expect, which is not per database: {"message": JSON} against the first
     message the listener received (the whole message of a begin, the one parameter of a statement), or {"error": CODE} against
@@ -1031,6 +1057,8 @@ def _send(step: dict, call=None) -> None:
         try:
             if call is not None:
                 call(models, db)
+            elif "surface" in step:
+                _refused_surface(step["surface"], models, db)
             elif "begin" in step:
                 db.transaction(
                     lambda: None, {"readOnly": step["begin"].get("read_only") is True}
@@ -1122,10 +1150,13 @@ class _FaultConnection:
         self.fail_at = 0
         self.reads = 0
         self.fail: dict[str, Exception] = {}
+        self.no_row: list[str] = []
 
     def execute(self, sql: str, args: Any) -> dict:
         if sql in self.fail:
             raise self.fail[sql]
+        if sql in self.no_row:
+            return {"rows": [], "insert_id": None, "affected": 0}
         if sql.startswith("SELECT type, name, tbl_name"):
             self.reads += 1
             if self.cause is not None and self.reads == self.fail_at:
@@ -1152,6 +1183,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         if "fail_catalog_read" in step:
             fault.cause = RuntimeError("catalog read failed")
             fault.fail_at = fault.reads + step["fail_catalog_read"]
+        fault.no_row = step.get("no_row_queries", [])
         for f in step.get("fail_statements", []):
             injected = sqlite3.OperationalError(f["message"])
             if "sqlite_result" in f:
@@ -1850,6 +1882,49 @@ def _markdown_connect(step: dict, database: str) -> None:
         raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
 
 
+def _markdown_session(step: dict, database: str) -> None:
+    """Runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+    step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            for reply in step["replies"]:
+                line = stream.readline()
+                if not line:
+                    break
+                received.append(line.decode().rstrip("\n"))
+                stream.write(reply.encode() + b"\n")
+                stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    db = Db.connect(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    got = None
+    message = ""
+    try:
+        db.transaction(lambda: db.transaction(lambda: None), {"readOnly": True})
+        try:
+            db.transaction(lambda: None)
+        except OrmError as error:
+            got = error.code
+            message = str(error)
+    finally:
+        db.close()
+    server.join(10)
+    listener.close()
+    if received != step["messages"]:
+        raise AssertionError(f"the listener received {received}, want {step['messages']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
+
+
 def _dsn_connect(step: dict, database: str) -> None:
     """Runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the outcome of the expect of database:
     {error: CODE} for a refused DSN, {value: {text: DRIVER}} for an opened one."""
@@ -2408,8 +2483,12 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
-def _op_reconnect(_step: dict, context: dict) -> dict:
-    context["catalog"] = connect_catalog(context["dsn"])
+def _op_reconnect(step: dict, context: dict) -> dict:
+    dsn = context["dsn"]
+    if "user_from_database" in step:
+        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
+    context["catalog"] = connect_catalog(dsn)
     context["namespace"] = context["catalog"].current_namespace()
     context["closed"] = False
     return {}
@@ -2758,6 +2837,7 @@ class _ChainBuild:
         self.context = context
         self.outer = outer
         self.joined: dict = {}
+        self.db = None
 
     def predicate(self, model: Model, conn: str, raw: dict) -> None:
         """Adds the predicate raw to model, joined by conn."""
@@ -2772,6 +2852,10 @@ class _ChainBuild:
                     conn, lambda group: self.predicate(group, "", value)
                 )
             if name == "placed":
+                if isinstance(value, dict):
+                    return model.core.connector(
+                        conn, [_new_core_model(self.context, value["model"])]
+                    )
                 if value not in self.joined:
                     raise AssertionError(f"placed {value} names no join")
                 return model.core.connector(conn, [self.joined[value]])
@@ -2899,6 +2983,8 @@ class _ChainBuild:
                 child.core.set_on(lambda group, on=on: inner.predicate(group, "", on))
             inner.query(child, join)
             kind = join.get("kind", "inner")
+            if join.get("connect") is True:
+                child.connect(self.db)
             model.core.join(kind, join["match"][0], join["match"][1], child)
             if "as" in join:
                 self.joined[join["as"]] = child
@@ -3011,6 +3097,7 @@ def _chain_built(step: dict, context: dict) -> Model:
         else _new_row(context, db, step["model"])
     )
     build = _ChainBuild(context)
+    build.db = db
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
     if not paged and "offset" in step and "limit" in step:
@@ -3132,15 +3219,19 @@ def _table_model_query(step: dict, context: dict) -> dict:
                 )
             return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
-    if step.get("page") is True:
+    if step.get("page") is True or "plan_page" in step:
         limit = step.get("limit")
         count = limit if isinstance(limit, int) else (limit or {}).get("count", 0)
-        if count <= 0:
+        if count <= 0 and "plan_page" not in step:
             raise AssertionError("a page needs a limit count above 0")
         offset = step.get("offset", 0)
         if isinstance(limit, dict):
             offset += limit.get("offset", 0)
-        page = model.gets_page(offset // count + 1, count)
+        page = (
+            model.gets_page(step["plan_page"]["page"], step["plan_page"]["per_page"])
+            if "plan_page" in step
+            else model.gets_page(offset // count + 1, count)
+        )
         fields = {
             "json": _plain_json(
                 {

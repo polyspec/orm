@@ -56,6 +56,7 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors        string          `json:"vectors"`
 	Case           string          `json:"case"`
@@ -93,9 +94,9 @@ type databaseStep struct {
 	Steps     []json.RawMessage          `json:"steps"`
 	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
 	// counted event kind, the failure text and the nested steps of a command.
-	Lines   []string `json:"lines"`
-	Through string   `json:"through"`
-	Plans   []string `json:"plans"`
+	Lines   []string      `json:"lines"`
+	Through string        `json:"through"`
+	Plans   []string      `json:"plans"`
 	Count   []string      `json:"count"`
 	Detail  string        `json:"detail"`
 	Message string        `json:"message"`
@@ -122,11 +123,11 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
-	Lock      string          `json:"lock"`
+	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
-	Sequence int64 `json:"sequence"`
-	Isolation string          `json:"isolation"`
-	ReadOnly  bool            `json:"read_only"`
+	Sequence  int64  `json:"sequence"`
+	Isolation string `json:"isolation"`
+	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
 	TimeoutMs    int  `json:"timeout_ms"`
@@ -137,21 +138,21 @@ type databaseStep struct {
 	Connections []string `json:"connections"`
 	Unconnected bool     `json:"unconnected"`
 	// The fields of events.server_transactions (INT-149).
-	Probe                  string   `json:"probe"`
-	FirstRunPrepareClients []string `json:"first_run_prepare_clients"`
-	Amount    json.RawMessage `json:"amount"`
+	Probe                  string          `json:"probe"`
+	FirstRunPrepareClients []string        `json:"first_run_prepare_clients"`
+	Amount                 json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
-	Ref     json.RawMessage `json:"ref"`
-	Row     json.RawMessage `json:"row"`
-	Fail    bool            `json:"fail"`
-	Kind    string          `json:"kind"`
+	Ref  json.RawMessage `json:"ref"`
+	Row  json.RawMessage `json:"row"`
+	Fail bool            `json:"fail"`
+	Kind string          `json:"kind"`
 	// The ORM error of a failing subscriber (INT-96).
 	Refusal *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"refusal"`
-	Compare string          `json:"compare"`
+	Compare string `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
 	Hooks      []json.RawMessage `json:"hooks"`
@@ -202,7 +203,7 @@ type outcome struct {
 
 type databaseContext struct {
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts int
+	attempts  int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -794,7 +795,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
-		catalog, err := orm.ConnectCatalog(c.dsn)
+		dsn := c.dsn
+		if s.UserFromDatabase != "" {
+			match := mysqlCaseDSN.FindStringSubmatch(dsn)
+			name := match[2]
+			if len(name) > 28 {
+				name = name[len(name)-28:]
+			}
+			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		}
+		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil {
 			return outcome{}, err
 		}

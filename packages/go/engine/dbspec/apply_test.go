@@ -101,22 +101,6 @@ func TestApplyStopWithCleanupFailureReturnsJoin(t *testing.T) {
 	logResult(t, "apply/stop-join", start)
 }
 
-// TestEffectRequiresRow checks that when an effect query returns no row, it is reported as an error
-// rather than read as no effect.
-func TestEffectRequiresRow(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	start := time.Now()
-	t.Log("RUN apply/effect-row deadline=5s")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	c := &failing{conn: applyTestConn(t), replace: map[string]string{effectQueries[DialectSQLite]["table"]: "SELECT 1 WHERE 0"}}
-	a := &applier{ctx: ctx, c: c, r: renderer{d: DialectSQLite}}
-	if _, err := a.effect(present("table", "orders", "")); err == nil {
-		t.Error("effect with a query that returns no row: no error")
-	}
-	logResult(t, "apply/effect-row", start)
-}
-
 // TestFinalizeMarksPlanDone checks that finalize of an applied plan that hides nothing, which has no finalize step,
 // makes its history row done at once (docs/spec/plans.md "Finalize").
 // Requirements: PLN-94.

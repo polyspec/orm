@@ -85,7 +85,6 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     ['packages/ts/tests/coverage_case.mjs', 'coverage-runner-typescript'],
     ['packages/php/tests/autoload.php', 'php-test-autoload'],
     ['packages/go/orm/test_helpers_test.go', 'go-test-helpers'],
-    ['packages/go/orm/coverage_fixture_test.go', 'go-test-helpers'],
     ['packages/go/orm/failing_driver_test.go', 'go-test-helpers'],
     ['packages/go/orm/schema_helpers_test.go', 'go-test-helpers'],
     ['packages/php/testing/conformance/runner.php', 'conformance-runners'],

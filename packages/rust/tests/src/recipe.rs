@@ -235,6 +235,55 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the step, a
+/// read-only transaction that holds a nested one, then a transaction, whose error is checked against the expect of `database`.
+fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
+    use std::io::{BufRead as _, Write as _};
+    let lines = |name: &str| -> Vec<String> {
+        step[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+    };
+    let (replies, messages) = (lines("replies"), lines("messages"));
+    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let server = std::thread::spawn(move || -> Result<Vec<String>, String> {
+        let (connection, _) = listener.accept().map_err(|error| error.to_string())?;
+        let mut writer = connection.try_clone().map_err(|error| error.to_string())?;
+        let mut reader = std::io::BufReader::new(connection);
+        let mut received = Vec::new();
+        for reply in &replies {
+            let mut line = String::new();
+            if reader.read_line(&mut line).map_err(|error| error.to_string())? == 0 {
+                break;
+            }
+            received.push(line.trim_end().to_owned());
+            writeln!(writer, "{reply}").map_err(|error| error.to_string())?;
+        }
+        Ok(received)
+    });
+    let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome: polyspec_orm::Result<()> = runtime.block_on(async {
+        let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await?;
+        let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
+        nested?;
+        let last = db.transaction(async || Ok(())).await;
+        db.close().await;
+        last
+    });
+    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    if received != messages {
+        return Err(format!("the listener received {received:?}, want {messages:?}"));
+    }
+    let expect = &step["expect"][database];
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    match outcome {
+        Err(error) if error.code() == want && error.to_string().contains(holds) => Ok(()),
+        Err(error) => Err(format!("error {} ({error}), want {want} with {holds}", error.code())),
+        Ok(()) => Err(format!("error none, want {want}")),
+    }
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
@@ -340,6 +389,7 @@ struct FaultConnection {
     fail_at: usize,
     reads: usize,
     fail: HashMap<String, (String, Option<i64>)>,
+    no_row: Vec<String>,
 }
 
 /// An error of a SQLite result code, as the driver returns it.
@@ -436,6 +486,9 @@ impl dbspec::ApplyConnection for FaultConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
         use dbspec::ApplyConnection as _;
+        if self.no_row.iter().any(|no_row| no_row == query) {
+            return Ok(Vec::new());
+        }
         self.inner.query_bound(query, args).await
     }
 }
@@ -457,7 +510,7 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new() };
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
         if step["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
@@ -470,6 +523,9 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
         if let Some(read) = step["fail_catalog_read"].as_u64() {
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
+        }
+        if let Some(queries) = step["no_row_queries"].as_array() {
+            fault.no_row = queries.iter().filter_map(Value::as_str).map(str::to_owned).collect();
         }
         if let Some(failing) = step["fail_statements"].as_array() {
             for f in failing {
@@ -623,6 +679,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
+        "markdown.session" => return markdown_session(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
@@ -1745,6 +1802,9 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
     let _zone = step["process_zone"].as_str().map(ProcessZone::set);
+    if let Some(surface) = step["surface"].as_str() {
+        return send_and_check(step, Call::Surface(surface.to_owned()), "markdown.send");
+    }
     let send = SendStep::parse(step)?;
     send_and_check(step, Call::Send(send), "markdown.send")
 }
@@ -1890,6 +1950,8 @@ enum Call {
     Assign(String),
     /// The builder calls of a markdown.builder step, by name.
     Builder(Vec<String>),
+    /// The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+    Surface(String),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -2057,6 +2119,31 @@ fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
 /// the calls are large in a debug build), and closes the connection after the call.
+/// Runs the public call of a markdown.send surface on the connection `db`.
+async fn refused_surface(surface: &str, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
+    let schema = polyspec_orm::Schema::new("", "");
+    let keyring = polyspec_orm::AesKeyring::new([(1, "key".to_owned())].into(), 1)?;
+    let model = bind_model::Slots::new();
+    match surface {
+        "audit" => db.transaction(async || Ok(())).audit([("actor", "tester")]).await,
+        "isolation" => db.transaction(async || Ok(())).isolation(polyspec_orm::Isolation::Serializable).await,
+        "timeout_ms" => db.transaction(async || Ok(())).timeout_ms(100).await,
+        "get_query" => bind_model::Slots::new().connect(db).get_query().await.map(drop),
+        "subscribe" => db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe()),
+        "lock" => db.utils().lock("k").await,
+        "set_local" => db.utils().set_local("k", "v").await,
+        "local" => db.utils().local("k").map(drop),
+        "backend_waiting_for_lock" => db.utils().backend_waiting_for_lock().await.map(drop),
+        "privileges" => db.utils().privileges().inspect_table("public.items").await.map(drop),
+        "aes_status" => db.utils().aes().status(&model, &keyring).await.map(drop),
+        "aes_rotate" => db.utils().aes().rotate(&model, &keyring).await.map(drop),
+        "schema_install" => db.utils().schema().install(&schema).await,
+        "schema_evolution" => db.utils().schema().add_tables_and_columns(&schema).await.map(drop),
+        "schema_exists" => db.utils().schema().exists("orm").await.map(drop),
+        other => panic!("markdown.send surface {other} has no call in the Rust cases"),
+    }
+}
+
 fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
     match std::thread::Builder::new()
         .stack_size(64 << 20)
@@ -2067,6 +2154,7 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                 let result = match &call {
                     Call::Send(send) => send.call(&db).await,
                     Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
+                    Call::Surface(surface) => refused_surface(surface, &db).await,
                     Call::Builder(calls) => {
                         let mut model = bind_model::Slots::new().connect(&db);
                         for call in calls {
@@ -3437,7 +3525,17 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.reconnect" => {
-                let mut fresh = CatalogConnection::connect(&context.dsn).await.map_err(Failure::Call)?;
+                let dsn = match step.get("user_from_database").and_then(Value::as_str) {
+                    Some(prefix) => {
+                        let path = context.dsn.split('?').next().unwrap_or(&context.dsn);
+                        let database = path.rsplit('/').next().unwrap_or(path);
+                        let name = &database[database.len().saturating_sub(28)..];
+                        let host = context.dsn.split_once('@').map_or(context.dsn.as_str(), |(_, host)| host);
+                        format!("mysql://{prefix}{name}@{host}")
+                    }
+                    None => context.dsn.clone(),
+                };
+                let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::Call)?;
                 context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
                 *catalog = Some(fresh);
                 Output::fields(json!({}))
@@ -4421,6 +4519,8 @@ mod tables {
     struct Build {
         joined: HashMap<String, u64>,
         outer: Option<u64>,
+        /// The connection of the step, for a join that names connect.
+        db: Option<Db>,
     }
 
     impl Build {
@@ -4438,6 +4538,10 @@ mod tables {
                         return Ok(());
                     }
                     "placed" => {
+                        if let Some(model) = value["model"].as_str() {
+                            core.place(conn, core_of(model)?.id());
+                            return Ok(());
+                        }
                         let name = value.as_str().ok_or_else(|| format!("placed {value} is not a name"))?;
                         let joined = self.joined.get(name).ok_or_else(|| format!("placed {name} names no join"))?;
                         core.place(conn, *joined);
@@ -4516,7 +4620,7 @@ mod tables {
             }
             if let Some(sub) = raw.get("sub") {
                 let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, sub, true)?;
+                Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, sub, true)?;
                 return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
             }
             if raw.get("fn").is_some() {
@@ -4566,7 +4670,7 @@ mod tables {
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()) }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -4611,7 +4715,7 @@ mod tables {
             }
             for join in q["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
-                let mut inner = Build { joined: HashMap::new(), outer: self.outer };
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None };
                 if let Some(alias) = join["alias"].as_str() {
                     child.set_alias(alias);
                 }
@@ -4621,6 +4725,9 @@ mod tables {
                     child.set_on(group);
                 }
                 inner.query(&mut child, join, true)?;
+                if join["connect"].as_bool() == Some(true) {
+                    child.connect(self.db.as_ref().ok_or_else(|| format!("join {join} has no connection"))?);
+                }
                 let id = child.id();
                 let (left, right) = (join["match"][0].as_str().unwrap_or_default(), join["match"][1].as_str().unwrap_or_default());
                 core.join(leaked(join["kind"].as_str().unwrap_or("inner")), left, right, child);
@@ -4682,7 +4789,7 @@ mod tables {
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
             }
-            Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, relation, true)?;
+            Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, relation, true)?;
             if let Some(n) = relation["group_limit"].as_u64() {
                 child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
             }
@@ -4907,7 +5014,7 @@ mod tables {
                 if step["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
-                let mut build = Build::default();
+                let mut build = Build { db: Some(db.clone()), ..Build::default() };
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
                 if !paged && !step["offset"].is_null() {
@@ -4986,7 +5093,7 @@ mod tables {
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
                 } }));
             }
-            if step["page"].as_bool() == Some(true) {
+            if step["page"].as_bool() == Some(true) || !step["plan_page"].is_null() {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
@@ -5008,10 +5115,16 @@ mod tables {
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
             let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
             let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-            if count == 0 {
-                return Err("a paged model.query needs a limit above 0".into());
-            }
-            let page = gets_page(root, offset / count + 1, count).await.map_err(orm)?;
+            let (number, size) = if step["plan_page"].is_null() {
+                if count == 0 {
+                    return Err("a paged model.query needs a limit above 0".into());
+                }
+                (offset / count + 1, count)
+            } else {
+                let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                (number("page")?, number("per_page")?)
+            };
+            let page = gets_page(root, number, size).await.map_err(orm)?;
             let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
             let mut fields = json!({
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
