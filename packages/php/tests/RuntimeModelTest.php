@@ -176,7 +176,7 @@ DBSPEC;
         self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
     }
 
-    // Requirements: DSL-116.
+    // Requirements: DSL-159.
     public function testNewOutputNameRejectsAStoredColumn(): void
     {
         $author = new Author();

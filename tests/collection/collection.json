@@ -1,0 +1,693 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-68",
+    "INT-69",
+    "INT-70",
+    "INT-71",
+    "INT-90",
+    "PRT-69"
+  ],
+  "cases": [
+    {
+      "id": "row_count_refuses_boolean",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": true
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_fraction",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 1.5
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_negative",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": -1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_negative_fraction",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": -1.5
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_negative_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "-1"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_beyond_safe",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 9007199254740992
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_beyond_safe_float",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 9007199254740992.0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_beyond_safe_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "9007199254740992"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_zero_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "0"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_largest_safe_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "9007199254740991"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_malformed_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "three"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_leading_zero_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": "00"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_empty_text",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": ""
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_null",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": null
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_missing_is_internal",
+      "requirements": [
+        "INT-68",
+        "INT-90"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "INTERNAL"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_keeps_zero",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "owner": "P1",
+                  "row_count": 0
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_keeps_largest_safe",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 9007199254740991
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "owner": "P1",
+                  "row_count": 9007199254740991
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "views_keep_result_order_and_selected_values",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": [
+              {
+                "active": false,
+                "age": null,
+                "row_count": 3
+              },
+              {
+                "active": true,
+                "age": 25,
+                "row_count": 2
+              },
+              {
+                "active": true,
+                "age": null,
+                "row_count": 0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "length": 3,
+                "counts": [
+                  3,
+                  2,
+                  0
+                ],
+                "rows": [
+                  {
+                    "active": false,
+                    "age": null,
+                    "row_count": 3
+                  },
+                  {
+                    "active": true,
+                    "age": 25,
+                    "row_count": 2
+                  },
+                  {
+                    "active": true,
+                    "age": null,
+                    "row_count": 0
+                  }
+                ],
+                "first": {
+                  "count": 3,
+                  "active": false,
+                  "age": null,
+                  "unselected": "COLUMN_UNSELECTED"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "views_of_no_rows",
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": []
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "length": 0,
+                "counts": [],
+                "rows": [],
+                "first": null
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "selected_boolean_refuses_a_number",
+      "requirements": [
+        "INT-68"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": [
+              {
+                "active": 2,
+                "age": null,
+                "row_count": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "selected_boolean_refuses_a_text",
+      "requirements": [
+        "INT-68"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": [
+              {
+                "active": "invalid",
+                "age": null,
+                "row_count": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "selected_null_on_a_column_that_is_not_null",
+      "requirements": [
+        "INT-68"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": [
+              {
+                "active": null,
+                "age": null,
+                "row_count": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

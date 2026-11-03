@@ -39,9 +39,6 @@ func sortedColumns(values map[string]any) []string {
 // modelOp runs one model op of s. model.connect opens the connection and binds it with as; every other op uses the
 // connection that its connection name names.
 func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if len(s.Row) > 0 && s.Connection == "" {
-		return rowOp(s, c)
-	}
 	if s.Op == "model.connect" {
 		cfg, err := connectConfig(s, c)
 		if err != nil {
@@ -81,28 +78,7 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "NoteReader":
 		return noteReaderOp(s, c, db)
 	}
-	if table, ok := tableModels[s.Model]; ok {
-		return tableModelOp(s, c, db, table)
-	}
 	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.Model)
-}
-
-// rowOp runs a model op of the {row} form, which names no model and no connection: the bound row records the path that
-// made it and the connection, and the op runs on that path and connection. A row that no bound row holds fails by name.
-func rowOp(s databaseStep, c *databaseContext) (outcome, error) {
-	name := refName(s.Row)
-	b, ok := c.bound[name]
-	if !ok || b.row == nil {
-		return outcome{}, fmt.Errorf("model op %s names row %q, which no bound row holds", s.Op, name)
-	}
-	if b.row.path != "table" {
-		return outcome{}, fmt.Errorf("model op %s: row %q was bound by the %s path, which has no row form", s.Op, name, b.row.path)
-	}
-	table, ok := tableModels[b.row.model]
-	if !ok {
-		return outcome{}, fmt.Errorf("model %s has no table entry", b.row.model)
-	}
-	return tableModelOp(s, c, b.row.db, table)
 }
 
 // modelValues reads an object of assignments of a model op into native values.
@@ -722,6 +698,9 @@ var authorColumns = map[string]func(*model.AuthorModel) *model.AuthorModel{
 	"read_count":         (*model.AuthorModel).AddColumnReadCount,
 	"like_count":         (*model.AuthorModel).AddColumnLikeCount,
 	"uuid":               (*model.AuthorModel).AddColumnUuid,
+	"aes_key_version":    (*model.AuthorModel).AddColumnAesKeyVersion,
+	"aes_hex_email":      (*model.AuthorModel).AddColumnAesHexEmail,
+	"aes_hex_phone":      (*model.AuthorModel).AddColumnAesHexPhone,
 }
 
 // authorOrders is the table of the Author orders that a recipe may name, by column name: a name is ascending, and a name

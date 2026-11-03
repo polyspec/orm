@@ -651,35 +651,34 @@
           "connection": "db"
         },
         {
-          "op": "model.get_query",
+          "op": "model.query",
           "connection": "db",
           "model": "HookItem",
+          "where": {},
+          "compile": true,
           "expect": {
             "mysql": {
-              "value": {
-                "array": [
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT `a`.`id` AS `a__id`, `a`.`part` AS `a__part`, `a`.`label` AS `a__label` FROM `hook_item` AS `a` WHERE `a`.`part` = ?"
               }
             },
             "postgres": {
-              "value": {
-                "array": [
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"part\" AS \"a__part\", \"a\".\"label\" AS \"a__label\" FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = $1"
               }
             },
             "sqlite": {
-              "value": {
-                "array": [
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"part\" AS \"a__part\", \"a\".\"label\" AS \"a__label\" FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = ?"
               }
             }
           }

@@ -62,6 +62,9 @@ COLUMNS = {
     "read_count": ("add_column_read_count", "get_read_count"),
     "like_count": ("add_column_like_count", "get_like_count"),
     "uuid": ("add_column_uuid", "get_uuid"),
+    "aes_key_version": ("add_column_aes_key_version", "get_aes_key_version"),
+    "aes_hex_email": ("add_column_aes_hex_email", "get_aes_hex_email"),
+    "aes_hex_phone": ("add_column_aes_hex_phone", "get_aes_hex_phone"),
 }
 
 # The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4).
