@@ -7840,6 +7840,128 @@
           }
         }
       ]
+    },
+    {
+      "id": "view_table_page",
+      "requirements": [
+        "INT-113"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE viewed_row (seq INTEGER NOT NULL PRIMARY KEY, name VARCHAR(40) NOT NULL)",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO viewed_row (seq, name) VALUES (1, 'first')",
+          "reason": "the row that the view shows"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE VIEW viewed_row_view AS SELECT seq, name FROM viewed_row",
+          "reason": "dbspec declares no view"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "viewed_row_view",
+          "expect": {
+            "mysql": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            },
+            "postgres": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            },
+            "sqlite": {
+              "kind": "view",
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "primary_key": [],
+              "reliable_row_identity": false
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "viewed_row_view",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "name"
+              ],
+              "order_by": [],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "first"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
