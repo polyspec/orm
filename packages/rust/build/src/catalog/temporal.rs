@@ -33,7 +33,7 @@ fn fraction(text: &str, p: usize, column: &str) -> Result<String, String> {
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &digits[..p]) })
 }
 
-/// A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29).
+/// A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite.
 fn is_boolean(native_type: &str, dialect: &str) -> bool {
     if dialect == "mysql" {
         native_type.eq_ignore_ascii_case("tinyint(1)")
@@ -59,7 +59,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
     for row in &mut result.rows {
         for (index, (cell, column)) in row.iter_mut().zip(&metadata.columns).enumerate() {
             if is_boolean(&column.native_type, dialect) {
-                // A boolean column is read as a bool by its column type (DIA-29): the integer 0 or 1 of a MySQL tinyint(1) or a
+                // A boolean column is read as a bool by its column type: the integer 0 or 1 of a MySQL tinyint(1) or a
                 // SQLite BOOLEAN becomes a bool; any other value fails.
                 let value = match *cell {
                     GridCell::Null => GridCell::Null,
@@ -77,7 +77,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                     GridCell::Text(text) if is_temporal(kind, text) => {
                         // A SQLite fraction is kept at the digits of the CHECK that fixes it (SQLite has no temporal storage class).
                         let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
-                        // DIA-24: a CHECK that fixes p requires exactly p fraction digits. INT-103 and DIA-24: a SQLite DATETIME or
+                        // A CHECK that fixes p requires exactly p fraction digits. A SQLite DATETIME or
                         // TIME with no CHECK has precision 0.
                         let expected = if kind == "date" { None } else { Some(checks.get(index).copied().flatten().unwrap_or(0)) };
                         if let Some(precision) = expected {
@@ -315,7 +315,6 @@ mod tests {
     }
 
     #[test]
-    // Requirements: INT-103.
     fn temporal_text_follows_the_dbspec_forms() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         use crate::tool_db::is_temporal;
@@ -339,7 +338,6 @@ mod tests {
     }
 
     #[test]
-    // Requirements: INT-103.
     fn fraction_keeps_exactly_p_digits_and_rejects_dropped_digits() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(fraction("2026-01-02 03:04:05.120000", 3, "c"), Ok("2026-01-02 03:04:05.120".into()));
