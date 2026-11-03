@@ -5264,6 +5264,10 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "bytes_hex_of": {
+                "description": "The result is the lowercase hex of the bytes that each row holds in this column, read through the row, in result order (PRT-69, INT-5).",
+                "$ref": "#/$defs/name"
+              },
               "key_by": {
                 "description": "The column that keys the collection of the result (PRT-35).",
                 "$ref": "#/$defs/name"
@@ -9921,6 +9925,10 @@
         "group_limit": {
           "type": "integer",
           "minimum": 1
+        },
+        "bytes_hex_of": {
+          "description": "The result is the lowercase hex of the bytes that each row holds in this column, read through the row, in result order (PRT-69, INT-5).",
+          "$ref": "#/$defs/name"
         },
         "key_by": {
           "$ref": "#/$defs/name"

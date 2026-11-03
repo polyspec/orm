@@ -60,6 +60,10 @@
       },
       "internal": [
         {
+          "glob": "packages/go/orm/driver_error_test.go",
+          "reason": "test: maps stand-in errors at the private MySQL and driver mappers; a server condition reaches these codes through the recipes"
+        },
+        {
           "glob": "examples/dsn_test.go",
           "reason": "harness: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
         },
@@ -427,6 +431,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/NativeCellReadTest.php",
+          "reason": "test: the private row assembly refuses a non-finite float cell of a stand-in driver row, a cell that MySQL and SQLite do not store"
+        },
+        {
           "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
           "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
@@ -640,6 +648,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/ModelStreamReadTest.php",
+          "reason": "test: the native row assembly reads stream cells and their warnings from a stand-in, the form that no recipe database returns"
+        },
+        {
           "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
           "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
         },
@@ -754,6 +766,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/driver-cell-bytes.mjs",
+          "reason": "test: the private mysqlParams turns a number parameter into an integer, for a pooler that a recipe database does not stand in for"
+        },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
           "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
@@ -9363,6 +9379,8 @@
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
         "INT-98",
         "DSL-137",
         "DIA-11",
@@ -9539,6 +9557,8 @@
       "id": "conformance_verification-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
         "INT-98",
         "DSL-137",
         "DIA-11",
@@ -9715,6 +9735,8 @@
       "id": "conformance_verification-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
         "INT-98",
         "DSL-137",
         "DIA-11",
@@ -13868,46 +13890,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
           "id": "connection_pool_mysql::an_unset_idle_size_keeps_the_pool_size"
-        }
-      ]
-    },
-    {
-      "id": "native-row-cell-bytes",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestCellScanCopiesLosslessNativeBytes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/NativeCellReadTest.php",
-          "id": "NativeCellReadTest::testRowAssemblyPreservesBinaryDriverCellBytes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelStreamReadTest.php",
-          "id": "ModelStreamReadTest::testNativeRowAssemblyPreservesBinaryDriverCellBytes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-cell-bytes.mjs",
-          "id": "driver-cell/bytes/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_cells.py",
-          "id": "test_binary_cells_keep_the_exact_driver_bytes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact"
         }
       ]
     },

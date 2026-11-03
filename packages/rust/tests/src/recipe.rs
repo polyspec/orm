@@ -5468,6 +5468,17 @@ mod tables {
         /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
         async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, String> {
             let core = self.built(step, db)?;
+            if let Some(column) = crate::recipe_reads::read(step, "bytes_hex_of")["bytes_hex_of"].as_str() {
+                let rows = gets(&TableRow::from_core(core)).await.map_err(orm)?;
+                let mut hexes = Vec::new();
+                for row in rows.models() {
+                    let Some(Val::Bytes(cell)) = row.value(column) else {
+                        return Err(format!("bytes_hex_of: the column {column} holds no bytes"));
+                    };
+                    hexes.push(cell.iter().map(|byte| format!("{byte:02x}")).collect::<String>());
+                }
+                return Ok(json!({ "json": hexes }));
+            }
             if crate::recipe_reads::read(step, "compile")["compile"].as_bool() == Some(true) {
                 let statement = get_query(&core).await.map_err(orm)?;
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();

@@ -3348,6 +3348,13 @@ def _table_model_chain(step: dict, context: dict) -> dict:
 def _table_model_query(step: dict, context: dict) -> dict:
     pick = step.get("pick")
     model = _chain_built(step, context)
+    if "bytes_hex_of" in step:
+        return {
+            "json": [
+                bytes(row.core.values[step["bytes_hex_of"]]).hex()
+                for row in model.gets().values()
+            ]
+        }
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:

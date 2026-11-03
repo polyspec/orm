@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fcac07aff4ed7cc8a13a717475f2322ca44a7bb459f6de3a8f6cef5d93da5495 -->
+<!-- source-sha256: e3d9404262aff52b08fa7dba96d033aea27ebefba1680a8c22fb906784cd2493 -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: driver cell의 정확한 bytes(PRT-69, INT-5)는 모든 runtime에서 `conformance_verification` recipe의 case `driver_bytes_cells_are_exact`가 `model.query`의 새 key `bytes_hex_of`로 확인하며, cell을 만들어 쓰던 native는 사라졌고, Rust는 비공개 row decoding 시험을 INT-142로 유지한다.
 - Tests: 선언된 타입을 벗어난 저장 cell(INT-98)은 모든 runtime에서 `conformance_verification` recipe의 세 case가 확인하며, 같은 cell을 쓰던 native는 사라졌다.
 - 이제 모든 client에서 collection view와 모든 model의 connect를 recipe가 확인하며, native extension 표면은 INT-62a 아래 자기 unit을 가진다.
 - Python package의 생성된 full-text method는 DSL-33a 아래 자기 unit을 가진다.

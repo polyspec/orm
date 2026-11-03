@@ -1,6 +1,8 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
+  "PRT-69",
+  "INT-5",
   "INT-98",
   "DSL-137",
   "DIA-37",
@@ -78202,6 +78204,62 @@
      "expect": {
       "sqlite": {
        "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "driver_bytes_cells_are_exact",
+   "requirements": [
+    "PRT-69",
+    "INT-5"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "two rows of bytes that are not UTF-8, read in one result, so that the read holds the exact driver cell and a reused driver buffer would show",
+     "sql": {
+      "mysql": "INSERT INTO byte_cell (body) VALUES (X'007F80FF41'), (X'FF00417F80')",
+      "sqlite": "INSERT INTO byte_cell (body) VALUES (X'007F80FF41'), (X'FF00417F80')",
+      "postgres": "INSERT INTO byte_cell (body) VALUES ('\\x007f80ff41'::bytea), ('\\xff00417f80'::bytea)"
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "ByteCell",
+     "order": [
+      "seq"
+     ],
+     "columns": [
+      "seq",
+      "body"
+     ],
+     "bytes_hex_of": "body",
+     "expect": {
+      "mysql": {
+       "json": [
+        "007f80ff41",
+        "ff00417f80"
+       ]
+      },
+      "postgres": {
+       "json": [
+        "007f80ff41",
+        "ff00417f80"
+       ]
+      },
+      "sqlite": {
+       "json": [
+        "007f80ff41",
+        "ff00417f80"
+       ]
       }
      }
     }

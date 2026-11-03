@@ -1964,6 +1964,9 @@ const TABLE_OPS = {
   async 'model.query'(s, context) {
     const { pick } = s;
     const m = chainBuilt(s, context);
+    if (s.bytes_hex_of !== undefined) {
+      return { json: (await m.gets()).values().map(row => Buffer.from(row[CORE].column(s.bytes_hex_of)).toString('hex')) };
+    }
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
       const steps = s.plan_page === undefined

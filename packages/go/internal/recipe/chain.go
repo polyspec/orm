@@ -6,6 +6,7 @@ package recipe
 // path verifies the builder and no name dispatcher.
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -127,6 +128,7 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
 	OrderedText     string                     `json:"ordered_text"`
+	BytesHexOf      string                     `json:"bytes_hex_of"`
 	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
 	DerivedIntegers []string                   `json:"derived_integers"`
@@ -1072,6 +1074,21 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	core, err := chainBuilt(s, db, c)
 	if err != nil {
 		return outcome{}, err
+	}
+	if column := s.k("bytes_hex_of").BytesHexOf; column != "" {
+		rows, err := orm.Gets[*tableRow](core)
+		if err != nil {
+			return outcome{}, err
+		}
+		hexes := []any{}
+		for _, row := range rows.Slice() {
+			cell, isBytes := row.vals[column].([]byte)
+			if !isBytes {
+				return outcome{}, fmt.Errorf("bytes_hex_of: the column %s is a %T", column, row.vals[column])
+			}
+			hexes = append(hexes, hex.EncodeToString(cell))
+		}
+		return jsonOutcome(hexes), nil
 	}
 	switch {
 	case s.k("compile").Compile:

@@ -4439,6 +4439,14 @@ final class Recipe
     {
         $pick = $s['pick'] ?? null;
         $model = self::chainBuilt($s, $context);
+        if (isset($s['bytes_hex_of'])) {
+            $hexes = [];
+            foreach ($model->gets() as $row) {
+                $cell = $row->{'get' . self::pascal($s['bytes_hex_of'])}();
+                $hexes[] = bin2hex($cell instanceof Bytes ? $cell->bytes : $cell);
+            }
+            return ['json' => $hexes];
+        }
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
         }

@@ -160,6 +160,10 @@
       "refused_message",
       "sql"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "transaction.writers": [
       "expect",
       "op",
@@ -172,10 +176,6 @@
     "wait.at_least": [
       "ms",
       "op"
-    ],
-    "session.end": [
-      "op",
-      "table"
     ],
     "fault.next_rollback": [
       "connection",
@@ -473,6 +473,7 @@
       "add_columns",
       "aggregate",
       "as",
+      "bytes_hex_of",
       "columns",
       "compile",
       "connection",
