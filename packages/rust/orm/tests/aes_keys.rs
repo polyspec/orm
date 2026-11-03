@@ -2,22 +2,9 @@
 //! encrypts with `aes_keys[aes_version]`, and an `aes_key` that differs from
 //! that key is rejected.
 
-use polyspec_orm_test_support::model_row;
-
-#[path = "common/or_panic.rs"]
-mod or_panic;
-use or_panic::OrPanic;
-
 use std::collections::BTreeMap;
 
-use polyspec_orm::{Db, Entity, Model, Schema, Val};
-
-#[path = "common/secret_config.rs"]
-mod secret_config;
-#[path = "common/secret_connected.rs"]
-mod secret_connected;
-use secret_config::{COLUMNS, SCHEMA};
-use secret_connected::connected;
+use polyspec_orm::{Db, Val};
 
 fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
     pairs.iter().map(|(v, k)| (*v, (*k).to_owned())).collect()
@@ -102,28 +89,3 @@ fn decode_error_code(assembly: &polyspec_orm::plan::Assemble, row: Vec<Val>, key
         Err(error) => error.code().to_owned(),
     }
 }
-
-// A copy of secret_config whose AES column may be NULL. The version column stays non-null (COD-6).
-const NULL_AES_TEXT: &str = r#"dbspec 1 secret_config_null_aes
-
-table secret_config {
-  seq i64 identity
-  aes_key_version i32
-  config bytes null
-  primary key (seq)
-  settings {
-    select explicit aes_key_version config
-    codec config aes
-    aes_version aes_key_version
-  }
-}
-"#;
-static NULL_AES_SCHEMA: Schema = Schema::new(NULL_AES_TEXT, "sha256:b76a7bc1a184240d8279150252383c3be66e36f01d6ab2b7b4e33045a92b90b2");
-static NULL_AES_SECRET: Entity = Entity {
-    name: "secret_config",
-    schema: &NULL_AES_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<NullAesSecret>,
-    collect: polyspec_orm::model::collect_boxed::<NullAesSecret>,
-};
-
-model_row!(NullAesSecret, NULL_AES_SECRET, COLUMNS);

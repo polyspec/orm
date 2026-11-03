@@ -109,7 +109,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
 
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
 use polyspec_orm::db::Pool;
-use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
+use polyspec_orm::{Collection, Db, Isolation, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
 const TARGET_POOL_SIZE: u32 = 4;

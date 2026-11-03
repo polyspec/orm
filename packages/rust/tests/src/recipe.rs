@@ -500,7 +500,6 @@ fn cleanup_chain(error: &dbspec::ApplyError) -> (&dbspec::ApplyError, Vec<String
 
 impl dbspec::CatalogQuerier for FaultConnection {
     async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
-        use dbspec::CatalogQuerier as _;
         if query.starts_with("SELECT type, name, tbl_name") {
             self.reads += 1;
             if let Some(cause) = self.cause.as_ref().filter(|_| self.reads == self.fail_at) {
@@ -513,7 +512,6 @@ impl dbspec::CatalogQuerier for FaultConnection {
 
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         match self.fail.get(statement) {
             Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(SqliteResult { message: message.clone(), code: *code }))),
             Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
@@ -522,12 +520,10 @@ impl dbspec::ApplyConnection for FaultConnection {
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[dbspec::CatalogValue]) -> Result<(), sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         self.inner.execute_bound(statement, args).await
     }
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         if self.no_row.iter().any(|no_row| no_row == query) {
             return Ok(Vec::new());
         }
