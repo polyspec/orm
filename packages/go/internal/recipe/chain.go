@@ -96,6 +96,7 @@ type chainRelation struct {
 	chainQuery
 	Match      [][2]string     `json:"match"`
 	Many       bool            `json:"many"`
+	Connect    bool            `json:"connect"`
 	Alias      string          `json:"alias"`
 	GroupLimit int             `json:"group_limit"`
 	KeyBy      string          `json:"key_by"`
@@ -903,8 +904,10 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 		if err != nil {
 			return nil, err
 		}
-		// This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-		child.Connect(db)
+		// Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+		if r.Connect {
+			child.Connect(db)
+		}
 		core.Relation(r.Many, child.Self())
 	}
 	return chainByKey(core, s, c)

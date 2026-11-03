@@ -563,6 +563,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

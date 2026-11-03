@@ -5704,6 +5704,10 @@
           "connection": {
             "$ref": "#/$defs/name"
           },
+          "as": {
+            "description": "The name of the hooked handle; the connection keeps its name, unhooked.",
+            "$ref": "#/$defs/name"
+          },
           "hooks": {
             "type": "array",
             "minItems": 1,
@@ -7484,6 +7488,94 @@
     },
     "hook": {
       "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign_first"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "rewrite"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "invalid_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
         {
           "type": "object",
           "required": [

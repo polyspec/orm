@@ -665,13 +665,13 @@ const OPS = {
     return { value: { int: String(rotated) } };
   },
   'hook.install'(s, context) {
-    installHook(s, context);
-    return {};
+    const hooked = installHook(s, context);
+    return s.as === undefined ? {} : { bind: hooked };
   },
   'hook.records'(_, context) {
     const counts = {};
     for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
-    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }]] }));
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]])] }));
     return { value: { array: list }, counts };
   },
 };
@@ -1492,8 +1492,8 @@ function chainBuilt(s, context) {
     // The columns of this relation are read of each child row; they do not narrow its statement.
     const { columns: _read, ...relation } = s.relation;
     const child = build.relation(relation);
-    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-    child.connect(connectionOf(s, context));
+    // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+    if (s.relation.connect === true) child.connect(connectionOf(s, context));
     m[CORE].relation(s.relation.many === true, child);
   }
   return byKey(m);
@@ -1647,7 +1647,7 @@ function installHook(s, context) {
     code: a.error,
   }));
   context.records = [];
-  const hooked = base.withRequestHook((query, addParam) => {
+  const hooked = base.withRequestHook((query, addParam, params) => {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
@@ -1661,8 +1661,22 @@ function installHook(s, context) {
           for (const row of query.rows ?? []) row.push(addParam(a.value));
           break;
         }
+        case 'assign_first':
+          query.set = [{ column: a.column, p: addParam(a.value) }, ...(query.set ?? [])];
+          break;
+        case 'rewrite':
+          for (const assignment of query.set ?? []) if (assignment.column === a.column) assignment.p = addParam(a.value);
+          break;
+        case 'invalid_param':
+          andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
+          break;
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
+          break;
+        case 'record_param':
+          for (const assignment of query.set ?? []) {
+            if (assignment.column === a.column) context.records.push({ kind: query.kind, entity: query.entity, param: bindWrapper(params[assignment.p]) });
+          }
           break;
         case 'fail':
           throw new OrmError(a.code, `request hook refused ${query.kind}`);
@@ -1672,8 +1686,11 @@ function installHook(s, context) {
     }
     return query;
   });
-  context.hookBases.set(s.connection, base);
-  context.bound.set(s.connection, hooked);
+  // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+  const target = s.as ?? s.connection;
+  context.hookBases.set(target, base);
+  context.bound.set(target, hooked);
+  return hooked;
 }
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);

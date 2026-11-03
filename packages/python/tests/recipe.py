@@ -2456,8 +2456,9 @@ def _chain_built(step: dict, context: dict) -> Model:
     if relation is not None:
         # The columns of this relation are read of each child row; they do not narrow its statement.
         child = build.relation({k: v for k, v in relation.items() if k != "columns"})
-        # This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-        child.connect(db)
+        # Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+        if relation.get("connect") is True:
+            child.connect(db)
         model.core.relation(relation.get("many") is True, child)
     return _by_key(model, step, context)
 
@@ -2882,23 +2883,49 @@ def _install_hook(step: dict, context: dict) -> None:
                 query.setdefault("set", []).append({"column": a["column"], "p": p})
                 for row in query.get("rows") or []:
                     row.append(add_param(a["value"]))
+            elif action == "assign_first":
+                query["set"] = [
+                    {"column": a["column"], "p": add_param(a["value"])},
+                    *(query.get("set") or []),
+                ]
+            elif action == "rewrite":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        assignment["p"] = add_param(a["value"])
+            elif action == "invalid_param":
+                and_where(
+                    query,
+                    {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
             elif action == "record":
                 context["records"].append(
                     {"kind": query["kind"], "entity": query["entity"]}
                 )
+            elif action == "record_param":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        context["records"].append(
+                            {
+                                "kind": query["kind"],
+                                "entity": query["entity"],
+                                "param": _plain(params[assignment["p"]], None),
+                            }
+                        )
             elif action == "fail":
                 raise OrmError(a["code"], f"request hook refused {query['kind']}")
             else:
                 raise AssertionError(f"hook action {action} is unknown")
         return query
 
-    context["hook_bases"][name] = base
-    context["bound"][name] = base.with_request_hook(hook)
+    # With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+    target = step.get("as", name)
+    context["hook_bases"][target] = base
+    context["bound"][target] = base.with_request_hook(hook)
 
 
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
-    return {}
+    return {"bind": context["bound"][step["as"]]} if "as" in step else {}
 
 
 def _op_hook_records(_step: dict, context: dict) -> dict:
@@ -2911,6 +2938,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
             "object": [
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
+                *([["param", record["param"]]] if "param" in record else []),
             ]
         }
         for record in records
