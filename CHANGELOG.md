@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - Nine more write cases of the conformance vectors run in the recipe conformance_verification (#T334-3-4-23)
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - PRT-82 states the order in which a statement writes its columns, and DBS-67 that an `update` and a delete of a soft-deleted table match only rows whose column is null; `tests/planner/runtime-model.json` holds them in all dialects.

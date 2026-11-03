@@ -5267,11 +5267,6 @@
       ],
       "bindings": [
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_subqueries.py",
-          "id": "test_read_total_is_the_sum_of_the_correlated_rows"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",
           "id": "TestRecipeModelQueriesChainSqlite/joined_child_keeps_its_scalar_subquery_order_and_index"
@@ -5311,16 +5306,6 @@
       ],
       "bindings": [
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_alias_columns.py",
-          "id": "test_alias_column_is_keyed_by_its_snake_case_name"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",
           "id": "TestRecipeModelQueriesChainSqlite/function_column_is_keyed_by_its_alias"
@@ -5351,6 +5336,25 @@
           "id": "model_queries_chain_sqlite::function_column_is_keyed_by_its_alias"
         }
       ]
+    },
+    {
+      "id": "column-function-factories-native",
+      "kind": "feature",
+      "requirements": [
+        "DSL-73a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
+          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "planner",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "coverage-model-create-parts",
@@ -29573,11 +29577,6 @@
         "DSL-76"
       ],
       "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_remove_columns.py",
-          "id": "test_keys_and_the_added_column_only"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",

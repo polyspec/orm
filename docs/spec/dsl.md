@@ -156,6 +156,7 @@ Key   = [Operator] Column
 
 - **DSL-72** `addColumn<Col>()` — Effect: add one column
 - **DSL-73** `addColumn<Col>Alias<Name>(fn)` — Effect: add a column function of the column (section 10) with an output name
+- **DSL-73a** PHP-extension package `polyspec/orm-php-ext` implements the column function factories of `Orm` natively and keeps their column-function metadata in a generated query (DSL-73).
 - **DSL-74** `addColumn<Name>(fn)` — Effect: add a scalar subquery column; the callback receives the calling model and returns an unexecuted model; a scalar column subquery has `limit(0, 1)` and an order that includes every primary key column, else the request is `IR_INVALID`
 - **DSL-75** `removeColumn<Col>()` — Effect: remove one column
 - **DSL-76** `removeAllColumns()` — Effect: keep only primary and foreign keys
