@@ -906,7 +906,7 @@ func markdownLinks(row []any) (*mdLinks, error) {
 }
 
 // beginMessage is the begin control message of a transaction: a read-only transaction sends read_only true, any
-// other leaves the member out (docs/spec/protocol.md §5 Session, the control cases of tests/bind/vectors.json).
+// other leaves the member out (docs/spec/protocol.md §5 Session, the cases control_begin of tests/bind/messages.json).
 func beginMessage(readOnly bool) mdControl {
 	return mdControl{Op: "begin", ReadOnly: readOnly}
 }

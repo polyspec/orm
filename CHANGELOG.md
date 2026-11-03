@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The cases of tests/bind/vectors.json that a recipe already holds are gone from it: the file keeps the native host values and the cases that Go and Rust refuse at compile time, and no runtime reads its removed `message` and `control` sections (T334-3-24).
 - The `dsn.connect` recipe op runs `SELECT 1` through `utils().run` on the connection that it opens, in all six runtimes, so that a DSN connects to a database that answers; the PHP `CoverageDsnTest` keeps only the SQLite minimum version check, which stays native (DSL-150), and reads no feature environment.
 - The refusals of vector 17 (`errors`) have a test before any request in each runtime, `make conformance-refusal-check`: a run on a SQLite file with no table and a statement subscriber in all six, and in Go, TypeScript and Rust a type check that accepts each chain with its error and refuses a use that drops the error. A statement whose prepare fails in Go publishes its statement event with the error, as INT-91 states and the other runtimes do; before, it published none.
 - The last catalog_connection coverage tests of the six runtimes are gone: the recipe cases temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice and deferred_foreign_key_at_commit hold what they asserted on the three databases. A descriptor with an invalid column name now fails with ROW_SNAPSHOT_INVALID and the cause in its message in Python and the PHP extension, and a second close of a TypeScript catalog does nothing.

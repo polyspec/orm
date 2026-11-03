@@ -1,30 +1,21 @@
 <!-- doc-id: tests-bind-readme -->
 # Bind vectors
 
-`vectors.json` holds the shared cases of the client bind paths. Each implementation runs them from
-a test in its own package, and every case must give the same answer in all of them. `make bind-check`
-runs the currently configured bind runners; PHP extension-native bind coverage remains open and is required before parity is complete.
+The cases of the bind paths are recipes: `messages.json` runs in every runtime, `messages-dynamic.json` in the runtimes without a
+compile-time type, and `messages-untyped-null.json` and `messages-python-null.json` in the runtimes they name
+(docs/spec/feature-coverage.md FCV-2 and FCV-4, `markdown.send` and `model.assign`).
 
-`bind` cases check one parameter against the logical type of its slot before any statement
-(docs/spec/protocol.md §5 "Parameters"): a `slot` with its `type` and, where the type has them, its
-`precision`, `scale` and `length`, a client `value`, and either the `bound` value or the error
-`code`. A value is plain JSON, or a tagged object for a host value that JSON does not carry:
-`{"int": text}` an integer past the exact range of a JSON number, `{"f64": "NaN" | "Infinity" |
-"-Infinity"}` a non-finite float and `{"bytes": base64}` bytes. Each rule has an accepting and a
-rejecting case.
-
-`message` cases write one parameter as an IR executor message value (docs/spec/protocol.md §5
-"Parameters"): a slot `type` and `precision`, a client `value`, and either the `json` value the
-message carries or the error `code`. `zone` is the connection time zone the cases assume.
-
-`control` cases write the `begin` control message of a transaction (docs/spec/protocol.md §5 "Session"): the
-transaction's `read_only` option and the `json` object of the message, `{"op": "begin", "read_only": true}` for a
-read-only transaction and `{"op": "begin"}` without the member otherwise. The message runners of the table run them.
+`vectors.json` holds what no recipe holds, run from a test in each package against the internal check of a parameter
+(docs/spec/protocol.md §5 "Parameters"): `bind` is the cases of a native host value of the runtime, such as a date object, which a
+JSON recipe cannot write, and `compile_refused` is the cases that a typed API refuses at compile time, which
+a runtime without that refusal runs as `messages-dynamic.json` and does not read here. A case has a `slot` with its `type`
+and, where the type has them, its `precision`, `scale` and `length`, a client `value`, and either the `bound` value or the error
+`code`. A value is plain JSON, or a tagged object for a host value that JSON does not carry.
 
 | runner | command |
 |---|---|
-| Go | `go test ./packages/go/orm -run '^(TestBindVectors\|TestBindMessageVectors)$'` |
-| TypeScript | `node packages/ts/tests/markdown.mjs` (cases `bind/*` and `markdown/bind-message/*`) |
-| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php` |
-| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors packages.python.tests.test_markdown.BindMessageVectors` |
+| Go | `go test ./packages/go/orm -run '^TestBindVectors$'` |
+| TypeScript | `node packages/ts/tests/markdown.mjs` (case `bind/vectors`) |
+| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php` |
+| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (in `packages/rust`) |
