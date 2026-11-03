@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4e5b24442bbc2d18b0bb14fc67e81c630a3d062d50baca659e596f27167f9ce2 -->
+<!-- source-sha256: 8aa96d3405d3211c9d551d5515f18473c2731a26db61ce173c7c5aaf03e7af86 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe가 담는 Go request hook native를 없앴다. 실패하는 hook의 읽기도 statement가 실행되지 않음을 적는다. native로 남는 unit은 FCV-2에 이유와 함께 적었다.
 - Tests: `make repo-check`가 다시 통과한다: `schema-set.mjs`는 `caseTest`로 보고하고, `param-uses-typescript` 줄은 추적되는 `coverage_planner.mjs`를 돌리고, T334-3-5의 두 conformance target은 `CHECK_TARGETS`와 CI `conformance` group에 있고, 두 실패 message는 고칠 방법을 적는다 (#T334-3-18).
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - PRT-82에 문장이 컬럼을 쓰는 순서를, DBS-67에 soft delete 테이블의 `update`와 삭제가 그 컬럼이 null인 row에만 맞는다는 것을 적었고, `tests/planner/runtime-model.json`이 모든 dialect에서 이를 담는다.

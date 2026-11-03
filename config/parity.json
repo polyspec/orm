@@ -213,10 +213,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/request_hook_test.go",
-          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/orm/split_plan_test.go",
           "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
@@ -5641,19 +5637,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookWithoutHook",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookWithoutHook",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/without_hook"
         },
         {
           "implementation": "php",
@@ -5676,11 +5661,6 @@
           "id": "without_hook"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_without_hook"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::without_hook"
@@ -5697,19 +5677,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookReadFilter",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookReadFilter",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/read_filter"
         },
         {
           "implementation": "php",
@@ -5747,19 +5716,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookInvalidParam",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookInvalidParam",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/invalid_param"
         },
         {
           "implementation": "php",
@@ -5797,19 +5755,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreNoKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreNoKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_no_key"
         },
         {
           "implementation": "php",
@@ -5847,19 +5794,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreRewrittenKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreRewrittenKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_rewritten_key"
         },
         {
           "implementation": "php",
@@ -5897,19 +5833,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreHookSetKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreHookSetKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_hook_set_key"
         },
         {
           "implementation": "php",
@@ -5947,19 +5872,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreRewrittenKeySetScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreRewrittenKeySetScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_rewritten_key_set_scope"
         },
         {
           "implementation": "php",
@@ -5997,19 +5911,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRelationScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRelationScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/relation_scope"
         },
         {
           "implementation": "php",
@@ -6221,8 +6124,96 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookReadsParams"
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/reads_params"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"reads_params\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"reads_params\""
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::reads_params"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
+          "id": "reads_params"
+        }
+      ]
+    },
+    {
+      "id": "request-hook-root-is-the-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/request_hook_test.go",
+          "id": "TestRequestHook/without_hook"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook.mjs",
+          "id": "request-hook/without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
+          "id": "test_without_hook"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::without_hook"
+        }
+      ]
+    },
+    {
+      "id": "request-hook-params-are-read-only",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/request_hook_test.go",
+          "id": "TestRequestHook/reads_params"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook.mjs",
+          "id": "request-hook/reads_params"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "php",
@@ -6235,24 +6226,9 @@
           "id": "RequestHookTestExtensionTest::testRequestHook with data set \"reads_params\""
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook_sqlite.py",
-          "id": "reads_params"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_params_are_read_only"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::reads_params"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/reads_params"
         }
       ]
     },
