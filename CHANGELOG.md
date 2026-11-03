@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A Rust page of exactly its byte budget answers, and all runtimes state a budget refusal in the same message, which INT-115 states.
 - A plain read-only query returns a binary value as its bytes in all six runtimes, and INT-153 states the form.
 - The catalog no longer refuses a PostgreSQL read for 200 UNION ALL operands or + terms, and Rust no longer bounds the depth of a read on the other dialects; catalog_read asserts that these reads answer.
 - The nine refusals of the vector `errors` (a missing or dangling connector, an empty list, no connection, a lock outside a transaction, a join child with a connection, a page with a limit, a relation with a limit and an unjoined model placement) run as the case `errors` of the recipe conformance_verification in all six runtimes, with an empty event list as the proof that no request left; the recipe takes `connect` on a join, `limit` on a relation, `{"placed": {"model": <name>}}`, and `plan_page` without `plan` for `getsPage` (#T334-3-12-2)

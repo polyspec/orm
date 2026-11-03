@@ -11546,6 +11546,348 @@
           }
         }
       ]
+    },
+    {
+      "id": "budget_exact_boundary",
+      "requirements": [
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 2,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 2,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 1,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 1,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a page cell of exactly the 8 MiB byte budget",
+          "sql": {
+            "mysql": "CREATE TABLE page_budget_exact (note LONGTEXT)",
+            "postgres": "CREATE TABLE page_budget_exact (note TEXT)",
+            "sqlite": "CREATE TABLE page_budget_exact (note TEXT)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "exactly 8388608 bytes",
+          "sql": {
+            "mysql": "INSERT INTO page_budget_exact VALUES (REPEAT('x', 8388608))",
+            "postgres": "INSERT INTO page_budget_exact VALUES (repeat('x', 8388608))",
+            "sqlite": "INSERT INTO page_budget_exact VALUES (printf('%.*c', 8388608, 'x'))"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "page_budget_exact",
+          "limit": 1,
+          "offset": 0,
+          "columns": [],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            },
+            "postgres": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            },
+            "sqlite": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a page cell one byte over it",
+          "sql": {
+            "mysql": "CREATE TABLE page_budget_over (note LONGTEXT)",
+            "postgres": "CREATE TABLE page_budget_over (note TEXT)",
+            "sqlite": "CREATE TABLE page_budget_over (note TEXT)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "8388609 bytes",
+          "sql": {
+            "mysql": "INSERT INTO page_budget_over VALUES (REPEAT('x', 8388609))",
+            "postgres": "INSERT INTO page_budget_over VALUES (repeat('x', 8388609))",
+            "sqlite": "INSERT INTO page_budget_over VALUES (printf('%.*c', 8388609, 'x'))"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "page_budget_over",
+          "limit": 1,
+          "offset": 0,
+          "columns": [],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            }
+          }
+        }
+      ]
     }
   ]
 }

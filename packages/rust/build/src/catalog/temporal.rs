@@ -267,7 +267,7 @@ pub(super) async fn read(
     params: &[P],
     limits: QueryLimits,
 ) -> Result<GridQueryResult, String> {
-    let mut result = connection.grid_query_bounded(sql, params, limits).await.map_err(super::catalog_query_error)?;
+    let mut result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(super::catalog_query_error)?;
     let checks = sqlite_check_precisions(connection, metadata, dialect).await?;
     declared_precision(metadata, dialect, &checks, &mut result)?;
     Ok(result)
@@ -283,7 +283,7 @@ pub(super) async fn read_page(
     limits: QueryLimits,
     keep: usize,
 ) -> Result<(GridQueryResult, bool), String> {
-    let mut result = connection.grid_query_bounded(sql, &[], limits).await.map_err(super::catalog_query_error)?;
+    let mut result = connection.grid_query_values_bounded(sql, &[], limits).await.map_err(super::catalog_query_error)?;
     let has_more = result.rows.len() > keep;
     result.rows.truncate(keep);
     let checks = sqlite_check_precisions(connection, metadata, dialect).await?;

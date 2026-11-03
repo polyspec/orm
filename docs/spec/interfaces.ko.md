@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: b7ef9c8437a28ba886bc6b4c13a5f112a213c82a378765ac12c3f7519b71ff7e -->
+<!-- source-sha256: 3ff7f00acd0251a14f19fffe05f1df213bacaadac8304ad3afc5b14aa52440e2 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -556,7 +556,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-112** MySQL `SYSTEM VIEW` 카탈로그 관계는 뷰로 분류되며, 테이블이나 쓰기 가능한 행 식별자로 분류되지 않는다.
 - **INT-113** 한정된 테이블을 기술하면 네이티브 열 타입, 선언된 기본 키 순서, 실제 nullability, 생성 열 표시가 보존된다. 식별자는 비어 있지 않고 전부 NOT NULL인 기본 키를 가진 일반 또는 파티션 테이블을 요구한다.
 - **INT-114** 테이블 페이지는 descriptor 열을 물리 순서로 읽는다. 선언된 기본 키 제약 순서가 있으면 그 순서로 정렬하며, limit은 1부터 1000, offset은 0부터 1000000까지이다. `has_more`는 전체 개수가 아니라 한정된 추가 행 하나로 정한다.
-- **INT-115** 명시된 행 또는 바이트 예산을 넘는 결과를 낸 조회는 부분 성공으로 자르지 않고 `CATALOG_LIMIT`으로 거부된다. 바이트 예산은 결과의 모든 cell을 합산한다: text, decimal, temporal cell은 UTF-8 바이트 수, binary cell은 길이, 그 밖의 cell은 NULL을 포함해 8바이트이다.
+- **INT-115** 명시된 행 또는 바이트 예산을 넘는 결과를 낸 조회는 부분 성공으로 자르지 않고 `CATALOG_LIMIT`으로 거부된다; 예산과 정확히 같은 결과는 예산 안이다. message는 `result has more than N rows` 또는 `result has more than N bytes of values`이다. 바이트 예산은 결과의 모든 cell을 합산한다: text, decimal, temporal cell은 UTF-8 바이트 수, binary cell은 길이, 그 밖의 cell은 NULL을 포함해 8바이트이다.
 - **INT-116** `polyspec-orm-build` Rust 도구는 타입 있는 바인드의 값을 데이터베이스에서 보존한다. 타입 있는 NULL은 빈 텍스트나 0이 아니라 선택된 네이티브 바인드 종류를 쓴다.
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다.
