@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 238bcb3828e7d5a14e3ec8ed1d9bc69960adde2314a6c0b2cbdb990a56839faa -->
+<!-- source-sha256: 2b8ca71a5f062a93ea542961f8d6e292d9fc056cfcb2125eb4b6a2d7a3b5e454 -->
 # 변경 이력
 
 ## Unreleased
@@ -291,6 +291,7 @@
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - CR15-2: `schema.empty`, `schema.exists`, `schema.installed`는 recipe op이 되었고, schema 비어 있음, 존재, 렌더된 install은 schema_install의 case가 되었으며, PERF-1은 timing의 `BENCH_*` 변수를 적는다.
+- CR15-2: set의 일부 테이블 위의 `install`은 모든 runtime에서 message가 하나다. Go, PHP, PHP extension, Rust는 각자 다른 text를 썼고, SCH-10이 그 message와 set과 다른 database의 message를 적는다.
 
 ## 0.0.21
 

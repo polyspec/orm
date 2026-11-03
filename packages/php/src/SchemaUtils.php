@@ -84,7 +84,7 @@ final class SchemaUtils
                     if ($present !== [] && $missing !== []) {
                         throw new OrmException(
                             Code::CONFIG,
-                            'the database holds only some tables of the document set: ' . implode(', ', $present)
+                            'install found only some tables of the document set: ' . implode(', ', $present)
                         );
                     }
                     if ($missing !== []) {

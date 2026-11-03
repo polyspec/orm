@@ -158,13 +158,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "install found only some tables of the document set: user"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "install found only some tables of the document set: user"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "install found only some tables of the document set: user"
             }
           }
         },
@@ -3088,13 +3091,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "the database differs from the document set: drop_column user.junk"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "the database differs from the document set: drop_column user.junk"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "the database differs from the document set: unsupported_column user.junk: declared type INTEGER with CHECK \"\" has no dbspec type"
             }
           }
         }
