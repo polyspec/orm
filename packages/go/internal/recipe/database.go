@@ -5,6 +5,7 @@ package recipe
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -58,10 +59,16 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	// reads records the keys that the run reads (FCV-4).
+	reads            *stepReads
 	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
-	Vectors        string          `json:"vectors"`
-	Case           string          `json:"case"`
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
+	// Paths is the document files of dbspec.introspect, relative to the recipe.
+	Paths []string `json:"paths"`
+	// CatalogOf is the other dialect whose catalog queries dbspec.introspect sends, which fail.
+	CatalogOf      string          `json:"catalog_of"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -75,6 +82,7 @@ type databaseStep struct {
 	SQL            json.RawMessage `json:"sql"`
 	Refused        bool            `json:"refused"`
 	RefusedMessage string          `json:"refused_message"`
+	RefusedCode    string          `json:"refused_code"`
 	MaxRows        int             `json:"max_rows"`
 	MaxBytes       int             `json:"max_bytes"`
 	Page           json.RawMessage `json:"page"`
@@ -205,6 +213,8 @@ type outcome struct {
 }
 
 type databaseContext struct {
+	// held is the pool of the connection that sql.hold_connection holds.
+	held *sql.DB
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
 	attempts  int
 	t         *testing.T
@@ -273,6 +283,36 @@ func caseSocketDSN(caseDSN, socket string) (string, error) {
 		return "", fmt.Errorf("dsn case-socket: the case DSN %q is not a mysql DSN", caseDSN)
 	}
 	return "mysql://" + m[1] + "@localhost/" + m[2] + "?socket=" + socket, nil
+}
+
+// refusedConnect reports whether the server refused the connection of catalog, whose first statement opens it, with text in
+// its message. The connection of the case stays.
+func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err error, code, text string) error {
+	if err == nil {
+		_, err = catalog.CurrentNamespace(c.ctx)
+		err = closeFirst(err, catalog.Close())
+	}
+	if err == nil {
+		return errors.New("the server accepted the connection that the step expects it to refuse")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), text) {
+		return fmt.Errorf("the server refused the connection for another reason: %w", err)
+	}
+	if got := orm.ErrorCode(err); got != code {
+		return fmt.Errorf("the refused connection has the code %q, want %q: %w", got, code, err)
+	}
+	return nil
+}
+
+// userFromDatabaseDSN is the case DSN with the user that user_from_database names: the prefix and the last 28 characters of
+// the name of the case database, without a password.
+func userFromDatabaseDSN(dsn, prefix string) string {
+	match := mysqlCaseDSN.FindStringSubmatch(dsn)
+	name := match[2]
+	if len(name) > 28 {
+		name = name[len(name)-28:]
+	}
+	return "mysql://" + prefix + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
 }
 
 // mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
@@ -464,15 +504,17 @@ func runRawStep(raw json.RawMessage, c *databaseContext) (string, error) {
 			return "", err
 		}
 		if chainOps[head.Op] {
-			s := databaseStep{Op: head.Op, As: head.As, Only: head.Only, Expect: head.Expect}
-			return head.Op, runStepWith(s, c, func(databaseStep, *databaseContext) (outcome, error) { return chainOp(raw, c) })
+			reads := newStepReads(raw)
+			s := databaseStep{Op: head.Op, As: head.As, Only: head.Only, Expect: head.Expect, reads: reads}
+			return head.Op, runStepWith(s, c, func(databaseStep, *databaseContext) (outcome, error) { return chainOp(raw, c, reads) })
 		}
 	}
 	var s databaseStep
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return "", err
 	}
-	return s.Op, runDatabaseStep(s, c)
+	s.reads = newStepReads(raw)
+	return s.k("op").Op, runDatabaseStep(s, c)
 }
 
 // runDatabaseStep maps the op of s to its call and compares the fields that its expect names.
@@ -483,11 +525,11 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 // runStepWith runs a step through op and compares the fields that its expect names.
 func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
 	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
-	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
+	if len(s.k("only").Only) > 0 && !slices.Contains(s.k("only").Only, c.database) {
 		return nil
 	}
 	var expected map[string]any
-	if raw, ok := s.Expect[c.database]; ok {
+	if raw, ok := s.k("expect").Expect[c.database]; ok {
 		var parsed any
 		if err := json.Unmarshal(raw, &parsed); err != nil {
 			return err
@@ -550,13 +592,13 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
 			return fmt.Errorf("error %q has no driver cause", err.Error())
 		}
-		return nil
+		return s.reads.checkOutcome(expected, s.k("op").Op, "error", "message_suffix", "message", "cause", "message_holds", "rollback", "driver_cause")
 	}
-	if s.As != "" {
-		c.bound[s.As] = bound{api: result.api, fields: result.fields, value: result.fields["value"]}
+	if s.k("as").As != "" {
+		c.bound[s.k("as").As] = bound{api: result.api, fields: result.fields, value: result.fields["value"]}
 	}
 	if expected == nil {
-		return nil
+		return s.reads.check()
 	}
 	if want, ok := expected["error"]; ok {
 		return fmt.Errorf("expected %v, and the op succeeded", want)
@@ -616,7 +658,7 @@ func readBindCell(dsn string, seq int64) (out outcome, err error) {
 
 // databaseOp calls the public API that the op names and returns the fields that its expect compares (FCV-4).
 func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "catalog.current_namespace":
 		namespace, err := c.catalog.CurrentNamespace(c.ctx)
 		if err != nil {
@@ -625,10 +667,10 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return outcome{fields: map[string]any{"value": map[string]any{"text": namespace}}}, nil
 	case "catalog.describe_table":
 		namespace := c.namespace
-		if s.Namespace != "" {
-			namespace = s.Namespace
+		if s.k("namespace").Namespace != "" {
+			namespace = s.k("namespace").Namespace
 		}
-		metadata, err := c.catalog.DescribeTable(c.ctx, orm.CatalogTableRef{Namespace: namespace, Name: s.Table})
+		metadata, err := c.catalog.DescribeTable(c.ctx, orm.CatalogTableRef{Namespace: namespace, Name: s.k("table").Table})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -653,7 +695,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			"nullable": nullable, "generated": generated, "automatic_keys": automatic, "defaults": defaults,
 		}}, nil
 	case "catalog.table_page":
-		page, err := c.catalog.TablePage(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.Table}, s.Limit, s.Offset)
+		page, err := c.catalog.TablePage(c.ctx, orm.CatalogTableRef{Namespace: c.namespace, Name: s.k("table").Table}, s.k("limit").Limit, s.k("offset").Offset)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -661,8 +703,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		for i, column := range page.Result.Columns {
 			names[i] = column.Name
 		}
-		indexes := make([]int, len(s.Columns))
-		for i, column := range s.Columns {
+		indexes := make([]int, len(s.k("columns").Columns))
+		for i, column := range s.k("columns").Columns {
 			at := indexOf(names, column)
 			if at < 0 {
 				return outcome{}, fmt.Errorf("the page has no column %s", column)
@@ -685,15 +727,15 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			"columns": names, "order_by": page.OrderBy, "has_more": page.HasMore, "rows": rows,
 		}}, nil
 	case "catalog.read_only_query":
-		query, err := databaseText(s.SQL, c)
+		query, err := databaseText(s.k("sql").SQL, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		binds, err := queryBinds(s.Binds, c)
+		binds, err := queryBinds(s.k("binds").Binds, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		result, err := c.catalog.ReadOnlyQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.k("max_rows").MaxRows, MaxBytes: s.k("max_bytes").MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -703,15 +745,15 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"columns": result.Columns, "row_count": len(result.Rows), "rows": rows}}, nil
 	case "catalog.read_only_grid_query":
-		query, err := databaseText(s.SQL, c)
+		query, err := databaseText(s.k("sql").SQL, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		binds, err := queryBinds(s.Binds, c)
+		binds, err := queryBinds(s.k("binds").Binds, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.k("max_rows").MaxRows, MaxBytes: s.k("max_bytes").MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -721,13 +763,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"columns": result.Columns, "rows": rows}}, nil
 	case "catalog.row_snapshot":
-		raw := s.Page
-		if len(s.PageWith) > 0 {
+		raw := s.k("page").Page
+		if len(s.k("page_with").PageWith) > 0 {
 			var with struct {
 				Page    json.RawMessage `json:"page"`
 				OrderBy []string        `json:"order_by"`
 			}
-			if err := json.Unmarshal(s.PageWith, &with); err != nil {
+			if err := json.Unmarshal(s.k("page_with").PageWith, &with); err != nil {
 				return outcome{}, err
 			}
 			raw = with.Page
@@ -736,7 +778,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		if len(s.PageWith) > 0 {
+		if len(s.k("page_with").PageWith) > 0 {
 			var with struct {
 				OrderBy          []string `json:"order_by"`
 				ColumnName       *string  `json:"column_name"`
@@ -749,7 +791,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 					Count int    `json:"count"`
 				} `json:"fill_last_cell"`
 			}
-			if err := json.Unmarshal(s.PageWith, &with); err != nil {
+			if err := json.Unmarshal(s.k("page_with").PageWith, &with); err != nil {
 				return outcome{}, err
 			}
 			page.OrderBy = with.OrderBy
@@ -779,7 +821,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 				page.Result.Rows[0] = row
 			}
 		}
-		snapshot, err := orm.CatalogSnapshotFromPage(page, s.Index)
+		snapshot, err := orm.CatalogSnapshotFromPage(page, s.k("index").Index)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -796,24 +838,24 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			"keys": keyCells, "key_indexes": snapshot.KeyIndexes(),
 		}}, nil
 	case "catalog.revision":
-		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		snapshot, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": snapshot.snapshot.Revision()}}}, nil
 	case "catalog.revision_compare":
-		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		snapshot, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		other, err := boundAPI[snapshotOf](s.Other, c)
+		other, err := boundAPI[snapshotOf](s.k("other").Other, c)
 		if err != nil {
 			return outcome{}, err
 		}
 		revision := snapshot.snapshot.Revision()
 		return outcome{fields: map[string]any{"json": map[string]any{"length": len(revision), "differs": revision != other.snapshot.Revision()}}}, nil
 	case "catalog.row_cells":
-		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		snapshot, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -831,7 +873,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			URL        *string `json:"url"`
 			SQLiteFile string  `json:"sqlite_file"`
 		}
-		if err := json.Unmarshal(s.DSN, &target); err != nil {
+		if err := json.Unmarshal(s.k("dsn").DSN, &target); err != nil {
 			return outcome{}, err
 		}
 		if target.URL != nil {
@@ -851,11 +893,12 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		var want struct {
 			FileCreated bool `json:"file_created"`
 		}
-		if raw, ok := s.Expect[c.database]; ok {
+		if raw, ok := s.k("expect").Expect[c.database]; ok {
 			if err := json.Unmarshal(raw, &want); err != nil {
 				return outcome{}, closeFirst(err, closeErr)
 			}
 		}
+		s.reads.mark("expect.file_created")
 		_, statErr := os.Stat(path)
 		if created := statErr == nil; created != want.FileCreated {
 			return outcome{}, closeFirst(fmt.Errorf("file_created of %s is %v, want %v", path, created, want.FileCreated), closeErr)
@@ -864,22 +907,34 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
 		}
 		return outcome{}, closeFirst(err, closeErr)
+	case "sql.hold_connection":
+		raw := testdb.Open(c.t, c.database, userFromDatabaseDSN(c.dsn, s.k("user_from_database").UserFromDatabase))
+		held, err := raw.Conn(c.ctx)
+		if err != nil {
+			return outcome{}, closeFirst(err, raw.Close())
+		}
+		c.held = raw
+		c.t.Cleanup(func() { _ = held.Close(); _ = raw.Close() })
+		return outcome{}, nil
+	case "sql.release_connection":
+		// The pool closes the connection that the step holds, returned or not.
+		held := c.held
+		c.held = nil
+		return outcome{}, held.Close()
 	case "catalog.close":
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
 		dsn := c.dsn
-		if s.UserFromDatabase != "" {
-			match := mysqlCaseDSN.FindStringSubmatch(dsn)
-			name := match[2]
-			if len(name) > 28 {
-				name = name[len(name)-28:]
-			}
-			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		if s.k("user_from_database").UserFromDatabase != "" {
+			dsn = userFromDatabaseDSN(dsn, s.k("user_from_database").UserFromDatabase)
 		}
 		catalog, err := orm.ConnectCatalog(dsn)
-		if err != nil {
+		if err != nil && s.k("refused_message").RefusedMessage == "" {
 			return outcome{}, err
+		}
+		if s.k("refused_message").RefusedMessage != "" {
+			return outcome{}, refusedConnect(c, catalog, err, s.k("refused_code").RefusedCode, s.k("refused_message").RefusedMessage)
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {
@@ -889,13 +944,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		c.namespace = namespace
 		return outcome{}, nil
 	case "model.read_bind_cell":
-		return readBindCell(c.dsn, s.Seq)
+		return readBindCell(c.dsn, s.k("seq").Seq)
 	case "catalog.insert_row":
-		metadata, err := boundAPI[orm.CatalogTableMetadata](s.Metadata, c)
+		metadata, err := boundAPI[orm.CatalogTableMetadata](s.k("metadata").Metadata, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		values, err := assignments(s.Values, c)
+		values, err := assignments(s.k("values").Values, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -905,11 +960,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return mutation(metadata, result, c.database)
 	case "catalog.update_row":
-		original, err := boundAPI[snapshotOf](s.Snapshot, c)
+		original, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		values, err := assignments(s.Set, c)
+		values, err := assignments(s.k("set").Set, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -919,7 +974,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return mutation(original.metadata, result, c.database)
 	case "catalog.delete_row":
-		original, err := boundAPI[snapshotOf](s.Snapshot, c)
+		original, err := boundAPI[snapshotOf](s.k("snapshot").Snapshot, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -929,7 +984,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(deleted, 10)}}}, nil
 	case "schema.install":
-		if s.Connection != "" {
+		if s.k("connection").Connection != "" {
 			db, err := connectionOf(s, c)
 			if err != nil {
 				return outcome{}, err
@@ -939,7 +994,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			return okOutcome(), nil
 		}
-		schema, err := schemaArgument(s.Schema, c)
+		schema, err := schemaArgument(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -948,7 +1003,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return okOutcome(), nil
 	case "schema.register":
-		schema, err := schemaArgument(s.Schema, c)
+		schema, err := schemaArgument(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -963,7 +1018,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"bool": empty}}}, nil
 	case "schema.exists":
-		name, err := inspectedSchema(s.Schema, c)
+		name, err := inspectedSchema(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -973,17 +1028,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"bool": exists}}}, nil
 	case "schema.installed":
-		name, err := inspectedSchema(s.Schema, c)
+		name, err := inspectedSchema(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		installed, err := c.db.Utils().Schema().Installed(name, s.Table)
+		installed, err := c.db.Utils().Schema().Installed(name, s.k("table").Table)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"bool": installed}}}, nil
 	case "schema.connect":
-		schema, err := schemaArgument(s.Schema, c)
+		schema, err := schemaArgument(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -996,14 +1051,14 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return okOutcome(), nil
 	case "schema.add_tables_and_columns":
-		schema, err := schemaArgument(s.Schema, c)
+		schema, err := schemaArgument(s.k("schema").Schema, c)
 		if err != nil {
 			return outcome{}, err
 		}
 		added, err := c.db.Utils().Schema().AddTablesAndColumns(schema)
 		if err != nil {
-			if !strings.Contains(err.Error(), s.MessageContains) {
-				return outcome{}, fmt.Errorf("the message %q holds no %q", err.Error(), s.MessageContains)
+			if !strings.Contains(err.Error(), s.k("message_contains").MessageContains) {
+				return outcome{}, fmt.Errorf("the message %q holds no %q", err.Error(), s.k("message_contains").MessageContains)
 			}
 			return outcome{}, err
 		}
@@ -1021,7 +1076,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		runErr := runNested(s.Steps, c)
+		runErr := runNested(s.k("steps").Steps, c)
 		stop()
 		if runErr != nil {
 			return outcome{}, runErr
@@ -1035,23 +1090,23 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
 		var options []orm.TransactionOption
 		switch {
-		case s.DefaultRetry:
-		case s.Retry != nil:
-			options = append(options, orm.Retry(*s.Retry))
+		case s.k("default_retry").DefaultRetry:
+		case s.k("retry").Retry != nil:
+			options = append(options, orm.Retry(*s.k("retry").Retry))
 		default:
 			options = append(options, orm.Retry(0))
 		}
-		if s.Isolation != "" {
-			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
+		if s.k("isolation").Isolation != "" {
+			options = append(options, orm.Isolation(orm.IsolationLevel(s.k("isolation").Isolation)))
 		}
-		if s.ReadOnly {
+		if s.k("read_only").ReadOnly {
 			options = append(options, orm.ReadOnly())
 		}
-		if s.TimeoutMs > 0 {
-			options = append(options, orm.TimeoutMs(s.TimeoutMs))
+		if s.k("timeout_ms").TimeoutMs > 0 {
+			options = append(options, orm.TimeoutMs(s.k("timeout_ms").TimeoutMs))
 		}
-		if s.Audit != nil {
-			values, err := auditValues(s.Audit, c)
+		if s.k("audit").Audit != nil {
+			values, err := auditValues(s.k("audit").Audit, c)
 			if err != nil {
 				return outcome{}, err
 			}
@@ -1060,13 +1115,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		attempts := 0
 		err = db.Transaction(func() error {
 			attempts++
-			if err := runNested(s.Steps, c); err != nil {
+			if err := runNested(s.k("steps").Steps, c); err != nil {
 				return err
 			}
-			if s.Fail {
+			if s.k("fail").Fail {
 				return errCallback
 			}
-			if attempts <= s.Conflicts {
+			if attempts <= s.k("conflicts").Conflicts {
 				return orm.TransactionConflict("the recipe conflict")
 			}
 			return nil
@@ -1077,7 +1132,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return okOutcome(), nil
 	case "session.end":
-		if err := endSession(s.Table, c); err != nil {
+		if err := endSession(s.k("table").Table, c); err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
@@ -1085,6 +1140,18 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "dbspec.introspect":
+		if s.k("catalog_of").CatalogOf != "" {
+			if err := introspectFailureStep(s, c); err != nil {
+				return outcome{}, err
+			}
+			return outcome{fields: map[string]any{"failed": true}}, nil
+		}
+		queries, err := introspectStep(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"queries": queries}}, nil
 	case "events.server_transactions":
 		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
@@ -1093,7 +1160,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		return okOutcome(), nil
 	case "sql.exec":
-		statement, present, err := sqlExecText(s.SQL, c)
+		statement, present, err := sqlExecText(s.k("sql").SQL, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -1102,7 +1169,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		raw := testdb.Open(c.t, c.database, c.dsn)
 		defer testcase.Close(c.t, raw)
-		if s.Refused && c.database == "sqlite" {
+		if s.k("refused").Refused && c.database == "sqlite" {
 			// A native SQLite connection starts with foreign keys off; the runners of the other clients open it with them on.
 			raw.SetMaxOpenConns(1)
 			if _, err := raw.ExecContext(c.ctx, "PRAGMA foreign_keys = ON"); err != nil {
@@ -1110,11 +1177,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 		}
 		_, err = raw.ExecContext(c.ctx, statement)
-		if s.Refused {
+		if s.k("refused").Refused {
 			if err == nil {
 				return outcome{}, fmt.Errorf("the database accepted the statement that the step expects it to refuse: %s", statement)
 			}
-			if !strings.Contains(strings.ToLower(err.Error()), s.RefusedMessage) {
+			if !strings.Contains(strings.ToLower(err.Error()), s.k("refused_message").RefusedMessage) {
 				return outcome{}, fmt.Errorf("the database refused the statement for another reason: %w", err)
 			}
 			return outcome{fields: map[string]any{}}, nil
@@ -1130,17 +1197,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	// dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step, opened with Connect.
 	case "dsn.connect":
 		var dsn string
-		if err := json.Unmarshal(s.DSN, &dsn); err != nil {
+		if err := json.Unmarshal(s.k("dsn").DSN, &dsn); err != nil {
 			return outcome{}, fmt.Errorf("dsn.connect: dsn is not a text: %w", err)
 		}
 		if dsn == "case" {
 			dsn = c.dsn
-			if s.Query != "" {
+			if s.k("query").Query != "" {
 				separator := "?"
 				if strings.Contains(dsn, "?") {
 					separator = "&"
 				}
-				dsn += separator + s.Query
+				dsn += separator + s.k("query").Query
 			}
 		}
 		if name, isEnv := strings.CutPrefix(dsn, "env:"); isEnv {
@@ -1149,19 +1216,19 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
 			}
 		}
-		driver, err := connectDriver(dsn, s.Config)
+		driver, err := connectDriver(dsn, s.k("config").Config)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
 	case "dsn.sqlite_file":
-		names, err := sqliteFileName(s.Name, s.Query)
+		names, err := sqliteFileName(s.k("name").Name, s.k("query").Query)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": names}}}, nil
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	// The ops of the model connections (FCV-4), by their full names.
 	case "model.connect", "model.create", "model.creates", "model.save", "model.duplicate_create", "model.update",
 		"model.arithmetic", "model.delete", "model.count", "model.get_by", "model.query", "model.restore":
@@ -1170,7 +1237,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	if out, handled, err := statementOp(s, c); handled {
 		return out, err
 	}
-	if applyOps[s.Op] {
+	if applyOps[s.k("op").Op] {
 		return applyOp(s, c)
 	}
 	return requestOp(s, c)
@@ -1180,16 +1247,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 // the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
 func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
 	var keys [2]json.RawMessage
-	if err := json.Unmarshal(s.Rows, &keys); err != nil {
+	if err := json.Unmarshal(s.k("rows").Rows, &keys); err != nil {
 		return outcome{}, err
 	}
 	// flowWrite writes the name of a flow to one row through the model.update of this helper.
 	flowWrite := func(connection string, key json.RawMessage, name string) error {
-		set, err := json.Marshal(map[string]any{s.Column: map[string]any{"text": name}})
+		set, err := json.Marshal(map[string]any{s.k("column").Column: map[string]any{"text": name}})
 		if err != nil {
 			return err
 		}
-		_, err = modelOp(databaseStep{Op: "model.update", Connection: connection, Model: s.Model, Key: key, Set: set}, c)
+		_, err = modelOp(databaseStep{Op: "model.update", Connection: connection, Model: s.k("model").Model, Key: key, Set: set}, c)
 		return err
 	}
 	var held sync.WaitGroup
@@ -1197,7 +1264,7 @@ func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
 	var attempts, deadlocks atomic.Int64
 	errs := make([]error, 2)
 	var flows sync.WaitGroup
-	for i, connection := range s.Connections {
+	for i, connection := range s.k("connections").Connections {
 		flows.Add(1)
 		go func() {
 			defer flows.Done()
@@ -1234,7 +1301,7 @@ func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 	}
-	db, err := connectionOf(databaseStep{Connection: s.Connections[0]}, c)
+	db, err := connectionOf(databaseStep{Connection: s.k("connections").Connections[0]}, c)
 	if err != nil {
 		return outcome{}, err
 	}
@@ -1262,16 +1329,16 @@ func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
 // connectionOf is the connection that an op names with its connection field, or the case connection when the field is
 // empty (FCV-4).
 func connectionOf(s databaseStep, c *databaseContext) (*orm.DB, error) {
-	if s.Connection == "" {
+	if s.k("connection").Connection == "" {
 		return c.db, nil
 	}
-	b, ok := c.bound[s.Connection]
+	b, ok := c.bound[s.k("connection").Connection]
 	if !ok {
-		return nil, fmt.Errorf("connection %q is not bound", s.Connection)
+		return nil, fmt.Errorf("connection %q is not bound", s.k("connection").Connection)
 	}
 	db, ok := b.api.(*orm.DB)
 	if !ok {
-		return nil, fmt.Errorf("connection %q is a %T, not a connection", s.Connection, b.api)
+		return nil, fmt.Errorf("connection %q is a %T, not a connection", s.k("connection").Connection, b.api)
 	}
 	return db, nil
 }

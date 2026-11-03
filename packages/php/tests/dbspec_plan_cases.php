@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // The one reader of the plan cases for the PHP tests: tests/dbspec/plan-cases.json (a recipe) with the database data of
-// each case in tests/dbspec/plans-physical.json, keyed by case id. DbspecPlanApplyTest, DbspecApplyTest and the apply
+// each case in tests/dbspec/plans-physical.json, keyed by case id. DbspecPlanApplyTest and the apply
 // and compare tools take their cases from here; the file is read once per process.
 
 /**

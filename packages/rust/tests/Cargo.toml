@@ -393,6 +393,23 @@ polyspec-orm-build = { path = "../build" }
 [lints]
 workspace = true
 
+# Each case of the dbspec_introspect recipe, contracts/fixtures/dbspec_introspect/dbspec_introspect.json, is the trial
+# dbspec_introspect_<database>::<case id> on a case database of its own (FCV-3).
+[[test]]
+name = "dbspec_introspect_mysql"
+path = "tests/dbspec_introspect_mysql.rs"
+harness = false
+
+[[test]]
+name = "dbspec_introspect_postgres"
+path = "tests/dbspec_introspect_postgres.rs"
+harness = false
+
+[[test]]
+name = "dbspec_introspect_sqlite"
+path = "tests/dbspec_introspect_sqlite.rs"
+harness = false
+
 # Each case of the schema_install recipe, contracts/fixtures/schema_install/schema_install.json, is the trial
 # schema_install_<database>::<case id> on a case database of its own (FCV-3).
 [[test]]

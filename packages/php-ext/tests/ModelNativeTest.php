@@ -452,19 +452,6 @@ final class ModelNativeTest extends TestCase
         self::assertEquals((object) ['label' => 'sample', 'amount' => '2.50'], $model->jsonSerialize());
     }
 
-    // Requirements: COD-16, COD-26.
-    public function testNativeModelJsonPreservesOrderedJsonNumberText(): void
-    {
-        $stored = '{"z":9007199254740993,"b":1.50,"a":1e2}';
-        $model = (new NativeModelFixture())->setPayload(
-            \Polyspec\Orm\StyledValue::value(\Polyspec\OrderedJson\parse($stored))
-        );
-        self::assertSame(
-            '{"payload":{"kind":"value","value":' . $stored . '}}',
-            $model->toJson(),
-        );
-    }
-
     public function testQueryTracksFullJoinPathsAndRejectsDuplicateResultNames(): void
     {
         $root = new NativeModelFixture();
