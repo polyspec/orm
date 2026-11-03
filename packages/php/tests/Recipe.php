@@ -200,6 +200,10 @@ final class Recipe
                     RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
                     continue;
                 }
+                if ($step['op'] === 'generator.refused') {
+                    RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
@@ -2681,6 +2685,8 @@ final class Recipe
                 return ['value' => ['int' => (string) $context['attempts']]];
             case 'transaction.deadlock':
                 return self::transactionDeadlock($s, $context);
+            case 'events.server_transactions':
+                return self::serverTransactions($s, $context);
             case 'catalog.connect':
                 return self::connectOp($s, $context);
             case 'catalog.close':
@@ -2705,6 +2711,12 @@ final class Recipe
             case 'catalog.revision':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 return ['value' => ['text' => $snapshot->revision()]];
+            case 'catalog.revision_compare':
+                $revision = self::stepArgument($s['snapshot'], $context)->revision();
+                return ['json' => [
+                    'length' => strlen($revision),
+                    'differs' => $revision !== self::stepArgument($s['other'], $context)->revision(),
+                ]];
             case 'catalog.row_cells':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2821,6 +2833,44 @@ final class Recipe
                             $page->hasMore,
                         );
                     }
+                    $with = $s['page_with'];
+                    if (isset($with['primary_key'])) {
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $page->metadata->columns,
+                                $with['primary_key'],
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
+                    if (isset($with['limit']) || isset($with['result_column_name']) || isset($with['drop_last_cell']) || isset($with['fill_last_cell'])) {
+                        $columns = $page->result->columns;
+                        $rows = $page->result->rows;
+                        if (isset($with['result_column_name'])) {
+                            $columns[0] = $with['result_column_name'];
+                        }
+                        if (isset($with['drop_last_cell'])) {
+                            array_pop($rows[0]);
+                        }
+                        if (isset($with['fill_last_cell'])) {
+                            $rows[0][array_key_last($rows[0])] = str_repeat($with['fill_last_cell']['fill'], $with['fill_last_cell']['count']);
+                        }
+                        $page = new CatalogTablePage(
+                            $page->metadata,
+                            new CatalogResult($columns, $rows),
+                            $with['limit'] ?? $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2851,6 +2901,10 @@ final class Recipe
                 $recording = new RecipeRecording();
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'fault.next_rollback':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
+                return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
                 $refusal = $s['refusal'] ?? null;
@@ -3483,6 +3537,60 @@ final class Recipe
     }
 
     /**
+     * events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+     * server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+     *
+     * @param array<string, mixed> $s
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    private static function serverTransactions(array $s, array &$context): array
+    {
+        $db = self::connectionOf($s, $context);
+        $frameRows = static fn (string $text): array => $db->utils()->run(
+            static fn (TxFrame $frame): array => $frame->run('utility', [], $text, [])
+        );
+        $probe = static fn (): int => (int) array_values($frameRows($s['probe'])[0])[0];
+        $client = getenv('ORM_PHP_MODE') === 'extension' ? 'php-extension' : 'php';
+        $fields = [];
+        if ($context['database'] === 'postgres') {
+            [$setting, $source] = array_values(
+                $frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'")[0]
+            );
+            // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+            $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
+            $fields['time_zone'] = $setting;
+            $fields['time_zone_from_startup'] = $pooled || $source === 'client';
+        }
+        $first = $probe();
+        $before = $probe();
+        $cost = $before - $first;
+        foreach (['first', 'second'] as $run) {
+            $texts = [];
+            $stop = $db->subscribe(static function (StatementEvent $e) use (&$texts): void {
+                $texts[] = $e->sql;
+            });
+            try {
+                foreach ($s['steps'] as $nested) {
+                    self::databaseStep($nested, $context);
+                }
+            } finally {
+                $stop();
+            }
+            $after = $probe();
+            $spent = $after - $before - $cost;
+            $before = $after;
+            $distinct = count(array_unique($texts));
+            $prepares = $run === 'first' && in_array($client, $s['first_run_prepare_clients'], true);
+            $fields[$run . '_excess'] = $spent - count($texts) - ($prepares ? $distinct : 0);
+            $fields['events'] = count($texts);
+            $fields['texts'] = $distinct;
+        }
+        $fields['probe_cost'] = $cost;
+        return $fields;
+    }
+
+    /**
      * Two flows write two rows in opposite order (PLN-24), each a child process, as the request of PHP is one flow: each
      * holds its first row until the other holds its own, so the database ends one flow with its deadlock error, the client
      * retries it, and both commit.
@@ -3810,6 +3918,10 @@ final class Recipe
             self::chainPredicate($model, '', $q['where'], $build, $context);
         }
         foreach ($q['order'] ?? [] as $entry) {
+            if (is_array($entry) && ($entry['random'] ?? false) === true) {
+                $model->orderByRandom();
+                continue;
+            }
             if (is_string($entry)) {
                 $descending = str_starts_with($entry, '-');
                 $model->{'orderBy' . self::pascal(ltrim($entry, '-')) . ($descending ? 'Desc' : 'Asc')}();
@@ -4391,6 +4503,11 @@ final class Recipe
         }
         if (is_bool($value)) {
             return ['bool' => $value];
+        }
+        if (is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
+            && filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
+            return ['int' => $value];
         }
         if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
             return ['bytes_hex' => bin2hex($value)];

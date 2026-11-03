@@ -187,67 +187,6 @@ fn ignores_calls_of_other_types() {
     assert!(!text.contains("pub fn len"));
 }
 
-#[test]
-// Requirements: DBS-27, SCH-1.
-fn rejects_an_invalid_document() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let dir = std::env::temp_dir().join(format!("orm-build-invalid-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
-    std::fs::write(dir.join("zone.dbs"), text).unwrap();
-    let err = polyspec_orm_build::Builder::set(set_file(&dir, &[dir.join("zone.dbs")], &[])).out_dir(dir.join("out")).try_generate().unwrap_err();
-    remove_test_dir(&dir);
-    assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
-}
-
-/// dbspec::read_bytes rejects, before parse, a DbSchema project XML and an empty file by the signature of their joined path.
-#[test]
-// Requirements: DBS-4, DBS-27, DBS-155, SCH-1.
-fn rejects_a_file_without_the_signature() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for name in ["dbschema.dbs", "empty.dbs"] {
-        let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
-        let dir = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
-        let set = set_file(&dir, &[path], &[]);
-        let out = dir.join("out");
-        let err = polyspec_orm_build::Builder::set(&set).out_dir(out.clone()).try_generate().unwrap_err();
-        let wrote = out.exists();
-        remove_test_dir(&dir);
-        assert!(!wrote, "{name}: generation wrote {}", out.display());
-        let display = format!("{}/{name}", dir.join("set").display());
-        assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
-    }
-}
-
-/// A set file with errors, or documents with diagnostics, fail the generation with every error and
-/// every diagnostic, and nothing is written.
-// Requirements: DBS-19, DBS-25, DBS-27, DBS-155, SCH-1.
-#[test]
-fn reports_every_error_of_the_set_and_writes_nothing() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-set-{}-{n}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("dbspec-set.json"), r#"{"schema": 1, "documents": ["gone.dbs", "Zone.dbs", "/abs.dbs"]}"#).unwrap();
-    let set_errors = polyspec_orm_build::Builder::set(dir.join("dbspec-set.json")).out_dir(dir.join("out")).try_generate().unwrap_err();
-    let wrote_after_set = dir.join("out").exists();
-    let signature = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/files/empty.dbs");
-    let invalid = dir.join("zone.dbs");
-    std::fs::write(&invalid, std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)")).unwrap();
-    let set = set_file(&dir, &[signature, invalid], &[]);
-    let diagnostics = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate().unwrap_err();
-    let wrote_after_documents = dir.join("out").exists();
-    remove_test_dir(&dir);
-    let lines: Vec<&str> = set_errors.lines().collect();
-    assert_eq!(lines.len(), 3, "{set_errors}");
-    assert!(lines[0].starts_with("set.file: ") && lines[0].contains("gone.dbs"), "{set_errors}");
-    assert!(lines[1].starts_with("set.file: ") && lines[1].contains("Zone.dbs"), "{set_errors}");
-    assert!(lines[2].starts_with("set.path: ") && lines[2].contains("\"/abs.dbs\""), "{set_errors}");
-    assert!(!wrote_after_set, "a set file with errors wrote the output");
-    assert!(diagnostics.contains("empty.dbs is not a dbspec document") && diagnostics.contains("zone.dbs: SCHEMA_INVALID 5:"), "{diagnostics}");
-    assert!(!wrote_after_documents, "documents with diagnostics wrote the output");
-}
-
 // Requirements: DBS-100, DBS-104, DBS-111, DBS-120.
 #[test]
 fn manifest_text_is_embedded_with_its_hash() {
@@ -460,53 +399,6 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     // Generated code calls the runtime crate as polyspec_orm::, so a model module of the same name shadows that path.
     assert!(text.contains("pub mod polyspec_orm_model {"), "the model module of table polyspec_orm is polyspec_orm_model");
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
-}
-
-/// The check of the generated files (orm-gen gen --check of the Go module): it reports no line for the current
-/// files, reports a changed and a missing file, and writes nothing.
-// Requirements: DBS-175.
-#[test]
-fn check_reports_differences_without_writing() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), "fn main() { let _ = ZoneEvent::new().gt_start_dt(now); }").unwrap();
-    let set = set_file(&dir, &[schema()], &[]);
-    let out = dir.join("out");
-    let check = || polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).check();
-    let result = (|| -> Result<(), String> {
-        polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).try_generate()?;
-        assert_eq!(check()?, Vec::<String>::new(), "the current files are up to date");
-        std::fs::write(out.join("orm_model.rs"), "// changed\n").unwrap();
-        std::fs::remove_file(out.join("orm_manifest.dbs")).unwrap();
-        let before = std::fs::read_to_string(out.join("orm_model.rs")).unwrap();
-        assert_eq!(check()?, vec!["missing: orm_manifest.dbs".to_owned(), "differs: orm_model.rs".to_owned()]);
-        assert_eq!(std::fs::read_to_string(out.join("orm_model.rs")).unwrap(), before, "the check wrote orm_model.rs");
-        assert!(!out.join("orm_manifest.dbs").exists(), "the check wrote orm_manifest.dbs");
-        Ok(())
-    })();
-    remove_test_dir(&dir);
-    result.or_panic(|e| format!("check: {e}"));
-}
-
-/// A check whose generation fails returns the error and does not create the output directory.
-#[test]
-fn check_keeps_the_output_directory_on_generation_error() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), "fn main() { let _ = ZoneEvent::new().no_such_column(now); }").unwrap();
-    let set = set_file(&dir, &[schema()], &[]);
-    let out = dir.join("out");
-    let err = polyspec_orm_build::Builder::set(&set).scan(&src).out_dir(&out).check();
-    let created = out.exists();
-    remove_test_dir(&dir);
-    assert!(err.is_err(), "a call the schema does not allow must fail the check");
-    assert!(!created, "the check created the output directory");
 }
 
 #[test]

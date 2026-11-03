@@ -1298,12 +1298,11 @@ connection-utc-rust-check: lease-tool
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) connection-utc-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test zone connections_use_utc -- --exact --test-threads=1 --nocapture
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
-# loaded: StatementEventsTest (the statement-events server transactions), StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
+# loaded: StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
 # MysqlTlsTest::testSessionSqlMode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementEventsTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter testSessionSqlMode
@@ -1842,12 +1841,6 @@ php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
 .PHONY: python-install-changed-database-check
 python-install-changed-database-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.install_changed_database
-# python-statement-events-check runs each entry of server_transactions of tests/events/vectors.json with the Python client on
-# its database (packages/python/tests/statement_events_server_transactions.py). The eight cases run as the recipe
-# (test_statement_events_<database>.py).
-.PHONY: python-statement-events-check
-python-statement-events-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_events_server_transactions
 # python-mysql-session-check reads the session sql_mode of a Python MySQL connection and compares it with
 # tests/dsn/mysql-session.json (packages/python/tests/mysql_session.py); it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).

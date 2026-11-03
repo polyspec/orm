@@ -687,6 +687,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "generator.check" => return recipe_generator::check_files(step, dir),
+        "generator.refused" => return recipe_generator::check_refused(step, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
@@ -2994,6 +2995,18 @@ mod database {
     }
 
     /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
+    /// The rows of one utility statement in a frame of its own on the connection (INT-150).
+    async fn frame_rows(db: &Db, text: &str) -> polyspec_orm::Result<Vec<Vec<polyspec_orm::Val>>> {
+        db.utils().run(async |frame| frame.run("utility", &[], text, &[]).await).await
+    }
+
+    /// The single integer cell of a probe of events.server_transactions.
+    async fn probe_value(db: &Db, text: &str) -> Result<i64, String> {
+        let rows = frame_rows(db, text).await.map_err(|e| format!("{text}: {e}"))?;
+        let cell = rows.first().and_then(|row| row.first()).map(super::statement::cell_wrapper).ok_or_else(|| format!("{text}: no cell"))?;
+        cell["int"].as_str().or_else(|| cell["text"].as_str()).and_then(|digits| digits.parse().ok()).ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
+    }
+
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
         let name = step["connection"].as_str().ok_or_else(|| format!("{} names no connection", step["op"]))?;
         context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
@@ -3378,6 +3391,11 @@ mod database {
                 context.subscriptions.insert(name, subscription);
                 Output::fields(json!({}))
             }
+            "fault.next_rollback" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                polyspec_orm::testing::fail_next_rollback(&db);
+                Output::fields(json!({}))
+            }
             "events.fail_subscriber" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
@@ -3439,6 +3457,56 @@ mod database {
                     .map_err(orm)?;
                 let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
                 Output::fields(json!({ "value": { "array": rows } }))
+            }
+            // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts
+            // the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+            "events.server_transactions" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let probe_text = step["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
+                let mut fields = serde_json::Map::new();
+                if context.database == "postgres" {
+                    let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
+                    let cells: Vec<Value> = rows[0].iter().map(super::statement::cell_wrapper).collect();
+                    // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+                    let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+                    fields.insert("time_zone".into(), cells[0]["text"].clone());
+                    fields.insert("time_zone_from_startup".into(), json!(pooled || cells[1]["text"] == "client"));
+                }
+                let first = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let mut before = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let cost = before - first;
+                let prepares = step["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
+                for run in ["first", "second"] {
+                    let texts = Arc::new(Mutex::new(Vec::<String>::new()));
+                    let sink = Arc::clone(&texts);
+                    let subscription = db
+                        .subscribe(move |event: &StatementEvent<'_>| {
+                            sink.lock().unwrap().push(event.sql.to_owned());
+                            Ok(())
+                        })
+                        .map_err(orm)?;
+                    let mut outcome = Ok(());
+                    for nested in step["steps"].as_array().into_iter().flatten() {
+                        if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                            outcome = Err(message);
+                            break;
+                        }
+                    }
+                    subscription.unsubscribe();
+                    outcome.map_err(fault)?;
+                    let after = probe_value(&db, &probe_text).await.map_err(fault)?;
+                    let spent = after - before - cost;
+                    before = after;
+                    let texts = texts.lock().unwrap();
+                    let distinct = texts.iter().collect::<std::collections::HashSet<_>>().len() as i64;
+                    let events = texts.len() as i64;
+                    let extra = if run == "first" && prepares { distinct } else { 0 };
+                    fields.insert(format!("{run}_excess"), json!(spent - events - extra));
+                    fields.insert("events".into(), json!(events));
+                    fields.insert("texts".into(), json!(distinct));
+                }
+                fields.insert("probe_cost".into(), json!(cost));
+                Output::fields(Value::Object(fields))
             }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
@@ -3563,6 +3631,25 @@ mod database {
                         if let Some(name) = with["column_name"].as_str() {
                             page.metadata.columns[0].name = name.to_owned();
                         }
+                        if with.get("primary_key").is_some() {
+                            page.metadata.primary_key = strings(&with["primary_key"]).map_err(fault)?;
+                        }
+                        if let Some(limit) = with["limit"].as_u64() {
+                            page.limit = limit as usize;
+                        }
+                        if let Some(name) = with["result_column_name"].as_str() {
+                            page.result.columns[0].name = name.to_owned();
+                        }
+                        if with.get("drop_last_cell").is_some() {
+                            page.result.rows[0].pop();
+                        }
+                        if let Some(fill) = with.get("fill_last_cell") {
+                            let text = fill["fill"].as_str().ok_or_else(|| fault("fill is not text".into()))?;
+                            let count = fill["count"].as_u64().ok_or_else(|| fault("count is not a number".into()))?;
+                            if let Some(last) = page.result.rows[0].last_mut() {
+                                *last = GridCell::Text(text.repeat(count as usize));
+                            }
+                        }
                         Some(page)
                     }
                     None => None,
@@ -3582,6 +3669,11 @@ mod database {
             "catalog.revision" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
                 Output::fields(json!({ "value": { "text": snapshot.revision() } }))
+            }
+            "catalog.revision_compare" => {
+                let revision = snapshot(&step["snapshot"], context).map_err(fault)?.revision().to_owned();
+                let other = snapshot(&step["other"], context).map_err(fault)?.revision().to_owned();
+                Output::fields(json!({ "json": { "length": revision.len(), "differs": revision != other } }))
             }
             "catalog.row_cells" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
@@ -3938,6 +4030,7 @@ mod database {
         match value {
             Val::Null => json!({ "null": true }),
             Val::Int(n) => json!({ "int": n.to_string() }),
+            Val::Unsigned(n) => json!({ "int": n.to_string() }),
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
@@ -4697,6 +4790,10 @@ mod tables {
                 self.predicate(core, "", filter)?;
             }
             for entry in q["order"].as_array().into_iter().flatten() {
+                if entry["random"].as_bool() == Some(true) {
+                    core.order_by_random();
+                    continue;
+                }
                 if let Some(name) = entry.as_str() {
                     let (column, desc) = name.strip_prefix('-').map_or((name, false), |column| (column, true));
                     core.order_by(column, desc, None);

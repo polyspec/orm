@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 7f07aa78edf82e7df48cd90888bb9f061006334dc6f57b4d25ad40ca58378e86 -->
+<!-- source-sha256: caedb94a57f6146e3fb1e0093a32303a4e5ede94270cca592f680319da79b754 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -462,7 +462,7 @@ $b->getJsonSetting()['a'];
 
 ### Statement event {#statement-events}
 
-모든 client는 데이터베이스로 보내는 statement마다 event 하나를 publish한다: model의 statement, transaction 제어, schema utility의 statement, 그 밖의 모든 utility statement다. subscriber는 연결에 등록한다. 공유 vector `tests/events/vectors.json`은 sequence 하나를 MySQL, PostgreSQL, SQLite에서 실행하고 모든 client가 publish하는 event를 적는다.
+모든 client는 데이터베이스로 보내는 statement마다 event 하나를 publish한다: model의 statement, transaction 제어, schema utility의 statement, 그 밖의 모든 utility statement다. subscriber는 연결에 등록한다. Recipe `statement_events`는 sequence 하나를 MySQL, PostgreSQL, SQLite에서 실행하고 모든 client가 publish하는 event를 적는다.
 
 | Client | 등록과 해제 | Event |
 |---|---|---|

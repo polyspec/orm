@@ -29,7 +29,6 @@
         "packages/go/engine/dbspec/vector_reader_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/statement_events_export_test.go",
         "packages/go/orm/test_helpers_test.go",
         "packages/go/bench/process_cpu_unix_test.go",
         "packages/go/bench/process_cpu_windows_test.go",
@@ -398,7 +397,6 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/request_termination_child.php",
         "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
@@ -705,7 +703,6 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/engine_features.mjs"
       ],
@@ -729,7 +726,6 @@
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
-        "packages/ts/tests/statement-events-run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/was-inserted-child.mjs",
@@ -987,10 +983,6 @@
           "reason": "test: tests the Python-only installed_differences helper with constructed parsed schemas and unsupported-object records; public database comparison and install errors are covered by the six-client add_tables_and_columns and install feature cases"
         },
         {
-          "glob": "packages/python/tests/statement_events.py",
-          "reason": "harness: the helper module of the statement events of tests/events/vectors.json (EventRun, run_case, VECTORS and setUpModule) that the coverage and server-transactions tests import; it holds no test of its own, and the cases run as the statement_events recipe units"
-        },
-        {
           "glob": "packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         },
@@ -1023,7 +1015,6 @@
         "packages/python/tests/was_inserted_child.py",
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
-        "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
         "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_keys.py",
@@ -8400,7 +8391,8 @@
         "FCV-13",
         "FCV-14",
         "SCH-11",
-        "SCH-7"
+        "SCH-7",
+        "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -8454,7 +8446,8 @@
         "FCV-13",
         "FCV-14",
         "SCH-11",
-        "SCH-7"
+        "SCH-7",
+        "INT-149"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -9225,6 +9218,9 @@
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9387,6 +9383,9 @@
       "id": "conformance_verification-postgres",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9549,6 +9548,9 @@
       "id": "conformance_verification-sqlite",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -12279,38 +12281,63 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/statement_events_test.go",
-          "id": "TestStatementEventsServerTransactions"
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/server_transactions_mysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/StatementEventsTest.php",
-          "id": "StatementEventsTest::testServerTransactions"
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testMysql with data set \"server_transactions_mysql\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
-          "id": "StatementEventsTestExtensionTest::testServerTransactions"
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testMysql with data set \"server_transactions_mysql\""
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/statement_events_server_transactions.py",
-          "id": "test_server_transactions"
+          "test": "packages/python/tests/test_statement_events_mysql.py",
+          "id": "server_transactions_mysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/statement_events.rs",
-          "id": "statement_events_server_transactions"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::server_transactions_mysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
-          "id": "server-transactions/mysql"
+          "test": "packages/ts/tests/statement_events-mysql.test.mjs",
+          "id": "server_transactions_mysql"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/server_transactions_postgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testPostgres with data set \"server_transactions_postgres\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testPostgres with data set \"server_transactions_postgres\""
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_postgres.py",
+          "id": "server_transactions_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::server_transactions_postgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_events_server_transactions.mjs",
-          "id": "server-transactions/postgres"
+          "test": "packages/ts/tests/statement_events-postgres.test.mjs",
+          "id": "server_transactions_postgres"
         }
       ]
     },
@@ -12654,28 +12681,53 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/functions_physical_test.go",
-          "id": "TestPhysicalQueryForms"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/query_now_and_random_order"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"query_now_and_random_order\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"query_now_and_random_order\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "query_now_and_random_order"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_conformance_verification_sqlite.py",
-          "id": "creates_and_save"
+          "id": "query_now_and_random_order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::query_now_and_random_order"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/functions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
         },
         {
           "implementation": "python",
@@ -12684,18 +12736,38 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_TEST=coverage_conformance_vector_sqlite"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::functions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/creates_and_save"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"creates_and_save\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"creates_and_save\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::creates_and_save"
         }
       ]
     },
@@ -14753,95 +14825,6 @@
       ]
     },
     {
-      "id": "generator-rejects-a-document-without-the-signature",
-      "kind": "feature",
-      "requirements": [
-        "DBS-4",
-        "DBS-155"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationCommandReportsSetErrors/file_diagnostics"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadFilesRejectsFileWithoutSignature"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAFileWithoutTheDbspecSignature"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenRejectsAFileWithoutTheDbspecSignature"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_document_diagnostics_print_every_diagnostic_and_write_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_a_file_without_the_signature"
-        }
-      ]
-    },
-    {
-      "id": "generator-set-errors-print-every-error-and-write-nothing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-27"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationCommandReportsSetErrors/set_errors"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_set_errors_print_every_error_and_write_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "reports_every_error_of_the_set_and_writes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_an_invalid_document"
-        }
-      ]
-    },
-    {
       "id": "rust-relation-getters-report-a-mismatched-relation-value",
       "kind": "feature",
       "requirements": [
@@ -14944,11 +14927,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_decimals.rs",
-          "id": "finite_grid_decimals_preserve_precision_and_scale"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -14982,6 +14960,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::grid_decimal_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "grid_decimal_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "grid_decimal_values"
         }
       ]
     },
@@ -14993,11 +14986,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_numbers.rs",
-          "id": "grid_numbers_preserve_native_bits_and_unsigned_range"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -15021,6 +15009,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::grid_number_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "grid_number_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "grid_number_values"
         }
       ]
     },
@@ -15268,11 +15271,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_preserves_immutable_values_and_key_order"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15286,6 +15284,21 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_key_order"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_key_order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_key_order"
         }
       ]
     },
@@ -15307,11 +15320,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_rejects_invalid_identity_and_distinguishes_conflicts"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15325,8 +15333,42 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_rejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_rejected"
         }
       ]
+    },
+    {
+      "id": "rust-row-snapshot-cell-forms",
+      "kind": "feature",
+      "requirements": [
+        "INT-109a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_snapshot.rs",
+          "id": "row_baseline_rejects_what_only_the_rust_forms_hold"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-row-update-verification-rejects-coercion-and-unrequested-changes",
@@ -15346,11 +15388,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15364,6 +15401,21 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_update_verification"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_update_verification"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_update_verification"
         }
       ]
     },
@@ -15393,6 +15445,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_update_verification"
         },
         {
           "implementation": "go",
@@ -17530,10 +17587,10 @@
       }
     },
     {
-      "id": "generator-check-compares-without-writing",
+      "id": "generator-check-reports-an-extra-generated-file-go",
       "kind": "feature",
       "requirements": [
-        "DBS-175"
+        "DBS-182"
       ],
       "bindings": [
         {
@@ -17544,44 +17601,33 @@
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_check_test.go",
-          "id": "TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_check_test.go",
           "id": "TestGoGenerationCheckKeepsOutputOnGenerationError"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_check_test.go",
-          "id": "TestGoGenerationCheckCommandReportsDifferences"
-        },
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "generator-check-reports-an-extra-generated-file-php",
+      "kind": "feature",
+      "requirements": [
+        "DBS-183"
+      ],
+      "bindings": [
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenCliTest.php",
           "id": "OrmGenCliTest::testGenCheckComparesTheModelsWithoutWriting"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenCheckComparesTheModelsWithoutWriting"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_check_reports_a_missing_or_differing_file"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "check_reports_differences_without_writing"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-gen-writes-the-same-models-however-the-paths-are-written",
@@ -42725,7 +42771,18 @@
         "DBS-173",
         "INT-66",
         "PLN-1",
-        "PLN-22"
+        "PLN-22",
+        "DBS-4",
+        "DBS-14",
+        "DBS-15",
+        "DBS-17",
+        "DBS-18",
+        "DBS-19",
+        "DBS-25",
+        "DBS-26",
+        "DBS-27",
+        "DBS-155",
+        "DBS-175"
       ],
       "file": "contracts/fixtures/generator/generator.json",
       "cases": "$.cases[*].id",
@@ -43408,6 +43465,30 @@
         "artifact": "git-tag",
         "package": "polyspec-orm-build"
       }
+    },
+    {
+      "id": "statement-event-subscription-php-extension",
+      "kind": "feature",
+      "requirements": [
+        "INT-77a"
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      },
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testUnsubscribeFreesClosure"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
+          "id": "StatementEventsTestExtensionTest::testStatementEventEntryPointsAreNative"
+        }
+      ]
     }
   ],
   "errors": {
