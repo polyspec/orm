@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5bb2f35f1e613d2d07fb193df9d893ddb76ea7c0cac0fb26c52781ff03909171 -->
+<!-- source-sha256: 864fad1b1ff89d84478ebaf3652bd02d263239da2392845083cc97777de9b917 -->
 # 변경 이력
 
 ## Unreleased
 
+- - output 이름 충돌의 compile case는 planner.compile expect의 선택 항목 message로 모든 dialect의 오류 문장 전체를 시험한다 (#T334-3-6-2)
 - recipe가 닿지 못하는 catalog native는 internal test로 남고, generated_identity_sqlite, read_only_grid_shapes, temporal_text_row_cycle_sqlite가 random key, 거부되는 grid 쓰기, temporal row cycle을 담습니다.
 - Go와 PHP와 PHP extension은 signed 범위를 넘는 MySQL `BIGINT UNSIGNED`를 거부하지 않고 읽으며, row baseline은 가장 큰 두 값을 구분합니다.
 - catalog 읽기 형태, grid binary 행, row baseline, byte 용량, 선언 temporal 표, SQLite identity native를 catalog_connection recipe 사례로 옮겼다. default만으로 된 key의 catalog insert는 Go, Rust처럼 TypeScript, Python, PHP, extension에서도 assignment 없이 들어가고, PHP는 page의 PostgreSQL bytea와 binary 셀 snapshot을 거부하지 않는다.
@@ -16,8 +17,8 @@
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
 - schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).
 - 행이 없는 effect 질의는 모든 runtime에서 `<query> returned no row`이고(Rust는 `returned 0 rows; want one`이었다), `dbspec.apply_fault` recipe가 그것을 시험하며, native 시험은 없앴다 (#T334-3-18).
-- - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
 - transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
+- - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)

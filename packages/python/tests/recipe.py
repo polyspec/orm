@@ -1540,13 +1540,19 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
     if "error" in outcome:
         for dialect in _PLAN_DIALECTS:
             got = None
+            message = ""
             try:
                 Engine(model, dialect).compile(request)
             except OrmError as error:
                 got = error.code
+                message = str(error)
             if got != outcome["error"]:
                 raise AssertionError(
                     f"{dialect}: got {got or 'a plan'}, want {outcome['error']}"
+                )
+            if "message" in outcome and message != outcome["message"]:
+                raise AssertionError(
+                    f"{dialect}: message {message}, want {outcome['message']}"
                 )
         return
     got = {}

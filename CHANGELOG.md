@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- - The compile case of an output name conflict holds the exact text of the error in every dialect, by the optional message of a planner.compile expect (#T334-3-6-2)
 - The catalog natives a recipe cannot reach stay as internal tests, and generated_identity_sqlite, read_only_grid_shapes and temporal_text_row_cycle_sqlite hold the random key, the refused grid write and the temporal row cycle.
 - Go, PHP and the PHP extension read a MySQL `BIGINT UNSIGNED` past the signed range instead of refusing it, and the row baseline tells the two largest values apart.
 - The catalog read shapes, grid binary row, row baseline, byte capacity, described temporal matrix and SQLite identity natives are cases of the catalog_connection recipe. A catalog insert of a key of defaults alone takes no assignment in TypeScript, Python, PHP and the extension as in Go and Rust, and PHP reads a PostgreSQL bytea of a page and takes a snapshot of a binary cell instead of refusing them.
@@ -15,8 +16,8 @@
 - INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.
 - The manifest, analysis and format units of the schema definition bind only their recipe: Go `TestFormat` is gone, the invalid byte joins the stated native unit `dbspec-encoding-and-limit-natives`, and the test of the origin of the extension classes is internal (#T334-3-18).
 - An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
-- - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
 - The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
+- - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)
