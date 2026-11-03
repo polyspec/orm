@@ -175,6 +175,9 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         pool_idle_size: field("pool_idle_size"),
         pool_lifetime_ms: field("pool_lifetime_ms"),
         statement_timeout_ms: field("statement_timeout_ms"),
+        aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
+        aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
+        aes_keys: config["aes_keys"].as_object().map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect()).unwrap_or_default(),
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
@@ -513,7 +516,6 @@ fn cleanup_chain(error: &dbspec::ApplyError) -> (&dbspec::ApplyError, Vec<String
 
 impl dbspec::CatalogQuerier for FaultConnection {
     async fn rows(&mut self, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
-        use dbspec::CatalogQuerier as _;
         if query.starts_with("SELECT type, name, tbl_name") {
             self.reads += 1;
             if let Some(cause) = self.cause.as_ref().filter(|_| self.reads == self.fail_at) {
@@ -526,7 +528,6 @@ impl dbspec::CatalogQuerier for FaultConnection {
 
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         match self.fail.get(statement) {
             Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(SqliteResult { message: message.clone(), code: *code }))),
             Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
@@ -535,12 +536,10 @@ impl dbspec::ApplyConnection for FaultConnection {
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[dbspec::CatalogValue]) -> Result<(), sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         self.inner.execute_bound(statement, args).await
     }
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
-        use dbspec::ApplyConnection as _;
         if self.no_row.iter().any(|no_row| no_row == query) {
             return Ok(Vec::new());
         }
@@ -2562,31 +2561,37 @@ mod database {
     /// Runs `writers` writers at the same time, each on its own connection, each committing `writes` transactions that read
     /// the Service count and insert one Service with no retry, and returns the Service count (CFG-12).
     async fn transaction_writers(dsn: &str, writers: u64, writes: u64) -> Result<i64, String> {
-        let mut running = Vec::new();
-        for index in 0..writers {
-            let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
-            running.push(tokio::spawn(async move {
-                let mut result = Ok(());
-                for write in 0..writes {
-                    result = db
-                        .transaction(async || {
-                            model::Service::new().connect(&db).get_count().await?;
-                            model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
-                            Ok(())
-                        })
-                        .retry(0)
-                        .await;
-                    if result.is_err() {
-                        break;
-                    }
-                }
-                db.close().await;
-                result
-            }));
-        }
-        for writer in running {
-            writer.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
-        }
+        // A transaction future is not Send, so each writer runs on a thread of its own with its own runtime.
+        let threads: Vec<_> = (0..writers)
+            .map(|index| {
+                let dsn = dsn.to_owned();
+                std::thread::spawn(move || -> Result<(), String> {
+                    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| e.to_string())?;
+                    runtime.block_on(async move {
+                        let db = model::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+                        let mut result = Ok(());
+                        for write in 0..writes {
+                            result = db
+                                .transaction(async || {
+                                    model::Service::new().connect(&db).get_count().await?;
+                                    model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
+                                    Ok(())
+                                })
+                                .retry(0)
+                                .await;
+                            if result.is_err() {
+                                break;
+                            }
+                        }
+                        db.close().await;
+                        result.map_err(|e| e.to_string())
+                    })
+                })
+            })
+            .collect();
+        tokio::task::spawn_blocking(move || threads.into_iter().try_for_each(|writer| writer.join().map_err(|_| "a writer panicked".to_owned())?))
+            .await
+            .map_err(|e| e.to_string())??;
         let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
         let count = model::Service::new().connect(&db).get_count().await.map_err(|e| e.to_string());
         db.close().await;
@@ -3172,7 +3177,7 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 22] = [
+    const MODEL_OPS: [&str; 31] = [
         "model.connect",
         "transaction.deadlock",
         "model.restore",
@@ -3198,6 +3203,7 @@ mod database {
         "utils.set_local",
         "utils.local",
         "utils.was_inserted",
+        "utils.privilege",
         "collection.connect",
         "row.connect",
         "utils.backend_waiting_for_lock",
@@ -3490,7 +3496,7 @@ mod database {
                 Some("lower" | "upper") => Output::fields(json!({ "value": {
                     "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } })),
-                other => return Err(format!("clock.read has no edge {other:?}")),
+                other => return Err(fault(format!("clock.read has no edge {other:?}"))),
             },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
@@ -3896,11 +3902,11 @@ mod database {
                 Output::fields(json!({}))
             }
             "wait.start" => {
-                *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
+                *super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
                 Output::fields(json!({}))
             }
             "wait.at_least" => {
-                let started = (*WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+                let started = (*super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
                     .ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
                 let (waited, want) = (started.elapsed().as_millis(), u128::from(crate::recipe_reads::read(step, "ms")["ms"].as_u64().unwrap_or_default()));
                 if waited < want {
@@ -5192,13 +5198,13 @@ mod tables {
             let name = raw["as"].as_str().ok_or_else(|| format!("column {raw} names no as"))?;
             let expr = &raw["expr"];
             if let Some(sub) = expr.get("sub") {
-                let (sub, column) = (sub.clone(), name.to_owned());
+                let (sub, column, handles) = (sub.clone(), name.to_owned(), self.handles.clone());
                 core.add_column_sub(
                     name,
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None, handles: self.handles.clone() }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None, handles: handles.clone() }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -5589,6 +5595,17 @@ mod tables {
         /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
         async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, String> {
             let core = self.built(step, db)?;
+            if let Some(column) = crate::recipe_reads::read(step, "bytes_hex_of")["bytes_hex_of"].as_str() {
+                let rows = gets(&TableRow::from_core(core)).await.map_err(orm)?;
+                let mut hexes = Vec::new();
+                for row in rows.models() {
+                    let Some(Val::Bytes(cell)) = row.value(column) else {
+                        return Err(format!("bytes_hex_of: the column {column} holds no bytes"));
+                    };
+                    hexes.push(cell.iter().map(|byte| format!("{byte:02x}")).collect::<String>());
+                }
+                return Ok(json!({ "json": hexes }));
+            }
             if crate::recipe_reads::read(step, "compile")["compile"].as_bool() == Some(true) {
                 let statement = get_query(&core).await.map_err(orm)?;
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
@@ -5955,6 +5972,30 @@ mod tables {
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;
                     self.collections.insert(name, rows.connect(&db));
                     Ok(json!({ "value": { "bool": true } }))
+                }
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                "utils.privilege" => {
+                    let utils = db.utils();
+                    let privileges = utils.privileges();
+                    let table = step["table"].as_str().unwrap_or_default();
+                    let role = step["role"].as_str().unwrap_or_default();
+                    match step["call"].as_str().unwrap_or_default() {
+                        "inspect" => {
+                            let got = privileges.inspect_table(table).await.map_err(orm)?;
+                            Ok(json!({ "json": {
+                                "insert": got.insert, "select": got.select, "update": got.update, "delete": got.delete, "truncate": got.truncate,
+                            } }))
+                        }
+                        "grant" => {
+                            privileges.grant_table(table, role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        "revoke" => {
+                            privileges.revoke_table(table, step["privilege"].as_str().unwrap_or_default(), role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        other => Err(format!("utils.privilege has no call {other}")),
+                    }
                 }
                 "utils.was_inserted" => {
                     let sequence = crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;

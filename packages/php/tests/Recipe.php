@@ -78,6 +78,7 @@ final class Recipe
         'utils.set_local',
         'utils.local',
         'utils.was_inserted',
+        'utils.privilege',
         'utils.backend_waiting_for_lock',
         'utils.groups',
         'utils.stats',
@@ -778,6 +779,9 @@ final class Recipe
             poolIdleSize: $config['pool_idle_size'] ?? 0,
             poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
             statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+            aesKey: $config['aes_key'] ?? '',
+            aesVersion: $config['aes_version'] ?? 1,
+            aesKeys: $config['aes_keys'] ?? [],
         ));
         try {
             $rows = $db->utils()->run(
@@ -4118,7 +4122,7 @@ final class Recipe
     {
         $child = self::chainModel($relation['model'], $context);
         if (isset($relation['connection'])) {
-            $child->connect(self::connectionOf(['connection' => $relation['connection']], $context));
+            $child->connect(self::connectionOf(new RecipeStep(['connection' => $relation['connection']]), $context));
         }
         foreach ($relation['match'] ?? [] as [$left, $right]) {
             $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
@@ -4150,6 +4154,9 @@ final class Recipe
     {
         // A bound chain is read again: a terminal leaves it as it was (DSL-98).
         if (isset($s['from'])) {
+            // The bound chain keeps its model; the connection that the step names must be bound still.
+            self::connectionOf($s, $context);
+            $s->has('model');
             return self::boundValue($s['from'], $context);
         }
         $db = self::connectionOf($s, $context);
@@ -4282,6 +4289,7 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(RecipeStep $s, array $context, \Closure $terminal): array
     {
+        $pick = $s['pick'] ?? null;
         $table = ($s['unconnected'] ?? false) === true
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
@@ -4294,7 +4302,7 @@ final class Recipe
             $model->duplication(self::chainAssign($duplicate, $s['duplication'], $context));
         }
         $row = $terminal($model);
-        $fields = ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        $fields = ['bind' => $row, 'json' => self::chainRow($row, $pick)];
         // With columns, the rows expect compares the row that the write returns (INT-38).
         if (isset($s['columns'])) {
             $fields['rows'] = self::chainCells([$row], $s);
@@ -4436,6 +4444,20 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.privilege':
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                $privileges = self::connectionOf($s, $context)->utils()->privileges();
+                switch ($s['call']) {
+                    case 'inspect':
+                        return ['json' => $privileges->inspectTable($s['table'])];
+                    case 'grant':
+                        $privileges->grantTable($s['table'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                    case 'revoke':
+                        $privileges->revokeTable($s['table'], $s['privilege'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                }
+                Assert::fail("utils.privilege has no call {$s['call']}");
             case 'utils.was_inserted':
                 $utils = self::connectionOf($s, $context)->utils();
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
@@ -4473,7 +4495,16 @@ final class Recipe
     /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
     private static function chainGets(RecipeStep $s, array $context): array
     {
+        $pick = $s['pick'] ?? null;
         $model = self::chainBuilt($s, $context);
+        if (isset($s['bytes_hex_of'])) {
+            $hexes = [];
+            foreach ($model->gets() as $row) {
+                $cell = $row->{'get' . self::pascal($s['bytes_hex_of'])}();
+                $hexes[] = bin2hex($cell instanceof Bytes ? $cell->bytes : $cell);
+            }
+            return ['json' => $hexes];
+        }
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
         }
@@ -4525,7 +4556,7 @@ final class Recipe
             if (($s['items'] ?? false) === true) {
                 $fields['json']['items'] = [];
                 foreach ($page->items as $row) {
-                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                    $fields['json']['items'][] = self::chainRow($row, $pick);
                 }
             }
             if (self::chainWantsRows($s, $context)) {
@@ -4541,7 +4572,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::chainRow($row, $pick);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

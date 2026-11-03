@@ -60,6 +60,10 @@
       },
       "internal": [
         {
+          "glob": "packages/go/orm/driver_error_test.go",
+          "reason": "test: maps stand-in errors at the private MySQL and driver mappers; a server condition reaches these codes through the recipes"
+        },
+        {
           "glob": "examples/dsn_test.go",
           "reason": "harness: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
         },
@@ -426,6 +430,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/NativeCellReadTest.php",
+          "reason": "test: the private row assembly refuses a non-finite float cell of a stand-in driver row, a cell that MySQL and SQLite do not store"
+        },
+        {
           "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
           "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
         },
@@ -639,6 +647,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/ModelStreamReadTest.php",
+          "reason": "test: the native row assembly reads stream cells and their warnings from a stand-in, the form that no recipe database returns"
+        },
+        {
           "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
           "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
         },
@@ -753,6 +765,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/driver-cell-bytes.mjs",
+          "reason": "test: the private mysqlParams turns a number parameter into an integer, for a pooler that a recipe database does not stand in for"
+        },
         {
           "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
           "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
@@ -1047,7 +1063,6 @@
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",
         "packages/rust/tests/src/client_bench.rs",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/rust/build/src/test_support.rs",
         "packages/rust/build/tests/common/grid_open.rs",
@@ -1073,7 +1088,6 @@
         "packages/rust/orm/tests/common/pool_scalar.rs",
         "packages/rust/orm/tests/common/result_code.rs",
         "packages/rust/orm/tests/common/secret_config.rs",
-        "packages/rust/orm/tests/common/secret_connected.rs",
         "packages/rust/orm/tests/common/service_model.rs",
         "packages/rust/orm/tests/common/sql_text_rows.rs",
         "packages/rust/orm/tests/common/sqlite_case.rs",
@@ -2677,6 +2691,93 @@
     "pattern": "(?:CFG|COD|PERF|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+[a-z]?"
   },
   "units": [
+    {
+      "id": "rust-postgres-bind-parse-cause",
+      "kind": "feature",
+      "requirements": [
+        "PRT-79a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_native_parse_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_utf8_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_datetime_bind_preserves_parse_cause_message"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "php-extension-pgsql-adapter-statement-sqlstate",
+      "kind": "feature",
+      "requirements": [
+        "PRT-79b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
+          "id": "PgsqlPdoAdapterNativeTest::testNativePgsqlAdapterStatementErrorCarriesItsSqlState"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/php-extension"
+      }
+    },
+    {
+      "id": "sqlite-locked-is-driver",
+      "kind": "feature",
+      "requirements": [
+        "PLN-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/sqlite/sqlite_locked_test.go",
+          "id": "TestSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
+          "id": "OrmExceptionLockWaitTest::testSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testSqliteLockedIsDriverNotDeadlock"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
+          "id": "driver-error/sqlite-locked/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "test_sqlite_locked_is_driver_not_deadlock"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/lib.rs",
+          "id": "sqlite_code_tests::sqlite_locked_is_driver_not_deadlock"
+        }
+      ]
+    },
     {
       "id": "page-cache-root-limit-values",
       "kind": "feature",
@@ -8794,7 +8895,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8839,7 +8941,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8884,7 +8987,8 @@
         "INT-53",
         "INT-61",
         "INT-72",
-        "INT-73"
+        "INT-73",
+        "INT-59"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -9442,6 +9546,9 @@
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -9617,6 +9724,9 @@
       "id": "conformance_verification-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -9792,6 +9902,9 @@
       "id": "conformance_verification-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-5",
+        "PRT-69",
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -13948,46 +14061,6 @@
       ]
     },
     {
-      "id": "native-row-cell-bytes",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestCellScanCopiesLosslessNativeBytes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/NativeCellReadTest.php",
-          "id": "NativeCellReadTest::testRowAssemblyPreservesBinaryDriverCellBytes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelStreamReadTest.php",
-          "id": "ModelStreamReadTest::testNativeRowAssemblyPreservesBinaryDriverCellBytes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-cell-bytes.mjs",
-          "id": "driver-cell/bytes/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_cells.py",
-          "id": "test_binary_cells_keep_the_exact_driver_bytes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::native_cell_bytes_tests::sqlite_driver_row_bytes_remain_exact"
-        }
-      ]
-    },
-    {
       "id": "native-markdown-connect-refused",
       "kind": "feature",
       "requirements": [
@@ -14044,65 +14117,6 @@
         "feature": "transactions",
         "part": "owner/php-extension"
       }
-    },
-    {
-      "id": "native-driver-error-cause",
-      "kind": "feature",
-      "requirements": [
-        "PRT-79"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapDriverErrorPreservesNativeCause"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::testUnlistedMysqlDriverErrorKeepsItsCause"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DriverErrorTest.php",
-          "id": "DriverErrorTest::testNativeDbMapperKeepsTheDriverErrorAsPrevious"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
-          "id": "PgsqlPdoAdapterNativeTest::testNativePgsqlAdapterStatementErrorCarriesItsSqlState"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
-          "id": "driver-error/native-cause/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_mysql_errors_have_the_codes_of_the_catalog"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/lib.rs",
-          "id": "driver_error_tests::unknown_database_error_keeps_the_native_source_chain"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_bind_preserves_native_parse_cause_message"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_bind_preserves_utf8_cause_message"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
-          "id": "driver::cause_message_tests::postgres_datetime_bind_preserves_parse_cause_message"
-        }
-      ]
     },
     {
       "id": "go-internal-packages-go-orm-codec-custom-marshaler",
@@ -15464,6 +15478,44 @@
       }
     },
     {
+      "id": "ts-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123b"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "uses the MySQL statement insertId for an omitted automatic key"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "py-catalog-mysql-insert-statements",
+      "kind": "feature",
+      "requirements": [
+        "INT-123c"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "test_mysql_automatic_key_uses_insert_acknowledgement"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
       "requirements": [
@@ -16527,22 +16579,12 @@
       ]
     },
     {
-      "id": "runtime-invalid-database-cells-return-decode-errors",
+      "id": "go-database-value-scalars",
       "kind": "feature",
       "requirements": [
-        "INT-98"
+        "INT-98a"
       ],
       "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/value_decode.rs",
-          "id": "invalid_database_cells_return_decode_errors"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeInvalidCellsFailTypedReads"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/exec_decode_test.go",
@@ -16552,38 +16594,13 @@
           "implementation": "go",
           "test": "packages/go/orm/conversion_error_test.go",
           "id": "TestDatabaseValueConversionRejectsInvalidValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testInvalidStoredCellsFailTypedReads"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-          "id": "ConnectionUtcNativeTest::testNativeOutOfRangeDatabaseCellFailsTypedRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_invalid_database_cells_fail_typed_reads"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "rust-postgres-float-round-trip",
@@ -28059,14 +28076,29 @@
           "id": "invalid_aes_configuration_fails_before_connection"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_keys_test.go",
-          "id": "TestAESKeyMustMatchKeyOfCurrentVersion"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_aes_version_codes.py",
           "id": "test_connection_rejects_aes_key_that_differs_from_current_keyring_key"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "an_aes_key_that_differs_from_the_current_version_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::an_aes_key_that_differs_from_the_current_version_is_refused"
         }
       ]
     },
@@ -29405,75 +29437,6 @@
           "owner/php-extension"
         ]
       }
-    },
-    {
-      "id": "privilege-table-operations",
-      "kind": "feature",
-      "requirements": [
-        "INT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_privileges_are_unsupported_off_postgres"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
-          "id": "PrivilegeUtilsNativeTest::testNativeTablePrivilegesArePostgresOnly"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "transactions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "transactions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=transactions"
-          ]
-        }
-      ]
     },
     {
       "id": "remove-columns-keeps-primary-foreign-and-added",
@@ -41802,6 +41765,7 @@
       "id": "immutable_write-mysql",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
@@ -41888,6 +41852,7 @@
       "id": "immutable_write-postgres",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
@@ -41974,6 +41939,7 @@
       "id": "immutable_write-sqlite",
       "kind": "suite",
       "requirements": [
+        "PRT-79",
         "DBS-84"
       ],
       "file": "contracts/fixtures/immutable_write/immutable_write.json",
@@ -43330,16 +43296,30 @@
           "id": "chain_fulltext"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
+    },
+    {
+      "id": "python-fulltext-generated-method",
+      "kind": "feature",
+      "requirements": [
+        "DSL-33a"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "complex_query",
+        "part": "owner/python"
+      }
     },
     {
       "id": "dsl",
@@ -43831,6 +43811,25 @@
         "kind": "coverage-part",
         "feature": "schema_definition",
         "part": "owner/python"
+      }
+    },
+    {
+      "id": "php-extension-privileges-native",
+      "kind": "feature",
+      "requirements": [
+        "INT-59a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+          "id": "PrivilegeUtilsNativeTest::testNativeTablePrivilegesArePostgresOnly"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_install",
+        "part": "owner/php-extension"
       }
     }
   ],

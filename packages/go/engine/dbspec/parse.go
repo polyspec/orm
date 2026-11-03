@@ -953,28 +953,35 @@ func (p *parser) columnLine(c *cursor) {
 func resolveType(word token, params []token) (Type, *Diagnostic) {
 	kind := TypeKind(word.text)
 	count := 0
+	needs := ""
 	switch kind {
 	case TypeI16, TypeI32, TypeI64, TypeBool, TypeF64, TypeText, TypeBytes, TypeUUID, TypeDate:
-	case TypeVarchar, TypeTime, TypeDatetime:
+		needs = string(kind) + " takes no parameters"
+	case TypeVarchar:
 		count = 1
+		needs = "varchar(n) needs 1 <= n <= 16383"
+	case TypeTime, TypeDatetime:
+		count = 1
+		needs = string(kind) + "(p) needs 0 <= p <= 6"
 	case TypeDecimal:
 		count = 2
+		needs = "decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
 	default:
 		d := diagnosticAt(RuleType, word, "type %q is not a dbspec type", word.text)
 		return Type{}, &d
 	}
-	bad := func(format string, args ...any) (Type, *Diagnostic) {
-		d := diagnosticAt(RuleType, word, format, args...)
+	bad := func() (Type, *Diagnostic) {
+		d := diagnosticAt(RuleType, word, "%s", needs)
 		return Type{}, &d
 	}
 	if len(params) != count {
-		return bad("type %s takes %d parameters, not %d", kind, count, len(params))
+		return bad()
 	}
 	values := make([]int, count)
 	for i, p := range params {
 		v, err := strconv.Atoi(p.text)
 		if err != nil || strings.Contains(p.text, ".") {
-			return bad("type %s parameter %s is not an integer in range", kind, p.text)
+			return bad()
 		}
 		values[i] = v
 	}
@@ -982,17 +989,17 @@ func resolveType(word token, params []token) (Type, *Diagnostic) {
 	switch kind {
 	case TypeVarchar:
 		if values[0] < 1 || values[0] > 16383 {
-			return bad("varchar(n) needs 1 <= n <= 16383, not %d", values[0])
+			return bad()
 		}
 		t.Length = values[0]
 	case TypeTime, TypeDatetime:
 		if values[0] < 0 || values[0] > 6 {
-			return bad("%s(p) needs 0 <= p <= 6, not %d", kind, values[0])
+			return bad()
 		}
 		t.Precision = values[0]
 	case TypeDecimal:
 		if values[0] < 1 || values[0] > 18 || values[1] < 0 || values[1] > values[0] {
-			return bad("decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p, not (%d,%d)", values[0], values[1])
+			return bad()
 		}
 		t.Precision, t.Scale = values[0], values[1]
 	}

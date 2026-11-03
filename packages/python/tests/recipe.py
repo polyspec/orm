@@ -1850,9 +1850,15 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "pool_lifetime_ms": "poolLifetimeMs",
         "statement_timeout_ms": "statementTimeoutMs",
     }
-    db = Db.connect(
-        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
-    )
+    options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    if "aes_keys" in (config or {}):
+        options["aesKeyring"] = AesKeyring(
+            {int(version): key for version, key in config["aes_keys"].items()},
+            config["aes_version"],
+        )
+        options["aesVersion"] = config["aes_version"]
+        options["aesKey"] = config["aes_key"]
+    db = Db.connect(dsn, options)
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
@@ -3415,6 +3421,13 @@ def _table_model_chain(step: dict, context: dict) -> dict:
 def _table_model_query(step: dict, context: dict) -> dict:
     pick = step.get("pick")
     model = _chain_built(step, context)
+    if "bytes_hex_of" in step:
+        return {
+            "json": [
+                bytes(row.core.values[step["bytes_hex_of"]]).hex()
+                for row in model.gets().values()
+            ]
+        }
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:
@@ -3578,6 +3591,7 @@ def _collection_connect(step: dict, context: dict) -> dict:
 def _table_model_delete(step: dict, context: dict) -> dict:
     recursive = step.get("recursive") is True
     if "row" in step and isinstance(_bound_value(step["row"], context), Collection):
+        _connection_of(step, context)
         _bound_value(step["row"], context).delete(recursive)
         return {}
     if "where" in step:
@@ -3636,6 +3650,29 @@ def _utils_set_local(step: dict, context: dict) -> dict:
 
 def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
+
+
+def _utils_privilege(step: dict, context: dict) -> dict:
+    """One call of the table privileges of utils() (INT-59): a call that returns nothing gives true."""
+    privileges = _connection_of(step, context).utils().privileges()
+    if step["call"] == "inspect":
+        got = privileges.inspect_table(step["table"])
+        return {
+            "json": {
+                "insert": got.insert,
+                "select": got.select,
+                "update": got.update,
+                "delete": got.delete,
+                "truncate": got.truncate,
+            }
+        }
+    if step["call"] == "grant":
+        privileges.grant_table(step["table"], step["role"])
+    elif step["call"] == "revoke":
+        privileges.revoke_table(step["table"], step["privilege"], step["role"])
+    else:
+        raise AssertionError(f"utils.privilege has no call {step['call']}")
+    return {"value": {"bool": True}}
 
 
 def _utils_was_inserted(step: dict, context: dict) -> dict:
@@ -4669,6 +4706,7 @@ _TABLE_OPS = {
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
     "utils.was_inserted": _utils_was_inserted,
+    "utils.privilege": _utils_privilege,
     "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
     "utils.groups": _utils_groups,
     "utils.stats": _utils_stats,

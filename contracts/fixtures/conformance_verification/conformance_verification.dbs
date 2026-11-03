@@ -291,3 +291,9 @@ table decimal_value {
   large decimal(16,0)
   primary key (seq)
 }
+
+table byte_cell {
+  seq i64 identity
+  body bytes null
+  primary key (seq)
+}

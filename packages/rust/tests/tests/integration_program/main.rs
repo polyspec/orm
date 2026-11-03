@@ -109,7 +109,7 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
 
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
 use polyspec_orm::db::Pool;
-use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
+use polyspec_orm::{Collection, Db, Isolation, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
 const TARGET_POOL_SIZE: u32 = 4;
@@ -398,116 +398,9 @@ async fn writes_case(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
+// Requirements: INT-51, INT-61, INT-73, INT-134, INT-57, INT-79.
 async fn transactions_case(t: &Target) {
     let db = &t.db;
-    if t.driver == "postgres" {
-        // The raw SQLx fixture connection sends `extra_float_digits` at startup, which PgBouncer rejects; privilege API calls still use `db` above.
-        let server_dsn = match std::env::var("ORM_TEST_POSTGRES_SERVER_DSN") {
-            Ok(dsn) if !dsn.is_empty() => dsn,
-            other => panic!(
-                "ORM_TEST_POSTGRES_SERVER_DSN is required ({other:?}); run through make client-db-check, which supplies the direct PostgreSQL server DSN"
-            ),
-        };
-        let privilege_dsn = t.database.related_dsn(&server_dsn);
-        let pool = sqlx::PgPool::connect(&privilege_dsn).await.unwrap();
-        let table = "public.privilege_probe";
-        // CaseDatabase names use only `orm_case_<pid>_<counter>` ASCII identifier characters.
-        let role = format!("orm_priv_{}", t.database.name());
-        let mut role_created = false;
-        let mut table_create_attempted = false;
-        let result: Result<(), String> = async {
-            table_create_attempted = true;
-            sqlx::query("CREATE TABLE \"privilege_probe\" (\"id\" INTEGER)")
-                .execute(&pool)
-                .await
-                .map_err(|error| format!("create privilege probe table: {error}"))?;
-            let owner = db
-                .utils()
-                .privileges()
-                .inspect_table(table)
-                .await
-                .map_err(|error| format!("inspect owner privileges: {error}"))?;
-            if !(owner.select && owner.insert && owner.update && owner.delete && owner.truncate) {
-                return Err(format!("postgres owner privileges are incomplete: {owner:?}"));
-            }
-            sqlx::query(sqlx::AssertSqlSafe(format!("CREATE ROLE \"{role}\"")))
-                .execute(&pool)
-                .await
-                .map_err(|error| format!("create privilege role {role}: {error}"))?;
-            role_created = true;
-            db.utils()
-                .privileges()
-                .grant_table(table, &role)
-                .await
-                .map_err(|error| format!("grant table privileges: {error}"))?;
-            let granted = sqlx::query("SELECT has_schema_privilege($1, 'public', 'USAGE'), has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
-                .bind(&role)
-                .fetch_one(&pool)
-                .await
-                .map_err(|error| format!("inspect granted privileges: {error}"))?;
-            use sqlx::Row;
-            let mut grant_checks = Vec::new();
-            for index in 0..5 {
-                grant_checks.push(
-                    granted
-                        .try_get::<bool, _>(index)
-                        .map_err(|error| format!("read granted privilege {index}: {error}"))?,
-                );
-            }
-            if grant_checks != [true; 5] {
-                return Err(format!("grantTable returned unexpected schema/table privileges: {grant_checks:?}"));
-            }
-            db.utils()
-                .privileges()
-                .revoke_table(table, " select ", &role)
-                .await
-                .map_err(|error| format!("revoke table privilege: {error}"))?;
-            let revoked = sqlx::query("SELECT has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
-                .bind(&role)
-                .fetch_one(&pool)
-                .await
-                .map_err(|error| format!("inspect revoked privileges: {error}"))?;
-            let mut revoke_checks = Vec::new();
-            for index in 0..4 {
-                revoke_checks.push(
-                    revoked
-                        .try_get::<bool, _>(index)
-                        .map_err(|error| format!("read revoked privilege {index}: {error}"))?,
-                );
-            }
-            if revoke_checks != [false, true, true, true] {
-                return Err(format!("revokeTable returned unexpected privileges: {revoke_checks:?}"));
-            }
-            Ok(())
-        }
-        .await;
-        let mut failures = Vec::new();
-        if let Err(error) = result {
-            failures.push(error);
-        }
-        if role_created {
-            if let Err(error) = sqlx::query(sqlx::AssertSqlSafe(format!("DROP OWNED BY \"{role}\""))).execute(&pool).await {
-                failures.push(format!("drop owned privileges for {role}: {error}"));
-            }
-            if let Err(error) = sqlx::query(sqlx::AssertSqlSafe(format!("DROP ROLE \"{role}\""))).execute(&pool).await {
-                failures.push(format!("drop role {role}: {error}"));
-            }
-        }
-        if table_create_attempted {
-            if let Err(error) = sqlx::query("DROP TABLE IF EXISTS \"privilege_probe\"").execute(&pool).await {
-                failures.push(format!("drop privilege probe table: {error}"));
-            }
-        }
-        pool.close().await;
-        assert!(failures.is_empty(), "privilege operations or cleanup failed: {}", failures.join("; "));
-    } else {
-        let utils = db.utils();
-        let privileges = utils.privileges();
-        assert_eq!(code(privileges.grant_table("public.user", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} grantTable", t.driver);
-        assert_eq!(code(privileges.inspect_table("public.user").await), "CAPABILITY_UNSUPPORTED", "{} inspectTable", t.driver);
-        assert_eq!(code(privileges.revoke_table("public.user", "SELECT", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} revokeTable", t.driver);
-    }
     let boom = || polyspec_orm::Error::Config("boom".into());
     let is_boom = |r: &polyspec_orm::Result<()>| matches!(r, Err(polyspec_orm::Error::Config(m)) if m == "boom");
     let r: polyspec_orm::Result<()> = db
@@ -566,7 +459,6 @@ async fn transactions_case(t: &Target) {
     };
     assert_eq!(schema.exists(&schema_name).await.unwrap(), expected, "{}: schema exists", t.driver);
     assert_eq!(schema.installed(&schema_name, "user").await.unwrap(), expected, "{}: schema table is installed", t.driver);
-    assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
     complete_pool_returns(db, t.driver).await;
     let stats = db.utils().stats();
     assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: pool limit", t.driver);

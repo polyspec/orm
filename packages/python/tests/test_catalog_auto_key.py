@@ -327,6 +327,30 @@ class CatalogAutoKeyTest(unittest.TestCase):
             "ROW_WRITE_MISMATCH: stored inserted values differ",
         )
 
+    # Native (FCV-2): only a fake driver observes the statements of the catalog on MySQL, whose table with a trigger is
+    # refused and which publishes no statement event; the row the insert returns is the recipe case generated_key_lifecycle.
+    # Requirements: INT-123c.
+    def test_mysql_automatic_key_uses_insert_acknowledgement(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("id", "bigint", False, False, True),
+                CatalogColumn("payload", "text", False, False),
+            ],
+            ["id"],
+            "automatic_key",
+        )
+        session = _FakeMysqlSession(metadata, [17, "generated"], insert_id=17)
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        catalog.insert_row(metadata, [("payload", "generated")])
+
+        statements = [call[1] for call in session.calls if call[0] == "run"]
+        self.assertTrue(statements[1].startswith("INSERT"))
+        self.assertIn("`id`=?", statements[2])
+        for statement in statements:
+            self.assertNotIn("MAX(", statement)
+            self.assertNotIn("LAST_INSERT_ID()", statement)
+
     def test_mysql_expression_default_uses_bounded_input_locator(self):
         metadata, row, session, catalog = _mysql_expression_default_catalog()
 

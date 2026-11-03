@@ -141,6 +141,10 @@ type databaseStep struct {
 	Operation    string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
 	Lock string `json:"lock"`
+	// The call, the role and the privilege of utils.privilege (INT-59).
+	Call      string `json:"call"`
+	Role      string `json:"role"`
+	Privilege string `json:"privilege"`
 	// The generated key of utils.was_inserted (INT-52).
 	Sequence  int64  `json:"sequence"`
 	Isolation string `json:"isolation"`

@@ -1784,7 +1784,6 @@
         "packages/php/tests/OrmExceptionLockWaitTest.php",
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/model_read.c",
-        "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ModelStreamReadTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/python/tests/test_driver_cells.py",
@@ -3045,36 +3044,6 @@
         "packages/ts/src/group_rows.ts",
         "packages/ts/src/model.ts",
         "packages/ts/tests/group_rows.mjs"
-      ]
-    },
-    "model-json-ordered-number-text-unit-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "config/parity.json",
-        "contracts/check-inputs.json",
-        "packages/go/model/styled_state_test.go",
-        "packages/go/orm/model.go",
-        "packages/php/src/Model.php",
-        "packages/php/tests/ModelJsonTextTest.php",
-        "packages/php-ext/src/model_output.c",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/python/src/polyspec/orm/model.py",
-        "packages/python/tests/test_model_json_text.py",
-        "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/model_output.rs",
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/model_json_output.test.mts"
       ]
     },
     "feature-verify-rust": {

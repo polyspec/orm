@@ -426,7 +426,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                     let got = tokio::task::block_in_place(|| {
                         Handle::current().block_on(async {
                             let mut session = nested_session.lock().await;
-                            exec_on(&mut *session, nested, &text).await
+                            exec_on(&mut session, nested, &text).await
                         })
                     })?;
                     checked(nested, database, &got)?;

@@ -4,5 +4,4 @@
 //! `cargo test --test integration`.
 polyspec_orm::models!();
 
-mod coverage_env;
 mod result_chains;

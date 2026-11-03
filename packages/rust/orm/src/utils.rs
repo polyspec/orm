@@ -871,9 +871,8 @@ fn external_error(differences: Vec<String>) -> Result<()> {
 
 #[cfg(test)]
 mod keyring_tests {
-    use super::{rotation_columns, AesKeyring};
+    use super::rotation_columns;
     use crate::value::Val;
-    use std::collections::BTreeMap;
 
     // Requirements: COD-55. Rotation requires every selected AES column in its row.
     // FCV-2: the row lacks a selected column, an input that no recipe value can hold; it stays native.

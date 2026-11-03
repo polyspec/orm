@@ -403,11 +403,14 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 
 // dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
 type dsnConfig struct {
-	PoolSize           int  `json:"pool_size"`
-	PoolIdleSize       int  `json:"pool_idle_size"`
-	PoolLifetimeMs     int  `json:"pool_lifetime_ms"`
-	StatementTimeoutMs int  `json:"statement_timeout_ms"`
-	TLSVersion         bool `json:"tls_version"`
+	PoolSize           int              `json:"pool_size"`
+	PoolIdleSize       int              `json:"pool_idle_size"`
+	PoolLifetimeMs     int              `json:"pool_lifetime_ms"`
+	StatementTimeoutMs int              `json:"statement_timeout_ms"`
+	TLSVersion         bool             `json:"tls_version"`
+	AESKey             string           `json:"aes_key"`
+	AESVersion         int32            `json:"aes_version"`
+	AESKeys            map[int32]string `json:"aes_keys"`
 	SessionRead        *struct {
 		SQL string   `json:"sql"`
 		Row []string `json:"row"`
@@ -524,6 +527,9 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 		PoolIdleSize:       config.PoolIdleSize,
 		PoolLifetimeMs:     config.PoolLifetimeMs,
 		StatementTimeoutMs: config.StatementTimeoutMs,
+		AESKey:             config.AESKey,
+		AESVersion:         config.AESVersion,
+		AESKeys:            config.AESKeys,
 	})
 	if err != nil {
 		return "", err

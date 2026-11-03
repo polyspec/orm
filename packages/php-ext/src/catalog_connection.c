@@ -4,6 +4,7 @@
  * build the PDO handle of the Db that the extension implements (db.c); the catalog operations are here.
  */
 #include "dbspec.h"
+#include "orm_exception_object.h"
 #include <errno.h>
 #include <ctype.h>
 
@@ -699,7 +700,7 @@ static void cat_throw_descriptor_name(void)
 {
     zval cause;
     zend_string *reason = zend_string_init("expected 1..1024 UTF-8 bytes without NUL", sizeof("expected 1..1024 UTF-8 bytes without NUL") - 1, 0);
-    bool built = orm_exception_object(NULL, "TABLE_REFERENCE_INVALID", reason, &cause);
+    bool built = orm_exception_object("Polyspec\\Orm\\OrmException is not loaded", "TABLE_REFERENCE_INVALID", reason, &cause);
     zend_string_release(reason);
     if (!built) {
         return;

@@ -1102,11 +1102,13 @@ impl Parser {
             }
         };
         if ty.is_none() {
-            let known = ["i16", "i32", "i64", "bool", "f64", "text", "bytes", "uuid", "date", "decimal", "varchar", "time", "datetime"];
-            let message = if word.kind == Kind::Word && known.contains(&word.text) {
-                format!("type '{}' has parameters out of range", word.text)
-            } else {
-                format!("type \"{}\" is not a dbspec type", word.text)
+            let message = match word.text {
+                _ if word.kind != Kind::Word => format!("type \"{}\" is not a dbspec type", word.text),
+                "i16" | "i32" | "i64" | "bool" | "f64" | "text" | "bytes" | "uuid" | "date" => format!("{} takes no parameters", word.text),
+                "decimal" => "decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p".to_string(),
+                "varchar" => "varchar(n) needs 1 <= n <= 16383".to_string(),
+                "time" | "datetime" => format!("{}(p) needs 0 <= p <= 6", word.text),
+                _ => format!("type \"{}\" is not a dbspec type", word.text),
             };
             self.report(err(word.pos, "type", message));
         }

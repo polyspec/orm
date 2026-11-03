@@ -97,7 +97,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
-	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
+	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.privilege", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
 		return utilsOp(s, c)
 	case "pool.transactions":
 		// Count transactions in flows of their own: the first hold of them stay open until hold have begun, so the pool

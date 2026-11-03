@@ -116,6 +116,9 @@ async function connectDriver(dsn, config = {}) {
     ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
     ...(config.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: config.pool_lifetime_ms }),
     ...(config.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: config.statement_timeout_ms }),
+    ...(config.aes_key === undefined ? {} : { aesKey: config.aes_key }),
+    ...(config.aes_version === undefined ? {} : { aesVersion: config.aes_version }),
+    ...(config.aes_keys === undefined ? {} : { aesKeys: new Map(Object.entries(config.aes_keys).map(([version, key]) => [Number(version), key])) }),
   });
   try {
     const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
@@ -2020,6 +2023,9 @@ const TABLE_OPS = {
   async 'model.query'(s, context) {
     const { pick } = s;
     const m = chainBuilt(s, context);
+    if (s.bytes_hex_of !== undefined) {
+      return { json: (await m.gets()).values().map(row => Buffer.from(row[CORE].column(s.bytes_hex_of)).toString('hex')) };
+    }
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
       const steps = s.plan_page === undefined
@@ -2124,6 +2130,18 @@ const TABLE_OPS = {
   },
   async 'utils.local'(s, context) {
     return { json: await connectionOf(s, context).utils().local(s.name) };
+  },
+  async 'utils.privilege'(s, context) {
+    // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+    const privileges = connectionOf(s, context).utils().privileges();
+    if (s.call === 'inspect') {
+      const { insert, select, update, delete: remove, truncate } = await privileges.inspectTable(s.table);
+      return { json: { insert, select, update, delete: remove, truncate } };
+    }
+    if (s.call === 'grant') await privileges.grantTable(s.table, s.role);
+    else if (s.call === 'revoke') await privileges.revokeTable(s.table, s.privilege, s.role);
+    else throw new Error(`utils.privilege has no call ${s.call}`);
+    return { value: { bool: true } };
   },
   'utils.was_inserted': (s, context) => ({ value: { bool: connectionOf(s, context).utils().wasInserted(s.table, s.sequence) } }),
   async 'utils.backend_waiting_for_lock'(s, context) {

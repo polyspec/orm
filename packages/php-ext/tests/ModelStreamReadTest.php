@@ -151,30 +151,6 @@ final class ModelStreamReadTest extends TestCase
         }
     }
 
-    // Requirements: INT-5, PRT-69.
-    public function testNativeRowAssemblyPreservesBinaryDriverCellBytes(): void
-    {
-        $source = "\0\x7f\x80\xffA";
-        $stream = fopen('php://temp', 'w+');
-        self::assertIsResource($stream);
-        try {
-            fwrite($stream, $source);
-            rewind($stream);
-            $model = new ModelStreamFixture();
-            $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
-            $row = $assembleRow->invoke($model, self::assembly(), [
-                'node' => 48118,
-                'key' => [],
-                'children' => [],
-                'columns' => [['index' => 0, 'name' => 'body', 'column' => 'body', 'hidden' => false]],
-            ], [$stream]);
-            $values = (new \ReflectionProperty(Model::class, 'values'))->getValue($row);
-            self::assertSame($source, $values['body']);
-        } finally {
-            fclose($stream);
-        }
-    }
-
     public function testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder(): void
     {
         $model = new ModelStreamFixture();

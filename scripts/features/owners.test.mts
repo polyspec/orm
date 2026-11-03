@@ -89,7 +89,6 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     ['packages/go/orm/schema_helpers_test.go', 'go-test-helpers'],
     ['packages/php/testing/conformance/runner.php', 'conformance-runners'],
     ['packages/python/tests/testcase.py', 'python-test-harness'],
-    ['packages/rust/tests/tests/integration/coverage_env.rs', 'rust-test-helpers'],
   ];
   for (const [path, helper] of helped) {
     assert.deepEqual(await selectOwners(manifest, root, [path]), [], path);

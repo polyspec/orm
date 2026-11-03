@@ -520,7 +520,6 @@ mod plan_cache_tests {
         collect: |_, _| unreachable!("the planner test collects no rows"),
     };
     const SEQ: ChainKey = ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" };
-    const LABEL: ChainKey = ChainKey { conn: "and", op: "eq", column: "label", columns: &[], compare: "" };
     const FULLTEXT_BOOLEAN_LABEL: ChainKey = ChainKey { conn: "", op: "fulltext_boolean", column: "", columns: &["label"], compare: "" };
 
     /// One IN statement over lists of 1 to 300 values: the shape key takes one value per power-of-two bucket
