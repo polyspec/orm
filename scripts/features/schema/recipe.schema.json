@@ -177,7 +177,7 @@
                 "$ref": "#/$defs/name"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/value"
+                "$ref": "#/$defs/argument"
               }
             }
           }
@@ -694,6 +694,9 @@
         },
         {
           "$ref": "#/$defs/withinValue"
+        },
+        {
+          "$ref": "#/$defs/outcomes/json"
         }
       ]
     },
@@ -817,7 +820,11 @@
             "hook.install",
             "hook.records",
             "utils.aes_rotate",
-            "model.restore"
+            "model.restore",
+            "model.chain",
+            "utils.lock",
+            "utils.set_local",
+            "utils.local"
           ]
         }
       },
@@ -1046,6 +1053,18 @@
         },
         {
           "$ref": "#/$defs/ops/model.restore"
+        },
+        {
+          "$ref": "#/$defs/ops/model.chain"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.lock"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.set_local"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.local"
         }
       ]
     },
@@ -1237,7 +1256,11 @@
             "$ref": "#/$defs/name"
           },
           "steps": {
-            "$ref": "#/$defs/stepList"
+            "description": "An empty transaction is a statement-free BEGIN and COMMIT.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/step"
+            }
           },
           "fail": {
             "type": "boolean"
@@ -2625,45 +2648,105 @@
         }
       },
       "model.creates": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "model",
-          "rows",
-          "batch",
-          "expect"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "model.creates"
-          },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "model": {
-            "$ref": "#/$defs/model"
-          },
-          "rows": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "$ref": "#/$defs/columnValues"
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model",
+              "rows",
+              "batch",
+              "expect"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.creates"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "rows": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/columnValues"
+                }
+              },
+              "batch": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "expect": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/value"
+                }
+              }
             }
           },
-          "batch": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "expect": {
+          {
             "type": "object",
-            "minProperties": 1,
-            "additionalProperties": {
-              "$ref": "#/$defs/outcomes/value"
+            "required": [
+              "op",
+              "connection",
+              "model",
+              "rows_sequence",
+              "batch",
+              "expect"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.creates"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "rows_sequence": {
+                "description": "count rows whose column runs from `from`, each with values (a batch-limit case states its size, not its rows).",
+                "type": "object",
+                "required": [
+                  "column",
+                  "from",
+                  "count",
+                  "values"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "column": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "from": {
+                    "type": "integer"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "values": {
+                    "$ref": "#/$defs/columnValues"
+                  }
+                }
+              },
+              "batch": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
             }
           }
-        }
+        ]
       },
       "model.save": {
         "type": "object",
@@ -2879,6 +2962,65 @@
                     ]
                   }
                 }
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model",
+              "values"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.update"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "values": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "set": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "optimistic": {
+                "const": true
+              },
+              "revision": {
+                "type": "object",
+                "required": [
+                  "column",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "column": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "value": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
+                  }
+                }
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
           }
@@ -3045,46 +3187,149 @@
                 "items": {
                   "$ref": "#/$defs/relation"
                 }
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model",
+              "values"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.delete"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "values": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "recursive": {
+                "type": "boolean"
+              },
+              "revision": {
+                "type": "object",
+                "required": [
+                  "column",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "column": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "value": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "$ref": "#/$defs/argument"
+                      }
+                    ]
+                  }
+                }
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
           }
         ]
       },
       "model.count": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "model",
-          "expect"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "model.count"
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model",
+              "expect"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              },
+              "joins": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/join"
+                }
+              }
+            }
           },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "model": {
-            "$ref": "#/$defs/model"
-          },
-          "where": {
-            "$ref": "#/$defs/predicate"
-          },
-          "expect": {
-            "$ref": "#/$defs/expect"
-          },
-          "joins": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/join"
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "key": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "joins": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/join"
+                }
+              },
+              "from": {
+                "description": "The chain that model.chain bound by this name: the query continues it.",
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/name"
+                  }
+                ]
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
             }
           }
-        }
+        ]
       },
       "model.get_by": {
-        "oneOf": [
+        "anyOf": [
           {
             "type": "object",
             "required": [
@@ -3170,170 +3415,383 @@
                 "$ref": "#/$defs/limit"
               }
             }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "connection",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.get_by"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "key": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "columns": {
+                "oneOf": [
+                  {
+                    "const": "all"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/columnEntry"
+                    }
+                  }
+                ]
+              },
+              "add_columns": {
+                "$ref": "#/$defs/columnList"
+              },
+              "remove_columns": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "order": {
+                "$ref": "#/$defs/orderList"
+              },
+              "limit": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "$ref": "#/$defs/limit"
+                  }
+                ]
+              },
+              "lock": {
+                "$ref": "#/$defs/lockMode"
+              },
+              "aggregate": {
+                "$ref": "#/$defs/aggregate"
+              },
+              "joins": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/join"
+                }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/relation"
+                }
+              },
+              "from": {
+                "description": "The chain that model.chain bound by this name: the query continues it.",
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/name"
+                  }
+                ]
+              },
+              "pick": {
+                "description": "The fields of each result row that the expect names; a field the expect does not name is not compared.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "as": {
+                "$ref": "#/$defs/name"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
           }
         ]
       },
       "model.query": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "model",
-          "order",
-          "columns",
-          "expect"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "model.query"
-          },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "model": {
-            "$ref": "#/$defs/model"
-          },
-          "where": {
-            "type": "object",
-            "propertyNames": {
-              "$ref": "#/$defs/name"
-            },
-            "additionalProperties": {
-              "$ref": "#/$defs/argument"
-            }
-          },
-          "order": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^-?[a-z_][a-z0-9_]*$"
-            }
-          },
-          "columns": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/name"
-            }
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "offset": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "relation": {
+        "anyOf": [
+          {
             "type": "object",
             "required": [
+              "op",
+              "connection",
               "model",
-              "match",
-              "columns"
+              "order",
+              "columns",
+              "expect"
             ],
             "additionalProperties": false,
             "properties": {
+              "op": {
+                "const": "model.query"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
               "model": {
                 "$ref": "#/$defs/model"
               },
-              "match": {
+              "where": {
+                "type": "object",
+                "propertyNames": {
+                  "$ref": "#/$defs/name"
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/argument"
+                }
+              },
+              "order": {
                 "type": "array",
-                "minItems": 1,
                 "items": {
-                  "type": "array",
-                  "minItems": 2,
-                  "maxItems": 2,
-                  "items": {
+                  "type": "string",
+                  "pattern": "^-?[a-z_][a-z0-9_]*$"
+                }
+              },
+              "columns": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "relation": {
+                "type": "object",
+                "required": [
+                  "model",
+                  "match",
+                  "columns"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "model": {
+                    "$ref": "#/$defs/model"
+                  },
+                  "match": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "maxItems": 2,
+                      "items": {
+                        "$ref": "#/$defs/name"
+                      }
+                    }
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/name"
+                    }
+                  },
+                  "connect": {
+                    "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
+                    "type": "boolean"
+                  },
+                  "many": {
+                    "description": "relations(child): the result is a collection, one output row per child row (INT-87).",
+                    "type": "boolean"
+                  },
+                  "alias": {
+                    "description": "The result name, given through the generated alias method of the child and read through its generated getter.",
                     "$ref": "#/$defs/name"
                   }
                 }
               },
-              "columns": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/name"
+              "expect": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
                 }
               },
-              "connect": {
-                "description": "The related model is connected to the connection of the query; without it the related model takes the connection of its parent (INT-87).",
-                "type": "boolean"
+              "lock": {
+                "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
+                "enum": [
+                  "update",
+                  "share",
+                  "update_nowait",
+                  "share_nowait"
+                ]
               },
-              "many": {
-                "description": "relations(child): the result is a collection, one output row per child row (INT-87).",
-                "type": "boolean"
+              "tuples": {
+                "description": "The rows whose key columns equal one tuple of values (DSL-82, the generated tuple filter of a composite key).",
+                "type": "object",
+                "required": [
+                  "columns",
+                  "values"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "columns": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": {
+                      "$ref": "#/$defs/name"
+                    }
+                  },
+                  "values": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "array",
+                      "minItems": 2,
+                      "items": {
+                        "$ref": "#/$defs/argument"
+                      }
+                    }
+                  }
+                }
               },
-              "alias": {
-                "description": "The result name, given through the generated alias method of the child and read through its generated getter.",
-                "$ref": "#/$defs/name"
+              "page": {
+                "description": "The query reads one page by GetsPage: offset/limit+1 of size limit, with the total of the rows (INT-36).",
+                "type": "boolean"
               }
-            }
-          },
-          "expect": {
-            "type": "object",
-            "minProperties": 1,
-            "additionalProperties": {
-              "$ref": "#/$defs/outcomes/rows"
-            }
-          },
-          "lock": {
-            "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
-            "enum": [
-              "update",
-              "share",
-              "update_nowait",
-              "share_nowait"
+            },
+            "anyOf": [
+              {
+                "properties": {
+                  "where": true
+                },
+                "required": [
+                  "where"
+                ]
+              },
+              {
+                "properties": {
+                  "tuples": true
+                },
+                "required": [
+                  "tuples"
+                ]
+              }
             ]
           },
-          "tuples": {
-            "description": "The rows whose key columns equal one tuple of values (DSL-82, the generated tuple filter of a composite key).",
+          {
             "type": "object",
             "required": [
-              "columns",
-              "values"
+              "op",
+              "connection",
+              "model"
             ],
             "additionalProperties": false,
             "properties": {
+              "op": {
+                "const": "model.query"
+              },
+              "connection": {
+                "$ref": "#/$defs/name"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "key": {
+                "$ref": "#/$defs/columnValues"
+              },
               "columns": {
+                "oneOf": [
+                  {
+                    "const": "all"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/columnEntry"
+                    }
+                  }
+                ]
+              },
+              "add_columns": {
+                "$ref": "#/$defs/columnList"
+              },
+              "remove_columns": {
                 "type": "array",
-                "minItems": 2,
                 "items": {
                   "$ref": "#/$defs/name"
                 }
               },
-              "values": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "type": "array",
-                  "minItems": 2,
-                  "items": {
-                    "$ref": "#/$defs/argument"
+              "order": {
+                "$ref": "#/$defs/orderList"
+              },
+              "limit": {
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "$ref": "#/$defs/limit"
                   }
+                ]
+              },
+              "lock": {
+                "$ref": "#/$defs/lockMode"
+              },
+              "aggregate": {
+                "$ref": "#/$defs/aggregate"
+              },
+              "joins": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/join"
                 }
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/relation"
+                }
+              },
+              "from": {
+                "description": "The chain that model.chain bound by this name: the query continues it.",
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/name"
+                  }
+                ]
+              },
+              "pick": {
+                "description": "The fields of each result row that the expect names; a field the expect does not name is not compared.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "as": {
+                "$ref": "#/$defs/name"
+              },
+              "page": {
+                "type": "boolean"
+              },
+              "compile": {
+                "description": "The query is read by getQuery: its text and binds, not its rows.",
+                "const": true
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
-          },
-          "page": {
-            "description": "The query reads one page by GetsPage: offset/limit+1 of size limit, with the total of the rows (INT-36).",
-            "type": "boolean"
-          }
-        },
-        "anyOf": [
-          {
-            "properties": {
-              "where": true
-            },
-            "required": [
-              "where"
-            ]
-          },
-          {
-            "properties": {
-              "tuples": true
-            },
-            "required": [
-              "tuples"
-            ]
           }
         ]
       },
@@ -3450,6 +3908,46 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          },
+          "masks": {
+            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value.",
+            "type": "object",
+            "propertyNames": {
+              "enum": [
+                "mysql",
+                "postgres",
+                "sqlite"
+              ]
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "event",
+                  "bind",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "event": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "bind": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "value": {
+                    "enum": [
+                      "$AES",
+                      "$TS",
+                      "$NOW"
+                    ]
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -4927,6 +5425,162 @@
             "minItems": 1
           }
         }
+      },
+      "model.chain": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "model",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "model.chain"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "where": {
+            "$ref": "#/$defs/predicate"
+          },
+          "key": {
+            "$ref": "#/$defs/columnValues"
+          },
+          "columns": {
+            "oneOf": [
+              {
+                "const": "all"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/columnEntry"
+                }
+              }
+            ]
+          },
+          "add_columns": {
+            "$ref": "#/$defs/columnList"
+          },
+          "remove_columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "order": {
+            "$ref": "#/$defs/orderList"
+          },
+          "limit": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "$ref": "#/$defs/limit"
+              }
+            ]
+          },
+          "lock": {
+            "$ref": "#/$defs/lockMode"
+          },
+          "aggregate": {
+            "$ref": "#/$defs/aggregate"
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/join"
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/relation"
+            }
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          }
+        },
+        "description": "Builds a query without running it, bound by `as`: a later query, count or page continues it through `from`."
+      },
+      "utils.lock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.lock"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "utils.set_local": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "name",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.set_local"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "$ref": "#/$defs/argument"
+          }
+        }
+      },
+      "utils.local": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "name",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.local"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
       }
     },
     "outcomes": {
@@ -4957,21 +5611,31 @@
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               }
             }
+          },
+          {
+            "$ref": "#/$defs/outcomes/json"
           }
         ]
       },
       "error": {
-        "type": "object",
-        "required": [
-          "error"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "error": {
-            "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]*$"
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "error"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              }
+            }
+          },
+          {
+            "$ref": "#/$defs/outcomes/json"
           }
-        }
+        ]
       },
       "value": {
         "oneOf": [
@@ -4999,6 +5663,9 @@
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               }
             }
+          },
+          {
+            "$ref": "#/$defs/outcomes/json"
           }
         ]
       },
@@ -5213,6 +5880,9 @@
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               }
             }
+          },
+          {
+            "$ref": "#/$defs/outcomes/json"
           }
         ]
       },
@@ -5382,6 +6052,17 @@
             }
           }
         ]
+      },
+      "json": {
+        "description": "The result of a model op of the table path, as plain JSON: rows as objects in the order the query returned them, a scalar as itself (FCV-4).",
+        "type": "object",
+        "required": [
+          "json"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "json": true
+        }
       }
     },
     "assignments": {
@@ -5415,6 +6096,34 @@
           },
           {
             "$ref": "#/$defs/arithValue"
+          },
+          {
+            "type": "object",
+            "required": [
+              "arith"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "arith": {
+                "type": "object",
+                "required": [
+                  "operation",
+                  "amount"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "operation": {
+                    "enum": [
+                      "plus",
+                      "minus"
+                    ]
+                  },
+                  "amount": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              }
+            }
           }
         ]
       }
@@ -5754,6 +6463,102 @@
               }
             }
           }
+        },
+        {
+          "description": "Explicit connectors in order: [connector, predicate] or a bare [connector], whose next condition has no connector of its own (DSL-7).",
+          "type": "object",
+          "required": [
+            "chain"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "chain": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "prefixItems": [
+                      {
+                        "enum": [
+                          "",
+                          "and",
+                          "or"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "prefixItems": [
+                      {
+                        "enum": [
+                          "",
+                          "and",
+                          "or"
+                        ]
+                      },
+                      {
+                        "$ref": "#/$defs/predicate"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "description": "The condition of a join, placed in the WHERE of the query where this item stands; names the join by its `as`.",
+          "type": "object",
+          "required": [
+            "placed"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "placed": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "description": "The rows whose columns equal one tuple: [columns, tuples] (DSL-82).",
+          "type": "object",
+          "required": [
+            "tuple"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "tuple": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "prefixItems": [
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/expr"
+                    }
+                  }
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -5794,6 +6599,25 @@
             "properties": {
               "expr": {
                 "$ref": "#/$defs/expr"
+              },
+              "dir": {
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "fn",
+              "dir"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "fn": {
+                "$ref": "#/$defs/fnCall"
               },
               "dir": {
                 "enum": [
@@ -5877,6 +6701,12 @@
           "items": {
             "$ref": "#/$defs/columnEntry"
           }
+        },
+        "aggregate": {
+          "$ref": "#/$defs/aggregate"
+        },
+        "add_columns": {
+          "$ref": "#/$defs/columnList"
         }
       }
     },
@@ -5960,6 +6790,21 @@
         },
         "as": {
           "$ref": "#/$defs/name"
+        },
+        "match": {
+          "description": "The pair [column of the query, column of the joined model].",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/name"
+          }
+        },
+        "alias": {
+          "$ref": "#/$defs/name"
+        },
+        "where": {
+          "$ref": "#/$defs/predicate"
         }
       }
     },
@@ -5967,8 +6812,7 @@
       "type": "object",
       "required": [
         "model",
-        "match",
-        "as"
+        "match"
       ],
       "additionalProperties": false,
       "properties": {
@@ -6023,6 +6867,16 @@
           "items": {
             "$ref": "#/$defs/relation"
           }
+        },
+        "many": {
+          "description": "relations(child): the result is a collection (INT-87).",
+          "type": "boolean"
+        },
+        "alias": {
+          "$ref": "#/$defs/name"
+        },
+        "where": {
+          "$ref": "#/$defs/predicate"
         }
       }
     },
