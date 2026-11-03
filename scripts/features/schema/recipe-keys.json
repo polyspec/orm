@@ -671,7 +671,14 @@
       "changed",
       "document_set",
       "op",
+      "removed",
       "unchanged"
+    ],
+    "generator.refused": [
+      "check",
+      "files",
+      "op",
+      "parts"
     ],
     "dbspec.export_mermaid": [
       "as",

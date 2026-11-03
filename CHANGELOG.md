@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)
 - The feature checker builds a Go owner with the tags of the normal go test, so it reads by exact name a test that the normal run holds (#T334-3-6-2)

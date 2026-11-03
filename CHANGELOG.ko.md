@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30dc0afba5581531be8c4e5317c445ec08df7fbc9645d254b4e9010a7705cc1e -->
+<!-- source-sha256: 11661dc9781d4ec486f02a74808bbdec951e53ff131650e8e103ed89d4a66ee7 -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)
 - feature checker는 Go owner를 일반 go test의 tag로 build하므로, 일반 실행이 담는 시험을 정확한 이름으로 읽는다 (#T334-3-6-2)
