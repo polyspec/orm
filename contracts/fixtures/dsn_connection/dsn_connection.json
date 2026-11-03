@@ -110,7 +110,17 @@
           "dsn": "case",
           "query": "sslmode=disable",
           "expect": {
+            "mysql": {
+              "value": {
+                "text": "postgres"
+              }
+            },
             "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            },
+            "sqlite": {
               "value": {
                 "text": "postgres"
               }
@@ -125,7 +135,17 @@
           "dsn": "case",
           "query": "host=127.0.0.1",
           "expect": {
+            "mysql": {
+              "value": {
+                "text": "postgres"
+              }
+            },
             "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            },
+            "sqlite": {
               "value": {
                 "text": "postgres"
               }
@@ -140,6 +160,16 @@
           "dsn": "case",
           "query": "_pragma=busy_timeout(5000)&timezone=UTC",
           "expect": {
+            "mysql": {
+              "value": {
+                "text": "sqlite"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "sqlite"
+              }
+            },
             "sqlite": {
               "value": {
                 "text": "sqlite"

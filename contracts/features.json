@@ -751,7 +751,12 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "dsn_connection"
+          "dsn_connection",
+          "dsn_parameters_of_this_page",
+          "mysql_tls_verifies_the_server_identity",
+          "mysql_tls_refuses_an_untrusted_identity",
+          "sqlite_file_name_is_the_path",
+          "sqlite_refused_dsn_creates_no_file"
         ],
         "owners": {
           "go": {
@@ -765,7 +770,10 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionMysql"
@@ -776,7 +784,8 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionPostgres"
@@ -787,7 +796,10 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionSqlite"
@@ -806,7 +818,10 @@
                   "runner": "php",
                   "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testMysql"
@@ -817,7 +832,8 @@
                   "runner": "php",
                   "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testPostgres"
@@ -828,7 +844,10 @@
                   "runner": "php",
                   "test": "packages/php/tests/DsnConnectionRecipeTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testSqlite"
@@ -850,7 +869,10 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testMysql"
@@ -861,7 +883,8 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testPostgres"
@@ -872,7 +895,10 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "testSqlite"
@@ -897,7 +923,10 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -907,7 +936,8 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -917,7 +947,10 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -937,7 +970,10 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -947,7 +983,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -957,7 +994,10 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -977,7 +1017,10 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_mysql.py",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "mysql_tls_verifies_the_server_identity",
+                    "mysql_tls_refuses_an_untrusted_identity"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -987,7 +1030,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_postgres.py",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
@@ -997,7 +1041,10 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_sqlite.py",
                   "cases": [
-                    "dsn_connection"
+                    "dsn_connection",
+                    "dsn_parameters_of_this_page",
+                    "sqlite_file_name_is_the_path",
+                    "sqlite_refused_dsn_creates_no_file"
                   ],
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
                 }
