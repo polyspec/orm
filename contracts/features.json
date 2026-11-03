@@ -1301,7 +1301,6 @@
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
-        "packages/python/tests/test_collection.py",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
         "packages/python/tests/test_alias_columns.py",
@@ -1340,9 +1339,7 @@
         "packages/ts/tests/model_json_output.test.mts",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
-        "packages/ts/tests/split-null.test.mjs",
         "packages/python/tests/test_group_rows_db.py",
-        "packages/python/tests/test_split_null.py",
         "packages/php-ext/tests/ChainNativeSurfaceTest.php",
         "packages/go/model/group_rows_db_test.go",
         "packages/rust/orm/src/collection.rs",
@@ -1350,7 +1347,6 @@
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
         "packages/rust/orm/tests/compiler_fixtures.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs",
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
@@ -1762,10 +1758,9 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_collection.py",
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
             "packages/python/tests/test_alias_columns.py",
@@ -1804,7 +1799,7 @@
         },
         {
           "id": "collection-identity-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionKeyIdentityFromFixture|TestCollectionKeyNullIsCodecDecodeFromFixture)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_identity_test.go",
@@ -8788,7 +8783,6 @@
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/tests/tests/integration/result_chains.rs",
@@ -8852,11 +8846,10 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php packages/php/tests/ParentSlotPaddingTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/RelationKeysTest.php",
-            "packages/php/tests/ParentSlotPaddingTest.php"
+            "packages/php/tests/RelationKeysTest.php"
           ]
         },
         {
@@ -9265,7 +9258,10 @@
         "coverage-constraints-and-relations-constraint-errors",
         "constraints_and_relations-mysql",
         "constraints_and_relations-postgres",
-        "constraints_and_relations-sqlite"
+        "constraints_and_relations-sqlite",
+        "immutable_write-mysql",
+        "immutable_write-postgres",
+        "immutable_write-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -9275,7 +9271,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+        "contracts/fixtures/immutable_write/immutable_write.json"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",

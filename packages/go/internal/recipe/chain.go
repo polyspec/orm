@@ -1077,6 +1077,8 @@ func tableCells(r *tableRow, columns []string) ([]any, error) {
 			out[i] = map[string]any{"text": x}
 		case int64:
 			out[i] = map[string]any{"int": strconv.FormatInt(x, 10)}
+		case int32:
+			out[i] = map[string]any{"int": strconv.FormatInt(int64(x), 10)}
 		case int:
 			out[i] = map[string]any{"int": strconv.Itoa(x)}
 		default:

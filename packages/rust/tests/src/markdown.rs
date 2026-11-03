@@ -388,6 +388,30 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             let counts: Vec<i64> = rows.iter().map(|row| row.count()).collect();
             json!({ "length": rows.len(), "counts": counts, "rows": rows.to_array()?, "first": first })
         }
+        "group_count_i64" => Logs::new().connect(db).group_by_id().order_by_id_asc().gets_count().await?.to_array()?,
+        "collection_typed_key" => {
+            let rows = Logs::new().connect(db).fetch_value(|row: &Logs| json!(row.get_note().unwrap())).gets().await?;
+            let id = |row: Option<&Logs>| row.map(|row| row.get_id()).transpose();
+            let keys: Vec<Value> = rows.keys().iter().map(|key| key.to_json()).collect();
+            json!({
+                "length": rows.len(),
+                "keys": keys,
+                "first": id(rows.first())?,
+                "get": id(rows.get(1))?,
+                "get_text": id(rows.get("1"))?,
+                "get_missing": id(rows.get(2))?,
+                "has": rows.get(1).is_some(),
+                "has_text": rows.get("1").is_some(),
+                "fetched": rows.fetched_value(1),
+                "fetched_text": rows.fetched_value("1"),
+                "fetched_missing": rows.fetched_value(2),
+                "array": rows.to_array()?,
+            })
+        }
+        "collection_key_name" => {
+            let rows = People::new().connect(db).key_name_age().gets().await?;
+            Value::Array(rows.keys().iter().map(|key| key.to_json()).collect())
+        }
         "sum" => json!(Tasks::new().connect(db).sum_points().get_sum().await?),
         "avg" => json!(People::new().connect(db).avg_age().get_avg().await?),
         "paginate" => {

@@ -358,6 +358,40 @@ def conformance_cases() -> dict:
             "first": first,
         }
 
+    def group_count_i64(s):
+        return (
+            s.models.Logs()
+            .connect(s.db)
+            .group_by_id()
+            .order_by_id_asc()
+            .gets_count()
+            .to_array()
+        )
+
+    def collection_typed_key(s):
+        rows = s.models.Logs().connect(s.db).fetch_value(lambda row: row.get_note()).gets()
+
+        def row_id(row):
+            return None if row is None else row.get_id()
+
+        return {
+            "length": rows.length,
+            "keys": rows.keys(),
+            "first": row_id(rows.first()),
+            "get": row_id(rows.get(1)),
+            "get_text": row_id(rows.get("1")),
+            "get_missing": row_id(rows.get(2)),
+            "has": rows.has(1),
+            "has_text": rows.has("1"),
+            "fetched": rows.fetched(1),
+            "fetched_text": rows.fetched("1"),
+            "fetched_missing": rows.fetched(2),
+            "array": rows.to_array(),
+        }
+
+    def collection_key_name(s):
+        return s.models.People().connect(s.db).key_name_age().gets().keys()
+
     def group_count_no_rows(s):
         return (
             s.models.Tasks()
@@ -903,6 +937,9 @@ def conformance_cases() -> dict:
         "group_count": group_count,
         "group_count_no_rows": group_count_no_rows,
         "group_count_views": group_count_views,
+        "group_count_i64": group_count_i64,
+        "collection_typed_key": collection_typed_key,
+        "collection_key_name": collection_key_name,
         "sum": sum_,
         "avg": avg,
         "paginate": paginate,
