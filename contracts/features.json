@@ -2414,11 +2414,9 @@
         "packages/rust/tests/tests/integration/coverage_model_writes.rs",
         "packages/ts/tests/coverage_model_writes.mjs",
         "packages/go/orm/assignment_propagation_test.go",
-        "packages/go/orm/restore_test.go",
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/styled_column_states.json",
-        "packages/rust/orm/tests/restore.rs",
         "packages/go/orm/identity_load_test.go",
         "packages/php/tests/IdentityLoadTest.php",
         "packages/ts/tests/identity-load.mjs",
@@ -2626,7 +2624,6 @@
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
             "packages/go/orm/write_set_test.go",
-            "packages/go/orm/restore_test.go",
             "packages/go/orm/clock_test.go"
           ]
         },
@@ -2665,14 +2662,6 @@
             "packages/rust/orm/tests/clock.rs",
             "contracts/fixtures/clock.dbs",
             "contracts/fixtures/clock_mark.dbs"
-          ]
-        },
-        {
-          "id": "restore-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts restore-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test restore",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/restore.rs"
           ]
         },
         {
@@ -9272,7 +9261,6 @@
         }
       ],
       "parity": [
-        "coverage-audit-triggers-soft-delete-restore",
         "client-query-relation",
         "coverage-composite-keys-composite-key-rows",
         "coverage-constraints-and-relations-immutable-write",
@@ -9297,7 +9285,6 @@
         "packages/go/orm/driver_error_test.go",
         "packages/go/orm/driver_error_internal_test.go",
         "packages/go/orm/pg/pg_test.go",
-        "packages/rust/orm/tests/soft_delete.rs",
         "packages/go/engine/dbspec/render_test.go",
         "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
@@ -9370,14 +9357,6 @@
           ]
         },
         {
-          "id": "soft-delete-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts soft-delete-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test soft_delete",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/soft_delete.rs"
-          ]
-        },
-        {
           "id": "driver-error-typescript",
           "command": "node packages/ts/tests/driver-error.mjs",
           "shard": "other",
@@ -9410,7 +9389,6 @@
         "cases": [
           "constraint_errors",
           "composite_key_rows",
-          "soft_delete_restore",
           "external_relation",
           "immutable_write"
         ],
@@ -9419,8 +9397,7 @@
             "part": "packages/go",
             "tests": [
               "packages/go/model/coverage_constraints_and_relations_test.go",
-              "packages/go/model/coverage_composite_keys_test.go",
-              "packages/go/orm/coverage_audit_triggers_test.go"
+              "packages/go/model/coverage_composite_keys_test.go"
             ],
             "commands": {
               "mysql": [
@@ -9447,17 +9424,6 @@
                   ],
                   "symbols": {
                     "composite_key_rows": "TestCoverageCompositeKeyRows"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9488,17 +9454,6 @@
                     "composite_key_rows": "TestCoverageCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9525,17 +9480,6 @@
                   ],
                   "symbols": {
                     "composite_key_rows": "TestCoverageCompositeKeyRows"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9551,8 +9495,7 @@
             "part": "packages/php/tests",
             "tests": [
               "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-              "packages/php/tests/CoverageCompositeKeysTest.php",
-              "packages/php/tests/CoverageAuditTriggersTest.php"
+              "packages/php/tests/CoverageCompositeKeysTest.php"
             ],
             "commands": {
               "mysql": [
@@ -9579,17 +9522,6 @@
                   ],
                   "symbols": {
                     "composite_key_rows": "testCompositeKeyRows"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9620,17 +9552,6 @@
                     "composite_key_rows": "testCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9659,23 +9580,10 @@
                     "composite_key_rows": "testCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             },
             "inputs": [
-              "packages/php/tests/restore_case.php",
-              "packages/php/tests/audit_case.php",
               "contracts/fixtures/audit.dbs",
               "contracts/fixtures/audit_columns.dbs",
               "contracts/fixtures/restore.dbs",
@@ -9686,8 +9594,7 @@
             "part": "packages/rust",
             "tests": [
               "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-              "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-              "packages/rust/orm/tests/coverage_audit_triggers.rs"
+              "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
             ],
             "commands": {
               "mysql": [
@@ -9714,17 +9621,6 @@
                   ],
                   "symbols": {
                     "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9755,17 +9651,6 @@
                     "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "coverage_soft_delete_restore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9792,17 +9677,6 @@
                   ],
                   "symbols": {
                     "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9819,8 +9693,7 @@
             "part": "packages/ts/tests",
             "tests": [
               "packages/ts/tests/coverage_constraints_and_relations.mjs",
-              "packages/ts/tests/coverage_composite_keys.mjs",
-              "packages/ts/tests/coverage_audit_triggers.mjs"
+              "packages/ts/tests/coverage_composite_keys.mjs"
             ],
             "commands": {
               "mysql": [
@@ -9839,14 +9712,6 @@
                   "test": "packages/ts/tests/coverage_composite_keys.mjs",
                   "cases": [
                     "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-                  "cases": [
-                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9869,14 +9734,6 @@
                     "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9897,19 +9754,10 @@
                     "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             },
             "inputs": [
-              "packages/ts/tests/restore_case.mjs",
               "contracts/fixtures/audit.dbs",
               "contracts/fixtures/audit_columns.dbs",
               "contracts/fixtures/restore.dbs",
@@ -9920,8 +9768,7 @@
             "part": "packages/python/tests",
             "tests": [
               "packages/python/tests/coverage_constraints_and_relations.py",
-              "packages/python/tests/coverage_composite_keys.py",
-              "packages/python/tests/coverage_audit_triggers.py"
+              "packages/python/tests/coverage_composite_keys.py"
             ],
             "commands": {
               "mysql": [
@@ -9940,14 +9787,6 @@
                   "test": "packages/python/tests/coverage_composite_keys.py",
                   "cases": [
                     "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
-                  "cases": [
-                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9970,14 +9809,6 @@
                     "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9996,14 +9827,6 @@
                   "test": "packages/python/tests/coverage_composite_keys.py",
                   "cases": [
                     "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
-                  "cases": [
-                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10021,18 +9844,13 @@
             "part": "packages/php-ext/tests",
             "tests": [
               "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-              "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php"
+              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php"
             ],
             "inputs": [
               "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-              "packages/php/tests/restore_case.php",
-              "packages/php/tests/audit_case.php",
               "contracts/fixtures/audit.dbs",
               "contracts/fixtures/audit_columns.dbs",
               "contracts/fixtures/restore.dbs",
-              "packages/php/tests/CoverageAuditTriggersTest.php",
-              "packages/php/tests/CoverageAuditColumnsTest.php",
               "contracts/fixtures/refusal.dbs"
             ],
             "commands": {
@@ -10059,17 +9877,6 @@
                     "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -10095,17 +9902,6 @@
                     "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -10130,17 +9926,6 @@
                   "cases": [
                     "composite_key_rows"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-                  "cases": [
-                    "soft_delete_restore"
-                  ],
-                  "symbols": {
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -10188,26 +9973,17 @@
         }
       ],
       "parity": [
-        "coverage-audit-triggers-audit-history",
-        "coverage-audit-triggers-audit-selected-columns",
-        "coverage-audit-triggers-audit-transaction-entry-points",
-        "coverage-audit-triggers-soft-delete-restore"
+        "audit_triggers-mysql",
+        "audit_triggers-postgres",
+        "audit_triggers-sqlite"
       ],
       "fixtures": [
-        "contracts/fixtures/audit.dbs",
-        "contracts/fixtures/audit_columns.dbs",
-        "contracts/fixtures/restore.dbs",
-        "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/coverage_fixture_test.go",
-        "packages/php/tests/coverage_cases.php",
-        "packages/rust/orm/tests/common/audit_rows.rs",
-        "packages/ts/tests/coverage_case.mjs",
-        "packages/php/tests/restore_case.php",
-        "packages/ts/tests/restore_case.mjs",
-        "packages/rust/orm/tests/common/restore_rows.rs",
-        "packages/php/tests/audit_case.php",
-        "contracts/fixtures/external/board.dbs",
-        "packages/python/tests/coverage_case.py"
+        "contracts/fixtures/audit_triggers/audit_triggers.json",
+        "contracts/fixtures/audit_triggers/audit_triggers.dbs",
+        "contracts/fixtures/audit_triggers/dbspec-set.json",
+        "packages/go/orm/audit_transaction_test.go",
+        "packages/rust/orm/tests/audit.rs",
+        "packages/rust/orm/tests/common/audit_rows.rs"
       ],
       "tests": [
         "packages/php/tests/ModelTest.php",
@@ -10216,22 +9992,12 @@
         "packages/go/orm/audit_transaction_test.go",
         "packages/php/tests/RuntimeDbTest.php",
         "packages/ts/tests/dbspec_runtime_db.mjs",
-        "packages/go/orm/coverage_audit_triggers_test.go",
-        "packages/php/tests/CoverageAuditTriggersTest.php",
-        "packages/rust/orm/tests/coverage_audit_triggers.rs",
-        "packages/ts/tests/coverage_audit_triggers.mjs",
-        "packages/php/tests/CoverageAuditColumnsTest.php",
-        "packages/go/orm/restore_test.go",
-        "packages/rust/orm/tests/restore.rs",
         "packages/php/tests/AuditExternalSetsTest.php",
         "contracts/fixtures/external/board.dbs",
         "contracts/fixtures/external/core.dbs",
         "contracts/fixtures/external/core_extra.dbs",
         "contracts/fixtures/external/member.dbs",
         "contracts/fixtures/external/member_v2.dbs",
-        "packages/python/tests/coverage_audit_triggers.py",
-        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
         "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
@@ -10246,9 +10012,8 @@
           "shard": "other",
           "inputs": [
             "packages/go/orm/audit_transaction_test.go",
-            "packages/go/orm/coverage_audit_triggers_test.go",
-            "contracts/fixtures/audit.dbs",
-            "contracts/fixtures/audit_columns.dbs"
+            "packages/go/orm/recipe_audit_triggers_test.go",
+            "contracts/fixtures/audit_triggers/audit_triggers.json"
           ]
         },
         {
@@ -10277,36 +10042,35 @@
         "kind": "database",
         "cases": [
           "audit_history",
-          "audit_selected_columns",
+          "audit_record_of_the_first_write",
           "audit_transaction_entry_points",
+          "audit_selected_columns",
           "soft_delete_restore"
         ],
         "owners": {
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_audit_triggers_test.go"
-            ],
-            "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs"
+              "packages/go/orm/recipe_audit_triggers_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "TestCoverageAuditHistory",
-                    "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore",
-                    "audit_transaction_entry_points": "TestCoverageAuditTransactionEntryPoints"
+                    "audit_history": "TestRecipeAuditTriggersMysql",
+                    "audit_record_of_the_first_write": "TestRecipeAuditTriggersMysql",
+                    "audit_transaction_entry_points": "TestRecipeAuditTriggersMysql",
+                    "audit_selected_columns": "TestRecipeAuditTriggersMysql",
+                    "soft_delete_restore": "TestRecipeAuditTriggersMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10314,18 +10078,20 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "TestCoverageAuditHistory",
-                    "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore",
-                    "audit_transaction_entry_points": "TestCoverageAuditTransactionEntryPoints"
+                    "audit_history": "TestRecipeAuditTriggersPostgres",
+                    "audit_record_of_the_first_write": "TestRecipeAuditTriggersPostgres",
+                    "audit_transaction_entry_points": "TestRecipeAuditTriggersPostgres",
+                    "audit_selected_columns": "TestRecipeAuditTriggersPostgres",
+                    "soft_delete_restore": "TestRecipeAuditTriggersPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10333,18 +10099,20 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "test": "packages/go/orm/recipe_audit_triggers_test.go",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "TestCoverageAuditHistory",
-                    "audit_selected_columns": "TestCoverageAuditSelectedColumns",
-                    "soft_delete_restore": "TestCoverageSoftDeleteRestore",
-                    "audit_transaction_entry_points": "TestCoverageAuditTransactionEntryPoints"
+                    "audit_history": "TestRecipeAuditTriggersSqlite",
+                    "audit_record_of_the_first_write": "TestRecipeAuditTriggersSqlite",
+                    "audit_transaction_entry_points": "TestRecipeAuditTriggersSqlite",
+                    "audit_selected_columns": "TestRecipeAuditTriggersSqlite",
+                    "soft_delete_restore": "TestRecipeAuditTriggersSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10354,41 +10122,26 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageAuditTriggersTest.php",
-              "packages/php/tests/CoverageAuditColumnsTest.php"
-            ],
-            "inputs": [
-              "packages/php/tests/restore_case.php",
-              "packages/php/tests/audit_case.php",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs"
+              "packages/php/tests/AuditTriggersRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testMysql",
+                    "audit_record_of_the_first_write": "testMysql",
+                    "audit_transaction_entry_points": "testMysql",
+                    "audit_selected_columns": "testMysql",
+                    "soft_delete_restore": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10396,27 +10149,20 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testPostgres",
+                    "audit_record_of_the_first_write": "testPostgres",
+                    "audit_transaction_entry_points": "testPostgres",
+                    "audit_selected_columns": "testPostgres",
+                    "soft_delete_restore": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10424,27 +10170,20 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "test": "packages/php/tests/AuditTriggersRecipeTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testSqlite",
+                    "audit_record_of_the_first_write": "testSqlite",
+                    "audit_transaction_entry_points": "testSqlite",
+                    "audit_selected_columns": "testSqlite",
+                    "soft_delete_restore": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10452,31 +10191,30 @@
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/orm/tests/coverage_audit_triggers.rs"
-            ],
-            "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs"
+              "packages/rust/tests/tests/audit_triggers_mysql.rs",
+              "packages/rust/tests/tests/audit_triggers_postgres.rs",
+              "packages/rust/tests/tests/audit_triggers_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "test": "packages/rust/tests/tests/audit_triggers_mysql.rs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "coverage_audit_history",
-                    "audit_selected_columns": "coverage_audit_selected_columns",
-                    "soft_delete_restore": "coverage_soft_delete_restore",
-                    "audit_transaction_entry_points": "coverage_audit_transaction_entry_points"
+                    "audit_history": "audit_triggers_mysql",
+                    "audit_record_of_the_first_write": "audit_triggers_mysql",
+                    "audit_transaction_entry_points": "audit_triggers_mysql",
+                    "audit_selected_columns": "audit_triggers_mysql",
+                    "soft_delete_restore": "audit_triggers_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10484,18 +10222,20 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "test": "packages/rust/tests/tests/audit_triggers_postgres.rs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "coverage_audit_history",
-                    "audit_selected_columns": "coverage_audit_selected_columns",
-                    "soft_delete_restore": "coverage_soft_delete_restore",
-                    "audit_transaction_entry_points": "coverage_audit_transaction_entry_points"
+                    "audit_history": "audit_triggers_postgres",
+                    "audit_record_of_the_first_write": "audit_triggers_postgres",
+                    "audit_transaction_entry_points": "audit_triggers_postgres",
+                    "audit_selected_columns": "audit_triggers_postgres",
+                    "soft_delete_restore": "audit_triggers_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10503,18 +10243,20 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "test": "packages/rust/tests/tests/audit_triggers_sqlite.rs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "coverage_audit_history",
-                    "audit_selected_columns": "coverage_audit_selected_columns",
-                    "soft_delete_restore": "coverage_soft_delete_restore",
-                    "audit_transaction_entry_points": "coverage_audit_transaction_entry_points"
+                    "audit_history": "audit_triggers_sqlite",
+                    "audit_record_of_the_first_write": "audit_triggers_sqlite",
+                    "audit_transaction_entry_points": "audit_triggers_sqlite",
+                    "audit_selected_columns": "audit_triggers_sqlite",
+                    "soft_delete_restore": "audit_triggers_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10524,23 +10266,20 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_audit_triggers.mjs"
-            ],
-            "inputs": [
-              "packages/ts/tests/restore_case.mjs",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs"
+              "packages/ts/tests/audit_triggers-mysql.test.mjs",
+              "packages/ts/tests/audit_triggers-postgres.test.mjs",
+              "packages/ts/tests/audit_triggers-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "test": "packages/ts/tests/audit_triggers-mysql.test.mjs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
@@ -10549,11 +10288,12 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "test": "packages/ts/tests/audit_triggers-postgres.test.mjs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
@@ -10562,11 +10302,12 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "test": "packages/ts/tests/audit_triggers-sqlite.test.mjs",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
@@ -10577,23 +10318,20 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_audit_triggers.py"
-            ],
-            "inputs": [
-              "packages/python/tests/test_sqlite.py",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs"
+              "packages/python/tests/test_audit_triggers_mysql.py",
+              "packages/python/tests/test_audit_triggers_postgres.py",
+              "packages/python/tests/test_audit_triggers_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "test": "packages/python/tests/test_audit_triggers_mysql.py",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
@@ -10602,11 +10340,12 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "test": "packages/python/tests/test_audit_triggers_postgres.py",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
@@ -10615,11 +10354,12 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "test": "packages/python/tests/test_audit_triggers_sqlite.py",
                   "cases": [
                     "audit_history",
-                    "audit_selected_columns",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
@@ -10630,43 +10370,26 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-              "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
-            ],
-            "inputs": [
-              "packages/php/tests/restore_case.php",
-              "packages/php/tests/audit_case.php",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "packages/php/tests/CoverageAuditTriggersTest.php",
-              "packages/php/tests/CoverageAuditColumnsTest.php"
+              "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testMysql",
+                    "audit_record_of_the_first_write": "testMysql",
+                    "audit_transaction_entry_points": "testMysql",
+                    "audit_selected_columns": "testMysql",
+                    "soft_delete_restore": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10674,27 +10397,20 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testPostgres",
+                    "audit_record_of_the_first_write": "testPostgres",
+                    "audit_transaction_entry_points": "testPostgres",
+                    "audit_selected_columns": "testPostgres",
+                    "soft_delete_restore": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10702,27 +10418,20 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
                   "cases": [
                     "audit_history",
+                    "audit_record_of_the_first_write",
                     "audit_transaction_entry_points",
+                    "audit_selected_columns",
                     "soft_delete_restore"
                   ],
                   "symbols": {
-                    "audit_history": "testAuditHistory",
-                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
-                    "soft_delete_restore": "testSoftDeleteRestore"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-                  "cases": [
-                    "audit_selected_columns"
-                  ],
-                  "symbols": {
-                    "audit_selected_columns": "testAuditSelectedColumns"
+                    "audit_history": "testSqlite",
+                    "audit_record_of_the_first_write": "testSqlite",
+                    "audit_transaction_entry_points": "testSqlite",
+                    "audit_selected_columns": "testSqlite",
+                    "soft_delete_restore": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14755,16 +14464,6 @@
       "command": "make --no-print-directory typescript-dbspec-plan-fixture-check"
     },
     {
-      "id": "typescript-audit-history-rows",
-      "paths": [
-        "packages/ts/tests/audit-history-rows.mjs"
-      ],
-      "tests": [
-        "packages/ts/tests/audit-history-rows.test.mjs"
-      ],
-      "command": "make --no-print-directory typescript-audit-history-rows-helper-check"
-    },
-    {
       "id": "typescript-captured-error",
       "paths": [
         "packages/ts/tests/capture-error.mjs"
@@ -15255,8 +14954,7 @@
         "packages/php-ext/tests/NativeMethodAssertions.php"
       ],
       "tests": [
-        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
+        "packages/php-ext/tests/AuditNativeMethodsTest.php"
       ],
       "command": "make --no-print-directory audit-native-method-assertions-helper-check"
     },

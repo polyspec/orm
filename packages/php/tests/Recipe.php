@@ -70,6 +70,12 @@ final class Recipe
         'HookUpsert' => 'hook_upsert',
         'RotRow' => 'rot_row',
         'ChunkAuthor' => 'chunk_author',
+        'Item' => 'item',
+        'Card' => 'card',
+        'Tag' => 'tag',
+        'Membership' => 'membership',
+        'Label' => 'label',
+        'Audit' => 'audit',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -1887,6 +1893,7 @@ final class Recipe
                     isolation: $s['isolation'] ?? '',
                     readOnly: ($s['read_only'] ?? false) === true,
                     retry: 0,
+                    audit: isset($s['audit']) ? self::mapAssignments($s['audit'], $context) : null,
                 );
                 return ['value' => ['bool' => true]];
             case 'catalog.connect':
@@ -2579,6 +2586,16 @@ final class Recipe
                     'row' => self::rowRecord($s, $context),
                 ];
             case 'model.update':
+                // The key form sets the key and the assignments on a new model, with no read before it, so a key
+                // that names no row is an update that matches none (FCV-4).
+                if (isset($s['key'])) {
+                    $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+                    self::setColumns(
+                        self::setValues($model, $s['key'], $context),
+                        self::mapAssignments($s['set'], $context),
+                    )->update();
+                    return [];
+                }
                 self::setColumns(self::boundValue($s['row'], $context), self::mapAssignments($s['set'], $context))
                     ->update();
                 return [];
@@ -2620,8 +2637,9 @@ final class Recipe
                 return [];
             case 'model.restore':
                 $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
-                self::setValues($model, $s['values'], $context)->restore();
-                return [];
+                $restored = self::setValues($model, $s['values'], $context)->restore();
+                // With columns, the rows expect compares the row that restore returns (INT-38).
+                return isset($s['columns']) ? ['rows' => [self::project($restored, $s['columns'])]] : [];
             case 'model.query':
                 return self::queryOp($s, $context);
         }

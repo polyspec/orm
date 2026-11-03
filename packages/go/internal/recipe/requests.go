@@ -6,6 +6,7 @@ package recipe
 // declarative form of orm.RequestHook that the hook.install actions name.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -22,9 +23,49 @@ type hookRecord struct {
 	entity string
 }
 
-// connectConfig is the configuration of a model.connect: the keys of the bench set, or the keyring of the step.
-func connectConfig(s databaseStep) (orm.Config, error) {
+// auditSourceSpec is the audit_source of a model.connect (FCV-4, CFG-8): the values that the source returns, or a source
+// whose own error fails the transaction.
+type auditSourceSpec struct {
+	Values json.RawMessage `json:"values"`
+	Fail   bool            `json:"fail"`
+}
+
+// auditValues is an object of audit column names and their values as a map; an empty object is no value.
+func auditValues(raw json.RawMessage, c *databaseContext) (map[string]any, error) {
+	assigned, err := assignments(raw, c)
+	if err != nil {
+		return nil, err
+	}
+	if len(assigned) == 0 {
+		return nil, nil
+	}
+	values := make(map[string]any, len(assigned))
+	for _, a := range assigned {
+		values[a.Name] = a.Value
+	}
+	return values, nil
+}
+
+// connectConfig is the configuration of a model.connect: the keys of the bench set or the keyring of the step, and the
+// audit source of the step.
+func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
 	cfg := orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey}
+	if s.AuditSource != nil {
+		var values map[string]any
+		if s.AuditSource.Values != nil {
+			var err error
+			if values, err = auditValues(s.AuditSource.Values, c); err != nil {
+				return orm.Config{}, err
+			}
+		}
+		fail := s.AuditSource.Fail
+		cfg.AuditSource = func(context.Context) (map[string]any, error) {
+			if fail {
+				return nil, errCallback
+			}
+			return values, nil
+		}
+	}
 	if s.AESKeyring == nil {
 		return cfg, nil
 	}
@@ -78,10 +119,23 @@ func tableModelRequest(s databaseStep, c *databaseContext, db *orm.DB, table str
 		if err != nil {
 			return outcome{}, true, err
 		}
-		if _, err := row.Restore(); err != nil {
+		restored, err := row.Restore()
+		if err != nil {
 			return outcome{}, true, err
 		}
-		return okOutcome(), true, nil
+		if len(s.Columns) == 0 {
+			return okOutcome(), true, nil
+		}
+		// The columns of the row that Restore returns, which the rows expect compares (INT-38).
+		returned, ok := restored.(*tableRow)
+		if !ok {
+			return outcome{}, true, fmt.Errorf("model.restore returned %T, not a table row", restored)
+		}
+		cells, err := tableCells(returned, s.Columns)
+		if err != nil {
+			return outcome{}, true, err
+		}
+		return outcome{fields: map[string]any{"rows": []any{cells}}}, true, nil
 	case "model.delete":
 		if len(s.Row) > 0 {
 			return outcome{}, false, nil
@@ -104,6 +158,24 @@ func tableModelRequest(s databaseStep, c *databaseContext, db *orm.DB, table str
 		return out, true, err
 	}
 	return outcome{}, false, nil
+}
+
+// tableUpdateByKey is the model.update {key, set} of a table model: a new model with its key and the assignments set, with
+// no read before it, and Update, so that a key that names no row is an update that matches none (FCV-4).
+func tableUpdateByKey(s databaseStep, c *databaseContext, core *orm.Core) (outcome, error) {
+	for _, raw := range []json.RawMessage{s.Key, s.Set} {
+		values, err := assignments(raw, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		for _, a := range values {
+			core.Set(a.Name, a.Value)
+		}
+	}
+	if err := core.Update(nil); err != nil {
+		return outcome{}, err
+	}
+	return outcome{fields: map[string]any{}}, nil
 }
 
 // filledCore is a new model of table on db with the column values of raw set in column order.

@@ -349,7 +349,6 @@
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/WarningStreamProtocol.php",
         "packages/php/tests/WasInsertedCases.php",
-        "packages/php/tests/audit_case.php",
         "packages/php/tests/autoload.php",
         "packages/php/tests/bench.php",
         "packages/php/tests/bootstrap.php",
@@ -382,7 +381,6 @@
         "packages/php/tests/phpstan/RawCollection.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/request_termination_child.php",
-        "packages/php/tests/restore_case.php",
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
@@ -666,7 +664,6 @@
         "packages/ts/tests/assertions.mjs",
         "packages/ts/tests/capture-error.mjs",
         "packages/ts/tests/check-state.mjs",
-        "packages/ts/tests/audit-history-rows.mjs",
         "packages/ts/tests/conditional-entry.mjs",
         "packages/ts/tests/database-case-fixture.mjs",
         "packages/ts/tests/database-case-tests.mjs",
@@ -682,7 +679,6 @@
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
-        "packages/ts/tests/restore_case.mjs",
         "packages/ts/tests/statement-events-run.mjs",
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
@@ -749,10 +745,6 @@
         {
           "glob": "packages/ts/tests/conditional-entry.test.mjs",
           "reason": "ecosystem: tests the Node package conditional-export loader in isolated child processes, not runtime ORM behavior"
-        },
-        {
-          "glob": "packages/ts/tests/audit-history-rows.test.mjs",
-          "reason": "harness: tests the TypeScript audit result projection used by parity test reporting; it does not exercise ORM client behavior"
         },
         {
           "glob": "packages/ts/tests/check-state.test.mjs",
@@ -995,7 +987,6 @@
         "packages/rust/build/tests/row_insert_identity/expression.rs",
         "packages/rust/orm/tests/common/audit_rows.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/orm/tests/common/restore_rows.rs",
         "packages/rust/schema/tests/common/dbspec_cases.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/bench_model.rs",
@@ -3737,282 +3728,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/sets_none.rs",
           "id": "sets_none::repeated-document-name"
-        }
-      ]
-    },
-    {
-      "id": "coverage-audit-triggers-audit-history",
-      "kind": "feature",
-      "requirements": [
-        "CFG-8",
-        "DBS-87",
-        "DBS-88",
-        "DBS-89",
-        "DBS-93",
-        "DBS-117",
-        "DSL-118",
-        "DSL-126"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageAuditHistory",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageAuditHistory",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testAuditHistory"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testAuditHistory"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_audit_history"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_audit_history",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_audit_history"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "audit_history"
-        }
-      ]
-    },
-    {
-      "id": "coverage-audit-triggers-audit-selected-columns",
-      "kind": "feature",
-      "requirements": [
-        "DBS-85",
-        "DBS-88",
-        "DBS-93",
-        "DBS-94",
-        "DBS-96"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageAuditSelectedColumns",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageAuditSelectedColumns",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-          "id": "CoverageAuditColumnsTest::testAuditSelectedColumns"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-          "id": "CoverageAuditColumnsExtensionTest::testAuditSelectedColumns"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_audit_selected_columns"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_audit_selected_columns",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_audit_selected_columns"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "audit_selected_columns"
-        }
-      ]
-    },
-    {
-      "id": "coverage-audit-triggers-audit-transaction-entry-points",
-      "kind": "feature",
-      "requirements": [
-        "CFG-8",
-        "DBS-87",
-        "DBS-88",
-        "DBS-93",
-        "DSL-126",
-        "INT-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageAuditTransactionEntryPoints",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageAuditTransactionEntryPoints",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testAuditRecordOfATransaction"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testAuditTransactionEntryPoints"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_audit_transaction_entry_points"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_audit_transaction_entry_points",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_audit_transaction_entry_points"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "audit_transaction_entry_points"
-        }
-      ]
-    },
-    {
-      "id": "coverage-audit-triggers-soft-delete-restore",
-      "kind": "feature",
-      "requirements": [
-        "DBS-67",
-        "DBS-87",
-        "DBS-88",
-        "DBS-93",
-        "DBS-96",
-        "DBS-117",
-        "DIA-161",
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageSoftDeleteRestore",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageSoftDeleteRestore",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_soft_delete_restore"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_soft_delete_restore",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_soft_delete_restore"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "soft_delete_restore"
         }
       ]
     },
@@ -28123,135 +27838,6 @@
       ]
     },
     {
-      "id": "restore-soft-deleted-row",
-      "kind": "feature",
-      "requirements": [
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/restore_test.go",
-          "id": "TestRestoreSoftDeletedRow"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/restore.rs",
-          "id": "restore_soft_deleted_row"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_soft_delete_restore"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "soft_delete_restore"
-        }
-      ]
-    },
-    {
-      "id": "audit-record-of-a-transaction",
-      "kind": "feature",
-      "requirements": [
-        "CFG-8",
-        "INT-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/audit_transaction_test.go",
-          "id": "TestAuditRecordTransaction"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/audit.rs",
-          "id": "audit_record_transaction"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testAuditTransactionEntryPoints"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_audit_transaction_entry_points"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "audit_transaction_entry_points"
-        }
-      ]
-    },
-    {
-      "id": "soft-delete-filters-reads-and-deletes",
-      "kind": "feature",
-      "requirements": [
-        "DBS-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageSoftDeleteRestore",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageSoftDeleteRestore",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/soft_delete.rs",
-          "id": "soft_delete_filters_reads_and_rewrites_deletes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_soft_delete_restore"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "soft_delete_restore"
-        }
-      ]
-    },
-    {
       "id": "coverage-model-query-duplicate-relation",
       "kind": "feature",
       "requirements": [
@@ -31359,73 +30945,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=conditions"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "soft-delete-restore-updates-the-row",
-      "kind": "feature",
-      "requirements": [
-        "DBS-117"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_audit_triggers_test.go",
-          "id": "TestCoverageSoftDeleteRestore",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageSoftDeleteRestore",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
-          "id": "soft_delete_restore"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_audit_triggers.py",
-          "id": "test_soft_delete_restore"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
-          "id": "coverage_soft_delete_restore",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--test coverage_audit_triggers",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_soft_delete_restore"
           ]
         }
       ]
@@ -43111,6 +42630,225 @@
           "symbol": "transactions_sqlite"
         }
       ]
+    },
+    {
+      "id": "audit_triggers-mysql",
+      "kind": "suite",
+      "requirements": [
+        "CFG-8",
+        "DBS-117",
+        "DBS-67",
+        "DBS-85",
+        "DBS-87",
+        "DBS-88",
+        "DBS-89",
+        "DBS-93",
+        "DBS-94",
+        "DBS-96",
+        "DIA-161",
+        "DSL-118",
+        "DSL-119",
+        "DSL-126",
+        "INT-38",
+        "INT-44"
+      ],
+      "file": "contracts/fixtures/audit_triggers/audit_triggers.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_audit_triggers_test.go",
+          "symbol": "TestRecipeAuditTriggersMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditTriggersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AuditTriggersRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AuditTriggersRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/audit_triggers-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_audit_triggers_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/audit_triggers_mysql.rs",
+          "symbol": "audit_triggers_mysql"
+        }
+      ]
+    },
+    {
+      "id": "audit_triggers-postgres",
+      "kind": "suite",
+      "requirements": [
+        "CFG-8",
+        "DBS-117",
+        "DBS-67",
+        "DBS-85",
+        "DBS-87",
+        "DBS-88",
+        "DBS-89",
+        "DBS-93",
+        "DBS-94",
+        "DBS-96",
+        "DIA-161",
+        "DSL-118",
+        "DSL-119",
+        "DSL-126",
+        "INT-38",
+        "INT-44"
+      ],
+      "file": "contracts/fixtures/audit_triggers/audit_triggers.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_audit_triggers_test.go",
+          "symbol": "TestRecipeAuditTriggersPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditTriggersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AuditTriggersRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AuditTriggersRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/audit_triggers-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_audit_triggers_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/audit_triggers_postgres.rs",
+          "symbol": "audit_triggers_postgres"
+        }
+      ]
+    },
+    {
+      "id": "audit_triggers-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "CFG-8",
+        "DBS-117",
+        "DBS-67",
+        "DBS-85",
+        "DBS-87",
+        "DBS-88",
+        "DBS-89",
+        "DBS-93",
+        "DBS-94",
+        "DBS-96",
+        "DIA-161",
+        "DSL-118",
+        "DSL-119",
+        "DSL-126",
+        "INT-38",
+        "INT-44"
+      ],
+      "file": "contracts/fixtures/audit_triggers/audit_triggers.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_audit_triggers_test.go",
+          "symbol": "TestRecipeAuditTriggersSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AuditTriggersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\AuditTriggersRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\AuditTriggersRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/audit_triggers-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_audit_triggers_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/audit_triggers_sqlite.rs",
+          "symbol": "audit_triggers_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "audit-source-transaction-context",
+      "kind": "feature",
+      "requirements": [
+        "CFG-8a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/audit_transaction_test.go",
+          "id": "TestAuditSourceReceivesTheTransactionContext"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "audit-rust-transaction-forms",
+      "kind": "feature",
+      "requirements": [
+        "INT-44a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/audit.rs",
+          "id": "audit_transaction_entry_points"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "audit-php-extension-internal-methods",
+      "kind": "feature",
+      "requirements": [
+        "INT-44b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditNativeMethodsTest.php",
+          "id": "AuditNativeMethodsTest::testNativeMethodsAreInternal"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     },
     {
       "id": "recipe-unknown-keys",

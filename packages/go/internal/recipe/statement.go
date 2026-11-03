@@ -99,6 +99,12 @@ var tableModels = map[string]string{
 	"HookUpsert":  "hook_upsert",
 	"RotRow":      "rot_row",
 	"ChunkAuthor": "chunk_author",
+	"Item":        "item",
+	"Card":        "card",
+	"Tag":         "tag",
+	"Membership":  "membership",
+	"Label":       "label",
+	"Audit":       "audit",
 }
 
 // boundRow records which path made a bound row, the generated or the table path, with its model and the connection it was
@@ -142,6 +148,9 @@ func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) 
 		}
 		return outcome{api: m, fields: map[string]any{}, row: &boundRow{path: "table", model: s.Model, db: db}}, nil
 	case "model.update":
+		if s.Key != nil {
+			return tableUpdateByKey(s, c, core)
+		}
 		row, err := boundAPI[orm.Model](s.Row, c)
 		if err != nil {
 			return outcome{}, err

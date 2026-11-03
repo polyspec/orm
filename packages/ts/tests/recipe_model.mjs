@@ -57,7 +57,7 @@ export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST
   return `mysql://${match[1]}@localhost/${match[2]}?socket=${socket}`;
 }
 
-export function modelOps({ native, databaseValue, stepArgument }) {
+export function modelOps({ native, databaseValue, stepArgument, auditSourceOf }) {
   const valueOf = (value, context) => native(databaseValue(stepArgument(value, context), context));
   const objectValues = (object, context) => Object.fromEntries(Object.entries(object ?? {}).map(([k, v]) => [k, valueOf(v, context)]));
   const connection = (name, context) => {
@@ -183,7 +183,7 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       const keys = s.aes_keyring === undefined
         ? BENCH_KEYS
         : { blindIndexKey: BENCH_KEYS.blindIndexKey, aesKeys: new Map(Object.entries(s.aes_keyring.versions).map(([version, key]) => [Number(version), key])), aesVersion: s.aes_keyring.current };
-      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...keys });
+      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...keys, ...auditSourceOf(s, context) });
       context.closers.push(() => db.close());
       return { bind: db };
     },

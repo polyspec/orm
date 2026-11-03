@@ -43,7 +43,7 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return rowOp(s, c)
 	}
 	if s.Op == "model.connect" {
-		cfg, err := connectConfig(s)
+		cfg, err := connectConfig(s, c)
 		if err != nil {
 			return outcome{}, err
 		}

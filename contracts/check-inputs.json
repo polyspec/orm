@@ -2473,17 +2473,6 @@
         "scripts/decimal-physical-check.mts"
       ]
     },
-    "typescript-audit-history-rows-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/audit-history-rows.mjs",
-        "packages/ts/tests/audit-history-rows.test.mjs"
-      ]
-    },
     "typescript-capture-error-helper-check": {
       "scope": "owner",
       "needs": [
@@ -4081,11 +4070,8 @@
         "packages/php-ext/scripts/build.sh",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/NativeMethodAssertions.php",
-        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/CoverageAuditTriggersTest.php",
-        "packages/php/tests/CoverageAuditColumnsTest.php"
+        "packages/php-ext/tests/AuditNativeMethodsTest.php",
+        "packages/php/tests/bootstrap.php"
       ]
     },
     "request-hook-audit-native-binding-check": {
@@ -4098,14 +4084,9 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+        "packages/php-ext/tests/AuditNativeMethodsTest.php",
         "packages/php/tests/CoverageRequestHookTest.php",
-        "packages/php/tests/CoverageAuditTriggersTest.php",
-        "packages/php/tests/CoverageAuditColumnsTest.php",
         "packages/php/tests/request_hook_cases.php",
-        "packages/php/tests/audit_case.php",
-        "packages/php/tests/restore_case.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",
         "contracts/fixtures/request_hook/request_hook.dbs",
@@ -4939,6 +4920,24 @@
         "packages/rust/orm/src/core.rs"
       ]
     },
+    "audit-triggers-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/rust/tests/tests/audit_triggers_mysql.rs",
+        "packages/rust/tests/tests/audit_triggers_postgres.rs",
+        "packages/rust/tests/tests/audit_triggers_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/core.rs"
+      ]
+    },
     "parameter-chunking-check/rust": {
       "scope": "owner",
       "needs": [
@@ -4987,6 +4986,22 @@
         "packages/ts/tests/request_hook-mysql.test.mjs",
         "packages/ts/tests/request_hook-postgres.test.mjs",
         "packages/ts/tests/request_hook-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts"
+      ]
+    },
+    "audit-triggers-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/ts/tests/audit_triggers-mysql.test.mjs",
+        "packages/ts/tests/audit_triggers-postgres.test.mjs",
+        "packages/ts/tests/audit_triggers-sqlite.test.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/src/database.ts",
         "packages/ts/src/model.ts"
@@ -5042,6 +5057,22 @@
         "packages/python/src/polyspec/orm/model.py"
       ]
     },
+    "audit-triggers-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/python/tests/test_audit_triggers_mysql.py",
+        "packages/python/tests/test_audit_triggers_postgres.py",
+        "packages/python/tests/test_audit_triggers_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/model.py"
+      ]
+    },
     "parameter-chunking-check/python": {
       "scope": "owner",
       "needs": [
@@ -5086,6 +5117,24 @@
         "packages/php/tests/RequestHookMysqlRecipeTest.php",
         "packages/php/tests/RequestHookPostgresRecipeTest.php",
         "packages/php/tests/RequestHookSqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php"
+      ]
+    },
+    "audit-triggers-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/php/tests/AuditTriggersRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/generated_classes.php",
@@ -5158,6 +5207,26 @@
         "packages/php-ext/src/model_read.c"
       ]
     },
+    "audit-triggers-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/php-ext/tests/AuditTriggersRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/AuditTriggersRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeCases.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c"
+      ]
+    },
     "parameter-chunking-check/php-extension": {
       "scope": "owner",
       "needs": [
@@ -5213,6 +5282,20 @@
       "inputs": [
         "contracts/fixtures/request_hook/**",
         "packages/go/orm/recipe_request_hook_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "audit-triggers-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/audit_triggers/**",
+        "packages/go/orm/recipe_audit_triggers_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
         "packages/go/internal/recipe/requests.go"

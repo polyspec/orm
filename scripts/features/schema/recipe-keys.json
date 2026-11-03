@@ -27,6 +27,7 @@
     "model.connect": [
       "aes_keyring",
       "as",
+      "audit_source",
       "dsn",
       "op",
       "pool_size"
@@ -530,6 +531,7 @@
       "op"
     ],
     "model.restore": [
+      "columns",
       "connection",
       "expect",
       "model",

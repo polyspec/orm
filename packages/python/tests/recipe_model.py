@@ -106,7 +106,7 @@ _LOCKS = {
 }
 
 
-def model_ops(native, database_value, step_argument):
+def model_ops(native, database_value, step_argument, audit_source_of):
     """The model op table of the recipe helper; the helpers are the recipe value conversions it shares with the catalog ops."""
 
     def value_of(value, context):
@@ -296,6 +296,7 @@ def model_ops(native, database_value, step_argument):
             options["aesVersion"] = keyring.current_version
         if "pool_size" in step:
             options["poolSize"] = step["pool_size"]
+        options.update(audit_source_of(step, context))
         dsn = connect_dsn(step.get("dsn"), context["database"], context["dsn"])
         db = Db.connect_schema(dsn, context["schema"], options)
         context.setdefault("closers", []).append(db.close)
