@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d077d386ee3ade43c53fcea1692228c479fa518564e202d12ff64e05974aae4 -->
+<!-- source-sha256: a93f88b98b9a0a5a14c38c9637378395ba141ecdade07d7c839be0e8692503fa -->
 # 변경 이력
 
 ## Unreleased
 
+- Go의 immutable write는 recipe이고, 생성 model 연결, bench manifest 설치, model 생성 검사, hot-path 읽기의 Go coverage test는 일반 go test에서 실행한다. 앞의 둘은 미리 채운 bench database 대신 case database를 쓴다.
 - ordered-json, codec 컬럼, 일괄 create 쓰기는 모든 runtime의 builder에서 recipe `model_writes_chain`의 case다. 멤버 순서와 숫자 텍스트, 반복 멤버 이름, 저장 텍스트의 codec 컬럼, 공백이 있는 IP, 오래된 낙관적 갱신, `creates`(어떤 문장보다 먼저 거부, SQLite bind 한도 초과, batch를 넘는 행 순서, 모든 batch의 rollback)를 다룬다. 이 기능의 coverage 시험은 사라졌다. `contracts/features.json`은 schema가 요구하는 `model_writes`와 `model_queries` coverage의 빈 `dependents`를 선언한다.
 - 생성 모델 쿼리의 chain은 모든 runtime의 builder에서 recipe `model_queries_chain`의 case다: page와 total, sum, 함수 column, 제거한 column, index와 subquery가 있는 join, relation, NULL collection key, group row이며, 이 기능의 coverage 시험은 제거됐고, PRT-35는 NULL key의 메시지가 아니라 code를 정한다
 - CR32에 PHP 확장 catalog_read_budgets의 exit 137 원인에서 제외한 것을 적음. 보낸 쪽은 아직 모르며 수정은 없음.
@@ -11,7 +12,6 @@
 - coverage 시험은 정상 실행에 자기 숫자로 기한을 걸지 않고, 끝나지 않는 프로세스가 프로세스 기한을 시험한다 (#T334-3-4-19)
 - orm은 kit 0.0.93을 고정하고 그 `ci-pipeline.yml`을 받는다. PHP symbol extractor 설치는 `ci-setup`으로 옮겨졌다. (#T334-3-4-18)
 - feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
-- `packages/go/internal/buildconstraints`의 Go test는 `go.work` module의 모든 Go 파일을 읽고, platform 제약이나 `GO_TEST_TAGS`의 tag가 아닌 build tag에서 실패한다. 실패하는 dbspec harness fixture는 tag 없이 `packages/go/engine/dbspec/testdata/fixture`로 옮겼다.
 - 문 실행기는 여섯 런타임에서 recipe `statement_runner`로만 실행되며, FCV-2의 거부를 뺀 native 시험과 coverage 시험은 사라졌다.
 - 유틸리티 그룹, 트랜잭션의 local 값, `wasInserted`, waiter 없는 보고는 여섯 런타임의 recipe `utils`이며, flow와 disposal 단위와 waiter는 FCV-2대로 native로 남는다.
 - recipe op `dbspec.analyze`의 inline 형태는 analysis가 `parse`의 document, position, diagnostic을 그대로 담는지 검사한다(DBS-134). Go, TypeScript, Python, PHP가 Rust처럼 이를 검사하므로 Go `TestAnalyzeIsParse`를 없앴다.
@@ -29,6 +29,7 @@
 - `client-pooler-check`의 모든 lane은 database가 있는 recipe unit을 pooler를 거쳐 실행한다. PHP, PHP extension, TypeScript, Python lane은 unit마다 명령 하나로 `config/parity.json`에서 이를 가져온다.
 - Rust catalog 읽기의 예산 중단은 ProxySQL을 거쳐도 즉시 `CATALOG_LIMIT`을 반환한다: MySQL과 PostgreSQL에서 읽기는 `ROLLBACK` 없이 반환하고 그 연결은 닫힌다.
 - `composite_keys`는 이제 recipe만으로 검증한다. 모든 runtime의 검사을 recipe와 비교한 뒤 여섯 native coverage 시험을 지웠다. group rows의 Rust 시험은 자기 SQLite case database를 쓰고 행을 직접 만든다. (#T334-3-4-17)
+- `packages/go/internal/buildconstraints`의 Go test는 `go.work` module의 모든 Go 파일을 읽고, platform 제약이나 `GO_TEST_TAGS`의 tag가 아닌 build tag에서 실패한다. 실패하는 dbspec harness fixture는 tag 없이 `packages/go/engine/dbspec/testdata/fixture`로 옮겼다.
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.
