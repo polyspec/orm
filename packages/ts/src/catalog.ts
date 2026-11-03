@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 // The catalog connection (SCH-6a): native table metadata, bounded table pages, validated read-only queries, typed grid reads
 // and explicit row changes over a MySQL, PostgreSQL or SQLite database selected by its DSN. Values follow the Go catalog
 // (packages/go/orm/catalog*.go, catalogValue and catalogBytesValue); grid cells follow the Rust reference (packages/rust/build/src/tool_db/grid.rs
@@ -15,7 +16,6 @@ const PAGE_BYTES = 8 << 20;
 const SNAPSHOT_BYTES = 8 << 20;
 const DEFAULT_QUERY_ROWS = 100000;
 const DEFAULT_QUERY_BYTES = 64 << 20;
-const SQL_BYTES = 256 << 10;
 
 /** The error codes of the catalog connection, registered in docs/spec/errors.yaml. */
 const CODE_READ_ONLY = 'QUERY_READ_ONLY';
@@ -232,6 +232,8 @@ function utf8Of(value: Uint8Array, type: string): string {
 
 /** The Go catalog conversion of a binary driver value by its native type (catalogBytesValue): the MySQL and PostgreSQL text types arrive as bytes. */
 function bytesValue(value: Uint8Array, type: string): CatalogValue {
+  // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
+  if (!isUtf8(value)) return new Uint8Array(value);
   const upper = type.toUpperCase();
   // A SQLite expression has no declared type, and its driver reads a BLOB value as bytes (INT-153).
   if (upper === '' || /BLOB|BINARY|BYTEA/.test(upper)) return new Uint8Array(value);
@@ -848,7 +850,7 @@ function skipQuoted(query: string, start: number, quote: string, backslash: bool
 }
 
 /** The upper-cased words and semicolons of a query. It reports undefined for an unterminated literal or comment and for a MySQL executable comment. */
-function queryWords(query: string, dialect: DriverName): string[] | undefined {
+function queryWords(query: string, dialect: DriverName, semicolon?: (at: number) => void): string[] | undefined {
   const words: string[] = [];
   let i = 0;
   while (i < query.length) {
@@ -879,16 +881,42 @@ function queryWords(query: string, dialect: DriverName): string[] | undefined {
       while (j < query.length && /[A-Za-z0-9_.]/.test(query.charAt(j))) j++;
       i = j;
     } else {
-      if (c === ';') words.push(';');
+      if (c === ';') {
+        words.push(';');
+        semicolon?.(i);
+      }
       i++;
     }
   }
   return words;
 }
 
+/**
+ * The read of a SQLite statement that keeps the stored bytes of each text: for each column its storage class and its value,
+ * a text as a BLOB. node:sqlite has no raw read of a text column and decodes what is not UTF-8 with U+FFFD.
+ */
+function sqliteStoredRead(sql: string, width: number): string {
+  let end = sql.length;
+  queryWords(sql, 'sqlite', at => { end = at; });
+  const names = Array.from({ length: width }, (_, index) => `c${String(index)}`);
+  const cells = names.map(name => `typeof(${name}),CASE typeof(${name}) WHEN 'text' THEN CAST(${name} AS BLOB) ELSE ${name} END`);
+  return `WITH q(${names.join(',')}) AS (${sql.slice(0, end)}\n) SELECT ${cells.join(',')} FROM q`;
+}
+
+/** The cells of a row of sqliteStoredRead: a text is its text when it is valid UTF-8 and its bytes when not (INT-153). */
+function sqliteStoredCells(values: readonly unknown[]): unknown[] {
+  const cells: unknown[] = [];
+  for (let at = 0; at < values.length; at += 2) {
+    const value = values[at + 1];
+    const text = values[at] === 'text' && value instanceof Uint8Array;
+    cells.push(text && isUtf8(value) ? Buffer.from(value).toString('utf8') : value);
+  }
+  return cells;
+}
+
 function validateReadOnly(query: string, dialect: DriverName): void {
   const refused = (): OrmError => err(CODE_READ_ONLY, 'expected one supported non-locking read query');
-  if (query === '' || Buffer.byteLength(query, 'utf8') > SQL_BYTES) throw refused();
+  if (query === '') throw refused();
   const words = queryWords(query, dialect);
   if (words === undefined || words.length === 0) throw refused();
   if (!READ_ONLY_START.has(words[0] ?? '')) throw refused();
@@ -952,9 +980,8 @@ class Session {
     let bytes = 0;
     let overflow: string | undefined;
     let failure: unknown;
-    const sink: RowSink = {
-      columns: columns => { out.columns = columns; },
-      row: values => {
+    let lossy = false;
+    const deliver = (values: readonly unknown[]): boolean => {
         if (keep !== undefined && out.rows.length >= keep) {
           out.past = true;
           return false;
@@ -980,9 +1007,30 @@ class Session {
           failure = error;
           return false;
         }
-      },
     };
-    await this.session.scan(sql, bound, sink, noop);
+    await this.session.scan(sql, bound, {
+      columns: columns => { out.columns = columns; },
+      row: values => {
+        if (this.dialect === 'sqlite' && values.some(value => typeof value === 'string' && value.includes('\uFFFD'))) {
+          lossy = true;
+          return false;
+        }
+        return deliver(values);
+      },
+    }, noop);
+    if (lossy) {
+      // The first read stopped at a text that may have lost its bytes, before that row was delivered. What it kept is thrown
+      // away and the whole answer comes from this read, under the same budget from zero: no row of the two reads is mixed, so
+      // the answer is the result of one execution. Every read of a catalog session runs inside the transaction of the session,
+      // and the first read has ended, so this read sees the same snapshot.
+      out.rows = [];
+      out.past = false;
+      bytes = 0;
+      await this.session.scan(sqliteStoredRead(sql, out.columns.length), bound, {
+        columns: () => undefined,
+        row: values => deliver(sqliteStoredCells(values)),
+      }, noop);
+    }
     if (failure !== undefined) {
       this.stopped = true;
       throw failure;

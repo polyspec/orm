@@ -367,7 +367,8 @@ async function mysqlControl(connection: MySqlConnection, sql: string, params: re
   const [value, fields] = await connection.query({ sql, rowsAsArray: true }, [...params]);
   const columns = (fields ?? []).map(mysqlColumn);
   if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
-  return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null, columns };
+  const result = value as { affectedRows: number; insertId: number };
+  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null, columns };
 }
 
 /** Streams the rows of one MySQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */
@@ -736,8 +737,15 @@ function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValu
   const statement = state.statement(sql);
   statement.setReturnArrays(true);
   sink.columns(sqliteColumns(statement));
-  for (const row of statement.iterate(...sqliteValues(params))) {
-    if (!sink.row(arrayRows([row])[0] ?? [])) break;
+  const rows = statement.iterate(...sqliteValues(params));
+  try {
+    for (const row of rows) {
+      if (!sink.row(arrayRows([row])[0] ?? [])) break;
+    }
+  } catch (error) {
+    // A statement that failed stays cached; left unreset, its next run reports the same error whatever it binds.
+    rows.return?.();
+    throw error;
   }
 }
 
@@ -1005,7 +1013,7 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
 /**
  * The session sql_mode of every MySQL connection, so that a coercion, truncation or grouping result does not depend on
  * the server's setting; it also replaces the IGNORE_SPACE that mysql2's default client flags add
- * (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
+ * (case mysql_session_settings of contracts/fixtures/dsn_connection, docs/spec/config.md "Runtime connection").
  */
 const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 

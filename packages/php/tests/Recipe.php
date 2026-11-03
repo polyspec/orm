@@ -59,6 +59,7 @@ final class Recipe
         'model.create',
         'model.creates',
         'model.delete',
+        'collection.connect',
         'model.duplicate_create',
         'model.get_by',
         'model.query',
@@ -75,6 +76,8 @@ final class Recipe
         'utils.was_inserted',
         'utils.backend_waiting_for_lock',
         'utils.groups',
+        'utils.stats',
+        'pool.transactions',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -783,6 +786,20 @@ final class Recipe
             Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
+            if (isset($config['session_read'])) {
+                $read = $db->utils()->run(
+                    static fn (TxFrame $frame): array => $frame->run(
+                        StatementEvent::UTILITY,
+                        [],
+                        $config['session_read']['sql'],
+                    ),
+                );
+                Assert::assertSame(
+                    [$config['session_read']['row']],
+                    array_map(static fn (array $row): array => array_map('strval', $row), $read),
+                    $config['session_read']['sql'],
+                );
+            }
             if ($config['tls_version'] ?? false) {
                 $status = $db->utils()->run(
                     static fn (TxFrame $frame): array => $frame->run(
@@ -4285,6 +4302,10 @@ final class Recipe
                 $model = self::chainTarget($s, $context);
                 self::chainAssign($model, $s['set'] ?? [], $context)->update(($s['optimistic'] ?? false) === true);
                 return [];
+            case 'collection.connect':
+                // connect of a bound collection (INT-85): true when it returns that collection.
+                $rows = self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context);
+                return ['value' => ['bool' => $rows->connect(self::connectionOf($s, $context)) === $rows]];
             case 'model.delete':
                 $recursive = ($s['recursive'] ?? false) === true;
                 if (isset($s['row'])) {
@@ -4323,6 +4344,18 @@ final class Recipe
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
             case 'utils.backend_waiting_for_lock':
                 return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'pool.transactions':
+                // PHP keeps no pool (CFG-4), so the recipe connection_pool has no PHP binding and this op never runs here.
+                throw new \RuntimeException(sprintf('PHP keeps no pool for %d transactions holding %d', $s['transactions'], $s['hold']));
+            case 'utils.stats':
+                // The pool counts of the connection (INT-79).
+                $stats = self::connectionOf($s, $context)->utils()->stats();
+                return ['json' => [
+                    'max_open_connections' => $stats->maxOpenConnections,
+                    'open_connections' => $stats->openConnections,
+                    'in_use' => $stats->inUse,
+                    'idle' => $stats->idle,
+                ]];
             case 'utils.groups':
                 // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
                 $utils = self::connectionOf($s, $context)->utils();
@@ -4568,9 +4601,9 @@ final class Recipe
             // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
             return ['int' => $value];
         }
-        // A PHP string is its bytes, so a plain value with no column type is binary when it is not text (INT-153).
+        // A PHP string is its bytes, so a value is binary by its column type or when it is not text (INT-153).
         if (is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
-            || ($nativeType === null && mb_check_encoding($value, 'UTF-8') === false))) {
+            || mb_check_encoding($value, 'UTF-8') === false)) {
             return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {

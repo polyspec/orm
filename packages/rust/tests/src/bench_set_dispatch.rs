@@ -26,7 +26,7 @@ impl BenchModels for BenchSet {
 
 /// The op of `step` on `db`, routed by the model that the step names; its fields are what the expect of the step compares.
 async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
-    match step["model"].as_str() {
+    match polyspec_orm_tests::recipe_reads::read(step, "model")["model"].as_str() {
         Some("Author") => author_op(db, op, step).await,
         Some("User") => user_op(db, op, step).await,
         Some("NoteReader") => note_reader_op(db, op, step).await,
@@ -37,27 +37,27 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
 async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "model.count" => {
-            let count = filter_author(db, &step["where"])?.get_count().await.map_err(fail)?;
+            let count = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         "model.get_by" => {
-            let wanted = names(&step["columns"]);
-            let rows = match Author::new().connect(db).get_by_seq(int(&step["key"]["seq"])?).await.map_err(fail)? {
+            let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
+            let rows = match Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? {
                 None => Vec::new(),
                 Some(row) => vec![cells(&wanted, |column| author_cell(&row, column))?],
             };
             Ok(json!({ "rows": rows }))
         }
         "model.query" => {
-            let mut query = filter_author(db, &step["where"])?;
-            for column in step["order"].as_array().into_iter().flatten() {
+            let mut query = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?;
+            for column in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {
                 query = match column.as_str() {
                     Some("seq") => query.order_by_seq_asc(),
                     other => return Err(format!("Author column {other:?} has no recipe order")),
                 };
             }
-            let limit = step["limit"].as_u64().unwrap_or(0);
-            let offset = step["offset"].as_u64().unwrap_or(0);
+            let limit = polyspec_orm_tests::recipe_reads::read(step, "limit")["limit"].as_u64().unwrap_or(0);
+            let offset = polyspec_orm_tests::recipe_reads::read(step, "offset")["offset"].as_u64().unwrap_or(0);
             let collection = if limit > 0 {
                 let offset = u32::try_from(offset).map_err(|e| e.to_string())?;
                 let limit = u32::try_from(limit).map_err(|e| e.to_string())?;
@@ -65,14 +65,14 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             } else {
                 query.gets().await.map_err(fail)?
             };
-            let wanted = names(&step["columns"]);
+            let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
             let rows = collection.iter().map(|(_, row)| cells(&wanted, |column| author_cell(row, column))).collect::<Result<Vec<_>, _>>()?;
             Ok(json!({ "rows": rows }))
         }
         "model.update" => {
             // The row is read with every column, as the update writes the changed columns of the row it read.
-            let mut row = filter_author(db, &step["key"])?.add_all_columns().get().await.map_err(fail)?.ok_or("Author update: no row matches")?;
-            for (column, value) in columns(&step["set"])? {
+            let mut row = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"])?.add_all_columns().get().await.map_err(fail)?.ok_or("Author update: no row matches")?;
+            for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "set")["set"])? {
                 row = match column.as_str() {
                     "like_count" => row.set_like_count(i32::try_from(int(value)?).map_err(|e| e.to_string())?),
                     "uuid" => row.set_uuid(text(value)?),
@@ -90,7 +90,7 @@ async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "model.delete" => {
             let mut query = User::new().connect(db);
-            for (column, value) in columns(&step["where"])? {
+            for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "where")["where"])? {
                 query = match column.as_str() {
                     "seq" => query.seq(int(value)?),
                     other => return Err(format!("User column {other} has no recipe condition")),
@@ -111,12 +111,12 @@ async fn user_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
 async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "model.query" => {
-            let relation = &step["relation"];
+            let relation = &polyspec_orm_tests::recipe_reads::read(step, "relation")["relation"];
             if relation["model"].as_str() != Some("SharedNote") || names_of_pairs(&relation["match"]) != [["shared_note_seq", "seq"]] {
                 return Err(format!("NoteReader relation {relation} has no recipe entry"));
             }
-            if names(&step["columns"]) != ["seq"] || names(&relation["columns"]) != ["title"] || names(&step["order"]) != ["seq"] {
-                return Err(format!("NoteReader columns {} with relation {relation} have no recipe entry", step["columns"]));
+            if names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]) != ["seq"] || names(&relation["columns"]) != ["title"] || names(&polyspec_orm_tests::recipe_reads::read(step, "order")["order"]) != ["seq"] {
+                return Err(format!("NoteReader columns {} with relation {relation} have no recipe entry", polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]));
             }
             let rows =
                 NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.map_err(fail)?;
