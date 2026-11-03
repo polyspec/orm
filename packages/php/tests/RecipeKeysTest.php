@@ -67,4 +67,25 @@ class RecipeKeysTest extends TestCase
         $this->expectExceptionMessageMatches('/no \$schema names the recipe key table/');
         RecipeKeys::check(self::PATH, json_encode(['cases' => []], JSON_THROW_ON_ERROR));
     }
+
+    public function testModelConnectOpensTheCaseDatabaseTheSocketOrTheText(): void
+    {
+        $case = 'mysql://root@127.0.0.1:3306/orm_case_17';
+        $this->assertSame($case, Recipe::connectDsn(null, 'mysql', $case));
+        $this->assertSame($case, Recipe::connectDsn('case', 'mysql', $case));
+        $this->assertSame('sqlite://x', Recipe::connectDsn('sqlite://x', 'sqlite', $case));
+        $this->assertSame(
+            'mysql://root@localhost/orm_case_17?socket=/s/mysql.sock',
+            Recipe::connectDsn('case-socket', 'mysql', $case, '/s/mysql.sock'),
+        );
+        $refused = [['postgres', '/s/mysql.sock', 'needs mysql'], ['mysql', '', 'is unset']];
+        foreach ($refused as [$database, $socket, $text]) {
+            try {
+                Recipe::connectDsn('case-socket', $database, $case, $socket);
+                $this->fail("case-socket on $database with socket '$socket' connected");
+            } catch (\PHPUnit\Framework\AssertionFailedError $e) {
+                $this->assertStringContainsString($text, $e->getMessage());
+            }
+        }
+    }
 }

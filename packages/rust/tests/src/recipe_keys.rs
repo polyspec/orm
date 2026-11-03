@@ -62,6 +62,18 @@ pub fn check_keys(path: &str, text: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn model_connect_opens_the_case_database_the_socket_or_the_text() {
+        use crate::recipe::connect_dsn;
+        let case = "mysql://root@127.0.0.1:3306/orm_case_17";
+        assert_eq!(connect_dsn(None, "mysql", case, None).unwrap(), case);
+        assert_eq!(connect_dsn(Some("case"), "mysql", case, None).unwrap(), case);
+        assert_eq!(connect_dsn(Some("sqlite://x"), "sqlite", case, None).unwrap(), "sqlite://x");
+        assert_eq!(connect_dsn(Some("case-socket"), "mysql", case, Some("/s/mysql.sock")).unwrap(), "mysql://root@localhost/orm_case_17?socket=/s/mysql.sock");
+        assert!(connect_dsn(Some("case-socket"), "postgres", case, Some("/s/mysql.sock")).unwrap_err().contains("needs mysql"));
+        assert!(connect_dsn(Some("case-socket"), "mysql", case, Some("")).unwrap_err().contains("is unset"));
+    }
+
     use super::check_keys;
 
     // A recipe at a path whose $schema is the recipe schema of this checkout, so the key table beside it is read.

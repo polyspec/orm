@@ -1,0 +1,62 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-10",
+    "CFG-19"
+  ],
+  "fixture": "contracts/fixtures/bench/dbspec-set.json",
+  "cases": [
+    {
+      "id": "socket_update_finds_its_row",
+      "requirements": [
+        "CFG-10"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "dsn": "case-socket"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990003"
+            },
+            "account_id": {
+              "int": "1"
+            },
+            "name": {
+              "text": "socket"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "key": {
+            "tenant_id": {
+              "int": "990003"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "name": {
+              "text": "socket"
+            }
+          },
+          "revision": {
+            "column": "account_id",
+            "value": 1
+          }
+        }
+      ]
+    }
+  ]
+}

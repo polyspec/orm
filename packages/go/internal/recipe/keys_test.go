@@ -27,7 +27,8 @@ func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
 		{"dsn on dsn.connect, which holds it", recipeWith(file, `{"op":"dsn.connect","dsn":"case","expect":{}}`), ""},
 		{"an unknown file key", recipeWith(file+`"bogus":1,`, `{"op":"model.connect","pool_size":1,"as":"db"}`), "recipe recipe.json: unknown key bogus"},
 		{"an unknown case key", `{"$schema":"` + testSchema + `",` + file + `"cases":[{"id":"c","requirements":[],"databases":["mysql"],"steps":[{"op":"model.connect","pool_size":1,"as":"db"}]}]}`, "recipe recipe.json case c: unknown key databases"},
-		{"dsn on model.connect, which does not hold it", recipeWith(file, `{"op":"model.connect","pool_size":1,"as":"db","dsn":"case-socket"}`), "recipe recipe.json case c step 0 (model.connect): unknown key dsn"},
+		{"dsn on model.connect, which holds it", recipeWith(file, `{"op":"model.connect","pool_size":1,"as":"db","dsn":"case-socket"}`), ""},
+		{"an unknown model.connect key", recipeWith(file, `{"op":"model.connect","pool_size":1,"as":"db","socket":"x"}`), "recipe recipe.json case c step 0 (model.connect): unknown key socket"},
 		{"an unknown op", recipeWith(file, `{"op":"model.frob"}`), "recipe recipe.json case c step 0: unknown op model.frob"},
 		{"an unknown key on a later step", recipeWith(file, `{"op":"model.connect","pool_size":1,"as":"db"},{"op":"dsn.connect","dsn":"case","typo":1,"expect":{}}`), "recipe recipe.json case c step 1 (dsn.connect): unknown key typo"},
 	} {
@@ -56,4 +57,54 @@ func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
 	if len(table.Step) == 0 || !strings.Contains(strings.Join(table.Step["model.connect"], ","), "pool_size") {
 		t.Fatalf("the key table holds no model.connect keys: %v", table.Step)
 	}
+}
+
+// TestConnectDSN checks the DSN that model.connect opens (FCV-4, CFG-10): "case" and an absent DSN are the case database,
+// "case-socket" is the MySQL case database through the socket of the environment, and other text is opened as written.
+func TestConnectDSN(t *testing.T) {
+	const caseDSN = "mysql://root@127.0.0.1:3306/orm_test"
+	t.Run("absent DSN is the case database", func(t *testing.T) {
+		got, err := connectDSN("", "mysql", caseDSN)
+		if err != nil || got != caseDSN {
+			t.Fatalf("connectDSN absent = %q, %v; want %q", got, err, caseDSN)
+		}
+	})
+	t.Run("case is the case database", func(t *testing.T) {
+		got, err := connectDSN("case", "postgres", "postgres://orm@127.0.0.1/orm_test")
+		if err != nil || got != "postgres://orm@127.0.0.1/orm_test" {
+			t.Fatalf("connectDSN case = %q, %v", got, err)
+		}
+	})
+	t.Run("text is opened as written", func(t *testing.T) {
+		got, err := connectDSN("sqlite://x.sqlite", "sqlite", caseDSN)
+		if err != nil || got != "sqlite://x.sqlite" {
+			t.Fatalf("connectDSN text = %q, %v", got, err)
+		}
+	})
+	t.Run("case-socket is the MySQL socket DSN", func(t *testing.T) {
+		t.Setenv("ORM_TEST_MYSQL_SOCKET", "/tmp/orm-test/mysql.sock")
+		got, err := connectDSN("case-socket", "mysql", caseDSN)
+		want := "mysql://root@localhost/orm_test?socket=/tmp/orm-test/mysql.sock"
+		if err != nil || got != want {
+			t.Fatalf("connectDSN case-socket = %q, %v; want %q", got, err, want)
+		}
+		// The socket DSN names the case database of the case, whatever its name.
+		got, err = connectDSN("case-socket", "mysql", "mysql://root@127.0.0.1:3306/orm_case_17")
+		want = "mysql://root@localhost/orm_case_17?socket=/tmp/orm-test/mysql.sock"
+		if err != nil || got != want {
+			t.Fatalf("connectDSN case-socket on orm_case_17 = %q, %v; want %q", got, err, want)
+		}
+	})
+	t.Run("case-socket refuses a database other than mysql", func(t *testing.T) {
+		t.Setenv("ORM_TEST_MYSQL_SOCKET", "/tmp/orm-test/mysql.sock")
+		if _, err := connectDSN("case-socket", "postgres", caseDSN); err == nil {
+			t.Fatal("connectDSN case-socket on postgres: no error")
+		}
+	})
+	t.Run("case-socket refuses an unset socket", func(t *testing.T) {
+		t.Setenv("ORM_TEST_MYSQL_SOCKET", "")
+		if _, err := connectDSN("case-socket", "mysql", caseDSN); err == nil {
+			t.Fatal("connectDSN case-socket with no socket: no error")
+		}
+	})
 }

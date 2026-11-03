@@ -194,6 +194,39 @@ func runDatabase(t *testing.T, path, database string) {
 	}
 }
 
+// caseSocketDSN is the MySQL DSN of the case database through the Unix socket of the test environment (FCV-4, CFG-10): the
+// user and the database of the case DSN, with the host localhost and the socket as its socket parameter.
+func caseSocketDSN(caseDSN, socket string) (string, error) {
+	m := mysqlCaseDSN.FindStringSubmatch(caseDSN)
+	if m == nil {
+		return "", fmt.Errorf("dsn case-socket: the case DSN %q is not a mysql DSN", caseDSN)
+	}
+	return "mysql://" + m[1] + "@localhost/" + m[2] + "?socket=" + socket, nil
+}
+
+// mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
+var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
+
+// connectDSN resolves the DSN of a model.connect step (FCV-4): an absent DSN or "case" is the case database, "case-socket" is
+// the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
+// is the DSN it names.
+func connectDSN(dsn, database, caseDSN string) (string, error) {
+	switch dsn {
+	case "", "case":
+		return caseDSN, nil
+	case "case-socket":
+		if database != "mysql" {
+			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
+		}
+		socket := os.Getenv("ORM_TEST_MYSQL_SOCKET")
+		if socket == "" {
+			return "", errors.New("dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers")
+		}
+		return caseSocketDSN(caseDSN, socket)
+	}
+	return dsn, nil
+}
+
 // fixtureSchema is the Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External
 // documents"): the owned documents parsed with the external ones of the set, and the manifest of the owned documents
 // with the external text. Each external document is also a schema of its own, which a case installs first, as the

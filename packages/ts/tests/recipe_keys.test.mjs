@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { checkKeys } from './recipe_keys.mjs';
+import { connectDsn } from './recipe_model.mjs';
 
 // A recipe at a path whose $schema is the recipe schema of this checkout, so the key table beside it is read.
 const path = 'contracts/fixtures/model_writes/model_writes.json';
@@ -32,4 +33,14 @@ caseTest('a step key that another op holds is refused on the op that does not ho
 
 caseTest('a recipe with no $schema is refused, since it names no key table', COMPUTE, () => {
   assert.throws(() => checkKeys(path, JSON.stringify({ cases: [] })), /no \$schema names the recipe key table/);
+});
+
+caseTest('model.connect opens the case database, the socket DSN or the text of its dsn (FCV-4, CFG-10)', COMPUTE, () => {
+  const caseDsn = 'mysql://root@127.0.0.1:3306/orm_case_17';
+  assert.equal(connectDsn(undefined, 'mysql', caseDsn), caseDsn);
+  assert.equal(connectDsn('case', 'mysql', caseDsn), caseDsn);
+  assert.equal(connectDsn('sqlite://x', 'sqlite', caseDsn), 'sqlite://x');
+  assert.equal(connectDsn('case-socket', 'mysql', caseDsn, '/s/mysql.sock'), 'mysql://root@localhost/orm_case_17?socket=/s/mysql.sock');
+  assert.throws(() => connectDsn('case-socket', 'postgres', caseDsn, '/s/mysql.sock'), /needs mysql, not postgres$/);
+  assert.throws(() => connectDsn('case-socket', 'mysql', caseDsn, ''), /ORM_TEST_MYSQL_SOCKET is unset/);
 });

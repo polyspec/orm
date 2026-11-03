@@ -73,7 +73,8 @@ trait RecipeModel
                     aesKeys: self::aesKeys($s['aes_keyring']),
                 )
                 : new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY);
-            $db = Orm::connectSchema($context['dsn'], $context['schema'], $config);
+            $dsn = self::connectDsn($s['dsn'] ?? null, $context['database'], $context['dsn']);
+            $db = Orm::connectSchema($dsn, $context['schema'], $config);
             self::$modelConnections[] = $db;
             return ['bind' => $db];
         }
@@ -95,6 +96,28 @@ trait RecipeModel
             'NoteReader' => self::noteReaderOp($s, $context, $db),
             default => Assert::fail("model {$s['model']} has no recipe entry"),
         };
+    }
+
+    /** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is case-socket or the DSN text. */
+    public static function connectDsn(?string $dsn, string $database, string $caseDsn, ?string $socket = null): string
+    {
+        if ($dsn === null || $dsn === 'case') {
+            return $caseDsn;
+        }
+        if ($dsn !== 'case-socket') {
+            return $dsn;
+        }
+        if ($database !== 'mysql') {
+            Assert::fail("dsn case-socket needs mysql, not $database");
+        }
+        $socket ??= (string) getenv('ORM_TEST_MYSQL_SOCKET');
+        if ($socket === '') {
+            Assert::fail('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');
+        }
+        if (preg_match('#^mysql://([^@/]+)@[^/]+/([^?]+)#', $caseDsn, $match) !== 1) {
+            Assert::fail("dsn case-socket: the case DSN $caseDsn is not a mysql DSN");
+        }
+        return "mysql://{$match[1]}@localhost/{$match[2]}?socket=$socket";
     }
 
     private static function modelValue(mixed $value, array $context): mixed

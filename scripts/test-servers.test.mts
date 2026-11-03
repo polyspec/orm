@@ -673,3 +673,10 @@ caseTest('the start reports a stopped MySQL replica SQL thread with its last err
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// The case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10) reads the primary's Unix socket from the environment file.
+caseTest('the test-server environment writes the MySQL socket of the primary as ORM_TEST_MYSQL_SOCKET', COMPUTE, () => {
+  const p = paths('/checkout');
+  const variables = environment(p, { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  assert.equal(variables.ORM_TEST_MYSQL_SOCKET, p.sockets.mysql, 'the environment does not write the primary socket');
+});

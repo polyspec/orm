@@ -195,6 +195,8 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
     ORM_TEST_MYSQL_TLS_DSN: tls(ports.mysql, 'ca'),
     ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: tls(ports.mysql, 'other-ca'),
     ORM_TEST_MYSQL_TLS_MISMATCH_DSN: tls(ports.mysqlReplica, 'ca', MYSQL_TLS_MISMATCH_HOST),
+    // The Unix socket of the primary: the case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10).
+    ORM_TEST_MYSQL_SOCKET: p.sockets.mysql,
   };
 }
 

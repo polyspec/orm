@@ -9598,6 +9598,50 @@
       ]
     },
     {
+      "id": "model_socket-mysql",
+      "kind": "suite",
+      "requirements": [
+        "FCV-3",
+        "FCV-4",
+        "FCV-9",
+        "FCV-13",
+        "CFG-10",
+        "CFG-19"
+      ],
+      "file": "contracts/fixtures/model_socket/model_socket.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_socket_test.go",
+          "symbol": "TestRecipeModelSocketMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelSocketRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelSocketRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelSocketRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelSocketRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_socket-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_socket_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_socket_mysql.rs",
+          "symbol": "model_socket_mysql"
+        }
+      ]
+    },
+    {
       "id": "codec-json-yaml-malformed-decode",
       "kind": "feature",
       "requirements": [

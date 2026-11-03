@@ -4,6 +4,7 @@ import json
 import unittest
 
 from .recipe_keys import check_keys
+from .recipe_model import connect_dsn
 
 # A recipe at a path whose $schema is the recipe schema of this checkout, so the key table beside it is read.
 PATH = "contracts/fixtures/model_writes/model_writes.json"
@@ -53,3 +54,17 @@ class CheckKeysTest(unittest.TestCase):
             ValueError, r"no \$schema names the recipe key table"
         ):
             check_keys(PATH, json.dumps({"cases": []}))
+
+    def test_model_connect_opens_the_case_database_the_socket_or_the_text(self):
+        case = "mysql://root@127.0.0.1:3306/orm_case_17"
+        self.assertEqual(connect_dsn(None, "mysql", case), case)
+        self.assertEqual(connect_dsn("case", "mysql", case), case)
+        self.assertEqual(connect_dsn("sqlite://x", "sqlite", case), "sqlite://x")
+        self.assertEqual(
+            connect_dsn("case-socket", "mysql", case, "/s/mysql.sock"),
+            "mysql://root@localhost/orm_case_17?socket=/s/mysql.sock",
+        )
+        with self.assertRaisesRegex(ValueError, "needs mysql, not postgres"):
+            connect_dsn("case-socket", "postgres", case, "/s/mysql.sock")
+        with self.assertRaisesRegex(ValueError, "is unset"):
+            connect_dsn("case-socket", "mysql", case, "")

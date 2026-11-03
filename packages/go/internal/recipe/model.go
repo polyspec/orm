@@ -47,7 +47,17 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		db, err := orm.ConnectSchema(c.dsn, c.schema, cfg)
+		var named string
+		if s.DSN != nil {
+			if err := json.Unmarshal(s.DSN, &named); err != nil {
+				return outcome{}, fmt.Errorf("model.connect dsn is not text: %w", err)
+			}
+		}
+		dsn, err := connectDSN(named, c.database, c.dsn)
+		if err != nil {
+			return outcome{}, err
+		}
+		db, err := orm.ConnectSchema(dsn, c.schema, cfg)
 		if err != nil {
 			return outcome{}, err
 		}

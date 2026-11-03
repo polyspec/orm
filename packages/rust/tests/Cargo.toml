@@ -469,3 +469,10 @@ harness = false
 name = "aes_rotation_sqlite"
 path = "tests/aes_rotation_sqlite.rs"
 harness = false
+
+# Each case of the model_socket recipe, contracts/fixtures/model_socket/model_socket.json, is the trial
+# model_socket_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "model_socket_mysql"
+path = "tests/model_socket_mysql.rs"
+harness = false

@@ -42,6 +42,17 @@ const COMPOSITE_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId'
 const MEMBERSHIP_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId', role: 'getRole' };
 const LOCKS = { update: 'forUpdate', share: 'forShare', update_nowait: 'forUpdateNoWait', share_nowait: 'forShareNoWait' };
 
+/** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step. */
+export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST_MYSQL_SOCKET) {
+  if (dsn === undefined || dsn === 'case') return caseDsn;
+  if (dsn !== 'case-socket') return dsn;
+  if (database !== 'mysql') throw new Error(`dsn case-socket needs mysql, not ${database}`);
+  if (!socket) throw new Error('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');
+  const match = /^mysql:\/\/([^@/]+)@[^/]+\/([^?]+)/.exec(caseDsn);
+  if (match === null) throw new Error(`dsn case-socket: the case DSN ${caseDsn} is not a mysql DSN`);
+  return `mysql://${match[1]}@localhost/${match[2]}?socket=${socket}`;
+}
+
 export function modelOps({ native, databaseValue, stepArgument }) {
   const valueOf = (value, context) => native(databaseValue(stepArgument(value, context), context));
   const objectValues = (object, context) => Object.fromEntries(Object.entries(object ?? {}).map(([k, v]) => [k, valueOf(v, context)]));
@@ -168,7 +179,7 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       const keys = s.aes_keyring === undefined
         ? BENCH_KEYS
         : { blindIndexKey: BENCH_KEYS.blindIndexKey, aesKeys: new Map(Object.entries(s.aes_keyring.versions).map(([version, key]) => [Number(version), key])), aesVersion: s.aes_keyring.current };
-      const db = await Db.connectSchema(context.dsn, context.schema, { poolSize: s.pool_size, ...keys });
+      const db = await Db.connectSchema(connectDsn(s.dsn, context.database, context.dsn), context.schema, { poolSize: s.pool_size, ...keys });
       context.closers.push(() => db.close());
       return { bind: db };
     },

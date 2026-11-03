@@ -2,6 +2,9 @@
 generated model that its model name names, through the connection that model.connect bound. A model or a column without
 an entry here fails the case by name, so no recipe passes on a call that the helper does not make."""
 
+import os
+import re
+
 from polyspec.orm import Db
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.bind_check import fulltext_boolean
@@ -12,6 +15,25 @@ from .models import models
 
 # The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 BENCH_KEYS = {"aesKey": "bench-salt", "blindIndexKey": "bench-blind-index"}
+
+
+def connect_dsn(dsn, database, case_dsn, socket=None):
+    """The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step."""
+    if dsn is None or dsn == "case":
+        return case_dsn
+    if dsn != "case-socket":
+        return dsn
+    if database != "mysql":
+        raise ValueError(f"dsn case-socket needs mysql, not {database}")
+    socket = socket if socket is not None else os.environ.get("ORM_TEST_MYSQL_SOCKET")
+    if not socket:
+        raise ValueError(
+            "dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers"
+        )
+    match = re.match(r"^mysql://([^@/]+)@[^/]+/([^?]+)", case_dsn)
+    if match is None:
+        raise ValueError(f"dsn case-socket: the case DSN {case_dsn} is not a mysql DSN")
+    return f"mysql://{match[1]}@localhost/{match[2]}?socket={socket}"
 
 
 # The Author equality conditions that the recipes name, by column: the condition method of the chain grammar.
@@ -268,7 +290,8 @@ def model_ops(native, database_value, step_argument):
             options["aesVersion"] = keyring.current_version
         if "pool_size" in step:
             options["poolSize"] = step["pool_size"]
-        db = Db.connect_schema(context["dsn"], context["schema"], options)
+        dsn = connect_dsn(step.get("dsn"), context["database"], context["dsn"])
+        db = Db.connect_schema(dsn, context["schema"], options)
         context.setdefault("closers", []).append(db.close)
         return {"bind": db}
 

@@ -27,6 +27,7 @@
     "model.connect": [
       "aes_keyring",
       "as",
+      "dsn",
       "op",
       "pool_size"
     ],

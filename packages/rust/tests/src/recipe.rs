@@ -109,6 +109,26 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .collect()
 }
 
+/// The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step.
+pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
+    match dsn {
+        None | Some("case") => Ok(case_dsn.to_owned()),
+        Some("case-socket") => {
+            if database != "mysql" {
+                return Err(format!("dsn case-socket needs mysql, not {database}"));
+            }
+            let socket = socket.filter(|s| !s.is_empty()).ok_or("dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers")?;
+            let not_mysql = || format!("dsn case-socket: the case DSN {case_dsn} is not a mysql DSN");
+            let rest = case_dsn.strip_prefix("mysql://").ok_or_else(not_mysql)?;
+            let (user, rest) = rest.split_once('@').ok_or_else(not_mysql)?;
+            let (_, name) = rest.split_once('/').ok_or_else(not_mysql)?;
+            let name = name.split('?').next().unwrap_or_default();
+            Ok(format!("mysql://{user}@localhost/{name}?socket={socket}"))
+        }
+        Some(text) => Ok(text.to_owned()),
+    }
+}
+
 /// Opens a DSN with Db::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
 /// A refused DSN returns its error code and message.
 async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
@@ -2514,7 +2534,8 @@ mod database {
                 Some(Ok(count)) => count,
                 _ => return Err(Failure::Step("pool_size is not a count".into())),
             };
-            let dsn = context.dsn.clone();
+            let dsn = super::connect_dsn(step["dsn"].as_str(), context.database, &context.dsn, std::env::var("ORM_TEST_MYSQL_SOCKET").ok().as_deref())
+                .map_err(Failure::Step)?;
             match step.get("aes_keyring") {
                 Some(keyring) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
                 None => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
