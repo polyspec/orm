@@ -10726,66 +10726,78 @@
        {
         "event": 1,
         "bind": 9,
-        "value": "$AES"
+        "value": "$AES",
+        "reason": "an AES value takes a random nonce on every write, so no recipe can fix its ciphertext"
        },
        {
         "event": 3,
         "bind": 3,
-        "value": "$TS"
+        "value": "$TS",
+        "reason": "the bind is the updated_ts that the row read back from the clock of the write"
        }
       ],
       "postgres": [
        {
         "event": 1,
         "bind": 9,
-        "value": "$AES"
+        "value": "$AES",
+        "reason": "an AES value takes a random nonce on every write, so no recipe can fix its ciphertext"
        },
        {
         "event": 1,
         "bind": 14,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 1,
         "bind": 15,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 3,
         "bind": 2,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 3,
         "bind": 4,
-        "value": "$TS"
+        "value": "$TS",
+        "reason": "the bind is the updated_ts that the row read back from the clock of the write"
        }
       ],
       "sqlite": [
        {
         "event": 1,
         "bind": 9,
-        "value": "$AES"
+        "value": "$AES",
+        "reason": "an AES value takes a random nonce on every write, so no recipe can fix its ciphertext"
        },
        {
         "event": 1,
         "bind": 14,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 1,
         "bind": 15,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 3,
         "bind": 2,
-        "value": "$NOW"
+        "value": "$NOW",
+        "reason": "the bind is the clock of the client at the write"
        },
        {
         "event": 3,
         "bind": 4,
-        "value": "$TS"
+        "value": "$TS",
+        "reason": "the bind is the updated_ts that the row read back from the clock of the write"
        }
       ]
      }

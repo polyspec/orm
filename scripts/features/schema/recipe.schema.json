@@ -3910,7 +3910,7 @@
             "$ref": "#/$defs/expect"
           },
           "masks": {
-            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value.",
+            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value, with the reason.",
             "type": "object",
             "propertyNames": {
               "enum": [
@@ -3926,7 +3926,8 @@
                 "required": [
                   "event",
                   "bind",
-                  "value"
+                  "value",
+                  "reason"
                 ],
                 "additionalProperties": false,
                 "properties": {
@@ -3944,6 +3945,11 @@
                       "$TS",
                       "$NOW"
                     ]
+                  },
+                  "reason": {
+                    "description": "Why no recipe can fix this value.",
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
