@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8b38a176ae36900384676721ed4674bb433c8b5654bc505a403d24431eac162 -->
+<!-- source-sha256: 3088d8b2d54e6ece3f1d35b055625aa6f1b4152ecc7412d5b09123b7304b6c7f -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust의 세 database stress apply는 각 database의 deadline을 step 수로 정한다. step마다 250 ms에 1분을 더한 값이다(testcase `step_budget`). apply는 step이 30 s 동안 없으면 멈추는 stall guard(testcase `StallGuard`)로 감시하며, step이 적용될 때마다 그 기한이 다시 시작된다. Go stress test와 같은 근거다. 11개 CPU 부하 프로세스 아래에서 세 실행을 동시에 돌리면, 기존 60 s probe deadline은 실행마다 `mysql.apply.stress_plan: exceeded 60s`로 실패했다(63.6~64 s). step 기준 deadline으로는 같은 부하에서 79.5~82.3 s에 통과하고, 단독으로는 22.7 s다(T343-5).
+- compiler fixture는 cargo target lease를 기다리는 시간을 deadline 밖에 둔다. 각 case의 Rust trial은 그 기다림에 deadline을 두지 않으며, tests/cargo-test.mts의 build에 deadline이 없는 것과 같다. scripts/rust/compiler-fixtures.mts는 lease 아래의 자기 compile에만 PROCESS deadline을 준다. 그래서 다른 실행의 build 뒤에서 기다리던 case는 `deadline 5m0s exceeded`로 실패하지 않고 통과한다(T343-6).
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
 - `make client-db-rust-check`는 다른 target이 소유하지 않은 case만 실행하고, crate의 public connection 시험은 외부 변수가 필요 없으며, compiler fixture는 순서대로 실행되고, generate.mjs는 임시 디렉터리를 남기지 않는다.
