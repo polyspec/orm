@@ -673,6 +673,20 @@
             "error": {
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "message_suffix": {
+              "description": "The text that the message of the error ends with.",
+              "type": "string",
+              "minLength": 1
+            },
+            "message_holds": {
+              "description": "The text that the message of the error holds, for a message that the driver wraps.",
+              "type": "string",
+              "minLength": 1
+            },
+            "driver_cause": {
+              "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
+              "const": true
             }
           }
         },
@@ -758,6 +772,7 @@
             "codec.host_encode",
             "codec.host_decode",
             "codec.blind_index",
+            "collection.key",
             "sql.exec",
             "query.search",
             "query.search_chain",
@@ -794,6 +809,7 @@
             "events.fail_subscriber",
             "events.stop_failing",
             "events.unsubscribe",
+            "utils.run",
             "events.captured",
             "planner.compile",
             "dbspec.parse",
@@ -871,6 +887,9 @@
         },
         {
           "$ref": "#/$defs/ops/codec.blind_index"
+        },
+        {
+          "$ref": "#/$defs/ops/collection.key"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -994,6 +1013,9 @@
         },
         {
           "$ref": "#/$defs/ops/events.unsubscribe"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.run"
         },
         {
           "$ref": "#/$defs/ops/events.captured"
@@ -1676,6 +1698,86 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "collection.key": {
+        "type": "object",
+        "required": [
+          "op",
+          "keys",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "collection.key"
+          },
+          "keys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "text",
+                    "bool",
+                    "int",
+                    "bytes",
+                    "datetime",
+                    "null"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "boolean",
+                    "integer"
+                  ]
+                },
+                "hex": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -4044,6 +4146,59 @@
           }
         }
       },
+      "utils.run": {
+        "type": "object",
+        "required": [
+          "op",
+          "statements"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.run"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "tables",
+                "sql"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tables": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "sql": {
+                  "$ref": "#/$defs/sql"
+                },
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              }
+            }
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "events.captured": {
         "type": "object",
         "required": [
@@ -5317,6 +5472,29 @@
                               "type": "string",
                               "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
                             }
+                          },
+                          "text": {
+                            "type": "object",
+                            "description": "Texts that the generated files of the set hold together, and texts that they do not hold.",
+                            "required": [
+                              "includes",
+                              "excludes"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "includes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "excludes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -5592,6 +5770,10 @@
             "const": "hook.install"
           },
           "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "as": {
+            "description": "The name of the hooked handle; the connection keeps its name, unhooked.",
             "$ref": "#/$defs/name"
           },
           "hooks": {
@@ -7374,6 +7556,94 @@
     },
     "hook": {
       "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign_first"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "rewrite"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "invalid_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
         {
           "type": "object",
           "required": [

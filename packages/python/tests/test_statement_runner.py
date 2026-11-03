@@ -2,6 +2,8 @@
 # connection; outside a transaction the runner opens one and ends it without retry, inside one it joins
 # that transaction. frame.run returns the statement result with its rows and a non-text statement is CONFIG
 # (packages/ts/src/utils.ts Utils.run, packages/ts/tests/statement-runner.mjs).
+# These cases stay native (FCV-2): `active_frame()` is public only in Python, and a statement that is not text can be
+# passed only where the language does not type it. The shared behaviour is the recipe statement_runner.
 import os
 import tempfile
 import unittest
@@ -83,11 +85,23 @@ class StatementRunnerTest(unittest.TestCase):
         finally:
             db.close()
 
-    # Requirements: INT-150.
+    # Requirements: INT-150, INT-150b.
     def test_frame_run_returns_rows_and_a_non_text_statement_is_config_sqlite(self):
         db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'frame.sqlite3')}")
         try:
             self.assert_frame_rows_and_config(db)
+        finally:
+            db.close()
+
+    # Requirements: INT-150a.
+    def test_frame_after_its_transaction_ended_is_config_sqlite(self):
+        db = Db.connect(f"sqlite://{os.path.join(self.tmp.name, 'ended.sqlite3')}")
+        try:
+            kept = []
+            db.utils().run(kept.append)
+            with self.assertRaises(OrmError) as caught:
+                kept[0].run("SELECT 1", [], "utility")
+            self.assertEqual(caught.exception.code, "CONFIG")
         finally:
             db.close()
 

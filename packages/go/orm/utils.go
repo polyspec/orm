@@ -74,6 +74,9 @@ type StatementResult struct {
 // transaction of the frame, records one statement event, and returns the statement result with
 // its rows. params are the bound values and may be omitted.
 func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...any) (StatementResult, error) {
+	if f.t.finished.Load() {
+		return StatementResult{}, configErr("transaction already finished")
+	}
 	r := f.t.run()
 	start := time.Now()
 	if err := r.fault(kind); err != nil {
@@ -84,7 +87,7 @@ func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...an
 		return StatementResult{}, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
 	}
 	var out StatementResult
-	cols, err := rs.Columns()
+	cols, err := rs.ColumnTypes()
 	if err == nil {
 		for rs.Next() {
 			row := make([]any, len(cols))
@@ -94,6 +97,9 @@ func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...an
 			}
 			if err = rs.Scan(dest...); err != nil {
 				break
+			}
+			for i, column := range cols {
+				row[i] = frameCell(row[i], column.DatabaseTypeName())
 			}
 			out.Rows = append(out.Rows, row)
 		}
@@ -105,6 +111,16 @@ func (f *TxFrame) Run(kind string, tables []string, sqlText string, params ...an
 		err = closeErr
 	}
 	return out, r.d.statementDone(kind, tables, r.tx, sqlText, params, start, mapDriverErrContext(err, f.t.ctx))
+}
+
+// frameCell is one cell of a statement result. The MySQL driver scans every text and decimal column as bytes, so a cell of
+// bytes is text unless its column holds binary data, and a text column reads as text in every runtime (INT-150).
+func frameCell(cell any, columnType string) any {
+	raw, ok := cell.([]byte)
+	if !ok || strings.Contains(columnType, "BLOB") || strings.Contains(columnType, "BINARY") || columnType == "BYTEA" {
+		return cell
+	}
+	return string(raw)
 }
 
 // read executes fn with a runner on the active transaction or the connection.

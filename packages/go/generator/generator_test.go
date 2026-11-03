@@ -99,51 +99,6 @@ func repositoryRoot(t *testing.T) string {
 	}
 }
 
-// TestGenerateExternalTables checks that a set using external documents (external) generates the
-// models of the tables it owns and the read-only models of the tables it uses from external documents,
-// and none of an unused external table, and that the text of the used tables is carried in the schema value.
-// Requirements: DBS-110.
-func TestGenerateExternalTables(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	fixtures := filepath.Join("..", "..", "..", "contracts", "fixtures", "external")
-	text := func(name string) string {
-		b, err := os.ReadFile(filepath.Join(fixtures, name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(b)
-	}
-	m, diagnostics := runtimemodel.LoadDocumentSet([]string{text("member.dbs")}, []string{text("core.dbs")})
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	out := filepath.Join(t.TempDir(), "member")
-	if err := Generate(Options{Model: m, OutputDir: out}); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := os.ReadDir(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var files []string
-	for _, e := range entries {
-		files = append(files, e.Name())
-	}
-	if strings.Join(files, " ") != "ext_account.go ext_audit.go ext_post.go ext_post_history.go orm.go" {
-		t.Fatalf("generated files %v, want the used external tables ext_account and ext_audit, the owned tables ext_post and ext_post_history and orm.go", files)
-	}
-	body, err := os.ReadFile(filepath.Join(out, "orm.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(body), "External: ExternalText}") || !strings.Contains(string(body), `const ExternalText = "dbspec 1 ext_core\n"`) {
-		t.Fatalf("orm.go does not carry the external text:\n%s", body)
-	}
-	if strings.Contains(string(body), "ext_session") {
-		t.Fatal("orm.go carries ext_session, which the set does not use")
-	}
-}
-
 // TestGenerateBenchDocumentSet checks that the declared bench set loads both owned documents and its external document,
 // and generates a model for every table in that set.
 // Requirements: SCH-1.

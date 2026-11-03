@@ -130,27 +130,6 @@ class OrmGenScanTest extends TestCase
         return [$code, $stderr, $dir];
     }
 
-    /**
-     * Generates the models of member.dbs (or of $owned as note.dbs when given), which uses core.dbs as an external
-     * document, with --scan of $sources in a new folder; returns the code, stderr and the folder.
-     */
-    private static function generateExternal(string $name, array $sources, ?string $owned = null): array
-    {
-        $root = dirname(__DIR__, 3);
-        $dir = self::$work . '/' . $name;
-        is_dir("$dir/set/app") || mkdir("$dir/set/app", 0o700, true);
-        is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
-        $document = $owned === null ? 'member.dbs' : 'note.dbs';
-        if ($owned === null) {
-            copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/$document");
-        } else {
-            file_put_contents("$dir/set/app/$document", $owned);
-        }
-        copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
-        $set = OrmGenTestSupport::setFile("$dir/set/app", [$document], ['../core/core.dbs']);
-        return self::generateFromSet($name, $sources, $set);
-    }
-
     /** @return list<string> the methods the class comment of a model declares with @method, in file order */
     private static function tags(string $dir, string $class): array
     {
@@ -397,27 +376,6 @@ PHP;
         [$code, $err, $dir] = self::generate('unused-relation-alias', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
         self::assertNotContains('getUnused', self::tags($dir, 'Author'));
-    }
-
-    // Requirements: DBS-173.
-    public function testAUsedExternalTableThatNoSourceCallsKeepsItsModel(): void
-    {
-        // note.dbs uses ext_session of core.dbs, and its own table ext_note has no foreign key to it; the source calls
-        // ExtNote only, so the model of ExtSession is written anyway.
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\\ExtNote;
-
-\$rows = (new ExtNote())->connect(\$db)->get();
-PHP;
-        $owned = "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title "
-            . "varchar(191)\n  primary key (seq)\n}\n";
-        [$code, $err, $dir] = self::generateExternal('external-unused-models', ['usage.php' => $source], $owned);
-        self::assertSame(0, $code, $err);
-        self::assertFileExists("$dir/model/ExtSession.php");
     }
 
     public function testANameThatMayHoldTwoModelsGetsTheCallOnEach(): void

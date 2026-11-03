@@ -1,0 +1,9 @@
+dbspec 1 ext_note
+
+use ext_core { ext_session }
+
+table ext_note {
+  seq i64 identity
+  title varchar(191)
+  primary key (seq)
+}

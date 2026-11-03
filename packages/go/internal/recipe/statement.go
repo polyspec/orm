@@ -5,6 +5,7 @@ package recipe
 // the native statement-event test wraps in its own helpers.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -137,6 +138,9 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		}
 		sub.stop()
 		return outcome{fields: map[string]any{}}, true, nil
+	case "utils.run":
+		result, err := runFrame(s, c)
+		return result, true, err
 	case "events.captured":
 		sub, err := boundAPI[*subscription](s.Ref, c)
 		if err != nil {
@@ -158,6 +162,65 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		return outcome{fields: map[string]any{"value": map[string]any{"array": events}}}, true, nil
 	}
 	return outcome{}, false, nil
+}
+
+// frameStatement is one statement of utils.run: the arguments of TxFrame.Run (INT-150).
+type frameStatement struct {
+	Kind   string            `json:"kind"`
+	Tables []string          `json:"tables"`
+	SQL    json.RawMessage   `json:"sql"`
+	Params []json.RawMessage `json:"params"`
+}
+
+// runFrame calls Utils.Run on the connection of s with a function that runs the statements of s in order on its frame. Its
+// value is the rows of the last statement, each cell in the recipe wrapper of its plain value (FCV-4).
+func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
+	db, err := connectionOf(s, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	var rows [][]any
+	err = db.Utils().Run(func(frame *orm.TxFrame) error {
+		for _, statement := range s.Statements {
+			text, present, err := sqlExecText(statement.SQL, c)
+			if err != nil {
+				return err
+			}
+			if !present {
+				return fmt.Errorf("utils.run names no statement for %s", c.database)
+			}
+			params := make([]any, 0, len(statement.Params))
+			for _, raw := range statement.Params {
+				param, err := argument(raw, nil)
+				if err != nil {
+					return err
+				}
+				params = append(params, param)
+			}
+			result, err := frame.Run(statement.Kind, statement.Tables, text, params...)
+			if err != nil {
+				return err
+			}
+			rows = result.Rows
+		}
+		return nil
+	})
+	if err != nil {
+		return outcome{}, err
+	}
+	out := []any{}
+	for _, row := range rows {
+		cells := []any{}
+		for _, cell := range row {
+			wrapped, err := plain(cell, "", c.database)
+			if err != nil {
+				return outcome{}, err
+			}
+			cells = append(cells, wrapped)
+		}
+		out = append(out, map[string]any{"array": cells})
+	}
+	return outcome{fields: map[string]any{"value": map[string]any{"array": out}}}, nil
 }
 
 // capturedEvents is the recipe wrapper of the events of a recording. The transactions are numbered from 1 in the order of

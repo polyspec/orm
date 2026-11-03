@@ -1,7 +1,7 @@
 // The generator.generate op of the recipe helper (docs/spec/feature-coverage.md FCV-4): it writes the scanned TypeScript sources of
 // a step under a temporary root and calls generateTypeScript with that root as the scan input.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
@@ -74,6 +74,12 @@ export function checkGenerator(step, dir, database) {
     assert.equal(want.error, undefined, `generation succeeded, want error ${want.error}`);
     for (const name of want.value.includes) assert.ok(names.has(name), `generated code lacks ${name}`);
     for (const name of want.value.excludes) assert.ok(!names.has(name), `generated code declares ${name}`);
+    if (want.value.text !== undefined) {
+      const output = join(root, 'model');
+      const text = readdirSync(output).map(file => readFileSync(join(output, file), 'utf8')).join('');
+      for (const part of want.value.text.includes) assert.ok(text.includes(part), `generated text lacks ${part}`);
+      for (const part of want.value.text.excludes) assert.ok(!text.includes(part), `generated text holds ${part}`);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -90,6 +90,11 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
     with tempfile.TemporaryDirectory(prefix="orm-recipe-generator-") as work:
         try:
             names = _generate(step, recipe_dir, Path(work).resolve())
+            text = "".join(
+                file.read_text(encoding="utf-8")
+                for file in sorted((Path(work) / "model").iterdir())
+                if file.is_file()
+            )
         except OrmError as error:
             if "error" not in want:
                 raise
@@ -118,3 +123,9 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
     for name in want["value"]["excludes"]:
         if name in names:
             raise AssertionError(f"generated code declares {name}")
+    for part in want["value"].get("text", {}).get("includes", []):
+        if part not in text:
+            raise AssertionError(f"generated text lacks {part}")
+    for part in want["value"].get("text", {}).get("excludes", []):
+        if part in text:
+            raise AssertionError(f"generated text holds {part}")
