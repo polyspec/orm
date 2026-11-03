@@ -6073,45 +6073,6 @@
       }
     },
     {
-      "id": "generator-unused-external-tables-keep-their-models",
-      "kind": "feature",
-      "requirements": [
-        "DBS-173"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoExternalModelsWithoutCallsAreWritten"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/unused_external_models"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_used_external_table_that_no_source_calls_keeps_its_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "unused_external_tables_keep_their_models"
-        }
-      ]
-    },
-    {
       "id": "code-catalog-matches-errors-yaml",
       "kind": "feature",
       "requirements": [
@@ -6931,45 +6892,6 @@
         "feature": "dsn_connection",
         "part": "owner/php"
       }
-    },
-    {
-      "id": "mechanically-derived-chain-method-names",
-      "kind": "feature",
-      "requirements": [
-        "PLN-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestScanGeneratesUsedMethods"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
-          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/model_calls"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_chain_conditions"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generates_called_methods"
-        }
-      ]
     },
     {
       "id": "rust-public-connection-call",
@@ -14450,45 +14372,6 @@
       }
     },
     {
-      "id": "generated-code-no-lint-suppressions",
-      "kind": "feature",
-      "requirements": [
-        "INT-66"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_generated_typed_getter_is_the_public_column_api"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_code_carries_no_allow_attribute"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generated typed getter consumer compiler fixture"
-        }
-      ]
-    },
-    {
       "id": "rust-generates-called-methods",
       "kind": "feature",
       "requirements": [
@@ -14507,45 +14390,6 @@
         "artifact": "git-tag",
         "package": "polyspec-orm-build"
       }
-    },
-    {
-      "id": "generator-writes-the-owned-and-the-used-external-tables",
-      "kind": "feature",
-      "requirements": [
-        "DBS-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/generator_test.go",
-          "id": "TestGenerateExternalTables"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_the_owned_and_the_used_external_tables_of_a_set_have_models"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generation_leaves_external_tables_out"
-        }
-      ]
     },
     {
       "id": "rust-ignores-calls-of-other-types",
@@ -17353,50 +17197,6 @@
         "artifact": "go-module",
         "package": "github.com/polyspec/orm/packages/go"
       }
-    },
-    {
-      "id": "generator-declares-schema-key-prefix-methods",
-      "kind": "feature",
-      "requirements": [
-        "DSL-154"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_key_prefix_test.go",
-          "id": "TestGoGeneratesKeyPrefixMethodsWithoutScan"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
-          "id": "ModelMethodsTestExtensionTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_query_methods.py",
-          "id": "test_every_query_method_is_declared_and_typed"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "key_prefix_methods_come_from_the_schema_without_a_scan"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_key_prefix.py",
-          "id": "test_key_prefix_names_resolve_without_a_scan"
-        }
-      ]
     },
     {
       "id": "php-internal-orm-gen-scan-vector",
@@ -27664,45 +27464,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
           "id": "engine::blind_index_source::explicit_index_assignment_wins_in_on_duplicate"
-        }
-      ]
-    },
-    {
-      "id": "generator-generates-the-scanned-chain-methods",
-      "kind": "feature",
-      "requirements": [
-        "DSL-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestScanGeneratesUsedMethods"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate-scan.mjs",
-          "id": "generate-scan/model_calls"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_generated_module_imports_and_builds_the_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generates_called_methods"
         }
       ]
     },
@@ -43473,7 +43234,7 @@
         ]
       },
       "requirements": [
-        "DSL-159"
+        "DSL-160"
       ],
       "bindings": [
         {
@@ -43499,14 +43260,92 @@
       ]
     },
     {
+      "id": "python-query-methods-are-declared-and-resolve-without-a-scan",
+      "kind": "feature",
+      "requirements": [
+        "DSL-43"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_methods.py",
+          "id": "test_every_query_method_is_declared_and_typed"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_key_prefix.py",
+          "id": "test_key_prefix_names_resolve_without_a_scan"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "rust-generated-model-has-a-default",
+      "kind": "feature",
+      "requirements": [
+        "DSL-41"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generated_code_carries_no_allow_attribute"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
+    },
+    {
+      "id": "php-generator-scan-vector-in-both-php-modes",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+          "id": "OrmGenScanTestExtensionTest::testVector"
+        }
+      ]
+    },
+    {
       "id": "generator",
       "kind": "suite",
       "requirements": [
         "DSL-37",
+        "DSL-38",
         "DSL-116",
         "DSL-127",
         "DSL-129",
         "DSL-130",
+        "DSL-154",
+        "DBS-103",
+        "DBS-104",
+        "DBS-110",
+        "DBS-173",
+        "INT-66",
+        "PLN-1",
         "PLN-22"
       ],
       "file": "contracts/fixtures/generator/generator.json",

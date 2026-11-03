@@ -5072,6 +5072,29 @@
                               "type": "string",
                               "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
                             }
+                          },
+                          "text": {
+                            "type": "object",
+                            "description": "Texts that the generated files of the set hold together, and texts that they do not hold.",
+                            "required": [
+                              "includes",
+                              "excludes"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "includes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "excludes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
                           }
                         }
                       }
