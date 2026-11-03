@@ -1,5 +1,4 @@
-// The failures that a recipe cannot inject: a native decipher that throws at each phase keeps its error (FCV-2).
-// Requirement: COD-6 (docs/spec).
+// The failures that a recipe cannot inject: a native decipher that throws at each phase keeps its error.
 import assert from 'node:assert/strict';
 import { Decipheriv } from 'node:crypto';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
