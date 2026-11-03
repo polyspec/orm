@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3cab9a65c87c6ff9818d8fead52459184f21d7247a14a21f4f0b2279cf226675 -->
+<!-- source-sha256: 88bd3627a9675a1499dc8f0c2eb97fcddfad29242cdd8bf546c07374d3213037 -->
 # 변경 이력
 
 ## Unreleased
 
+- 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.
+- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
@@ -17,7 +19,6 @@
 - recipe op `dsn.connect`는 여섯 runtime 모두에서 자기가 연 연결에 `utils().run`으로 `SELECT 1`을 실행하므로, DSN이 답하는 database에 연결함을 확인한다. PHP `CoverageDsnTest`는 native로 남는 SQLite 최소 버전 검사(DSL-150)만 두고 feature 환경을 읽지 않는다.
 - vector 17(`errors`)의 거부마다 각 runtime에 요청 전 시험이 생겼다. `make conformance-refusal-check`: 여섯 runtime 모두 표가 없는 SQLite 파일과 statement subscriber로 실행하고, Go, TypeScript, Rust는 각 chain을 오류와 함께 받아들이고 오류를 버리는 사용을 거부하는 형 검사를 한다. Go에서 prepare가 실패한 statement는 INT-91과 다른 runtime대로 오류를 담은 statement event를 발행한다. 전에는 발행하지 않았다.
 - 여섯 runtime에 남은 catalog_connection coverage 테스트를 없앴다: recipe case temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice, deferred_foreign_key_at_commit이 그 검증을 세 database에서 맡는다. 잘못된 열 이름을 가진 descriptor는 이제 Python과 PHP 확장에서도 ROW_SNAPSHOT_INVALID로 실패하고 메시지에 원인을 담으며, TypeScript catalog의 두 번째 close는 아무것도 하지 않는다.
-- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - 생성기의 컬럼 이름·체인 이름 거부는 여섯 runtime 모두에서 `generator` recipe의 사례이며, 코드는 모두 `CONFIG`다. TypeScript scan은 어떤 컬럼·체인·연산자에도 맞지 않는 이름과 값 개수가 틀린 호출을 이제 거부하고(이전에는 선언만 하지 않고 type checker에 맡겼다), Go는 그 개수를 생성 단계에서 거부하며, Python은 컬럼이 받지 않는 연산자와 그 개수를 거부하고, TypeScript와 PHP는 컬럼 이름의 `fulltext`를 예약한다 (DSL-37, DSL-130).
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
