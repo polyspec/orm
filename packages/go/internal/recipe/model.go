@@ -349,7 +349,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			rows[0].SetName(name)
 		}
 		_, err = rows[0].Update()
-		return outcome{fields: map[string]any{}}, err
+		return outcome{fields: affectedFields(db)}, err
 	case "model.delete":
 		m, err := compositeAccountWhere(s, c, db)
 		if err != nil {
@@ -359,7 +359,11 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
-		return deleteRows(rows.Slice())
+		out, err := deleteRows(rows.Slice())
+		if err == nil {
+			out.fields = affectedFields(db)
+		}
+		return out, err
 	case "model.count":
 		m, err := compositeAccountWhere(s, c, db)
 		if err != nil {

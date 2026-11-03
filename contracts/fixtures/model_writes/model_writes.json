@@ -898,6 +898,135 @@
       ]
     },
     {
+      "id": "a_write_reports_the_rows_it_matched",
+      "requirements": [
+        "DSL-109"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "1"
+            },
+            "name": {
+              "text": "first"
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "key": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "name": {
+              "text": "second"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "key": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "name": {
+              "text": "second"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990004"
+            },
+            "account_id": {
+              "int": "1"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "arithmetic_plus_and_minus",
       "requirements": [
         "PLN-26"

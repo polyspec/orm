@@ -98,6 +98,14 @@ trait RecipeModel
         };
     }
 
+    /** The affected count of the last write on $db, the value that the expect of a model write names (F15, PRT-61). */
+    private static function affected(Db $db): array
+    {
+        // The package autoloader does not map the test entry point.
+        require_once dirname(__DIR__) . '/testing/Faults.php';
+        return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected($db)]];
+    }
+
     /** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is case-socket or the DSN text. */
     public static function connectDsn(?string $dsn, string $database, string $caseDsn, ?string $socket = null): string
     {
@@ -231,10 +239,10 @@ trait RecipeModel
                     $row->setName($value);
                 }
                 $row->update();
-                return [];
+                return self::affected($db);
             case 'model.delete':
                 self::compositeAccountFilter($db, self::modelValues($s['where'], $context))->gets()->delete();
-                return [];
+                return self::affected($db);
             case 'model.count':
                 $count = self::compositeAccountFilter($db, self::modelValues($s['where'], $context))->getCount();
                 return ['value' => ['int' => (string) $count]];

@@ -10,11 +10,17 @@ from polyspec.orm.aes import AesKeyring
 from polyspec.orm.bind_check import fulltext_boolean
 from polyspec.orm.engine import Engine
 from polyspec.orm.names import ChainKey
+from polyspec.orm.testing import last_affected
 
 from .models import models
 
 # The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
 BENCH_KEYS = {"aesKey": "bench-salt", "blindIndexKey": "bench-blind-index"}
+
+
+def affected(db):
+    """The affected count of the last write on db, the value that the expect of a model write names (F15, PRT-62)."""
+    return {"value": {"int": str(last_affected(db))}}
 
 
 def connect_dsn(dsn, database, case_dsn, socket=None):
@@ -369,7 +375,7 @@ def model_ops(native, database_value, step_argument):
                 )
             row.set_name(value)
         row.update()
-        return {}
+        return affected(db)
 
     def model_delete(step, context):
         db = connection(step["connection"], context)
@@ -385,7 +391,7 @@ def model_ops(native, database_value, step_argument):
             models.User().connect(db).seq(where["seq"]).gets().delete()
             return {}
         composite_filter(db, values_of(step["where"], context)).gets().delete()
-        return {}
+        return affected(db)
 
     def model_count(step, context):
         db = connection(step["connection"], context)

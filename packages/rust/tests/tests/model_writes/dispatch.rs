@@ -57,11 +57,13 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 }
                 row = row.set_name(text(value)?);
             }
-            row.update(false).await.map(|()| json!({})).map_err(fail)
+            row.update(false).await.map_err(fail)?;
+            Ok(affected(db))
         }
         "model.delete" => {
             let rows = filter_account(db, &step["where"])?.gets().await.map_err(fail)?;
-            rows.delete(false).await.map(|()| json!({})).map_err(fail)
+            rows.delete(false).await.map_err(fail)?;
+            Ok(affected(db))
         }
         "model.count" if step["model"] == "Author" => {
             let count = author_chain(db, &step["where"], &[])?.get_count().await.map_err(fail)?;
@@ -169,6 +171,11 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         other => Err(format!("OP_UNKNOWN {other}")),
     }
+}
+
+/// The affected count of the last write on db, the value that the expect of a model write names (F15, PRT-59).
+fn affected(db: &Db) -> Value {
+    json!({ "value": { "int": polyspec_orm::testing::last_affected(db).unwrap_or_default().to_string() } })
 }
 
 fn account(db: &Db) -> CompositeAccount {

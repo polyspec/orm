@@ -1,6 +1,7 @@
 // The generated-model ops of the recipe helper (docs/spec/feature-coverage.md FCV-4 model ops, FCV-14). Each op calls the
 // generated model that its model name names, through the connection that model.connect bound. A model or a column without
 // an entry here fails the case by name, so no recipe passes on a call that the helper does not make.
+import { lastAffected } from '../dist/testing.js';
 import { Author, CompositeAccount, CompositeMembership, CORE, Db, Engine, fulltextBoolean, NoteReader, SharedNote, User } from '../dist/index.js';
 
 // The keys that the generated models of the bench set read their encrypted columns with (the native model tests use them).
@@ -41,6 +42,9 @@ const COMPOSITE_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId'
 /** The getters of the CompositeMembership columns that a model.query relation reads, by recipe column. */
 const MEMBERSHIP_GETTERS = { tenant_id: 'getTenantId', account_id: 'getAccountId', role: 'getRole' };
 const LOCKS = { update: 'forUpdate', share: 'forShare', update_nowait: 'forUpdateNoWait', share_nowait: 'forShareNoWait' };
+
+// The affected count of the last write on db, the value that the expect of a model write names (F15, PRT-60).
+const affected = db => ({ value: { int: String(lastAffected(db)) } });
 
 /** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step. */
 export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST_MYSQL_SOCKET) {
@@ -235,7 +239,7 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         row.setName(objectValues(s.set, context).name);
       }
       await row.update();
-      return {};
+      return affected(db);
     },
     async 'model.delete'(s, context) {
       const db = connection(s.connection, context);
@@ -250,7 +254,7 @@ export function modelOps({ native, databaseValue, stepArgument }) {
         return {};
       }
       await (await compositeFilter(db, objectValues(s.where, context)).gets()).delete();
-      return {};
+      return affected(db);
     },
     async 'model.count'(s, context) {
       const db = connection(s.connection, context);
