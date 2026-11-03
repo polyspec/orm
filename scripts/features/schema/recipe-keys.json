@@ -19,11 +19,6 @@
     "steps"
   ],
   "step": {
-    "dsn.connect": [
-      "dsn",
-      "expect",
-      "op"
-    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -33,6 +28,28 @@
       "calls",
       "expect",
       "op"
+    ],
+    "dsn.connect": [
+      "config",
+      "dsn",
+      "expect",
+      "only",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
     ],
     "model.connect": [
       "aes_keyring",
@@ -377,6 +394,7 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
       "group_value",
       "items",
@@ -433,6 +451,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -553,6 +572,11 @@
       "external",
       "op",
       "owned"
+    ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
     ],
     "dbspec.read_file": [
       "expect",

@@ -300,10 +300,6 @@
         {
           "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
-        },
-        {
-          "glob": "packages/go/engine/planner/runtime_model_test.go",
-          "reason": "test: reads the internal plan of the Go planner, its assemble columns and slots, which no public call returns"
         }
       ]
     },
@@ -1109,6 +1105,10 @@
         "pattern": "^pub const (\\w+): &str = \"\\w+\";$"
       },
       "internal": [
+        {
+          "glob": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
+        },
         {
           "glob": "packages/rust/orm/src/driver/tests.rs",
           "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
@@ -3860,33 +3860,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmConnectsWithTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_connects_with_tls"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_verifies_the_server_identity"
         }
       ]
     },
@@ -3899,33 +3899,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUntrustedTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_refuses_another_ca_and_another_host"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_refuses_an_untrusted_identity"
         }
       ]
     },
@@ -3933,33 +3933,259 @@
       "id": "connection-mysql-tls-unsupported-options",
       "kind": "feature",
       "requirements": [
-        "CFG-18"
+        "CFG-18",
+        "CFG-36"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLSRejectsUnsupportedOptions"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_verify_ca"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testUnsupportedTlsOptions"
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_verify_ca\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUnsupportedTlsOptions"
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_verify_ca\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/unsupported-parameters"
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_verify_ca"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_unsupported_tls_options"
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_verify_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_required"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_required\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_required\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_required"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_required"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_preferred"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_preferred\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_preferred\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_preferred"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_preferred"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_disabled"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_disabled\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_disabled\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_disabled"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_disabled"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_lower_case"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_lower_case\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_lower_case\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_lower_case"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_lower_case"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_empty"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_empty\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_empty\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_empty"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_empty"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_without_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_without_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_without_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_without_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_without_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_relative_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_relative_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_relative_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_relative_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_relative_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_ca_without_mode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_ca_without_mode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_ca_without_mode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_ca_without_mode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_ca_without_mode"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_unreadable_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_unreadable_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_unreadable_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_unreadable_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_unreadable_ca"
         },
         {
           "implementation": "rust",
@@ -4166,63 +4392,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestSQLiteDSNRequiresAbsolutePath"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_relative_path"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_relative_path\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_relative_path\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_relative_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_relative_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_relative_path"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/sqlite_file_name_test.go",
-          "id": "TestSQLiteFileNameIsThePath"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_root_path"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testSqliteDsnRequiresAbsolutePath"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_root_path\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_root_path\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_root_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_root_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_root_path"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/sqlite_file_name_is_the_path"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testSqliteFileName"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"sqlite_file_name_is_the_path\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRequiresAbsoluteSqlitePath"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DsnTestExtensionTest.php",
-          "id": "DsnTestExtensionTest::testSqliteFileName"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"sqlite_file_name_is_the_path\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/sqlite-requires-absolute-path"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/sqlite-file-name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_sqlite_dsn_requires_absolute_path"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_sqlite_file_name_is_the_path"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "sqlite_dsn_requires_absolute_path"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_file_name.rs",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
           "id": "sqlite_file_name_is_the_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "sqlite_file_name_is_the_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::sqlite_file_name_is_the_path"
         }
       ]
     },
@@ -4235,53 +4491,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestParseDSN"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLS"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/dsn_parameters_of_this_page"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"dsn_parameters_of_this_page\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMysqlTlsKeepsTheCaPathOfAHostName"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"dsn_parameters_of_this_page\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/invalid"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "dsn_parameters_of_this_page"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "dsn_parameters_of_this_page"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "driver_parameters_reach_sqlx"
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_txlock_immediate\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_txlock_immediate\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_txlock_immediate"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "dsn_rejects_txlock"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_txlock_deferred\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_txlock_deferred\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_txlock_deferred"
         }
       ]
     },
@@ -4289,33 +4585,134 @@
       "id": "connection-dsn-other-parameters",
       "kind": "feature",
       "requirements": [
-        "CFG-20"
+        "CFG-20",
+        "CFG-37"
       ],
       "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_charset\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_charset\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_charset"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_charset"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_sslmode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_sslmode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_sslmode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_sslmode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_bracket_parameter\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_bracket_parameter\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_bracket_parameter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_bracket_parameter"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"postgres_application_name\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"postgres_application_name\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "postgres_application_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "postgres_application_name"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"postgres_ssl_mode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"postgres_ssl_mode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "postgres_ssl_mode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "postgres_ssl_mode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"sqlite_cache\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"sqlite_cache\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "sqlite_cache"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "sqlite_cache"
+        },
         {
           "implementation": "go",
           "test": "packages/go/orm/dsn_test.go",
           "id": "TestParseDSN"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
         },
         {
           "implementation": "rust",
@@ -4413,39 +4810,154 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_mysql_offset"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testParseRejects"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_mysql_offset\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_mysql_offset\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/timezone"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/invalid"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_mysql_offset"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_dsn_rejects_non_utc_timezones"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_mysql_offset"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "non_utc_time_zones_are_rejected"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_mysql_offset"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_dsn_reject_test.go",
-          "id": "TestRecipeDsnRejectNone"
+          "id": "TestRecipeDsnRejectNone/timezone_postgres_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_postgres_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_postgres_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_postgres_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_postgres_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_postgres_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_sqlite_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_sqlite_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_sqlite_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_sqlite_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_sqlite_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_sqlite_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_unknown_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_unknown_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_unknown_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_unknown_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_unknown_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_unknown_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"dsn_parameters_of_this_page\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"dsn_parameters_of_this_page\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::dsn_parameters_of_this_page"
         }
       ]
     },
@@ -7092,274 +7604,10 @@
       }
     },
     {
-      "id": "schema-set-several-schemas-sqlite",
+      "id": "schema-set-edited-generated-code",
       "kind": "feature",
       "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetSQLite"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testSeveralSchemas"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/several_schemas/sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_several_schemas_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install_uses.py",
-          "id": "test_generated_schema_sets_share_only_their_registered_connections"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-several-schemas-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetMySQL"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testSeveralSchemas"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/several_schemas/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_several_schemas_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_mysql"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-several-schemas-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testSeveralSchemas"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetSeveralSchemas"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/several_schemas/postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_several_schemas_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_postgres"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-unregistered-schema-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetUnregisteredSQLite"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testUnregisteredSchema"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/unregistered_schema/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: connect takes the DSN and options without a schema path"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_unregistered_schema_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install_uses.py",
-          "id": "test_generated_schema_sets_share_only_their_registered_connections"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-unregistered-schema-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetUnregisteredMySQL"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testUnregisteredSchema"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/unregistered_schema/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: connect takes the DSN and options without a schema path"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_unregistered_schema_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_mysql"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-unregistered-schema-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestSchemaSetUnregisteredPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testUnregisteredSchema"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetUnregisteredSchema"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/unregistered_schema/postgres"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: connect takes the DSN and options without a schema path"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_unregistered_schema_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "schema_set_unregistered_postgres"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-edited-manifest-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-120",
-        "SCH-7",
-        "SCH-11"
+        "DBS-120"
       ],
       "bindings": [
         {
@@ -7380,94 +7628,32 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/edited_manifest/sqlite"
+          "id": "generated code of an edited manifest fails when it loads"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_edited_manifest_sqlite"
+          "id": "test_generated_code_of_an_edited_manifest_fails_when_it_loads"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/decimal_physical.rs",
           "id": "schema_set_edited_manifest_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-edited-manifest-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DBS-120",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
+        },
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/schema_set_test.go",
           "id": "TestSchemaSetEditedManifestMySQL"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testEditedManifest"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetEditedManifest"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/edited_manifest/mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_edited_manifest_mysql"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/decimal_physical.rs",
           "id": "schema_set_edited_manifest_mysql"
-        }
-      ]
-    },
-    {
-      "id": "schema-set-edited-manifest-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-120",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
+        },
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/schema_set_test.go",
           "id": "TestSchemaSetEditedManifestPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testEditedManifest"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaSetEditedManifest"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/schema-set.mjs",
-          "id": "schema-set/edited_manifest/postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_set.py",
-          "id": "test_edited_manifest_postgres"
         },
         {
           "implementation": "rust",
@@ -7577,7 +7763,9 @@
       "kind": "suite",
       "requirements": [
         "SCH-12",
-        "DBS-156"
+        "DBS-156",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -8529,6 +8717,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -8575,6 +8767,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -8621,6 +8817,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -9013,16 +9213,21 @@
       "id": "statement_events-mysql",
       "kind": "suite",
       "requirements": [
-        "INT-55",
-        "INT-77",
-        "INT-91",
-        "FCV-8",
-        "FCV-9",
+        "DBS-108",
+        "DBS-119",
+        "DBS-120",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
-        "FCV-14"
+        "FCV-14",
+        "FCV-8",
+        "FCV-9",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "SCH-11",
+        "SCH-7"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -9061,16 +9266,21 @@
       "id": "statement_events-postgres",
       "kind": "suite",
       "requirements": [
-        "INT-55",
-        "INT-77",
-        "INT-91",
-        "FCV-8",
-        "FCV-9",
+        "DBS-108",
+        "DBS-119",
+        "DBS-120",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
-        "FCV-14"
+        "FCV-14",
+        "FCV-8",
+        "FCV-9",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "SCH-11",
+        "SCH-7"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -9109,16 +9319,21 @@
       "id": "statement_events-sqlite",
       "kind": "suite",
       "requirements": [
-        "INT-55",
-        "INT-77",
-        "INT-91",
-        "FCV-8",
-        "FCV-9",
+        "DBS-108",
+        "DBS-119",
+        "DBS-120",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
-        "FCV-14"
+        "FCV-14",
+        "FCV-8",
+        "FCV-9",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "SCH-11",
+        "SCH-7"
       ],
       "file": "contracts/fixtures/statement_events/statement_events.json",
       "cases": "$.cases[*].id",
@@ -13719,33 +13934,34 @@
       "id": "connection-statement-timeout-negative-refused",
       "kind": "feature",
       "requirements": [
-        "CFG-6"
+        "CFG-6",
+        "CFG-36"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeoutRejectsNegative"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/negative_statement_timeout"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testNegativeStatementTimeoutIsRejectedBeforeConnecting"
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"negative_statement_timeout\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"negative_statement_timeout\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-negative-refused"
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "negative_statement_timeout"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout_negative_refused"
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "negative_statement_timeout"
         },
         {
           "implementation": "rust",
@@ -14023,33 +14239,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownConnectRefused"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/markdown_connect_refused"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testConnectRefused"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMarkdownConnectionRefusesConnectError"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/connect-refused"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_connect_refused"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_connect_refused"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::markdown_connect_refused"
         }
       ]
     },
@@ -28455,33 +28671,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_keys_test.go",
-          "id": "TestAESWriteUsesKeyOfCurrentVersion"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/write_uses_the_key_of_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_write_uses_key_of_current_version"
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::write_uses_the_key_of_the_current_version"
         },
         {
           "implementation": "rust",
@@ -28513,50 +28769,78 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
           "id": "AesUtilsNativeTest::testNativeStatusRotationAndTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
         }
       ]
     },
@@ -28606,11 +28890,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/generate.rs",
           "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_names_entities_and_reads_settings"
         }
       ]
     },
@@ -30888,50 +31167,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_rewrites_every_aes_column"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_rewrites_every_aes_column"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestRotateAESRowUpdatesAllAESColumnsAndVersion"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_rewrites_every_aes_column"
         }
       ]
     },
@@ -30945,50 +31247,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_aes_rotate.py",
-          "id": "test_rotates_every_row_not_at_the_current_version"
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         }
       ]
     },
@@ -31029,6 +31354,90 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/default_select_set_none.rs",
           "symbol": "default_select_set_none"
+        }
+      ]
+    },
+    {
+      "id": "runtime-model-plans",
+      "kind": "suite",
+      "requirements": [
+        "DBS-112",
+        "PRT-32",
+        "PRT-81",
+        "PRT-82"
+      ],
+      "file": "tests/planner/runtime-model.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_runtime_model_plans_test.go",
+          "symbol": "TestRecipeRuntimeModelPlansNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelPlansRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RuntimeModelPlansRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RuntimeModelPlansRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/runtime_model_plans-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_runtime_model_plans_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/runtime_model_plans_none.rs",
+          "symbol": "runtime_model_plans_none"
+        }
+      ]
+    },
+    {
+      "id": "runtime-model-entities",
+      "kind": "suite",
+      "requirements": [
+        "DBS-65",
+        "DBS-85",
+        "DBS-111",
+        "DBS-112"
+      ],
+      "file": "tests/dbspec/runtime-model.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_runtime_model_entities_test.go",
+          "symbol": "TestRecipeRuntimeModelEntitiesNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelEntitiesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RuntimeModelEntitiesRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RuntimeModelEntitiesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/runtime_model_entities-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_runtime_model_entities_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/runtime_model_entities_none.rs",
+          "symbol": "runtime_model_entities_none"
         }
       ]
     },
@@ -41486,11 +41895,14 @@
       "requirements": [
         "CFG-1",
         "CFG-2",
+        "CFG-5",
         "CFG-11",
+        "CFG-12",
         "CFG-17",
         "CFG-19",
         "CFG-26",
-        "FCV-15"
+        "FCV-15",
+        "PRT-64"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",
@@ -41524,6 +41936,90 @@
           "symbol": "dsn_reject_none"
         }
       ]
+    },
+    {
+      "id": "dsn-reject-checked",
+      "kind": "suite",
+      "requirements": [
+        "CFG-36"
+      ],
+      "file": "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "symbol": "TestRecipeDsnRejectCheckedNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnRejectCheckedRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnRejectCheckedRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "dsn-reject-parameters",
+      "kind": "suite",
+      "requirements": [
+        "CFG-37"
+      ],
+      "file": "contracts/fixtures/dsn_reject/dsn_reject_parameters.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnRejectParametersRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnRejectParametersRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "schema_install-mysql",
