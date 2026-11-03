@@ -5,22 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PDOException;
-use Polyspec\Orm\Dbspec\Dbspec;
 use RuntimeException;
-
-/** The create-from-empty plan of tests/dbspec/plan-cases.json. */
-function verify_errors_plan(): array
-{
-    foreach (plan_vectors()['cases'] as $case) {
-        if ($case['id'] === 'create-from-empty') {
-            $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
-            return [$parsed->plan ?? throw new RuntimeException(
-                'create-from-empty: ' . json_encode($parsed->diagnostics)
-            )];
-        }
-    }
-    throw new RuntimeException('plan-cases.json has no create-from-empty case');
-}
 
 /**
  * FailingPdo on a new SQLite file owned by $run.
