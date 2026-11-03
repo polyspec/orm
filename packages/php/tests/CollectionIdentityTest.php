@@ -36,47 +36,4 @@ class CollectionIdentityTest extends TestCase
         self::assertIsArray($fixture);
         return $fixture;
     }
-
-    // Requirements: INT-62, PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
-    public function testToArrayPreservesCollectionModelOrder(): void
-    {
-        $first = new class extends Model {
-            public static function meta(): array
-            {
-                return ['entity' => 'first'];
-            }
-
-            public function toArray(): array
-            {
-                return ['entity' => 'first'];
-            }
-        };
-        $second = new class extends Model {
-            public static function meta(): array
-            {
-                return ['entity' => 'second'];
-            }
-
-            public function toArray(): array
-            {
-                return ['entity' => 'second'];
-            }
-        };
-        $collection = new Collection();
-        $collection->put('first', $first);
-        $collection->put('second', $second);
-
-        self::assertCount(2, $collection);
-        self::assertSame($first, $collection->first());
-        self::assertSame($first, $collection->get('first'));
-        self::assertSame($second, $collection->get('second'));
-        self::assertSame(['first', 'second'], $collection->keys());
-        self::assertSame([$first, $second], $collection->all());
-        self::assertSame([['first', $first], ['second', $second]], $collection->entries());
-        self::assertSame([['entity' => 'first'], ['entity' => 'second']], $collection->toArray());
-        $db = new Db(null, 'mysql', new Config(), new \DateTimeZone('UTC'));
-        self::assertSame($collection, $collection->connect($db));
-        self::assertSame($db, $first->connection());
-        self::assertSame($db, $second->connection());
-    }
 }

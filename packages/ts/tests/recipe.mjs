@@ -1992,6 +1992,11 @@ const TABLE_OPS = {
     await m.update(s.optimistic === true);
     return {};
   },
+  // connect of a bound collection (INT-85): true when it returns that collection.
+  'collection.connect': (s, context) => {
+    const rows = refOf(s.row, context);
+    return { value: { bool: rows.connect(connectionOf(s, context)) === rows } };
+  },
   async 'model.delete'(s, context) {
     if (s.row !== undefined && s.connection !== undefined) connectionOf(s, context);
     if (s.row !== undefined && refOf(s.row, context) instanceof Collection) {

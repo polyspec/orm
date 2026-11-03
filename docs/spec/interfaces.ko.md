@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: f7a38b5215de3bc3deb45bafdc90009892d8634ecab95822a6f526ef48095232 -->
+<!-- source-sha256: c8d8124453ffef9f5a834c6298a2ffef7ebbfeeb07f07042afc607519efc94d3 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -227,6 +227,7 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust�
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
 - **INT-62** `Collection<T>`: 순서가 있는 행, 길이, first, key lookup
+- **INT-62a** PHP-extension package `polyspec/orm-php-ext`의 native collection은 시험이 확인하는 다음을 보장한다: 이미 있는 key의 `put`은 그 자리의 model을 바꾸고, `toJson`과 `jsonSerialize`는 collection 순서로 model을 내주며, connection을 주어 호출한 collection은 `connect`처럼 모든 model을 연결하고 그 collection을 반환한다.
 - **INT-63** `Key`: 논리 타입 tag와 값
 - **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 - **INT-80** `Collection.get(key)`는 `key`와 같은 타입과 값의 key를 가진 모델을 돌려준다. 그 key를 가진 모델이 없으면 결과는 없음이다: Go는 오류 없이 zero value, PHP는 `null`, TypeScript는 `undefined`, Python은 `None`이다. SQL NULL key는 `CODEC_DECODE`로 실패하며, Go는 변환할 수 없는 key에 대해 `KeyOf`의 변환 오류를 반환한다.

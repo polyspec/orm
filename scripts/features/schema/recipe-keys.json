@@ -140,6 +140,12 @@
       "op",
       "value"
     ],
+    "collection.connect": [
+      "connection",
+      "expect",
+      "op",
+      "row"
+    ],
     "collection.key": [
       "expect",
       "keys",

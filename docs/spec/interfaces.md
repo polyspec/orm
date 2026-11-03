@@ -226,6 +226,7 @@ A relation result is either one row or a collection according to the schema. The
 ## 9. Collection, key, and page — IF-25 to IF-27
 
 - **INT-62** `Collection<T>`: ordered rows, length, first, key lookup
+- **INT-62a** PHP-extension package `polyspec/orm-php-ext` native collection guarantees what its tests assert: `put` of a key already present replaces the model in its place, `toJson` and `jsonSerialize` give the models in collection order, and the collection called with a connection connects every model and returns the collection as `connect` does.
 - **INT-63** `Key`: logical type tag and value
 - **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 - **INT-80** `Collection.get(key)` returns the model whose key has the same type and value as `key`. When no model has the key, the result is none: the zero value with no error in Go, `null` in PHP, `undefined` in TypeScript and `None` in Python. A SQL NULL key fails with `CODEC_DECODE`; Go returns the conversion error of `KeyOf` for a key it cannot convert.
