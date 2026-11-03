@@ -7790,7 +7790,8 @@
         "SCH-12",
         "DBS-156",
         "DBS-100",
-        "DBS-103"
+        "DBS-103",
+        "DBS-99"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -15631,11 +15632,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generated manifest text and hash match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadRebuildsTheModelOfTheManifestText"
         },
         {
           "implementation": "php",
@@ -31162,7 +31158,9 @@
         "DBS-112",
         "PRT-32",
         "PRT-81",
-        "PRT-82"
+        "PRT-82",
+        "DIA-24",
+        "PRT-33"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -31204,7 +31202,9 @@
         "DBS-65",
         "DBS-85",
         "DBS-111",
-        "DBS-112"
+        "DBS-112",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/runtime-model.json",
       "cases": "$.cases[*].id",

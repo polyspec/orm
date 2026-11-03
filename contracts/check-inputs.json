@@ -2759,7 +2759,9 @@
         "tests/planner/runtime-model.json",
         "tests/planner/runtime-model.dbs",
         "tests/dbspec/runtime-model.json",
-        "tests/dbspec/runtime-model-shop.dbs"
+        "tests/dbspec/runtime-model-shop.dbs",
+        "tests/dbspec/runtime-model-accounts.dbs",
+        "tests/dbspec/runtime-model-members.dbs"
       ]
     },
     "model-types-php-extension-check": {

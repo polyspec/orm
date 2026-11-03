@@ -1347,7 +1347,8 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     });
     let Some(built) = loaded else {
         let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
-        return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+        let named = want["rule"].as_str().is_none_or(|rule| error.to_string().contains(rule));
+        return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
         if built.manifest_hash != hash {
@@ -1364,9 +1365,26 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
 /// The dbspec.runtime_model op (FCV-4): the entity names of the runtime model of the documents, and the values that the expect
 /// names of the entities and fields it names.
 fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
-    let (_, documents) = read_documents(dir, &step_documents(step))?;
+    let owned = step_documents(step);
+    let paths: Vec<String> = owned.iter().cloned().chain(strings_of(&step["external"])).collect();
+    let (_, mut documents) = read_documents(dir, &paths)?;
+    for document in documents.iter_mut().skip(owned.len()) {
+        document.external = true;
+    }
     let refs: Vec<&Document> = documents.iter().collect();
     let model = dbspec::runtime_model(&refs).map_err(|errors| format!("{errors:?}"))?;
+    let built = dbspec::manifest(&refs).map_err(|errors| format!("{errors:?}"))?;
+    if let Some(lines) = want["manifest_text"].as_array() {
+        let text: String = lines.iter().filter_map(Value::as_str).map(|line| format!("{line}\n")).collect();
+        if built.manifest_text != text {
+            return Err(format!("manifest text {:?}, want {text:?}", built.manifest_text));
+        }
+    }
+    if let Some(hash) = want["manifest_hash"].as_str() {
+        if built.manifest_hash != hash {
+            return Err(format!("manifest hash {}, want {hash}", built.manifest_hash));
+        }
+    }
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
     if json!(names) != want["entities"] {
         return Err(format!("entities {names:?}, want {}", want["entities"]));
@@ -1385,7 +1403,7 @@ fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), St
             .map(|f| {
                 let view = json!({
                     "type": f.ty.name(), "nullable": f.nullable, "default": f.default.is_some(),
-                    "default_now": f.default == Some(dbspec::FieldDefault::Now), "codec": f.codec,
+                    "default_now": f.default == Some(dbspec::FieldDefault::Now), "select_explicit": f.select_explicit, "codec": f.codec,
                     "blind_index": f.blind_index.clone().unwrap_or_default(), "primary_key": f.primary_key, "foreign_key": f.foreign_key,
                 });
                 (f.name.clone(), view)

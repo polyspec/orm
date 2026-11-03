@@ -107,6 +107,17 @@ final class OrmGenTest extends TestCase
         );
     }
 
+    public function testGeneratedI16AccessorsAreInt(): void
+    {
+        $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary "
+            . "key (seq)\n}\n";
+        $out = self::$work . '/i16';
+        generateModels(['small.dbs' => $doc], "$out-source", $out, 'Polyspec\\Orm\\Tests\\Small');
+        $body = (string) file_get_contents("$out/SmallValue.php");
+        self::assertStringContainsString('public function getLevel(): int', $body);
+        self::assertStringContainsString('public function getRank(): ?int', $body);
+    }
+
     // Requirements: DBS-112, DBS-116, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
     public function testGeneratedFieldTypesFollowTheRuntimeModel(): void
     {
