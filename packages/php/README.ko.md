@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: c51125ade0ed2c2c6336f8f59aa3f348efcfcde22cdedbe9add53af1812e1087 -->
+<!-- source-sha256: 9439bed46fda27072f4a910513e9d0cad6fa0faa823815ee77a784f4b48404ae -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
@@ -32,7 +32,7 @@ extension은 없다. PHP 8.4 이상. Version 0.0.21. DSN의 scheme이 PDO driver
   어떤 문장보다 먼저 `SCHEMA_HASH_MISMATCH`로 실패한다.
 - `tests/` — `ModelTest.php`(모델 통합 test), `RuntimeModelTest.php`와
   `RuntimeDbTest.php`(runtime model, 설치, audit), `SchemaSetTest.php`(한 process의 여러
-  문서 묶음), `MysqlTlsTest.php`(DSN parameter와 MySQL TLS), `DriverErrorTest.php`, `RollbackTest.php`,
+  문서 묶음), `DriverErrorTest.php`, `RollbackTest.php`,
   `EngineTest.php`, `HostcodecTest.php`, `CodecRecipeTest.php`(코덱 recipe `tests/codec/codec.json`), `DsnTest.php`,
   `RelationKeysTest.php`, `PerfGateTest.php`, `OrmGenTest.php`(command line), 그리고 `Dbspec/`의 `dbspec_*`
   test. conformance runner는

@@ -1,5 +1,5 @@
 use polyspec_orm_build::{
-    catalog::{CatalogConnection, MutationPhase, TableMetadata, TableRef},
+    catalog::{CatalogConnection, MutationPhase, TableRef},
     tool_db::{self, GridCell, P},
 };
 use std::path::Path;
@@ -40,41 +40,10 @@ async fn close_dialect_fixture(
 }
 
 #[tokio::test]
-// Requirements: INT-123.
-async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let path = std::env::temp_dir().join(format!("orm-catalog-auto-key-{}.sqlite", std::process::id()));
-    let _fixture = polyspec_orm_testcase::SqliteFile::own(path.clone(), "SQLite fixture path must be unowned before this run");
-    let dsn = format!("sqlite://{}", path.display());
-    let (database, mut seed, _) = tool_db::open(&dsn).await.expect("SQLite fixture connection");
-    seed.exec("CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)", &[]).await.expect("create automatic-key table");
-    let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
-    let table = TableRef { namespace: catalog.current_namespace().await.expect("namespace"), name: "generated".into() };
-    let metadata = catalog.describe_table(&table).await.expect("automatic-key metadata");
-    assert_eq!(metadata.columns.len(), 2);
-    assert_eq!(metadata.columns[0].name, "id");
-    assert_eq!(metadata.columns[0].native_type, "INTEGER");
-    assert!(!metadata.columns[0].nullable);
-    assert!(!metadata.columns[0].generated);
-    assert!(metadata.columns[0].automatic_key);
-    assert_eq!(metadata.columns[0].default_expression, None);
-    assert!(!metadata.columns[0].expression_default);
-    assert_eq!(metadata.columns[1].name, "payload");
-    assert_eq!(metadata.columns[1].native_type, "TEXT");
-    assert!(!metadata.columns[1].nullable);
-    let result = insert_without_hooks(&catalog, &metadata, &[("payload".into(), P::S("generated".into()))]).await.expect("insert with database-owned key");
-    assert_eq!(result.rows, vec![vec![GridCell::Integer(1), GridCell::Text("generated".into())]]);
-    let stored = catalog.table_page(&table, 2, 0).await.expect("stored row");
-    assert_eq!(stored.result.rows, result.rows);
-    catalog.close().await;
-    seed.exec("DROP TABLE generated", &[]).await.expect("remove owned table");
-    drop(seed);
-    database.close().await;
-}
-
-#[tokio::test]
-// Requirements: DBS-113, INT-34.
-async fn generated_keys_return_the_inserted_row_on_each_database() {
+// Runtime-unique (FCV-14): the phase publisher, the cancellation flag and inserts joined on one connection exist only in the
+// Rust insert_row; what any runtime answers is the recipe cases generated_keys and generated_key_lifecycle.
+// Requirements: INT-123a.
+async fn insert_phases_and_joined_keys_follow_the_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("generated identity deadline");
 }
@@ -131,23 +100,6 @@ async fn check() {
         if dialect != "sqlite" && !schema_lock(&catalog, &dsn, &descriptor, &name, dialect).await {
             failures.push(format!("{dialect}: generated insert must lock the table before publishing Locked"));
         }
-        let default_name = format!("{name}_defaults");
-        seed.exec(
-            &format!(
-                "CREATE TABLE {default_name}(tenant BIGINT NOT NULL,seq VARCHAR(30) NOT NULL DEFAULT 'generated',n BIGINT NOT NULL,PRIMARY KEY(tenant,seq)){}",
-                if dialect == "mysql" { " ENGINE=InnoDB" } else { "" }
-            ),
-            &[],
-        )
-        .await
-        .expect("owned default composite-key fixture");
-        let default_table = TableRef { namespace: table.namespace.clone(), name: default_name.clone() };
-        let metadata = catalog.describe_table(&default_table).await.unwrap();
-        let result = insert_without_hooks(&catalog, &metadata, &[("tenant".into(), P::I(2)), ("n".into(), P::I(50))]).await;
-        if !matches!(result, Ok(ref value) if value.rows == vec![vec![GridCell::Integer(2),GridCell::Text("generated".into()),GridCell::Integer(50)]]) {
-            failures.push(format!("{dialect}: composite default key mismatch"));
-        }
-        seed.exec(&format!("DROP TABLE {default_name}"), &[]).await.expect("remove default composite-key fixture");
         failures.extend(expression::check(&mut catalog, &mut seed, &table, &name, dialect).await);
         close_dialect_fixture(catalog, seed, database, &name, dialect, "remove owned table, even after a behavioral Red").await;
     }
@@ -156,9 +108,6 @@ async fn check() {
 
 async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<(), String> {
     let descriptor = catalog.describe_table(table).await?;
-    if !descriptor.columns[0].automatic_key || descriptor.columns[1].default_expression.is_none() {
-        return Err("missing identity/default metadata".into());
-    }
     let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(|_| {});
     let left = [("n".into(), P::I(20))];
     let right = [("n".into(), P::I(30))];
@@ -175,25 +124,7 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     {
         return Err("concurrent inserts returned unrelated rows".into());
     }
-    let default = catalog.insert_row(&descriptor, &[], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await?;
-    if default.rows.len() != 1 || default.rows[0][1..] != [GridCell::Integer(7), GridCell::Integer(8)] {
-        return Err("default-only insert mismatch".into());
-    }
     let before = catalog.table_page(table, 10, 0).await?;
-    if catalog
-        .insert_row(&descriptor, &[("n".into(), P::I(20))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-        .await
-        .is_ok()
-    {
-        return Err("unique constraint was ignored".into());
-    }
-    if catalog
-        .insert_row(&descriptor, &[("n".into(), P::S("40".into()))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-        .await
-        .is_ok()
-    {
-        return Err("coercion was accepted".into());
-    }
     let cancelled = Arc::new(AtomicBool::new(false));
     let flag = cancelled.clone();
     let phases = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -210,7 +141,7 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     }
     let after = catalog.table_page(table, 10, 0).await?;
     if before.result.rows != after.result.rows {
-        return Err("rejected/cancelled insert changed committed rows".into());
+        return Err("cancelled insert changed committed rows".into());
     }
     Ok(())
 }
@@ -232,8 +163,4 @@ async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec
     assert!(matches!(result, Err(ref error) if error.starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
     let held = held.lock().unwrap().unwrap_or(false);
     held
-}
-
-async fn insert_without_hooks(catalog: &CatalogConnection, metadata: &TableMetadata, values: &[(String, P)]) -> Result<tool_db::GridQueryResult, String> {
-    catalog.insert_row(metadata, values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), Arc::new(|| Ok(()))).await
 }
