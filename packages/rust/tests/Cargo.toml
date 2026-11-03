@@ -178,6 +178,24 @@ name = "dbspec_render_physical_sqlite"
 path = "tests/dbspec_render_physical_sqlite.rs"
 harness = false
 
+# Each case of the recipe tests/dbspec/set-decimal.json on mysql, as dbspec_set_decimal_mysql::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_mysql"
+path = "tests/dbspec_set_decimal_mysql.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/set-decimal.json on postgres, as dbspec_set_decimal_postgres::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_postgres"
+path = "tests/dbspec_set_decimal_postgres.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/set-decimal.json on sqlite, as dbspec_set_decimal_sqlite::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_sqlite"
+path = "tests/dbspec_set_decimal_sqlite.rs"
+harness = false
+
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
 # statement_events_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]

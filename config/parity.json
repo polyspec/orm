@@ -18272,62 +18272,122 @@
       ]
     },
     {
-      "id": "dbspec-set-decimal",
-      "kind": "feature",
+      "id": "dbspec-set-decimal-mysql",
+      "kind": "suite",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalMysql"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testDecimalDocument"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-decimal.mjs",
-          "id": "decimal_schema.dbs"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/sqlite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/mysql"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/postgres"
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-          "id": "DecimalModelDbNativeTest::testNativeRoundTrip"
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/decimal_model_db.py",
-          "id": "test_round_trip"
+          "test": "packages/python/tests/test_set_decimal_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_mysql"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+          "symbol": "dbspec_set_decimal_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_postgres"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+          "symbol": "dbspec_set_decimal_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_sqlite"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+          "symbol": "dbspec_set_decimal_sqlite"
         }
       ]
     },

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 680aea120fa52d8b9252be187f08529733efbdf9271ee93ca09a619176d027ad -->
+<!-- source-sha256: bc7c04fb11cc67961c60e889df3267ad4faafcecc5670d0c7a44ef8aeaa7c0ce -->
 # 변경 이력
 
 ## Unreleased
 
+- `contracts/fixtures/dbspec-set.json`의 decimal document set은 각 runtime의 native 시험 대신 recipe `tests/dbspec/set-decimal.json`이며, 여섯 runtime과 세 database에서 set을 설치하고 두 금액을 정확히 만들고 읽는다(DBS-108, SCH-7).
 - `tests/dbspec/ddl.json`의 렌더링된 statement를 실제로 실행하는 시험은 각 runtime의 native 시험 대신 op `dbspec.ddl_behavior`를 쓰는 recipe `tests/dbspec/render-physical.json`이며, 여섯 runtime과 세 database에서 돈다(DIA-113).
 - SHOW CREATE TABLE check의 MySQL introspection은 여섯 runtime 모두에서 op `dbspec.introspect_shown`을 쓰는 recipe `tests/dbspec/show-create-introspect.json`이고, 그 recipe가 `tests/dbspec/show-create.json`의 각 case가 기대하는 것을 담는다
 - DIA-191의 SQLite unsupported column 사유는 여섯 runtime 모두에서 op `dbspec.introspect_sqlite`를 쓰는 recipe `tests/dbspec/introspect-messages.json`이고, 각 runtime은 unsupported 객체의 전체 목록을 비교한다. 한 runtime의 시험은 없앴다
