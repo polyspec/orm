@@ -23,6 +23,27 @@ use ReflectionMethod;
 #[Small]
 final class ModelQueriesWritesNativeTest extends TestCase
 {
+    public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
+    {
+        self::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        $extension = getenv('POLYSPEC_ORM_EXTENSION');
+        self::assertIsString($extension, 'POLYSPEC_ORM_EXTENSION is required to run the native child');
+        $environment = getenv();
+        $environment['ORM_PHP_MODE'] = 'extension';
+        [$status, $stdout, $stderr] = coverageProcess(
+            [
+                PHP_BINARY,
+                '-d',
+                "extension=$extension",
+                '-r',
+                'exit((new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);',
+            ],
+            dirname(__DIR__, 3),
+            $environment,
+        );
+        self::assertSame(0, $status, "native extension child failed: $stderr$stdout");
+    }
+
     public function testNativeModelQueryBuildsAndAssemblesACollection(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());

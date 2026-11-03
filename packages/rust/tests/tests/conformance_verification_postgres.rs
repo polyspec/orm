@@ -1,4 +1,4 @@
-// Requirements: DIA-18, DIA-56, DSL-137, PRT-77.
+// Requirements: DIA-18, DIA-24, DIA-56, DSL-137, INT-39, PRT-77.
 //! The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on postgres
 //! (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 
