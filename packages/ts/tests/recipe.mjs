@@ -79,6 +79,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
+          else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
@@ -145,6 +146,32 @@ async function checkMarkdownConnect(step, database) {
     await server.close();
   }
   if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
+// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+async function checkMarkdownSession(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).on('line', line => {
+      received.push(line);
+      if (received.length <= step.replies.length) socket.write(`${step.replies[received.length - 1]}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  let failure;
+  try {
+    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+    await db.transaction(() => undefined).catch(error => { failure = error; });
+  } finally {
+    await db.close();
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, step.messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(step.messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
   if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
 }
@@ -667,8 +694,13 @@ const OPS = {
     await context.catalog.close();
     return {};
   },
-  async 'catalog.reconnect'(_, context) {
-    context.catalog = await connectCatalog(context.dsn);
+  async 'catalog.reconnect'(s, context) {
+    let dsn = context.dsn;
+    if (s.user_from_database !== undefined) {
+      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    }
+    context.catalog = await connectCatalog(dsn);
     context.closed = false;
     context.namespace = await context.catalog.currentNamespace();
     return {};
@@ -2454,12 +2486,37 @@ async function withProcessZone(zone, work) {
   }
 }
 
+// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+function refusedSurface(surface, db) {
+  const empty = () => undefined;
+  const calls = {
+    audit: () => db.transaction(empty, { audit: { actor: 'tester' } }),
+    isolation: () => db.transaction(empty, { isolation: 'serializable' }),
+    timeout_ms: () => db.transaction(empty, { timeoutMs: 100 }),
+    get_query: () => new Slots().connect(db).getQuery(),
+    subscribe: async () => db.subscribe(empty),
+    lock: () => db.utils().lock('k'),
+    set_local: () => db.utils().setLocal('k', 'v'),
+    local: () => db.utils().local('k'),
+    backend_waiting_for_lock: () => db.utils().backendWaitingForLock(),
+    privileges: () => db.utils().privileges().inspectTable('public.items'),
+    aes_status: () => db.utils().aes().status(null, null),
+    aes_rotate: () => db.utils().aes().rotate(null, null),
+    schema_install: () => db.utils().schema().install(null),
+    schema_evolution: () => db.utils().schema().addTablesAndColumns(null),
+    schema_exists: () => db.utils().schema().exists('orm'),
+  };
+  if (calls[surface] === undefined) throw new Error(`markdown.send surface ${surface} has no call in the TypeScript cases`);
+  return calls[surface]();
+}
+
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
   await checkFirst(async db => {
-    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    if (step.surface !== undefined) await refusedSurface(step.surface, db);
+    else if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
 }
@@ -2490,13 +2547,19 @@ async function checkApplyFault(step, bound, database) {
   let reads = 0;
   let failAt = 0;
   let cause;
+  let fail = new Map();
+  let noRow = [];
   const connection = {
-    exec: sql => db.exec(sql),
+    exec(sql) {
+      if (fail.has(sql)) throw fail.get(sql);
+      return db.exec(sql);
+    },
     prepare(sql) {
       if (sql.startsWith('SELECT type, name, tbl_name')) {
         reads++;
         if (reads === failAt) throw cause;
       }
+      if (noRow.includes(sql)) return { all: () => [], get: () => undefined, setReturnArrays: () => undefined };
       return db.prepare(sql);
     },
   };
@@ -2507,11 +2570,28 @@ async function checkApplyFault(step, bound, database) {
       cause = new Error('catalog read failed');
       failAt = reads + step.fail_catalog_read;
     }
+    noRow = step.no_row_queries ?? [];
+    fail = new Map((step.fail_statements ?? []).map(f => [
+      f.statement,
+      Object.assign(new Error(f.message), f.sqlite_result === undefined ? {} : { errcode: f.sqlite_result }),
+    ]));
     const kinds = [];
     const call = step.call === 'rollback' ? rollbackPlans : applyPlans;
-    const failure = await call(connection, 'sqlite', plans, now, event => { kinds.push(event.kind); }).then(() => null, error => error);
-    assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
-    assert.equal(failure.code, expect.code);
+    const events = event => {
+      kinds.push(event.kind);
+      if (step.stop_on_applied !== undefined && event.kind === 'applied') throw new Error(step.stop_on_applied);
+    };
+    const error = await call(connection, 'sqlite', plans, now, events).then(() => null, failed => failed);
+    assert.notEqual(error, null, 'the call succeeded');
+    // An AggregateError holds the failure, then the cleanup errors in order (PLN-99, PLN-106).
+    const [failure, ...cleanup] = error instanceof AggregateError ? error.errors : [error];
+    if (expect.code !== undefined) {
+      assert(failure instanceof DbspecApplyError, `the call returned ${failure}, want the code ${expect.code}`);
+      assert.equal(failure.code, expect.code);
+    }
+    if (expect.failure !== undefined) assert.equal(failure.message, expect.failure);
+    if (expect.failure_ends_with !== undefined) assert.ok(failure.message.endsWith(expect.failure_ends_with), failure.message);
+    if (expect.cleanup !== undefined) assert.deepEqual(cleanup.map(e => e.message), expect.cleanup);
     if (cause !== undefined) assert.equal(failure.cause, cause);
     if (expect.history_state !== undefined) assert.equal(db.prepare('SELECT state FROM "dbspec$plans"').get().state, expect.history_state);
     for (const kind of expect.absent_events ?? []) assert.equal(kinds.includes(kind), false, `the events hold ${kind}`);

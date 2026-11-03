@@ -2001,12 +2001,6 @@ class Db:
                 push(value)
             elif source == "audit":
                 push(_audit_value(slot, audit))
-            elif source == "secret":
-                if slot["name"] != "aes" or self.aes_key == "":
-                    raise OrmError(
-                        codes.CONFIG, f"secret {slot['name']} is not configured"
-                    )
-                push(self.aes_key, "$SECRET")
             elif source == "config":
                 if slot["name"] != "aes_version":
                     raise OrmError(

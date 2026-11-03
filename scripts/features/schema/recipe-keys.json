@@ -41,6 +41,14 @@
       "reply",
       "token"
     ],
+    "markdown.session": [
+      "corpus",
+      "expect",
+      "messages",
+      "op",
+      "replies",
+      "token"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -56,9 +64,12 @@
       "call",
       "expect",
       "fail_catalog_read",
+      "fail_statements",
+      "no_row_queries",
       "op",
       "plan",
-      "sql"
+      "sql",
+      "stop_on_applied"
     ],
     "dbspec.ddl_behavior": [
       "case",
@@ -186,7 +197,8 @@
       "op",
       "operator",
       "params",
-      "process_zone"
+      "process_zone",
+      "surface"
     ],
     "model.assign": [
       "column",
@@ -641,7 +653,8 @@
       "op"
     ],
     "catalog.reconnect": [
-      "op"
+      "op",
+      "user_from_database"
     ],
     "catalog.revision": [
       "as",

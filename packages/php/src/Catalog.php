@@ -19,6 +19,8 @@ final class Catalog
     private const SNAPSHOT_BYTES = 8388608;
     private const DEFAULT_ROWS = 100000;
     private const DEFAULT_BYTES = 67108864;
+    /** Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
+    private const STREAM_END_MARGIN_SECONDS = 6;
     private const SQL_BYTES = 262144;
     private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
@@ -72,8 +74,14 @@ final class Catalog
 
     private bool $closed = false;
 
+    /** @var int The server's net_write_timeout, read once at connect, in seconds. */
+    private int $netWriteTimeout = 0;
+
+    /** Whether a stop left a stream unread, so that the server has ended this connection (INT-157). */
+    private bool $streamLeft = false;
+
     private function __construct(
-        private readonly Db $db,
+        private Db $db,
         private readonly string $dialect,
         private readonly string $dsn,
     ) {
@@ -99,7 +107,18 @@ final class Catalog
                 throw new OrmException(Code::CONFIG, 'CATALOG_SQLITE_FILE: expected an existing regular file');
             }
         }
-        return new self(Orm::connect($dsn, new Config()), $driver, $dsn);
+        $catalog = new self(Orm::connect($dsn, new Config()), $driver, $dsn);
+        if ($driver === 'mysql') {
+            try {
+                $catalog->netWriteTimeout = (int) $catalog->db->pdo()
+                    ->query('SELECT @@SESSION.net_write_timeout')->fetchColumn();
+            } catch (\PDOException $e) {
+                $mapped = $catalog->db->driverError($e);
+                $catalog->db->close();
+                throw $mapped;
+            }
+        }
+        return $catalog;
     }
 
     /** The database of the connection: mysql, postgres or sqlite. */
@@ -115,7 +134,7 @@ final class Catalog
             return;
         }
         $this->closed = true;
-        $this->db->close();
+        $this->closeConnection();
     }
 
     /**
@@ -868,6 +887,31 @@ final class Catalog
      * @param \Closure(): T $read
      * @return T
      */
+    /**
+     * Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming result
+     * whenever a statement or its connection closes, so the read stops reading instead. The server then fails its write
+     * and ends the connection after net_write_timeout. This is a timer because no orthodox mechanism exists: the busy
+     * connection cannot be asked and no second one can be opened. If the server has not ended the stream by then, the
+     * close reads the rest, which is slower and still correct.
+     */
+    private function leaveStream(): void
+    {
+        $this->streamLeft = true;
+        sleep($this->netWriteTimeout + self::STREAM_END_MARGIN_SECONDS);
+    }
+
+    /** Closes the connection; the one that a left stream has lost has nothing to report. */
+    private function closeConnection(): void
+    {
+        try {
+            $this->db->close();
+        } catch (OrmException | \PDOException $e) {
+            if (!$this->streamLeft) {
+                throw $e;
+            }
+        }
+    }
+
     private function readStatement(\PDOStatement $st, ?int $connectionId, \Closure $read): mixed
     {
         $stopped = false;
@@ -876,7 +920,11 @@ final class Catalog
         } catch (OrmException $stop) {
             $stopped = $connectionId !== null && $stop->code_ === Code::CATALOG_LIMIT;
             if ($stopped) {
-                $this->killQuery($connectionId);
+                try {
+                    $this->killQuery($connectionId);
+                } catch (OrmException | \PDOException) {
+                    $this->leaveStream();
+                }
             }
             throw $stop;
         } finally {
@@ -1144,6 +1192,11 @@ final class Catalog
     private function session(bool $readOnly, \Closure $fn): mixed
     {
         $this->assertOpen();
+        if ($this->streamLeft) {
+            $this->closeConnection();
+            $this->db = Orm::connect($this->dsn, new Config());
+            $this->streamLeft = false;
+        }
         $pdo = $this->db->pdo();
         try {
             if ($this->dialect === 'sqlite') {
@@ -1156,6 +1209,9 @@ final class Catalog
         try {
             $value = $fn($pdo);
         } catch (\Throwable $cause) {
+            if ($this->streamLeft) {
+                throw $cause;
+            }
             $this->rollback($pdo, $cause);
         }
         if ($readOnly) {

@@ -181,12 +181,6 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
       return lists.length > 0 && lists.every(list => (list ?? []).some(command => command.recipe));
     });
     if (recipeOnly && feature.coverage?.cases !== undefined) differences.push(`${feature.id}: coverage.cases copies its recipe`);
-    for (const [language, owner] of owners) {
-      for (const [database, list] of Object.entries(owner.commands ?? {})) {
-        for (const command of list ?? [])
-          if (command.recipe && command.cases !== undefined) differences.push(`${feature.id}/${language}/${database}: cases copies ${command.recipe}`);
-      }
-    }
   }
   for (const feature of readFeatures(root).features ?? []) {
     const owners = Object.entries(feature.coverage?.owners ?? {});

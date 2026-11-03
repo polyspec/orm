@@ -35,19 +35,7 @@ async fn main() -> polyspec_orm::Result<()> {
     };
     let db = model::connect(&dsn(), 1, config).await?;
     let _last_statement = db.subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
-        // An event reveals a secret bind, so a native rerun uses the real key.
-        let binds = e
-            .binds
-            .iter()
-            .map(|p| {
-                if *p == Param::Str(polyspec_orm::db::SECRET_MASK.into()) {
-                    Param::Str(AES_KEY.into())
-                } else {
-                    p.clone()
-                }
-            })
-            .collect();
-        *hook.lock().unwrap() = (e.sql.to_owned(), binds);
+        *hook.lock().unwrap() = (e.sql.to_owned(), e.binds.to_vec());
         Ok(())
     })?;
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)

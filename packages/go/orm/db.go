@@ -47,9 +47,6 @@ type Config struct {
 	AuditSource func(ctx context.Context) (map[string]any, error)
 }
 
-// Secret replaces a secret bind wherever binds are shown.
-const Secret = "$SECRET"
-
 // NowBind replaces an executor clock bind wherever binds are shown.
 const NowBind = "$NOW"
 

@@ -303,5 +303,16 @@
     "diagnostic": "mismatched types",
     "sourceLine": "author().name(\"a\").or(&model::User::new()).gets().await",
     "source": "polyspec_orm::models!();\nasync fn used(db: &polyspec_orm::Db) {\n    let author = || model::Author::new().connect(db);\n    let _ = author;\n    let rows: Vec<model::Author> = author().name(\"a\").or(&model::User::new()).gets().await;\n    let _ = rows;\n}\nfn main() { let _ = used; }\n"
+  },
+  {
+    "id": "int78-bound-param-write-e0594",
+    "requirements": [
+      "INT-78"
+    ],
+    "expect": "error",
+    "code": "E0594",
+    "diagnostic": "cannot assign",
+    "sourceLine": "*params.get(0).expect(\"bound\") = polyspec_orm::Param::from(\"changed\");",
+    "source": "polyspec_orm::models!();\nfn hook(params: &mut polyspec_orm::RequestParams) {\n    *params.get(0).expect(\"bound\") = polyspec_orm::Param::from(\"changed\");\n}\nfn main() { let _ = hook; }\n"
   }
 ]

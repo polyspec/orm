@@ -793,6 +793,7 @@
             "dsn.connect",
             "dsn.sqlite_file",
             "markdown.connect",
+            "markdown.session",
             "keyring.versions",
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
@@ -994,6 +995,9 @@
         },
         {
           "$ref": "#/$defs/ops/markdown.send"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.session"
         },
         {
           "$ref": "#/$defs/ops/model.assign"
@@ -1695,6 +1699,19 @@
           }
         }
       },
+      "markdown.session": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "replies", "messages", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.session" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "replies": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener answers, in order, one for each line it receives." },
+          "messages": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener must have received when the connection closes." },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
       "markdown.connect": {
         "type": "object",
         "required": ["op", "corpus", "token", "reply", "received", "expect"],
@@ -1776,7 +1793,7 @@
         }
       },
       "dbspec.apply_fault": {
-        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. Statements of fail_statements fail in the call, and stop_on_applied stops the call at its first applied event. The result is the code of the apply error, its failure and its cleanup errors (PLN-92, PLN-93, PLN-96, PLN-106).",
         "type": "object",
         "required": [
           "op",
@@ -1811,6 +1828,39 @@
             "type": "integer",
             "minimum": 1
           },
+          "fail_statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "statement",
+                "message"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "statement": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sqlite_result": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "no_row_queries": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "stop_on_applied": {
+            "type": "string"
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -1820,16 +1870,27 @@
             "properties": {
               "none": {
                 "type": "object",
-                "required": [
-                  "code"
-                ],
                 "additionalProperties": false,
                 "properties": {
                   "code": {
                     "enum": [
                       "verify",
-                      "drift"
+                      "drift",
+                      "locked",
+                      "chain"
                     ]
+                  },
+                  "failure_ends_with": {
+                    "type": "string"
+                  },
+                  "failure": {
+                    "type": "string"
+                  },
+                  "cleanup": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "history_state": {
                     "type": "string"
@@ -3163,11 +3224,23 @@
             "properties": {
               "begin": true
             }
+          },
+          {
+            "required": [
+              "surface"
+            ],
+            "properties": {
+              "surface": true
+            }
           }
         ],
         "properties": {
           "op": {
             "const": "markdown.send"
+          },
+          "surface": {
+            "enum": ["audit", "isolation", "timeout_ms", "get_query", "subscribe", "lock", "set_local", "local", "backend_waiting_for_lock", "privileges", "aes_status", "aes_rotate", "schema_install", "schema_evolution", "schema_exists"],
+            "description": "A public call that has no form on a markdown connection (DIA-183 to DIA-189), run in place of a statement."
           },
           "column": {
             "type": "string",
@@ -6367,6 +6440,11 @@
         "properties": {
           "op": {
             "const": "catalog.reconnect"
+          },
+          "user_from_database": {
+            "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
+            "type": "string",
+            "minLength": 1
           }
         }
       },

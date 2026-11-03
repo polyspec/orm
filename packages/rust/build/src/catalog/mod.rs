@@ -170,7 +170,17 @@ impl CatalogConnection {
     /// The read-only connection of a read, which closes when it drops.
     async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
         read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
-        let mut connection = Conn::acquire(&self.pool).await.map_err(|error| error.to_string())?;
+        // The socket that a budget stop closed holds its place in max_user_connections until the server ends that thread,
+        // which it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of CFG-35 at most.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        let mut acquired = Conn::acquire(&self.pool).await;
+        while acquired.as_ref().err().is_some_and(|error| error.to_string().contains("1226"))
+            && std::time::Instant::now() < deadline
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            acquired = Conn::acquire(&self.pool).await;
+        }
+        let mut connection = acquired.map_err(|error| error.to_string())?;
         connection.discard_on_drop();
         if self.dialect == "sqlite" {
             connection.exec("PRAGMA query_only=ON", &[]).await.map_err(|error| error.to_string())?;

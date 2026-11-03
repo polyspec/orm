@@ -709,7 +709,6 @@
         "packages/ts/src/engine/dialect.ts",
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/engine/validate.ts",
-        "packages/ts/tests/complex-query-request.mjs",
         "packages/ts/tests/complex-query-request.types.ts",
         "packages/ts/tests/complex-query-request-types.mjs"
       ]
@@ -1050,7 +1049,8 @@
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_planner_compile_none.py",
-        "tests/planner/compile.json"
+        "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs"
       ]
     },
     "rust-time-precision-check": {
@@ -1777,7 +1777,6 @@
         "docs/spec/protocol.ko.md",
         "packages/go/orm/driver_error_test.go",
         "packages/go/orm/driver_error_internal_test.go",
-        "packages/go/orm/markdown_test.go",
         "packages/php/src/Db.php",
         "packages/php/src/Model.php",
         "packages/php/src/OrmException.php",
@@ -1793,7 +1792,6 @@
         "packages/python/src/polyspec/orm/driver_cells.py",
         "packages/python/tests/test_driver_errors.py",
         "packages/python/tests/test_markdown.py",
-        "packages/rust/orm/tests/markdown.rs",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/src/row.rs",
         "packages/ts/tests/driver-cell-bytes.mjs",
@@ -3155,7 +3153,6 @@
         "packages/python/src/polyspec/orm/dbspec/apply.py",
         "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/rust/orm/src/dbspec/apply.rs",
-        "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/src/dbspec/apply.ts",
         "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "tests/dbspec/apply-verification-errors.json",
@@ -3433,6 +3430,7 @@
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
         "tests/planner/compile.json",
+        "tests/planner/shared_blind_index.dbs",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"
       ]

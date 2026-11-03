@@ -151,7 +151,7 @@ var requestHookCases = []struct {
 	}},
 }
 
-// Requirements: INT-78.
+// Requirements: INT-78, INT-78a.
 // TestRequestHook runs each case in a SQLite temp file. The file is removed when the test ends.
 func TestRequestHook(t *testing.T) {
 	testcase.Start(t, testcase.Database)

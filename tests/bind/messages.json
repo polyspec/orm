@@ -1,7 +1,13 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "PRT-67"
+    "PRT-67",
+    "PRT-64",
+    "DIA-183",
+    "DIA-184",
+    "DIA-185",
+    "DIA-188",
+    "DIA-189"
   ],
   "cases": [
     {
@@ -1742,6 +1748,288 @@
           ],
           "expect": {
             "error": "CODEC_ENCODE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_session_messages",
+      "requirements": [
+        "PRT-64"
+      ],
+      "steps": [
+        {
+          "op": "markdown.session",
+          "corpus": "tracker",
+          "token": "0123456789abcdef0123456789abcdef",
+          "replies": [
+            "{\"ok\":true}",
+            "{\"ok\":true}",
+            "{\"ok\":true}",
+            "{\"ok\":true}",
+            "{\"ok\":true}",
+            "{\"ok\":true}",
+            "{\"error\":{\"code\":\"WRITE_CONFLICT\",\"message\":\"people.flowmark.md:3 changed since it was read\"}}"
+          ],
+          "messages": [
+            "{\"op\":\"connect\",\"corpus\":\"tracker\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
+            "{\"op\":\"begin\",\"read_only\":true}",
+            "{\"op\":\"savepoint\",\"name\":\"orm_sp_1\"}",
+            "{\"op\":\"release\",\"name\":\"orm_sp_1\"}",
+            "{\"op\":\"commit\"}",
+            "{\"op\":\"begin\"}",
+            "{\"op\":\"commit\"}"
+          ],
+          "expect": {
+            "none": {
+              "error": "WRITE_CONFLICT",
+              "message_holds": "WRITE_CONFLICT: people.flowmark.md:3 changed since it was read"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_audit",
+      "requirements": [
+        "DIA-183"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "audit",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_isolation",
+      "requirements": [
+        "DIA-184"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "isolation",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_timeout_ms",
+      "requirements": [
+        "DIA-184"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "timeout_ms",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_get_query",
+      "requirements": [
+        "DIA-185"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "get_query",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_subscribe",
+      "requirements": [
+        "DIA-185"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "subscribe",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_lock",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "lock",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_set_local",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "set_local",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_local",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "local",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_backend_waiting_for_lock",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "backend_waiting_for_lock",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_privileges",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "privileges",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_aes_status",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "aes_status",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_aes_rotate",
+      "requirements": [
+        "DIA-188"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "aes_rotate",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_schema_install",
+      "requirements": [
+        "DIA-189"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "schema_install",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_schema_evolution",
+      "requirements": [
+        "DIA-189"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "schema_evolution",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_schema_exists",
+      "requirements": [
+        "DIA-189"
+      ],
+      "steps": [
+        {
+          "op": "markdown.send",
+          "surface": "schema_exists",
+          "expect": {
+            "error": "CAPABILITY_UNSUPPORTED"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_refuses_statement_timeout",
+      "requirements": [
+        "DIA-184"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "markdown://127.0.0.1:1/tracker?token=0123456789abcdef0123456789abcdef",
+          "config": {
+            "statement_timeout_ms": 100
+          },
+          "expect": {
+            "none": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
           }
         }
       ]
