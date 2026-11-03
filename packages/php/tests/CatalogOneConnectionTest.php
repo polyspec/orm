@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
@@ -28,23 +29,64 @@ class CatalogOneConnectionTest extends TestCase
                 'INSERT INTO item WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 100)'
                 . ' SELECT i FROM n'
             );
-            $setup->close();
             $catalog = Catalog::connect($dsn);
             try {
-                self::assertOne($catalog, 'connect');
+                self::assertOne($setup, 'connect');
                 $catalog->readOnlyQuery('SELECT seq FROM item');
-                self::assertOne($catalog, 'readOnlyQuery');
+                self::assertOne($setup, 'readOnlyQuery');
                 $catalog->readOnlyGridQuery('SELECT seq FROM item');
-                self::assertOne($catalog, 'readOnlyGridQuery');
+                self::assertOne($setup, 'readOnlyGridQuery');
                 try {
                     $catalog->readOnlyGridQuery('SELECT seq FROM item', [], 1);
                     self::fail('a stopped grid query returned a result');
                 } catch (OrmException $stop) {
                     self::assertSame(Code::CATALOG_LIMIT, $stop->code_);
                 }
-                self::assertOne($catalog, 'a budget stop');
+                self::assertOne($setup, 'a budget stop');
             } finally {
                 $catalog->close();
+            }
+            $setup->close();
+        });
+    }
+
+    // CFG-35: a budget stop returns without reading the rest of the result. A user whose second connection the server
+    // refuses cannot kill its statement, so the statement must not start: 100 rows at 0.2 s each would hold the read
+    // for 20 s.
+    public function testMysqlReadThatCouldNotBeStoppedDoesNotReadTheRest(): void
+    {
+        with_case_database('mysql', static function (string $step): void {
+        }, static function (string $dsn): void {
+            $setup = Orm::connect($dsn, new Config());
+            $database = (string) $setup->pdo()->query('SELECT DATABASE()')->fetchColumn();
+            $setup->pdo()->exec('CREATE TABLE item (seq INT PRIMARY KEY)');
+            $setup->pdo()->exec(
+                'INSERT INTO item WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 100)'
+                . ' SELECT i FROM n'
+            );
+            $setup->pdo()->exec("CREATE USER IF NOT EXISTS 'orm_one_connection'@'%' WITH MAX_USER_CONNECTIONS 1");
+            $setup->pdo()->exec("GRANT SELECT ON `$database`.* TO 'orm_one_connection'@'%'");
+            try {
+                $restricted = (string) preg_replace('#^mysql://[^@]+@#', 'mysql://orm_one_connection@', $dsn);
+                $sql = "SELECT SLEEP(0.2), REPEAT('x', 20000) FROM item";
+                $catalog = Catalog::connect($restricted);
+                try {
+                    foreach (['readOnlyQuery', 'readOnlyGridQuery'] as $read) {
+                        $began = microtime(true);
+                        try {
+                            $catalog->$read($sql, [], 1);
+                            self::fail("$read returned a result past its budget");
+                        } catch (OrmException $stop) {
+                            self::assertSame(Code::CONFIG, $stop->code_, $read);
+                        }
+                        self::assertLessThan(5.0, microtime(true) - $began, "$read read the rest of its result");
+                    }
+                } finally {
+                    $catalog->close();
+                }
+            } finally {
+                $setup->pdo()->exec("DROP USER IF EXISTS 'orm_one_connection'@'%'");
+                $setup->close();
             }
         });
     }
@@ -103,11 +145,17 @@ class CatalogOneConnectionTest extends TestCase
         });
     }
 
-    private static function assertOne(Catalog $catalog, string $after): void
+    // A read of the catalog opens a second connection for its stop (CFG-35), so another connection counts what the catalog
+    // holds between its operations. The server ends a closed connection after the close returns and sends no notice of it,
+    // so the count has the 2 s of CFG-35 to reach one.
+    private static function assertOne(Db $observer, string $after): void
     {
-        $rows = $catalog->readOnlyQuery(
-            'SELECT COUNT(*) AS n FROM information_schema.PROCESSLIST WHERE DB = DATABASE()'
-        )->rows;
-        self::assertSame(1, $rows[0][0], "the connections of the catalog's database after $after");
+        $deadline = microtime(true) + 2.0;
+        do {
+            $count = (int) $observer->pdo()->query(
+                'SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()'
+            )->fetchColumn();
+        } while ($count !== 1 && microtime(true) < $deadline);
+        self::assertSame(1, $count, "the connections of the catalog's database after $after");
     }
 }

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A PHP MySQL catalog read opens the connection of its kill before its statement, so a kill that could not be made no longer reads the whole result.
 - CR32 gives the times that rule out a harness stop of the tool call.
 - The owners of parameter_chunking declare model_parameter_after_schema_change.
 - catalog_read_budgets names its wait for all three databases, as a recipe's sql must.

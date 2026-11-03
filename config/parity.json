@@ -8792,6 +8792,44 @@
       }
     },
     {
+      "id": "php-catalog-mysql-read-that-could-not-be-stopped",
+      "kind": "feature",
+      "requirements": [
+        "INT-157"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogOneConnectionTest.php",
+          "id": "CatalogOneConnectionTest::testMysqlReadThatCouldNotBeStoppedDoesNotReadTheRest"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "php-extension-catalog-mysql-read-that-could-not-be-stopped",
+      "kind": "feature",
+      "requirements": [
+        "INT-158"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogOneConnectionTestExtensionTest.php",
+          "id": "CatalogOneConnectionTestExtensionTest::testMysqlReadThatCouldNotBeStoppedDoesNotReadTheRest"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
       "id": "php-extension-catalog-mysql-holds-one-connection",
       "kind": "feature",
       "requirements": [

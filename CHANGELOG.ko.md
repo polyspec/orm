@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0d682b6faff8fcf58bcc7f9b25ec5d1419aac6e22e959eac4316d9d3dc54d8e0 -->
+<!-- source-sha256: 72881106f7f1608683573c22ec4a1ff46caf0f3f2c8d287eb430525c5d66688d -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP MySQL catalog 읽기는 kill 연결을 문장 전에 열어, kill을 할 수 없을 때 결과 전체를 읽지 않음.
 - CR32에 tool call을 끝내는 harness를 제외하는 시각을 적음.
 - parameter_chunking의 owner가 model_parameter_after_schema_change를 선언함.
 - catalog_read_budgets는 recipe의 sql 규칙대로 대기 문을 세 database 모두에 적음.
