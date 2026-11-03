@@ -345,7 +345,6 @@
         "packages/php/tests/SqliteRowLockStatement.php",
         "packages/php/tests/StatementCountingPdo.php",
         "packages/php/tests/StatementEventLog.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/Stop.php",
         "packages/php/tests/TransactionCloseDuringFailure.php",
         "packages/php/tests/TransactionFailureCases.php",
@@ -26697,13 +26696,83 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::testStatementEvents"
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"model_statements\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"transaction_savepoint\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"transaction_rollback\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"savepoint_rollback\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"failed_statement\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"subscriber_error\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"unsubscribe\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementEventsRecipeTest.php",
+          "id": "StatementEventsRecipeTest::testSqlite with data set \"install\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
-          "id": "CoverageStatementEventsTest::testStatementEvents"
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"model_statements\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"transaction_savepoint\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"transaction_rollback\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"savepoint_rollback\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"failed_statement\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"subscriber_error\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"unsubscribe\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
+          "id": "StatementEventsRecipeTestExtensionTest::testSqlite with data set \"install\""
         },
         {
           "implementation": "python",
@@ -26837,42 +26906,42 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "model_statements"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "transaction_savepoint"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "transaction_rollback"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "savepoint_rollback"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "failed_statement"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "subscriber_error"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "unsubscribe"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "install"
         }
       ]
