@@ -2517,7 +2517,7 @@
         "php-internal-rollback-rollback-fault",
         "transaction-failure-savepoint-end",
         "transaction-control-methods-are-private",
-        "mysql-lock-wait-canceled",
+        "php-extension-failed-statement-closes-cursor",
         "transaction-execution-flow-context",
         "transaction-flow-overlap-rejected",
         "transaction-audit-lazy-fake-pdo",
