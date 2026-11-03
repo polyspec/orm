@@ -23,18 +23,18 @@ var ddlConnectionRules = map[string]string{
 // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
 // fails must fail; a query compares its first value, as text, with want; a NULL or absent value fails it (DIA-113).
 func ddlBehavior(s databaseStep, c *databaseContext) error {
-	vectors, err := ddlcases.Read(filepath.Join(c.dir, s.Vectors))
+	vectors, err := ddlcases.Read(filepath.Join(c.dir, s.k("vectors").Vectors))
 	if err != nil {
 		return err
 	}
-	index := slices.IndexFunc(vectors.Cases, func(candidate ddlcases.Case) bool { return candidate.ID == s.Case })
+	index := slices.IndexFunc(vectors.Cases, func(candidate ddlcases.Case) bool { return candidate.ID == s.k("case").Case })
 	if index < 0 {
-		return fmt.Errorf("the vectors have no case %s", s.Case)
+		return fmt.Errorf("the vectors have no case %s", s.k("case").Case)
 	}
 	vector := vectors.Cases[index]
 	statements, ok := vector.Statements[c.database]
 	if !ok {
-		return fmt.Errorf("the case %s has no statements for %s", s.Case, c.database)
+		return fmt.Errorf("the case %s has no statements for %s", s.k("case").Case, c.database)
 	}
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
