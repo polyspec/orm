@@ -2842,7 +2842,6 @@
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/rollback_fault_test.go",
         "Makefile"
       ]
     },

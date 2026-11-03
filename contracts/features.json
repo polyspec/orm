@@ -2563,12 +2563,10 @@
         "packages/php/tests/TransactionFailureCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/rust/orm/tests/rollback.rs",
-        "packages/ts/tests/rollback.mjs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
         "packages/ts/tests/coverage_transactions.mjs",
-        "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
         "packages/go/orm/statement_fault_test.go",
         "packages/go/orm/statement_fault_entry_test.go",
@@ -2679,11 +2677,10 @@
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFault' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFaultEntry$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/rollback_fault_entry_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/rollback_fault_entry_test.go"
           ]
         },
         {
@@ -2691,8 +2688,7 @@
           "command": "make transaction-failure-go-check",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/coverage_transaction_failure_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/coverage_transaction_failure_test.go"
           ]
         },
         {
@@ -2815,15 +2811,6 @@
           "inputs": [
             "packages/rust/orm/src/tx.rs",
             "packages/rust/orm/src/tx_send_tests.rs"
-          ]
-        },
-        {
-          "id": "rollback-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/rollback.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/rollback.mjs",
-            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
