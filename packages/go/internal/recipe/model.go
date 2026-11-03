@@ -419,9 +419,15 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			if relation, err = compositeMembershipRelation(s.k("relation").Relation, db); err != nil {
 				return outcome{}, err
 			}
-			if relation.many {
+			// The alias is on the call itself: the generator scan attaches a getter from the call it can read.
+			switch {
+			case relation.many && relation.alias == "memberships":
+				m = m.Relations(relation.child.AliasMemberships())
+			case relation.many:
 				m = m.Relations(relation.child)
-			} else {
+			case relation.alias == "memberships":
+				return outcome{}, fmt.Errorf("the alias memberships has no recipe entry on a one-row relation")
+			default:
 				m = m.Relation(relation.child)
 			}
 		}
@@ -590,9 +596,7 @@ func compositeMembershipRelation(raw json.RawMessage, db *orm.DB) (*compositeRel
 		}
 	}
 	switch relation.Alias {
-	case "":
-	case "memberships":
-		child = child.AliasMemberships()
+	case "", "memberships":
 	default:
 		return nil, fmt.Errorf("CompositeMembership alias %s has no recipe entry", relation.Alias)
 	}

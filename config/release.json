@@ -107,6 +107,7 @@
     "packages/rust/Cargo.toml": "the Cargo workspace of the Rust crates, no package of its own",
     "packages/rust/case-clock/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/case-database/Cargo.toml": "a test support crate of the Rust client (publish = false)",
+    "packages/rust/test-support/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/testcase/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
     "benchmarks/rust/Cargo.toml": "the benchmark crate of the Rust client",

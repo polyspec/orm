@@ -125,8 +125,8 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		}
 		kind := s.k("kind").Kind
 		refusal := errors.New("subscriber refused the event")
-		if s.Refusal != nil {
-			refusal = &ir.Error{Code: s.Refusal.Code, Msg: s.Refusal.Message}
+		if refused := s.k("refusal").Refusal; refused != nil {
+			refusal = &ir.Error{Code: refused.Code, Msg: refused.Message}
 		}
 		stop, err := db.Subscribe(func(e orm.StatementEvent) error {
 			if e.Kind == kind {

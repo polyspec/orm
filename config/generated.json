@@ -10,7 +10,6 @@
     "**/*.test",
     "**/*.tsbuildinfo",
     "packages/php-ext/src/polyspec_orm_arginfo.h",
-    "packages/go/complexmodel/**",
     "packages/ts/src/models/complex_query/**",
     "packages/php/complexmodel/**",
     "packages/php/src/native/bin/**",

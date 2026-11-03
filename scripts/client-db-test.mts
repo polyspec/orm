@@ -40,7 +40,6 @@ export const GO_LANE_PACKAGES = [
   './packages/go/bench',
   './packages/go/bindmessages',
   './packages/go/bindmodel',
-  './packages/go/complexmodel',
   './packages/go/decimalmodel',
   './packages/go/engine',
   './packages/go/engine/dbspec',
@@ -100,7 +99,8 @@ const phpUnitFilter = (symbol: string | undefined, id: string): string => {
   return method;
 };
 export function poolerRecipeCommands(lane: 'php' | 'php-extension' | 'typescript' | 'python', units: readonly ParityUnit[], extensionLibrary = PHP_EXTENSION_LIBRARY): Command[] {
-  return poolerRecipeUnits(units).map(unit => {
+  // A suite that names its runtimes in its owner parts leaves the others out: PHP holds no pool, so connection_pool has no PHP lane.
+  return poolerRecipeUnits(units).filter(unit => unit.owner?.parts === undefined || unit.owner.parts.includes(`owner/${lane}`)).map(unit => {
     const binding = unit.bindings?.find(item => item.implementation === lane);
     if (binding?.test === undefined) throw new Error(`client-db-test: the unit ${unit.id} has no ${lane} test`);
     const test = binding.test;

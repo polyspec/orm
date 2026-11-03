@@ -13,8 +13,52 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
+
+// planCaseText is the source and plan text of the tests/dbspec/plan-cases.json case.
+type planCaseText struct {
+	Source []string `json:"source"`
+	Plan   []string `json:"plan"`
+}
+
+func planCases(t *testing.T) map[string]planCaseText {
+	t.Helper()
+	cases, err := plancases.Parse(readDBSpecFile(t, "plan-cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]planCaseText{}
+	for _, c := range cases {
+		out[c.ID] = planCaseText{Source: c.Source, Plan: c.Plan}
+	}
+	return out
+}
+
+func parsePlan(t *testing.T, text string) *dbspec.Plan {
+	t.Helper()
+	p, diagnostics := dbspec.ParsePlan(text)
+	if len(diagnostics) > 0 {
+		t.Fatal(diagnostics)
+	}
+	return p
+}
+
+// applyChain is the create-from-empty of tests/dbspec/plan-cases.json and the rename-table-and-column
+// starting from its target.
+func applyChain(t *testing.T) []*dbspec.Plan {
+	t.Helper()
+	cases := planCases(t)
+	plans := []*dbspec.Plan{
+		parsePlan(t, strings.Join(cases["create-from-empty"].Plan, "\n")+"\n"),
+		parsePlan(t, strings.Join(cases["rename-table-and-column"].Plan, "\n")+"\n"),
+	}
+	if plans[1].From != plans[0].To {
+		t.Fatalf("plan-cases.json does not chain create-from-empty and rename-table-and-column")
+	}
+	return plans
+}
 
 // runnerDeadline is the deadline of one apply runner process.
 const runnerDeadline = 2 * time.Minute
