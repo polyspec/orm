@@ -2386,24 +2386,6 @@
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/grid"
             }
-          },
-          "pdo_mysql": {
-            "description": "What PHP and the PHP extension return for this step on MySQL, when the expect needs a flag or a charset that pdo_mysql does not report (INT-157). The other runtimes read the expect.",
-            "type": "object",
-            "required": [
-              "reason",
-              "expect"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "reason": {
-                "type": "string",
-                "minLength": 1
-              },
-              "expect": {
-                "$ref": "#/$defs/outcomes/grid"
-              }
-            }
           }
         }
       },

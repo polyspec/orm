@@ -147,7 +147,6 @@
       "max_rows",
       "only",
       "op",
-      "pdo_mysql",
       "sql"
     ],
     "catalog.row_snapshot": [

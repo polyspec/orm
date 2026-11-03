@@ -2037,6 +2037,14 @@ static bool cat_integer_cell(zval *v, bool unsigned_, zval *kind_out, zval *valu
     }
     zend_long n64 = 0;
     if (n == 0 || is_numeric_string(p, n, &n64, NULL, 0) != IS_LONG) {
+        /* Digits beyond the signed range are an unsigned value, whatever the column reports. */
+        bool digits = n > 0;
+        for (size_t i = 0; digits && i < n; i++) digits = cat_digit(p[i]);
+        if (digits) {
+            ZVAL_STRINGL(kind_out, "unsigned", 8);
+            ZVAL_STRINGL(value_out, p, n);
+            return true;
+        }
         cat_refuse("integer text is outside the signed 64-bit range");
         return false;
     }
@@ -2254,7 +2262,8 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, bool unsigned_, bool bi
     } else if (type == 1 || type == 2 || type == 3 || type == 8 || type == 9) { /* TINY SHORT LONG LONGLONG INT24 */
         ok = cat_integer_cell(v, unsigned_, &kind, &value);
     } else {
-        ok = cat_bytes_or_text(v, binary, &kind, &value);
+        /* The bytes of a column whose charset the server did not report are its binary value (INT-157). */
+        ok = cat_bytes_or_text(v, binary || (Z_TYPE_P(v) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))), &kind, &value);
     }
     if (!ok) {
         zval_ptr_dtor(&kind);
@@ -2513,49 +2522,85 @@ static bool cat_mysql_streamed(zval *pdo, zval *sql, zval *args, zval *st)
     return ok;
 }
 
-/* The MySQL column of a grid query, by its definition (Catalog::mysqlColumnDefinition). */
+/* The MySQL column of a grid query (Catalog::mysqlGridColumns). */
 typedef struct {
     zend_long type;
     bool unsigned_;
     bool binary;
 } cat_mysql_column;
 
-/* Reads the definition of one column of a table, which holds the UNSIGNED flag and the charset that pdo_mysql does not report. */
-static bool cat_mysql_definition(zval *db, zval *pdo, const char *table, const char *name, cat_mysql_column *column)
+#define CAT_MYSQL_TYPES_TABLE "orm_grid_column_types"
+
+/* Whether a lower-case MySQL column type names a binary string. */
+static bool cat_mysql_binary_type(const char *type)
 {
-    zval args, names, types, rows;
-    array_init(&args);
-    add_next_index_string(&args, table);
-    add_next_index_string(&args, name);
-    bool ok = cat_query(db, pdo, "SELECT DATA_TYPE, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND "
-                                 "TABLE_NAME=? AND COLUMN_NAME=?",
-                        &args, 2, CAT_METADATA_BYTES, &names, &types, &rows, NULL);
-    zval_ptr_dtor(&args);
-    if (!ok) return false;
-    zval *row = zend_hash_num_elements(Z_ARRVAL(rows)) == 1 ? zend_hash_index_find(Z_ARRVAL(rows), 0) : NULL;
-    zval *data = row != NULL ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
-    zval *full = row != NULL ? zend_hash_index_find(Z_ARRVAL_P(row), 1) : NULL;
-    if (data == NULL || full == NULL || Z_TYPE_P(data) != IS_STRING || Z_TYPE_P(full) != IS_STRING) {
-        cat_refuse("the column has no single column definition in the current database");
-        ok = false;
-    } else {
-        zend_string *lower = zend_string_tolower(Z_STR_P(full));
-        column->unsigned_ = strstr(ZSTR_VAL(lower), "unsigned") != NULL;
-        zend_string_release(lower);
-        static const char *const binary[] = {"binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob"};
-        for (size_t i = 0; i < sizeof(binary) / sizeof(binary[0]); i++) {
-            if (strcasecmp(Z_STRVAL_P(data), binary[i]) == 0) column->binary = true;
-        }
+    static const char *const binary[] = {"binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob"};
+    for (size_t i = 0; i < sizeof(binary) / sizeof(binary[0]); i++) {
+        size_t n = strlen(binary[i]);
+        if (strncmp(type, binary[i], n) == 0 && !isalnum((unsigned char)type[n]) && type[n] != '_') return true;
     }
-    zval_ptr_dtor(&names);
-    zval_ptr_dtor(&types);
-    zval_ptr_dtor(&rows);
-    return ok;
+    return false;
 }
 
-/* The columns of a MySQL grid query (Catalog::mysqlGridColumns). The query runs once with sql_select_limit 0, which gives its
- * columns and no row; an integer or string column takes its flag and charset from its definition, and an expression has none,
- * so it is refused rather than guessed. The caller releases *columns. */
+/* Sets the flag and the charset of each column from the column types of the result, as the server derives them
+ * (Catalog::mysqlResultTypes): a temporary table of the query, under WHERE FALSE, holds no row. A READ ONLY transaction
+ * refuses the statement, so the read transaction ends around it, and the server refuses a stored function that writes
+ * while the table is created. A server that refuses the statement leaves the cells to their values (INT-157). */
+static void cat_mysql_result_types(zval *pdo, zval *sql, zval *args, cat_mysql_column *columns, size_t count)
+{
+    size_t length = Z_STRLEN_P(sql);
+    while (length > 0 && strchr(" \t\r\n;", Z_STRVAL_P(sql)[length - 1]) != NULL) length--;
+    smart_str create = {0};
+    smart_str_appends(&create, "CREATE TEMPORARY TABLE " CAT_MYSQL_TYPES_TABLE " AS WITH q(");
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0) smart_str_appendc(&create, ',');
+        smart_str_appendc(&create, 'c');
+        smart_str_append_unsigned(&create, i);
+    }
+    smart_str_appends(&create, ") AS (\n");
+    smart_str_appendl(&create, Z_STRVAL_P(sql), length);
+    smart_str_appends(&create, "\n) SELECT * FROM q WHERE FALSE");
+    smart_str_0(&create);
+    zval text, st;
+    ZVAL_STR(&text, create.s);
+    bool created = cat_mysql_streamed(pdo, &text, args, &st);
+    zval_ptr_dtor(&text);
+    if (created) {
+        zval r;
+        if (pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) zval_ptr_dtor(&r);
+        zval_ptr_dtor(&st);
+        zval show, shown;
+        ZVAL_STRING(&show, "SHOW COLUMNS FROM " CAT_MYSQL_TYPES_TABLE);
+        if (pdo_call(pdo, "query", &shown, 1, &show, NULL)) {
+            zval mode, rows;
+            ZVAL_LONG(&mode, 3); /* PDO::FETCH_NUM */
+            if (pdo_call(&shown, "fetchAll", &rows, 1, &mode, NULL)) {
+                size_t at = 0;
+                zval *row;
+                ZEND_HASH_FOREACH_VAL(Z_ARRVAL(rows), row) {
+                    zval *type = at < count && Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 1) : NULL;
+                    if (type != NULL && Z_TYPE_P(type) == IS_STRING) {
+                        zend_string *lower = zend_string_tolower(Z_STR_P(type));
+                        columns[at].unsigned_ = strstr(ZSTR_VAL(lower), "unsigned") != NULL;
+                        columns[at].binary = cat_mysql_binary_type(ZSTR_VAL(lower));
+                        zend_string_release(lower);
+                    }
+                    at++;
+                } ZEND_HASH_FOREACH_END();
+                zval_ptr_dtor(&rows);
+            }
+            zval_ptr_dtor(&shown);
+        }
+        zval_ptr_dtor(&show);
+        if (EG(exception) != NULL) zend_clear_exception();
+        cat_try_exec(pdo, "DROP TEMPORARY TABLE " CAT_MYSQL_TYPES_TABLE);
+    }
+    if (EG(exception) != NULL) zend_clear_exception();
+}
+
+/* The columns of a MySQL grid query (Catalog::mysqlGridColumns). The query runs once with sql_select_limit 0, which gives
+ * its columns and no row; each column takes its flag and charset from the server (cat_mysql_result_types). The caller
+ * releases *columns. */
 static bool cat_mysql_grid_columns(zval *db, zval *pdo, zval *sql, zval *args, zval *names, cat_mysql_column **columns, zend_long *count)
 {
     *columns = NULL;
@@ -2606,36 +2651,28 @@ static bool cat_mysql_grid_columns(zval *db, zval *pdo, zval *sql, zval *args, z
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(metas), meta) {
         zval *name = Z_TYPE_P(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(meta), "name", 4) : NULL;
         zval *native = Z_TYPE_P(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(meta), "native_type", 11) : NULL;
-        zval *table = Z_TYPE_P(meta) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(meta), "table", 5) : NULL;
         const char *column_name = name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "";
         add_next_index_string(names, column_name);
         zend_string *upper = native != NULL && Z_TYPE_P(native) == IS_STRING ? zend_string_toupper(Z_STR_P(native)) : ZSTR_EMPTY_ALLOC();
         cat_mysql_column *column = &(*columns)[at++];
         column->type = cat_mysql_type(ZSTR_VAL(upper));
-        bool integer = column->type == 1 || column->type == 2 || column->type == 3 || column->type == 8 || column->type == 9 || column->type == 13;
-        static const char *const strings[] = {"VAR_STRING", "STRING", "BLOB", "TINY_BLOB", "MEDIUM_BLOB", "LONG_BLOB", "ENUM", "SET"};
-        bool text = false;
-        for (size_t i = 0; i < sizeof(strings) / sizeof(strings[0]); i++) {
-            if (strcmp(ZSTR_VAL(upper), strings[i]) == 0) text = true;
-        }
         zend_string_release(upper);
-        if (!integer && !text) continue;
-        if (table == NULL || Z_TYPE_P(table) != IS_STRING || Z_STRLEN_P(table) == 0) {
-            cat_refuse("an expression has no column definition, so PDO does not report its signedness or charset; select a table column");
-            ok = false;
-            break;
-        }
-        if (!cat_mysql_definition(db, pdo, Z_STRVAL_P(table), column_name, column)) {
-            ok = false;
-            break;
-        }
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(&metas);
-    if (!ok) {
+    if (!cat_try_exec(pdo, "COMMIT")) {
+        cat_driver_error(db);
         efree(*columns);
         *columns = NULL;
+        return false;
     }
-    return ok;
+    cat_mysql_result_types(pdo, sql, args, *columns, *count);
+    if (!cat_try_exec(pdo, "START TRANSACTION READ ONLY")) {
+        cat_driver_error(db);
+        efree(*columns);
+        *columns = NULL;
+        return false;
+    }
+    return true;
 }
 
 /* Reads a MySQL grid query on the PDO connection: it streams the rows, so that a budget stops the read before the rest of the

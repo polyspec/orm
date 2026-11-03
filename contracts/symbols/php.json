@@ -5571,10 +5571,6 @@
     "exported": false,
     "signature": "private function lookup(PDO $pdo, Polyspec\\Orm\\CatalogTableMetadata $metadata, array $keys, bool $lock): array"
   },
-  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlColumnDefinition": {
-    "exported": false,
-    "signature": "private function mysqlColumnDefinition(PDO $pdo, string $table, string $column): array"
-  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlConnectionId": {
     "exported": false,
     "signature": "private function mysqlConnectionId(PDO $pdo): ?int"
@@ -5582,6 +5578,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlGridColumns": {
     "exported": false,
     "signature": "private function mysqlGridColumns(PDO $pdo, string $sql, array $args): array"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlResultTypes": {
+    "exported": false,
+    "signature": "private function mysqlResultTypes(PDO $pdo, string $sql, array $args, int $count): array"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::mysqlSafety": {
     "exported": false,

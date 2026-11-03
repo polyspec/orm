@@ -20,17 +20,7 @@ final class Catalog
     private const DEFAULT_ROWS = 100000;
     private const DEFAULT_BYTES = 67108864;
     private const SQL_BYTES = 262144;
-    private const MYSQL_INTEGER_TYPES = ['LONG', 'LONGLONG', 'SHORT', 'TINY', 'INT24', 'YEAR'];
-    private const MYSQL_STRING_TYPES = [
-        'VAR_STRING',
-        'STRING',
-        'BLOB',
-        'TINY_BLOB',
-        'MEDIUM_BLOB',
-        'LONG_BLOB',
-        'ENUM',
-        'SET'
-    ];
+    private const MYSQL_TYPES_TABLE = 'orm_grid_column_types';
 
     /** Selects the native kind of a relation by its namespace and name. */
     private const KIND_SQL = [
@@ -783,7 +773,7 @@ final class Catalog
     /**
      * The native type, the UNSIGNED flag and the binary charset of each column of a MySQL grid query. The query runs
      * once with sql_select_limit 0, which gives its columns and no row. PDO reports neither the flag nor the charset,
-     * so both come from the column definition of the table; an expression has none, and its type is refused.
+     * so both come from the server, through the column types of a temporary table of the same query (INT-157).
      *
      * @param list<mixed> $args
      * @return list<array{string, bool, bool}>
@@ -798,33 +788,51 @@ final class Catalog
         } finally {
             $pdo->exec('SET SESSION sql_select_limit = DEFAULT');
         }
+        $types = $this->mysqlResultTypes($pdo, $sql, $args, count($metas));
         $columns = [];
-        foreach ($metas as $meta) {
-            $name = (string) ($meta['name'] ?? '');
-            $native = strtoupper((string) ($meta['native_type'] ?? ''));
-            $unsigned = false;
-            $binary = false;
-            $defined = in_array($native, self::MYSQL_INTEGER_TYPES, true)
-                || in_array($native, self::MYSQL_STRING_TYPES, true);
-            if ($defined) {
-                $table = (string) ($meta['table'] ?? '');
-                if ($table === '') {
-                    throw self::refused(
-                        "expression \"$name\" of type $native has no column definition, so PDO does not report its "
-                        . 'signedness or charset; select a table column'
-                    );
-                }
-                [$dataType, $columnType] = $this->mysqlColumnDefinition($pdo, $table, $name);
-                $unsigned = str_contains($columnType, 'unsigned');
-                $binary = in_array(
-                    $dataType,
-                    ['binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob'],
-                    true
-                );
-            }
-            $columns[] = [$native, $unsigned, $binary];
+        foreach ($metas as $i => $meta) {
+            $type = $types[$i] ?? '';
+            $columns[] = [
+                strtoupper((string) ($meta['native_type'] ?? '')),
+                str_contains($type, 'unsigned'),
+                preg_match('/^(binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/', $type) === 1,
+            ];
         }
         return $columns;
+    }
+
+    /**
+     * The lower-case column types of the result of a MySQL query, as the server derives them: a temporary table of the
+     * query, under WHERE FALSE, holds no row. A READ ONLY transaction refuses the statement, so the read transaction
+     * ends around it, and the server refuses a stored function that writes while the table is created. A server that
+     * refuses the statement, as for a user without CREATE TEMPORARY TABLES, leaves the cells to their values (INT-157).
+     *
+     * @param list<mixed> $args
+     * @return list<string>
+     */
+    private function mysqlResultTypes(\PDO $pdo, string $sql, array $args, int $count): array
+    {
+        $pdo->exec('COMMIT');
+        $names = implode(',', array_map(static fn (int $i): string => "c$i", array_keys(array_fill(0, $count, 0))));
+        $query = rtrim($sql, " \t\r\n;");
+        $table = self::MYSQL_TYPES_TABLE;
+        $types = [];
+        try {
+            $create = "CREATE TEMPORARY TABLE $table AS WITH q($names) AS (\n$query\n) SELECT * FROM q WHERE FALSE";
+            $this->prepareQuery($pdo, $create, $args, true)->closeCursor();
+            try {
+                $shown = $pdo->query("SHOW COLUMNS FROM $table");
+                foreach ($shown === false ? [] : $shown->fetchAll(\PDO::FETCH_NUM) as $row) {
+                    $types[] = strtolower((string) $row[1]);
+                }
+            } finally {
+                $pdo->exec("DROP TEMPORARY TABLE $table");
+            }
+        } catch (\PDOException) {
+            $types = [];
+        }
+        $pdo->exec(self::beginSql('mysql', true));
+        return $types;
     }
 
     /**
@@ -963,6 +971,10 @@ final class Catalog
         }
         if (is_string($value)) {
             if (!self::isUtf8($value)) {
+                // The bytes of a MySQL column whose charset the server did not report are its binary value (INT-157).
+                if ($dialect === 'mysql') {
+                    return new CatalogGridCell('binary', $value);
+                }
                 throw new OrmException(
                     Code::CATALOG_VALUE,
                     'unsupported grid value: text of native type "' . $native . '" is not valid UTF-8'
@@ -988,27 +1000,6 @@ final class Catalog
             throw self::refused('binary stream could not be read');
         }
         return $data;
-    }
-
-    /**
-     * The data type and the column type (with its UNSIGNED flag) of a MySQL column of a table in the current database.
-     *
-     * @return array{0: string, 1: string}
-     */
-    private function mysqlColumnDefinition(\PDO $pdo, string $table, string $column): array
-    {
-        $rows = $this->query(
-            $pdo,
-            'SELECT DATA_TYPE, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND '
-            . 'TABLE_NAME=? AND COLUMN_NAME=?',
-            [$table, $column],
-            2,
-            self::METADATA_BYTES
-        )['rows'];
-        if (count($rows) !== 1 || !is_string($rows[0][0] ?? null) || !is_string($rows[0][1] ?? null)) {
-            throw self::refused("column \"$table.$column\" has no single column definition in the current database");
-        }
-        return [strtolower($rows[0][0]), strtolower($rows[0][1])];
     }
 
     private static function refused(string $message): OrmException
@@ -1073,6 +1064,10 @@ final class Catalog
         }
         $n = filter_var($value, FILTER_VALIDATE_INT);
         if ($n === false) {
+            // Digits beyond the signed range are an unsigned value, whatever the column reports.
+            if (preg_match('/^\d+$/', $value) === 1) {
+                return new CatalogGridCell('unsigned', $value);
+            }
             throw self::refused("integer text \"$value\" is outside the signed 64-bit range");
         }
         return new CatalogGridCell('integer', $n);
