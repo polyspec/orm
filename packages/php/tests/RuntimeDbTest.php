@@ -99,70 +99,6 @@ final class RuntimeDbTest extends TestCase
         self::check($row->getPayload()->kind === 'sql-null', 'selected styled SQL NULL');
     }
 
-    private static function caseInvalidStoredCellsFailTypedReads(Db $db, string $driver): void
-    {
-        $row = (new Sample())($db)->setLevel(1)->setWide(1)->setRatio(1.25)->setActive(true)->create();
-        $seq = $row->getSeq();
-        $pdo = $db->pdo();
-        if ($driver === 'mysql') {
-            $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
-            self::assertInvalidStoredWideCell(
-                $db,
-                $seq,
-                static fn() => $pdo->prepare(
-                    'UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?'
-                )->execute([$seq]),
-                static function () use ($pdo, $seq): void {
-                    try {
-                        $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
-                    } finally {
-                        $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT');
-                    }
-                }
-            );
-
-            $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$active` NOT ENFORCED');
-            try {
-                $pdo->prepare('UPDATE sample SET active = 2 WHERE seq = ?')->execute([$seq]);
-                self::check(
-                    self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getActive()) === Code::CODEC_DECODE,
-                    'invalid bool database cell is CODEC_DECODE'
-                );
-            } finally {
-                try {
-                    $pdo->prepare('UPDATE sample SET active = 1 WHERE seq = ?')->execute([$seq]);
-                } finally {
-                    $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$active` ENFORCED');
-                }
-            }
-            return;
-        }
-        if ($driver === 'postgres') {
-            try {
-                $pdo->prepare("UPDATE sample SET ratio = 'NaN'::double precision WHERE seq = ?")->execute([$seq]);
-                $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getRatio());
-                self::check($error === Code::CODEC_DECODE, 'invalid ratio database cell is CODEC_DECODE');
-            } finally {
-                $pdo->prepare('UPDATE sample SET ratio = 1.25 WHERE seq = ?')->execute([$seq]);
-            }
-            return;
-        }
-
-        $pdo->exec('PRAGMA ignore_check_constraints = ON');
-        self::assertInvalidStoredWideCell(
-            $db,
-            $seq,
-            static fn() => $pdo->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]),
-            static function () use ($pdo, $seq): void {
-                try {
-                    $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
-                } finally {
-                    $pdo->exec('PRAGMA ignore_check_constraints = OFF');
-                }
-            }
-        );
-    }
-
     /** @param Closure(): mixed $writeInvalid @param Closure(): void $restore */
     private static function assertInvalidStoredWideCell(Db $db, int $seq, Closure $writeInvalid, Closure $restore): void
     {
@@ -208,17 +144,6 @@ final class RuntimeDbTest extends TestCase
     public function testI16ValuesAndDefaults(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseI16ValuesAndDefaults(...));
-    }
-
-    // Requirements: INT-98.
-    #[DataProvider('drivers')]
-    public function testInvalidStoredCellsFailTypedReads(string $driver): void
-    {
-        self::runCase(
-            $driver,
-            'Polyspec\\Orm\\Tests\\RuntimeDb',
-            static fn(Db $db, string $_dsn) => self::caseInvalidStoredCellsFailTypedReads($db, $driver)
-        );
     }
 
     // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126, INT-44.

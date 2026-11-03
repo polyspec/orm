@@ -8,7 +8,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: INT-98.
+// Requirements: INT-98a.
 func TestDecodeSelectedRowRejectsInvalidRuntimeScalars(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
