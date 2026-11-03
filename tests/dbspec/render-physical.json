@@ -1,0 +1,126 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DIA-113"
+  ],
+  "fixture": "none",
+  "cases": [
+    {
+      "id": "types-and-defaults",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "types-and-defaults"
+        }
+      ]
+    },
+    {
+      "id": "keys-indexes-foreign-keys",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "keys-indexes-foreign-keys"
+        }
+      ]
+    },
+    {
+      "id": "checks-in-dialect-form",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "checks-in-dialect-form"
+        }
+      ]
+    },
+    {
+      "id": "immutable-and-audit",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "immutable-and-audit"
+        }
+      ]
+    },
+    {
+      "id": "use-across-documents",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "use-across-documents"
+        }
+      ]
+    },
+    {
+      "id": "audit-columns",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "audit-columns"
+        }
+      ]
+    },
+    {
+      "id": "history-name-hashed-by-rule",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "history-name-hashed-by-rule"
+        }
+      ]
+    },
+    {
+      "id": "audit-tables",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "audit-tables"
+        }
+      ]
+    },
+    {
+      "id": "audit-encrypted-column",
+      "requirements": [
+        "DIA-113"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.ddl_behavior",
+          "vectors": "ddl.json",
+          "case": "audit-encrypted-column"
+        }
+      ]
+    }
+  ]
+}

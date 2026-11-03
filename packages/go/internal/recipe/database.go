@@ -56,6 +56,9 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
+	Vectors        string          `json:"vectors"`
+	Case           string          `json:"case"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -441,7 +444,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 
 // runStepWith runs a step through op and compares the fields that its expect names.
 func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
-	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/schema/recipe.schema.json).
+	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
 	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
 		return nil
 	}
@@ -960,6 +963,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "dbspec.ddl_behavior":
+		if err := ddlBehavior(s, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
 	case "sql.exec":
 		statement, present, err := sqlExecText(s.SQL, c)
 		if err != nil {

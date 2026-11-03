@@ -109,46 +109,6 @@
             "a"
           ],
           "expect": {
-            "mysql": {
-              "columns": [
-                "id",
-                "a"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.123"
-                  }
-                ]
-              ]
-            },
-            "postgres": {
-              "columns": [
-                "id",
-                "a"
-              ],
-              "order_by": [
-                "id"
-              ],
-              "has_more": false,
-              "rows": [
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "datetime": "2026-01-02 03:04:05.123"
-                  }
-                ]
-              ]
-            },
             "sqlite": {
               "columns": [
                 "id",
@@ -181,12 +141,6 @@
             "b"
           ],
           "expect": {
-            "mysql": {
-              "error": "GRID_TEMPORAL_VALUE"
-            },
-            "postgres": {
-              "error": "GRID_TEMPORAL_VALUE"
-            },
             "sqlite": {
               "error": "GRID_TEMPORAL_VALUE"
             }
