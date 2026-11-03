@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d2f508d5c7a2a74eacde290fb14d974e3fa801b33918d760e9bd6fefee7a60f -->
+<!-- source-sha256: da27e1e239db6b7562589e842caaa1a6489095aaeb3aaf50116bedfda0545f6b -->
 # 변경 이력
 
 ## Unreleased
 
+- constraints_and_relations의 Python과 Rust native 시험을 없앤다. recipe가 그 case를 담는다 (#T334-3-4-21)
 - make group-rows-db-rust는 자기 SQLite case database를 만드는 시험에 DSN을 넘기지 않는다 (#T334-3-4-20)
 - parameter 쓰임, plan의 출력 열, blind index source, 복합 upsert key, 열 타입별 연산자, 다른 manifest의 요청을 새 op `ir.param_uses`, `planner.columns`로 여섯 runtime의 recipe 사례로 옮겼고, TypeScript와 Python도 다른 runtime처럼 `uuid` 순서 비교를 거부한다.
 - AES envelope, 변조, 잘못된 키, blind index vector를 여섯 runtime의 codec recipe case로 옮겼고 envelope 형식을 expect로 확인한다. Go, PHP, PHP 확장의 hostcodec 테스트는 없앴다.

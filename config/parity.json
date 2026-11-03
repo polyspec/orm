@@ -26773,25 +26773,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_immutable_write",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
-          ]
+          "test": "packages/python/tests/test_immutable_write_sqlite.py",
+          "id": "immutable_write"
         },
         {
           "implementation": "rust",

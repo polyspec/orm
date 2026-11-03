@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python and Rust native tests of constraints_and_relations are gone; the recipes hold their cases (#T334-3-4-21)
 - make group-rows-db-rust passes no DSN to a test that creates its own SQLite case database (#T334-3-4-20)
 - The uses of each parameter, the output columns of a plan, blind index sources, a composite upsert key, the operators of each column type and a request of another manifest are recipe cases of all six runtimes, through the new ops `ir.param_uses` and `planner.columns`; TypeScript and Python now refuse an order comparison on `uuid`, as the others did.
 - The AES envelope, its tampering, a wrong key and the blind index vector are cases of the codec recipe in all six runtimes, with the form of an envelope as an expect, and the hostcodec tests of Go, PHP and the PHP extension are gone.
