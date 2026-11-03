@@ -43058,6 +43058,112 @@
       }
     },
     {
+      "id": "conformance-errors-refusal",
+      "kind": "feature",
+      "requirements": [
+        "DSL-10",
+        "DSL-19",
+        "DSL-47",
+        "DSL-67",
+        "DSL-96",
+        "DSL-98",
+        "DSL-123",
+        "PRT-14"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/refusal_test.go",
+          "id": "TestRefusalBeforeAnyRequest"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/refusal_test.go",
+          "id": "TestRefusalIsATypedError"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RefusalBeforeRequestTest.php",
+          "id": "RefusalBeforeRequestTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
+          "id": "RefusalBeforeRequestExtensionTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/refusal-before-request.mjs",
+          "id": "each chain of the errors vector is refused before any request"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/refusal-before-request.mjs",
+          "id": "tsc accepts each chain of the errors vector as a promise and refuses it as rows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_refusal.py",
+          "id": "test_each_chain_of_the_errors_vector_is_refused_before_any_request"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/refusal_before_request.rs",
+          "id": "refusal_before_request"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-chains-typed-positive"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-missing-connector-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-dangling-connector-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-empty-list-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-no-connection-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-lock-outside-transaction-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-join-child-with-connection-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-page-with-limit-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-relation-with-limit-e0308"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::refusal-unjoined-model-placement-e0308"
+        }
+      ]
+    },
+    {
       "id": "recipe-unknown-keys",
       "kind": "feature",
       "requirements": [
