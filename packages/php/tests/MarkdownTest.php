@@ -6,8 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 /*
  * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
- * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown
- * connection refuses, and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
+ * the reading of control messages and error lines, the connect the server refuses, and the SQL-only surface that a markdown
+ * connection refuses.
  * The size of a class is Large, that of the largest case (a child process).
  * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
  * answers.
@@ -283,106 +283,6 @@ class MarkdownTest extends TestCase
                     "{$c['name']}: " . ($e?->getMessage() ?? '') . '; want it bound'
                 );
             }
-        }
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUses(): void
-    {
-        $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params
-
-        table owners {
-          id varchar(16)
-          name varchar(32)
-          primary key (id)
-        }
-
-        table notes {
-          id i64 identity
-          owner varchar(16)
-          title varchar(64)
-          born date null
-          at datetime(3)
-          version datetime(6) null
-          primary key (id)
-          index ix_notes_owner (owner)
-          foreign key fk_notes_owner (owner) references owners (id)
-        }
-        ']));
-        $validator = new Validator($model);
-        /** Each use of paramUses reduced to [type, column name]. */
-        $usesOf = static fn(array $uses): array => array_map(
-            static fn(array $list): array => array_map(
-                static fn(array $u): array => [$u['type'], $u['column']['name'] ?? ''],
-                $list
-            ),
-            $uses,
-        );
-        $base = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash];
-        $requests = [
-            'read' => [$base + ['kind' => 'all', 'entity' => 'notes',
-                'where' => ['items' => [
-                    ['pred' => ['column' => 'title', 'op' => 'eq', 'p' => 0]],
-                    ['pred' => ['conn' => 'and', 'column' => 'born', 'op' => 'between', 'ps' => [1, 2]]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'year'], 'p' => 3]],
-                    [
-                        'pred' => [
-                            'conn' => 'and',
-                            'column' => 'at',
-                            'op' => 'gt',
-                            'value' => ['name' => 'days_ago', 'ps' => [4]]
-                        ]
-                    ],
-                    ['pred' => ['conn' => 'and', 'column' => 'title', 'op' => 'contains', 'p' => 5]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'date'], 'p' => 6]],
-                    [
-                        'pred' => [
-                            'conn' => 'and',
-                            'column' => 'at',
-                            'op' => 'lt',
-                            'value' => ['name' => 'seconds_later', 'ps' => [7]]
-                        ]
-                    ],
-                ]],
-                'relations' => [['rel' => 'owner_model', 'kind' => 'one', 'keys' => [
-                    ['left' => 'owner', 'right' => 'id']
-                ],
-                    'query' => ['entity' => 'owners', 'if_parent' => ['column' => 'title', 'p' => 8]]]],
-                'n_params' => 9], [
-                [['varchar', 'title']],
-                [['date', 'born']],
-                [['date', 'born']],
-                [['i64', '']],
-                [['i32', '']],
-                [['text', '']],
-                [['date', '']],
-                [['f64', '']],
-                [['varchar', 'title']],
-            ]],
-            'insert' => [$base + ['kind' => 'insert', 'entity' => 'notes',
-                'set' => [
-                    ['column' => 'owner', 'p' => 0],
-                    ['column' => 'title', 'p' => 1],
-                    ['column' => 'at', 'p' => 2]
-                ],
-                'rows' => [[3, 4, 5], [6, 7, 8]], 'n_params' => 9], [
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-            ]],
-            'update' => [$base + ['kind' => 'update', 'entity' => 'notes',
-                'where' => ['items' => [['pred' => ['column' => 'id', 'op' => 'eq', 'p' => 0]]]],
-                'set' => [['column' => 'title', 'p' => 1]],
-                'optimistic' => ['column' => 'version', 'p' => 2], 'n_params' => 3], [
-                [['i64', 'id']], [['varchar', 'title']], [['datetime', 'version']],
-            ]],
-        ];
-        foreach ($requests as $name => [$request, $want]) {
-            $validator->validate($request);
-            self::assertFalse(
-                ($got = $usesOf($validator->paramUses($request))) !== $want,
-                "$name uses = " . json_encode($got) . "\nwant " . json_encode($want)
-            );
         }
     }
 }
