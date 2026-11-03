@@ -236,54 +236,6 @@ class ModelTest extends TestCase
         self::check(self::code(fn() => (new Author())->name('alpha')->gets()) === Code::CONFIG, 'no connection');
     }
 
-    private static function caseJoinsAndRelations(Db $db, string $dsn): void
-    {
-        $f = self::seed($db);
-        $author = (new User())->on(fn(User $u) => $u->neName('nobody'))->name('kim');
-        $rows = (new Author())($db)->leftJoinUserSeqWithSeq($author)
-            ->serviceSeq($f['service']->getSeq())
-            ->and(fn(Author $q) => $q->name('delta')->or($author))
-            ->orderBySeqAsc()->gets();
-        self::check(self::names($rows) === 'alpha,gamma,delta', 'placed join conditions: ' . self::names($rows));
-        self::check($rows->first()->getUserModel()?->getName() === 'kim', 'join result');
-        $member = new ServiceMember();
-        self::check(
-            (new Author())($db)->joinServiceMemberSeqWithSeq($member)->readCountGtSeq($member)->getCount() === 3,
-            'column comparison'
-        );
-        $loaded = (new Author())($db)
-            ->relation((new User())->matchUserSeqWithSeq()->aliasWriter())
-            ->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasMembers())
-            ->relation((new ServiceRegion())->matchServiceRegionSeqWithSeq())
-            ->orderBySeqAsc()->gets();
-        $b = $loaded->first();
-        self::check($b->getWriter()?->getName() === 'kim', 'relation alias');
-        self::check($b($db) === $b, 'loaded row short connection call');
-        self::check(count($b->getMembers()) === 1 && $b->getServiceRegionModel()->getName() === 'module', 'relations');
-        $limited = (new User())($db)->relations((new Author())->matchSeqWithUserSeq()->orderBySeqDesc()->groupLimit(1))
-            ->orderBySeqAsc()
-            ->gets();
-        $got = $limited->first()->getAuthorModels();
-        self::check(count($got) === 1 && $got->first()->getName() === 'gamma', 'groupLimit');
-        $other = \Polyspec\Orm\Tests\Model\connect($dsn, $db->config());
-        $external = (new Author())($db)->relation(
-            (new User())($other)->matchUserSeqWithSeq()->aliasOwner()
-        )->getByName('beta');
-        self::check($external->getOwner()?->getName() === 'lee', 'relation on another connection');
-        self::check(
-            self::code(fn() => (new Author())($db)->joinUserSeqWithSeq((new User())($db))->gets()) === Code::CONFIG,
-            'join child with connection'
-        );
-        self::check(
-            self::code(fn() => (new Author())($db)->name('a')->or(new User())->gets()) === Code::CONFIG,
-            'unjoined model placement'
-        );
-        $array = $b->toArray();
-        self::check(($array['writer']['name'] ?? null) === 'kim' && $array['name'] === 'alpha', 'toArray');
-        $json = json_decode((string) json_encode($b), true);
-        self::check(($json['writer']['name'] ?? null) === 'kim', 'json');
-    }
-
     private static function caseColumnsAndSubqueries(Db $db, string $dsn): void
     {
         $f = self::seed($db);
@@ -1458,17 +1410,6 @@ class ModelTest extends TestCase
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::caseConditions($db, $dsn);
-    }
-
-    // joins and relations
-    // Requirements: DBS-118, CPX-1.
-    // Requirements: DSL-8, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
-    #[DataProvider('drivers')]
-    public function testJoinsAndRelations(string $driver): void
-    {
-        $dsn = self::caseDsn($driver);
-        $db = self::database($driver, $dsn);
-        self::caseJoinsAndRelations($db, $dsn);
     }
 
     // columns and subqueries

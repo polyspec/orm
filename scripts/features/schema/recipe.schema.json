@@ -9436,6 +9436,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "connection": {
+          "description": "A bound connection that the child connects to (PLN-42).",
+          "$ref": "#/$defs/name"
+        },
         "limit": {
           "description": "The limit of the related model, which is refused with LIMIT_IN_RELATION.",
           "$ref": "#/$defs/limit"

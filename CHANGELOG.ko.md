@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 51531d6eabcf136de603a00461f1d98a53866e7f2c91dad6bab37505fe3b89cb -->
+<!-- source-sha256: 473978e4d99ae62fc583016d113bfa42db3a9575b61436c64258c613b2d26e39 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe가 join, relation, 다른 connection의 relation child를 지키며, 모든 runtime의 native를 대신한다.
 - 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.

@@ -4337,6 +4337,7 @@ mod tables {
     fn dispatcher() -> Box<dyn ModelDispatcher> {
         let schema = CURRENT.get().copied().expect("table_trials sets the schema of the binary");
         crate::bench_models::case_dispatcher(Tables {
+            handles: HashMap::new(),
             schema,
             bases: HashMap::new(),
             rows: HashMap::new(),
@@ -4355,6 +4356,8 @@ mod tables {
         collections: HashMap<String, Collection<TableRow>>,
         chains: HashMap<String, Core>,
         records: Arc<Mutex<Vec<Record>>>,
+        /// The connections of the case at the op that runs, for a child that names one.
+        handles: HashMap<String, Db>,
     }
 
     /// The row of a table model. One type serves every table: the entity of its core names the table.
@@ -4568,6 +4571,8 @@ mod tables {
         outer: Option<u64>,
         /// The connection of the step, for a join that names connect.
         db: Option<Db>,
+        /// The bound connections, which a relation child names by `connection` (PLN-42).
+        handles: HashMap<String, Db>,
     }
 
     impl Build {
@@ -4667,7 +4672,7 @@ mod tables {
             }
             if let Some(sub) = raw.get("sub") {
                 let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, sub, true)?;
+                Build { joined: HashMap::new(), outer: self.outer, db: None, handles: self.handles.clone() }.query(&mut child, sub, true)?;
                 return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
             }
             if raw.get("fn").is_some() {
@@ -4717,7 +4722,7 @@ mod tables {
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None, handles: self.handles.clone() }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -4762,7 +4767,7 @@ mod tables {
             }
             for join in q["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
-                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None };
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None, handles: self.handles.clone() };
                 if let Some(alias) = join["alias"].as_str() {
                     child.set_alias(alias);
                 }
@@ -4823,8 +4828,18 @@ mod tables {
         }
 
         /// The child core of a relation.
+        /// Connects the child of a relation to the bound connection that its `connection` names, if any.
+        fn connect_child(&self, child: &mut Core, field: &Value) -> Result<(), String> {
+            if let Some(name) = field["connection"].as_str() {
+                let db = self.handles.get(name).ok_or_else(|| format!("child connection {name} is not bound by model.connect"))?;
+                child.connect(db);
+            }
+            Ok(())
+        }
+
         fn relation(&self, relation: &Value) -> Result<Core, String> {
             let mut child = core_of(relation["model"].as_str().ok_or_else(|| "relation model is not a name".to_owned())?)?;
+            self.connect_child(&mut child, relation)?;
             for pair in relation["match"].as_array().into_iter().flatten() {
                 match (pair[0].as_str(), pair[1].as_str()) {
                     (Some(left), Some(right)) => child.add_match(leaked(left), leaked(right)),
@@ -4840,7 +4855,7 @@ mod tables {
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
             }
-            Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, relation, true)?;
+            Build { joined: HashMap::new(), outer: self.outer, db: None, handles: self.handles.clone() }.query(&mut child, relation, true)?;
             if let Some(n) = relation["group_limit"].as_u64() {
                 child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
             }
@@ -5065,7 +5080,7 @@ mod tables {
                 if step["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
-                let mut build = Build { db: Some(db.clone()), ..Build::default() };
+                let mut build = Build { db: Some(db.clone()), handles: self.handles.clone(), ..Build::default() };
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
                 if !paged && !step["offset"].is_null() {
@@ -5390,6 +5405,7 @@ mod tables {
                     other => Err(format!("{other} names no connection")),
                 };
             }
+            self.handles = connections.all();
             let db = connections.bound(connection)?;
             let model = step["model"].as_str().unwrap_or_default();
             match op {

@@ -145,7 +145,13 @@
   "DSL-96",
   "DSL-98",
   "PRT-14",
-  "PRT-78"
+  "PRT-78",
+  "PLN-10",
+  "PLN-41",
+  "PLN-42",
+  "PLN-43",
+  "DBS-118",
+  "PLN-35"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -13066,7 +13072,8 @@
     "DSL-85",
     "DSL-86",
     "DSL-88",
-    "DSL-89"
+    "DSL-89",
+    "PLN-41"
    ],
    "steps": [
     {
@@ -14420,6 +14427,280 @@
             "error",
             {
              "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_child_on_another_connection",
+   "requirements": [
+    "PLN-10",
+    "PLN-42",
+    "DBS-118",
+    "PLN-35"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "other"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "on_db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "other",
+     "as": "on_other"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ],
+       "alias": "Owner",
+       "connection": "other"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6,
+         "user_seq": 7,
+         "name": "author-6",
+         "owner": {
+          "seq": 7,
+          "name": "user-7"
+         }
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_db",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_other",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "user"
+              }
+             ]
             }
            ]
           ]
@@ -54088,7 +54369,8 @@
     "DSL-96",
     "DSL-98",
     "DSL-123",
-    "PRT-14"
+    "PRT-14",
+    "PLN-43"
    ],
    "steps": [
     {

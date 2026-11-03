@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: bbab1ba397eac37d8fbf6fa56e200ff0f7e7625cf71cb278884bf5f7adec91f3 -->
+<!-- source-sha256: 86c43745a36269951b407e44eec67bdf06f38c381a5937372d980f93826e3aa4 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -25,6 +25,7 @@
   - `statement-runner-python-active-frame`(INT-161)은 Python에서 FCV-2의 한 언어 표면으로 native로 남는다. `active_frame()`은 Python에서만 public이고, 다른 런타임에는 recipe op가 이름 붙일 호출이 없다.
   - `transaction-concurrent-use-and-flow-isolation`, `transaction-execution-flow-context`, `transaction-flow-overlap-rejected`, `handle-disposal-abort-or-unwind-rolls-back`, `handle-disposal-abandoned-query-cancels-and-releases`(PLN-18, DSL-121, DSL-122, INT-47, INT-67, CFG-9)는 모든 런타임에서 FCV-2의 언어 형태로 native로 남는다. 주제가 각 런타임의 flow나 disposal 형태(goroutine, fiber, thread, task; drop된 handle, 취소된 context, signal, close)이고, recipe의 step은 한 flow에서 실행되어 그중 어느 것도 적지 못한다. `utils-backend-waiting-for-lock`(INT-53)도 두 번째 flow이므로 native로 남는다. 기다리는 backend는 첫 flow가 쥔 행에서 막힌 문장을 필요로 하고, 그동안 첫 flow가 보고를 읽는다. recipe `utils`는 waiter가 없는 사례를 가진다.
   - `collection-parent-expansion-preserves-bare-dollar`(DSL-153)는 모든 runtime에서 FCV-2 driver 항목으로 native로 남는다: parent slot의 placeholder 번호 매기기는 generator가 쓰지 않는 statement를 받으므로 어떤 public op도 bare `$`를 줄 수 없다.
+  - `plan-cache-in-list-shapes-share-ten-bucketed-keys`와 `page-cache-root-limit-values`(CPX-4, PRT-78)는 비공개 상태에 대한 FCV-2 항목으로 모든 runtime에서 native로 남습니다. plan cache가 가진 항목 수, 곧 1개부터 300개 값의 IN list에서 최대 10개와 300개 page에서 1개는 connection 내부의 수이며 이를 읽는 public 호출이 없습니다. Go, PHP, PHP extension, Python은 항목을 세고, TypeScript와 Rust는 PRT-78의 key인 서로 다른 shape key를 셉니다. 그 shape의 public 모습은 `core_in_list_padding`과 `page_statement_does_not_hold_its_values` case가 지킵니다.
   - `collection-composite-key-encoding`(PRT-35)는 FCV-2 driver 항목으로 모든 runtime에서 native로 남습니다. composite key의 encoded text와 구성 요소의 타입은 driver 행에서 읽히며, 여섯 runtime이 모두 가진 public 호출 중 구성 요소를 받거나 그 text를 돌려주는 것은 없습니다.
   - `group-row-driver-cell-forms`(INT-68, INT-90)는 모든 runtime에서 FCV-2의, recipe 값이 담을 수 없는 입력으로 native로 남는다. text나 float인 count와 반복된 열은 driver cell의 형태이고, listener의 답은 count가 JSON number이고 행이 JSON object이므로(PRT-69) 그중 어느 것도 담지 못한다. `collection-recipe`(`tests/collection/collection.json`)는 나머지 group row 동작을 모두 `ir.answer`로 담으며 새 op가 필요 없다. PHP의 `toArray` 선언 형태와 PHP extension의 iterator는 다른 runtime에 없는 FCV-2 binding surface로, parity 단위 없이 native 시험으로 남는다.
   - `connection-cancelled-transaction-session-state`(CFG-39)는 Go에서 native로 남는다. handle의 context는 Go에만 있고, 다른 runtime에는 그것으로 callback 도중 transaction을 취소하는 호출이 없다.
@@ -145,7 +146,7 @@
   - `model.query`의 `columns` 항목은 column 이름 또는 `{"expr": <expr>, "as": <name>}`이며, `<expr>`는 column, `{"sub": <subquery>}`(`where`, `order`, count 1의 `limit`과 선택적 aggregate를 가진 scalar subquery), `{"blind_index": {"value": <text>, "key": <key>}}`(COD-4의 blind index) 또는 `{"fn": ...}`다. API unit: coverage-model-scalar-subquery-column과 client-query-base.
   - `{"fn": <name>, "args": [<expr>, ...]}`(F5)의 name은 `year`, `month`, `day_of_week`, `days_ago`, `days_later`, `months_ago`, `months_later`, `seconds_ago`, `now` 중 하나다. API unit: clock-now-condition(DSL-137, DIA-56).
   - `model.query`의 `aggregate`는 `{"agg": "sum" | "avg" | "count", "column": <name>, "group_by": [<name>, ...]}`이며, 결과는 group마다 값 하나를 갖는다. API unit: client-model-terminal-read(INT-29).
-  - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). API unit: model-connection-and-join-methods.
+  - `model.query`의 `joins`는 `[{"model": <name>, "on": <predicate>, "kind": "inner" | "left", "as": <name>}]`이며, soft delete된 join 행은 그 `ON` 조건에서 제외된다(DBS-67). table path의 relation은 `connection`도 받으며, 이는 child가 연결할 bound connection이다(PLN-42). API unit: conformance_verification-sqlite.
   - `model.query`의 `relations`는 `[{"model": <name>, "match": [[<parent column>, <child column>], ...], "as": <name>, "group_limit": <정수>, "key_by": <column>, "possible": <predicate>, "parent_node": <boolean>, "flatten": <boolean>, "delete_lock": <boolean>}]`이며, 각각 root의 relation 하나다. API unit: client-query-relation(INT-87)과 DIA-167.
   - `model.get_by`, `model.query`, `model.delete`의 `lock`은 `"share"` 또는 `"update"`이며, transaction 안에서만 허용된다. API unit: client-utils-lock(INT-50).
   - `model.query`의 `compile: true`는 실행하지 않고 각 database에서 그 문장이 보낼 SQL 텍스트와 바인드 값을 돌려준다. 그 expect는 database마다 `{"value": {"text": <sql>, "binds": [<value>, ...]}}`다. API: DSL-65와 DSL-68(getQuery).
@@ -160,9 +161,9 @@
   - `model.get_by`는 `key`(키 조회, GetBy) 또는 `where`(predicate와 terminal Get) 중 정확히 하나를 받는다. `columns`(이름 목록 또는 `"all"`), `expect`(행 0개 또는 1개의 `{"rows": [...]}` 또는 `{"error": <code>}`), `as`, `lock`, `limit`은 두 형식 모두에서 선택 사항이다. API unit: client-query-base(INT-26); DSL-59.
   - `model.query`는 `where`, `order`, `columns`(이름 목록 또는 모델의 모든 열을 고르는 `"all"`, DSL-72)를 선택 사항으로 받으며, `as`는 결과를 묶으므로 `as`가 있으면 `expect`는 선택 사항이다. API unit: client-query-base(INT-20부터 INT-26까지).
   - `model.query`의 `expect`는 `{"page": {"total": <정수>, "pages": <정수>, "rows": [...]}}`일 수 있다. `getsPage`의 page 결과이며 전체 개수와 쪽 수를 담는다(`rows`는 선택 사항). API unit: client-page(INT-64).
-  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: model-connection-and-join-methods(DSL-90부터 DSL-93까지).
-  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: model-connection-and-join-methods(DSL-90, DSL-91).
-  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
+  - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: conformance_verification-sqlite(DSL-90부터 DSL-93까지).
+  - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: conformance_verification-sqlite(DSL-90, DSL-91).
+  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: conformance_verification-sqlite(DSL-91, DSL-92), client-utils-set-local(INT-51).
   - `in`과 `not_in` 목록은 비어 있을 수 있으며, 그 경우 case의 expect는 `{"error": "EMPTY_IN"}`이다. API: DSL-47과 PLN-28.
   - `{"sub": <subquery>}`는 `expr`이므로 predicate의 열 값이나 `in` 피연산자가 된다. subquery는 `model`을 지정하고 `where`, `order`, `limit`, `agg`를 지정할 수 있으며, `limit`은 호출이 지정할 때만 지정한다. API: coverage-model-scalar-subquery-column(DSL-74), DSL-53과 DSL-54.
   - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.

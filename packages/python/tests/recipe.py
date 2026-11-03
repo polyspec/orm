@@ -3077,6 +3077,8 @@ class _ChainBuild:
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
         child = _new_core_model(self.context, relation["model"])
+        if "connection" in relation:
+            child.connect(_bound_value(relation["connection"], self.context))
         for left, right in relation.get("match", []):
             child.core.matches.append({"left": left, "right": right})
         if "alias" in relation:
