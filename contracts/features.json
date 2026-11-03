@@ -4819,7 +4819,8 @@
         "dbspec-apply-cleanup-rust",
         "dbspec-apply-cleanup-python",
         "dbspec-apply-cleanup-php",
-        "dbspec-apply-cleanup-errors"
+        "dbspec-apply-cleanup-errors",
+        "dbspec-dialect-refusal"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4878,7 +4879,6 @@
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/dbspec-plan-physical.mjs",
-        "packages/ts/tests/dbspec-plan.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
         "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -4886,7 +4886,7 @@
         "packages/ts/tests/dbspec-plan-comparisons.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/ts/tests/dbspec-render-physical.mjs",
         "packages/python/tests/dbspec_render_physical.py",
         "packages/rust/orm/tests/dbspec_render_physical.rs",
@@ -4931,7 +4931,7 @@
         "packages/ts/tests/browser-entry.mjs",
         "packages/python/tests/dbspec_ddl.py",
         "packages/python/tests/dbspec_plans.py",
-        "packages/python/tests/test_dbspec_render_dialect.py",
+        "packages/python/tests/test_dbspec_dialect_refusal_none.py",
         "packages/python/tests/test_dbspec_plan_cases.py",
         "packages/python/tests/test_dbspec_plan_invalid.py",
         "packages/python/tests/test_dbspec_plan_chains.py",
@@ -5009,7 +5009,10 @@
         "packages/ts/tests/dbspec-mermaid-none.test.mjs",
         "packages/go/engine/dbspec/recipe_mermaid_test.go",
         "packages/python/tests/test_dbspec_mermaid_none.py",
-        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php"
+        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php",
+        "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -5142,8 +5145,7 @@
             "packages/ts/tests/dbspec-analyze.mjs",
             "packages/ts/tests/dbspec-rules.mjs",
             "packages/ts/tests/dbspec-render.mjs",
-            "packages/ts/tests/dbspec-render-dialect.mjs",
-            "packages/ts/tests/dbspec-plan.mjs",
+            "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
             "packages/ts/tests/dbspec-plan-cases.mjs",
             "packages/ts/tests/dbspec-plan-invalid.mjs",
             "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -5188,7 +5190,7 @@
           "inputs": [
             "packages/python/tests/dbspec_ddl.py",
             "packages/python/tests/dbspec_plans.py",
-            "packages/python/tests/test_dbspec_render_dialect.py",
+            "packages/python/tests/test_dbspec_dialect_refusal_none.py",
             "packages/python/tests/test_dbspec_plan_cases.py",
             "packages/python/tests/test_dbspec_plan_invalid.py",
             "packages/python/tests/test_dbspec_plan_chains.py",
@@ -9286,7 +9288,7 @@
         "packages/go/engine/dbspec/render_test.go",
         "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
         "packages/php/tests/DriverErrorTest.php",
@@ -14379,7 +14381,7 @@
     {
       "id": "php-dbspec-dialect-rejection-cases",
       "paths": [
-        "packages/php/tests/DbspecDialectRejectionCases.php"
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php"
       ],
       "tests": [
         "packages/php/tests/DbspecRenderTest.php",
