@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5a6a963a772670802e4aa918cb09004a2ecdbaedab7b01b03d9191000720c1af -->
+<!-- source-sha256: 994256def6d7ff60b14c6148e15b91f4b22d34d49ff988b58e48207ae44dbabb -->
 # 변경 이력
 
 ## Unreleased
 
+- `model_queries`와 `model_writes`의 coverage는 FCV-12가 정한 대로 recipe를 지정한다(`recipe`, `symbol`, 그리고 그 데이터베이스에서 `only`로 빠지는 case를 뺀 `cases`). Rust workspace 실행은 Rust recipe owner의 program을 건너뛴다. 이전에는 case symbol이 없는 첫 owner에서 skip 목록이 예외를 던졌다.
 - ordered-json, codec 컬럼, 일괄 create 쓰기는 모든 runtime의 builder에서 recipe `model_writes_chain`의 case다. 멤버 순서와 숫자 텍스트, 반복 멤버 이름, 저장 텍스트의 codec 컬럼, 공백이 있는 IP, 오래된 낙관적 갱신, `creates`(어떤 문장보다 먼저 거부, SQLite bind 한도 초과, batch를 넘는 행 순서, 모든 batch의 rollback)를 다룬다. 이 기능의 coverage 시험은 사라졌다. `contracts/features.json`은 schema가 요구하는 `model_writes`와 `model_queries` coverage의 빈 `dependents`를 선언한다.
 - 생성 모델 쿼리의 chain은 모든 runtime의 builder에서 recipe `model_queries_chain`의 case다: page와 total, sum, 함수 column, 제거한 column, index와 subquery가 있는 join, relation, NULL collection key, group row이며, 이 기능의 coverage 시험은 제거됐고, PRT-35는 NULL key의 메시지가 아니라 code를 정한다
 - feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.

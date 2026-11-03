@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The coverage of `model_queries` and `model_writes` names its recipes as FCV-12 writes (`recipe`, `symbol`, and `cases` without a case that `only` leaves out on that database). The Rust workspace run skips the program of a Rust recipe owner, where the skip list threw on the first owner with no case symbols.
 - The feature checker reads a recipe owner from the results its runner writes (FCV-12): every recipe runner appends a `CASE` line to the file of `ORM_RECIPE_RESULTS` when a case passes, the owner names its recipe, and the recipe is its list of cases, so request_hook lists its sixteen cases rather than fourteen.
 - A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
 - The statement runner runs in the recipe `statement_runner` alone in the six runtimes: its native and coverage tests are gone, except the refusals of FCV-2.
