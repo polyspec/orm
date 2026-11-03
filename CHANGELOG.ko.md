@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 74c88f83fd6de8a326fbd5e6f922c2b97bd65d17f940037d8538f184887507d2 -->
+<!-- source-sha256: 04729d5500fd7771e6f41d793c8acbfd6c15d194f28ca6d7c850455b430a22a4 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.

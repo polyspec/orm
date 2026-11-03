@@ -626,7 +626,11 @@
         },
         {
           "type": "object",
-          "minProperties": 1,
+          "required": [
+            "mysql",
+            "postgres",
+            "sqlite"
+          ],
           "additionalProperties": false,
           "properties": {
             "mysql": {
@@ -5228,11 +5232,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
-                "message_suffix": {
-                  "description": "The text that the message of the error ends with.",
-                  "type": "string",
-                  "minLength": 1
-                }
+              "message_suffix": {
+                "description": "The text that the message of the error ends with.",
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         ]
@@ -5317,11 +5321,11 @@
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
               },
-                "message_suffix": {
-                  "description": "The text that the message of the error ends with.",
-                  "type": "string",
-                  "minLength": 1
-                }
+              "message_suffix": {
+                "description": "The text that the message of the error ends with.",
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         ]
