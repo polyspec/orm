@@ -255,6 +255,34 @@
         {
           "glob": "packages/go/orm/model_update_state_test.go",
           "reason": "test: a unit test of the private update state of Core (the selected columns and the key values that retainUpdateState keeps after an update of an unloaded row), reached inside package orm, not a behaviour of the contract; its owner is unloaded-update-state-go, while the public update behaviour remains covered by the model_writes cases (K313)"
+        },
+        {
+          "glob": "packages/go/engine/compile_bench_test.go",
+          "reason": "harness: benchmark, not a behaviour case; BenchmarkCompileList times the compile path over the bench model"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_output_internal_test.go",
+          "reason": "test: the staging directory, output replacement and go/packages load and convergence failures of the Go generator, mechanics of the Go generator that the contract does not state"
+        },
+        {
+          "glob": "packages/go/generator/gen_go_scan_internal_test.go",
+          "reason": "test: the go/packages scan of the Go generator: hand-written files of the model package, pattern spelling, build tags and the generated relation getter text"
+        },
+        {
+          "glob": "packages/go/orm/cancel_waiter_internal_test.go",
+          "reason": "harness: tests newWaiter, the lock-wait helper that the cancellation tests use to time a cancel"
+        },
+        {
+          "glob": "packages/go/orm/collection_key_internal_test.go",
+          "reason": "test: the private fetchKey and keyName of a model, which reject a key callback of the wrong type; the key column behaviour of a collection is the interfaces.md collection key unit (T326-7)"
+        },
+        {
+          "glob": "packages/go/orm/driver_error_internal_test.go",
+          "reason": "test: the private mapDriverErrContext keeps the context cause beside the error it maps, through errors.Join, so errors.Is finds both; the CANCELED code is a case of the CFG-9 unit (T326-14)"
+        },
+        {
+          "glob": "packages/go/orm/shape_internal_test.go",
+          "reason": "test: reflects over the Go request struct to check that the private plan cache key shapeKey reads every field"
         }
       ]
     },
@@ -12455,6 +12483,11 @@
           "implementation": "go",
           "test": "packages/go/generator/generator_test.go",
           "id": "TestGenerateUsesCanonicalManifestForGoClient"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/generator_test.go",
+          "id": "TestGenerateUsesRequestedGoPackageName"
         }
       ],
       "owner": {
