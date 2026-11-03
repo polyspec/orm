@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2274607e6068f92cb533e90ac4c262023e3d43c7cfd2a307c0c6ba279de20d24 -->
+<!-- source-sha256: e80345eb4eea97eb7fbf2d19d3ceabc04a8c7be4ae13b7e0c0de961722d7e101 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
+- CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.
+- CR15-F: 할당이 없는 insert가 생성 키를 돌려준다. TypeScript는 MySQL에서 bind 없는 문장의 insert id를 유지하고, PHP와 확장은 PostgreSQL에서 그 문장에 cursor를 선언하지 않는다.
 - Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
 - `performance_gate`는 각 class가 가리키는 database의 BENCH_<DATABASE>_DSN을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.

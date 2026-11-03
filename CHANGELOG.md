@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- CR15-F: generated keys are held by the recipe cases `generated_keys` and `generated_key_lifecycle`; the TypeScript and Python natives that repeated them over fake drivers are removed, and the Rust test keeps the phases, cancellation and joined inserts of INT-123a.
+- CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
+- CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
 - Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
 - `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
