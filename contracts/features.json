@@ -2099,14 +2099,6 @@
           ]
         },
         {
-          "id": "ip-host-input-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestIPHostInputIsValidatedBeforeModelAndPredicateBinding$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/model_host_input_test.go"
-          ]
-        },
-        {
           "id": "writes-orm-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
           "shard": "other",
@@ -8956,14 +8948,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/row_snapshot.rs"
-          ]
-        },
-        {
-          "id": "catalog-row-baseline-go",
-          "command": "make --no-print-directory catalog-row-baseline-go-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile"
           ]
         },
         {

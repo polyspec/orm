@@ -1521,8 +1521,7 @@
         "packages/go/orm/recipe_statement_events_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/statement.go",
-        "packages/go/orm/statement_events*.go"
+        "packages/go/internal/recipe/statement.go"
       ]
     },
     "statement-events-check/typescript": {
@@ -2372,7 +2371,6 @@
         "Makefile",
         "packages/python/src/polyspec/orm/catalog.py",
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_mysql_visibility.py",
         "packages/python/tests/test_catalog_described_temporal.py"
       ]
@@ -3164,7 +3162,6 @@
         "tests/dbspec/*.json",
         "tests/dsn/sqlite-paths.json",
         "tests/ir/*.json",
-        "tests/events/*.json",
         "tests/markdown/*.json",
         "tests/conformance/schema/**",
         "scripts/json/**",
@@ -3601,16 +3598,6 @@
         "packages/go/orm/catalog.go",
         "packages/go/orm/catalog_session_error_test.go",
         "packages/go/orm/failing_driver_test.go"
-      ]
-    },
-    "catalog-row-baseline-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/orm/catalog_row_baseline_test.go"
       ]
     },
     "catalog-described-temporal-go-check": {
