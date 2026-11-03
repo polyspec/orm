@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- vector 17(`errors`)의 거부마다 각 runtime에 요청 전 시험이 생겼다. `make conformance-refusal-check`: 여섯 runtime 모두 표가 없는 SQLite 파일과 statement subscriber로 실행하고, Go, TypeScript, Rust는 각 chain을 오류와 함께 받아들이고 오류를 버리는 사용을 거부하는 형 검사를 한다. Go에서 prepare가 실패한 statement는 INT-91과 다른 runtime대로 오류를 담은 statement event를 발행한다. 전에는 발행하지 않았다.
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
 - Rust의 세 database stress apply는 각 database의 deadline을 step 수로 정한다. step마다 250 ms에 1분을 더한 값이다(testcase `step_budget`). apply는 step이 30 s 동안 없으면 멈추는 stall guard(testcase `StallGuard`)로 감시하며, step이 적용될 때마다 그 기한이 다시 시작된다. Go stress test와 같은 근거다. 11개 CPU 부하 프로세스 아래에서 세 실행을 동시에 돌리면, 기존 60 s probe deadline은 실행마다 `mysql.apply.stress_plan: exceeded 60s`로 실패했다(63.6~64 s). step 기준 deadline으로는 같은 부하에서 79.5~82.3 s에 통과하고, 단독으로는 22.7 s다(T343-5).

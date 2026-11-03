@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The refusals of vector 17 (`errors`) have a test before any request in each runtime, `make conformance-refusal-check`: a run on a SQLite file with no table and a statement subscriber in all six, and in Go, TypeScript and Rust a type check that accepts each chain with its error and refuses a use that drops the error. A statement whose prepare fails in Go publishes its statement event with the error, as INT-91 states and the other runtimes do; before, it published none.
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.
