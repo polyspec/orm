@@ -2120,7 +2120,7 @@ go-model-check:
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
-# or when the committed src/models/models.ts differs from its output.
+# or when a generated model set differs from the output of orm-gen gen --check.
 ts-model-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
