@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f8642423d98a1b163524ad15d872b7b98e4c9d92146e870e8f6410129f6e6014 -->
+<!-- source-sha256: d261e8097ded8985881be89f049c59448d79260c3eb5b37f279b2cc416c10ae2 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.
 - ordered-json AES 열의 왕복과 회전(COD-7)을 저장된 셀까지 읽는 aes_rotation recipe 사례로 여섯 runtime에 옮겼고 native 시험을 지웠다.
 - 생성 메서드 conformance 본문과 고정 시계 본문을 recipe conformance_verification과 fixed_clock.json으로 비교한다. 고정 시계 본문은 이제 정확한 시계를 적는다.
 - `docs/spec/interfaces.md`가 Rust crate의 `transaction_send` 형식의 savepoint를 INT-46a로 정하고, Go, PHP, Rust의 native transactions coverage는 사라졌다. recipe `transactions`가 그것을 담는다.

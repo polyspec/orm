@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
 - The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.
 - `docs/spec/interfaces.md` states the savepoint of the `transaction_send` form of the Rust crate as INT-46a, and the native transactions coverage of Go, PHP and Rust is gone; the recipe `transactions` holds it.
 - The recipe `transactions` holds what the native transaction tests held: a model on no connection, the four row locks, every isolation level, a read-only write, `timeoutMs`, retry attempts, the default retry, a retry of 0, a real two-flow deadlock and the SQLite busy writer.
