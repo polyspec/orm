@@ -35,6 +35,7 @@ from polyspec.orm import (
     Db,
     Model,
     OrmError,
+    RuntimeModel,
     Schema,
     connect_catalog,
     orm,
@@ -62,6 +63,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -115,6 +117,22 @@ class _Failed:
 
     def __init__(self, error: Exception) -> None:
         self.error = error
+
+
+def _reporting(check, database: str):
+    """check, which then appends the pass of its case to the file that ORM_RECIPE_RESULTS names, the line the feature
+    checker reads (FCV-12). A run outside the checker names no file."""
+
+    def reported(test: unittest.TestCase, case: dict) -> None:
+        check(test, case)
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if not path:
+            return
+        named = "" if database == NONE else f" [{database}]"
+        with open(path, "a", encoding="utf-8") as results:
+            results.write(f"CASE {case['id']}{named} PASS\n")
+
+    return reported
 
 
 def recipe_tests(path: str, database: str):
@@ -189,7 +207,9 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = recipe["cases"]
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
+    )
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -609,6 +629,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.format",
     "dbspec.parse_set",
     "dbspec.set",
+    "dbspec.load_set",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -665,33 +686,21 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 rendered["statements"], expect[dialect], f"{dialect} statements"
             )
     elif op == "dbspec.analyze":
-        if "document" not in step:
-            text, header_set = _inline_document(step)
-            analysis = analyze_dbspec(text, header_set)
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect.get("tokens", []), "tokens")
+        if "document" in step:
+            text, header_set = (directory / step["document"]).read_bytes().decode("utf-8"), {}
         else:
-            text = (directory / step["document"]).read_bytes().decode("utf-8")
-            analysis = analyze_dbspec(text, {})
-            parsed_document, positions, _diagnostics = parse_dbspec(text, {})
-            if list(analysis.diagnostics):
-                raise AssertionError(
-                    f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
-                )
-            _expect_equal(
-                emit_dbspec(analysis.document),
-                emit_dbspec(parsed_document),
-                "the analysis holds the parsed document",
-            )
-            _expect_equal(
-                analysis.positions,
-                positions,
-                "the analysis holds the positions of the parse",
-            )
-            if not expect.get("tokens"):
-                raise AssertionError("the expect names no tokens")
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect["tokens"], "tokens")
+            text, header_set = _inline_document(step)
+        analysis = analyze_dbspec(text, header_set)
+        if "document" in step and list(analysis.diagnostics):
+            raise AssertionError(f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}")
+        parsed_document, positions, diagnostics = parse_dbspec(text, header_set)
+        _expect_equal(analysis.document, parsed_document, "the analysis holds the parsed document")
+        _expect_equal(analysis.positions, positions, "the analysis holds the positions of the parse")
+        _expect_equal(list(analysis.diagnostics), list(diagnostics), "the analysis holds the diagnostics of the parse")
+        if "tokens" not in expect:
+            raise AssertionError("the expect names no tokens")
+        tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+        _expect_equal(tokens, expect["tokens"], "tokens")
     elif op == "dbspec.parse_positions":
         if "document" in step:
             text = (directory / step["document"]).read_bytes().decode("utf-8")
@@ -728,6 +737,20 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             formatted,
             "a formatted text is its own format",
         )
+    elif op == "dbspec.load_set":
+        def text(lines):
+            return "\n".join(lines) + "\n" if lines else ""
+
+        try:
+            documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
+        except OrmError as error:
+            _expect_equal(error.code, expect.get("error"), "error")
+        else:
+            _expect_equal(
+                [{"name": d.name, "external": d.external} for d in documents],
+                expect.get("documents"),
+                "documents",
+            )
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
@@ -1239,6 +1262,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1278,6 +1302,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -1821,7 +1857,7 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case for case in recipe["cases"] if database in case.get("only", DATABASES)
     ]
-    return vector_load_tests(DatabaseRecipeCase, cases, check)
+    return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
 
 def _fixture_schema(set_path: Path):
@@ -2304,6 +2340,9 @@ class _ChainBuild:
                 return model.core.connector(conn, [self.joined[value]])
             if name == "tuple":
                 return self.tuple(model, conn, value)
+            if name == "fulltext_boolean":
+                key = ChainKey(op=name, columns=tuple(value["columns"]))
+                return model.core.where_chain(conn, [key], (value["text"],))
         if "expr" in raw and "cmp" in raw:
             return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
         for i, (column, value) in enumerate(raw.items()):
@@ -2610,6 +2649,24 @@ def _table_model_query(step: dict, context: dict) -> dict:
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
+    if step.get("plan") is True:
+        limit = step["limit"]
+        steps = model.get_page_plan_steps(
+            limit["offset"] // limit["count"] + 1, limit["count"]
+        )
+        return {
+            "json": [
+                {
+                    "role": plan_step["role"],
+                    "tables": plan_step["tables"],
+                    "count": {
+                        text: plan_step["sql"].upper().count(text)
+                        for text in step["plan_count"]
+                    },
+                }
+                for plan_step in steps
+            ]
+        }
     aggregate = step.get("aggregate")
     if aggregate is not None:
         if aggregate["agg"] == "sum":
@@ -2634,6 +2691,16 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     "pages": page["totalPages"],
                     "page": page["page"],
                     "per_page": page["perPage"],
+                    **(
+                        {
+                            "items": [
+                                _row_json(row, step.get("pick"))
+                                for row in page["items"].values()
+                            ]
+                        }
+                        if step.get("items") is True
+                        else {}
+                    ),
                 }
             ),
             "total": page["totalCount"],
@@ -2743,6 +2810,27 @@ def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
 
 
+def _utils_was_inserted(step: dict, context: dict) -> dict:
+    inserted = _connection_of(step, context).utils().was_inserted(step["table"], step["sequence"])
+    return {"value": {"bool": inserted}}
+
+
+def _utils_backend_waiting_for_lock(step: dict, context: dict) -> dict:
+    return {"value": {"bool": _connection_of(step, context).utils().backend_waiting_for_lock()}}
+
+
+def _utils_groups(step: dict, context: dict) -> dict:
+    """The names of the groups that the value of utils() holds (INT-134), each read through its own call."""
+    utils = _connection_of(step, context).utils()
+    held = {
+        "aes": utils.aes(),
+        "privileges": utils.privileges(),
+        "schema": utils.schema(),
+        "stats": utils.stats(),
+    }
+    return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
+
+
 def _bind_cell(bind) -> dict:
     """The recipe wrapper of a bind of an event: a vector writes the bytes of a bind as their text."""
     if isinstance(bind, (bytes, bytearray, memoryview)):
@@ -2816,6 +2904,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
         # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
         events = [
             {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
+            for event in events
+        ]
+    if step.get("compare") == "shape":
+        # The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("kind", "tables")]}
             for event in events
         ]
     return {"value": {"array": events}}
@@ -3384,12 +3478,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 
@@ -3460,6 +3561,9 @@ _TABLE_OPS = {
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
+    "utils.was_inserted": _utils_was_inserted,
+    "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
+    "utils.groups": _utils_groups,
 }
 
 # The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).

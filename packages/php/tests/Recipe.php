@@ -70,6 +70,9 @@ final class Recipe
         'utils.lock',
         'utils.set_local',
         'utils.local',
+        'utils.was_inserted',
+        'utils.backend_waiting_for_lock',
+        'utils.groups',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -77,14 +80,14 @@ final class Recipe
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
-        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain',
+        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
         'dbspec.compare',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -99,6 +102,24 @@ final class Recipe
         $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
         foreach ($recipe['cases'] as $case) {
             yield $case['id'] => [$case];
+        }
+    }
+
+    /**
+     * Appends the pass of a case that ran on database to the file that ORM_RECIPE_RESULTS names, the line the feature
+     * checker reads (FCV-12). A run outside the checker names no file.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function report(array $case, string $database): void
+    {
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+            return;
+        }
+        $named = $database === self::NONE ? '' : " [{$database}]";
+        if (file_put_contents($path, "CASE {$case['id']}{$named} PASS\n", FILE_APPEND) === false) {
+            throw new \RuntimeException("recipe results: cannot append to {$path}");
         }
     }
 
@@ -403,6 +424,18 @@ final class Recipe
             ];
         } elseif ($op === 'dbspec.emit_plan') {
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
+        } elseif ($op === 'dbspec.add_tables_steps') {
+            $result = Dbspec::addTablesAndColumnsSteps(
+                self::dbspecBound($step['source'], $bound),
+                [],
+                self::dbspecBound($step['target'], $bound),
+                $step['dialect']
+            );
+            $got = [
+                'added' => $result[0],
+                'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
+                'differences' => $result[2],
+            ];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -847,21 +880,19 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
-                if (!array_key_exists('document', $step)) {
-                    [$text, $set] = self::inlineDocument($step);
-                    self::checkTokens(Dbspec::analyze($text, $set)->tokens, $expect['tokens'] ?? []);
-                    return;
-                }
-                $text = self::dbspecFile($dir, $step['document']);
-                $analysis = Dbspec::analyze($text, []);
-                $parsed = Dbspec::parse($text, []);
-                if ($analysis->diagnostics !== []) {
+                [$text, $set] = array_key_exists('document', $step)
+                    ? [self::dbspecFile($dir, $step['document']), []]
+                    : self::inlineDocument($step);
+                $analysis = Dbspec::analyze($text, $set);
+                if (array_key_exists('document', $step) && $analysis->diagnostics !== []) {
                     Assert::fail(self::diagnostics($analysis->diagnostics));
                 }
-                $same = $analysis->document !== null && $parsed->document !== null
-                    && Dbspec::emit($analysis->document) === Dbspec::emit($parsed->document)
-                    && $analysis->positions == $parsed->positions;
-                if (!$same) {
+                $parsed = Dbspec::parse($text, $set);
+                if (
+                    $analysis->document != $parsed->document
+                    || $analysis->positions != $parsed->positions
+                    || $analysis->diagnostics != $parsed->diagnostics
+                ) {
                     Assert::fail('the analysis differs from the parse');
                 }
                 self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);
@@ -912,6 +943,20 @@ final class Recipe
                 if (Dbspec::format($result->text, $set)->text !== $result->text) {
                     Assert::fail('the format of the formatted text differs');
                 }
+                return;
+            case 'dbspec.load_set':
+                $text = static fn(array $lines): string => $lines === [] ? '' : implode("\n", $lines) . "\n";
+                try {
+                    $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
+                } catch (OrmException $error) {
+                    Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    return;
+                }
+                Assert::assertSame(
+                    $expect['documents'] ?? null,
+                    array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
+                    'documents',
+                );
                 return;
             case 'dbspec.parse_set':
                 $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));
@@ -2013,6 +2058,10 @@ final class Recipe
      */
     private static function databaseStep(array $step, array &$context): void
     {
+        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
+        if (isset($step['expect_unnamed'])) {
+            $step['expect'] = $step['expect_unnamed'];
+        }
         $expected = isset($step['expect'][$context['database']])
             ? self::resolveRefs($step['expect'][$context['database']], $context)
             : null;
@@ -2071,9 +2120,13 @@ final class Recipe
         }
     }
 
-    /** The value with the members of every object sorted by name. */
+    /** The value with the members of every object sorted by name and each integral number as an integer. */
     private static function sortedMembers(mixed $value): mixed
     {
+        if (is_float($value) && floor($value) === $value && abs($value) < 2 ** 53) {
+            // JSON has one number form, and getSum returns a binary64 (DSL-66) where the recipe writes 17540.
+            return (int) $value;
+        }
         if (!is_array($value)) {
             return $value;
         }
@@ -2110,9 +2163,14 @@ final class Recipe
                 )->close();
                 return ['value' => ['bool' => true]];
             case 'schema.add_tables_and_columns':
-                $added = $context['db']->utils()->schema()->addTablesAndColumns(
-                    self::schemaArgument($s['schema'], $context),
-                );
+                try {
+                    $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                        self::schemaArgument($s['schema'], $context),
+                    );
+                } catch (\Throwable $error) {
+                    Assert::assertStringContainsString($s['message_contains'] ?? '', $error->getMessage());
+                    throw $error;
+                }
                 return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
             case 'statements.count':
                 $count = 0;
@@ -2364,6 +2422,13 @@ final class Recipe
                         static fn (array $member): bool => $member[0] === 'sql' || $member[0] === 'kind',
                     ))], $events);
                 }
+                if (($s['compare'] ?? '') === 'shape') {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
+                        $event['object'],
+                        static fn (array $member): bool => $member[0] === 'kind' || $member[0] === 'tables',
+                    ))], $events);
+                }
                 return ['value' => ['array' => $events]];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
@@ -2546,6 +2611,15 @@ final class Recipe
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
         generateModels($documents, "$work/source", "$work/models", $namespace, $external);
+        // A set that the process already loaded keeps its classes: the registry holds one class per entity of a manifest.
+        $declarations = (string) file_get_contents("$work/models/schema_declarations.php");
+        if (preg_match("/^const MANIFEST_HASH = '([^']+)';$/m", $declarations, $match) !== 1) {
+            Assert::fail("the generated models of $setPath declare no manifest hash");
+        }
+        if (Registry::loaded($match[1])) {
+            $loaded = (new \ReflectionClass(array_values(Registry::models($match[1]))[0]))->getNamespaceName();
+            return self::$modelNamespaces[$key] = $loaded;
+        }
         requireGeneratedClasses("$work/models");
         require_once "$work/models/bootstrap.php";
         return self::$modelNamespaces[$key] = $namespace;
@@ -2927,6 +3001,10 @@ final class Recipe
                         $row,
                     ), $rows);
                     self::chainCall($model, $conn, $key, [$values]);
+                    return;
+                case 'fulltext_boolean':
+                    $key = 'FulltextBoolean' . implode('With', array_map(self::pascal(...), $value['columns']));
+                    self::chainCall($model, $conn, $key, [$value['text']]);
                     return;
             }
         }
@@ -3395,6 +3473,24 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.was_inserted':
+                $utils = self::connectionOf($s, $context)->utils();
+                return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
+            case 'utils.backend_waiting_for_lock':
+                return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'utils.groups':
+                // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+                $utils = self::connectionOf($s, $context)->utils();
+                $held = [
+                    'aes' => $utils->aes(),
+                    'privileges' => $utils->privileges(),
+                    'schema' => $utils->schema(),
+                    'stats' => $utils->stats(),
+                ];
+                return ['value' => ['array' => array_map(
+                    static fn(string $text): array => ['text' => $text],
+                    array_keys(array_filter($held, static fn(mixed $group): bool => $group !== null))
+                )]];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
@@ -3405,6 +3501,16 @@ final class Recipe
         $model = self::chainBuilt($s, $context);
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
+        }
+        if (($s['plan'] ?? false) === true) {
+            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            return ['json' => array_map(static function (array $step) use ($s): array {
+                $count = [];
+                foreach ($s['plan_count'] as $text) {
+                    $count[$text] = substr_count(strtoupper($step['sql']), $text);
+                }
+                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+            }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;
         if ($aggregate !== null) {
@@ -3429,6 +3535,12 @@ final class Recipe
                 'per_page' => $page->perPage,
                 'keys' => $page->items->keys(),
             ], 'total' => $page->totalCount];
+            if (($s['items'] ?? false) === true) {
+                $fields['json']['items'] = [];
+                foreach ($page->items as $row) {
+                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                }
+            }
             if (self::chainWantsRows($s, $context)) {
                 $fields['rows'] = self::chainCells($page->items, $s);
             }

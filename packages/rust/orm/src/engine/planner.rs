@@ -1135,7 +1135,15 @@ impl<'m> Planner<'m> {
             _ => {
                 let entity = self.entity(&sub.query.entity)?;
                 self.column_of(entity, &sub.column)
-                    .map(|column| column.ty.name().to_owned())
+                    .map(|column| {
+                        // INT-160: a sum leaves the range of its column.
+                        let name = column.ty.name();
+                        if sub.agg == "sum" && (name == "i16" || name == "i32") {
+                            "i64".to_owned()
+                        } else {
+                            name.to_owned()
+                        }
+                    })
                     .map_err(|_error| err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))
             }
         }

@@ -115,6 +115,9 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
+	Plan            bool                       `json:"plan"`
+	PlanCount       []string                   `json:"plan_count"`
+	Items           bool                       `json:"items"`
 	Values          json.RawMessage            `json:"values"`
 	Attached        json.RawMessage            `json:"attached"`
 	Duplication     json.RawMessage            `json:"duplication"`
@@ -312,6 +315,16 @@ func (b *chainBuild) predicate(core *orm.Core, conn string, raw json.RawMessage)
 			return nil
 		case "tuple":
 			return b.tuple(core, conn, members[0].value)
+		case "fulltext_boolean":
+			var search struct {
+				Columns []string `json:"columns"`
+				Text    string   `json:"text"`
+			}
+			if err := json.Unmarshal(members[0].value, &search); err != nil {
+				return err
+			}
+			core.Where(conn, []orm.ChainKey{{Op: "fulltext_boolean", Columns: search.Columns}}, search.Text)
+			return nil
 		}
 	}
 	if len(members) == 2 && members[0].key == "expr" && members[1].key == "cmp" {
@@ -956,6 +969,19 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return jsonOutcome(groups.ToArray()), nil
+	case s.Plan:
+		var limit chainLimit
+		if s.Limit != nil {
+			limit = *s.Limit
+		}
+		if limit.Count <= 0 {
+			return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
+		}
+		steps, err := core.GetPagePlanSteps(limit.Offset/limit.Count+1, limit.Count)
+		if err != nil {
+			return outcome{}, err
+		}
+		return jsonOutcome(chainPlanSteps(steps, s.PlanCount)), nil
 	case s.Page:
 		var limit chainLimit
 		if s.Limit != nil {
@@ -1089,6 +1115,21 @@ func relatedTableRows(p *tableRow, rel *tableRelation) ([]*tableRow, error) {
 	return []*tableRow{child}, nil
 }
 
+// chainPlanSteps is the role and the tables of each step, with how many times its upper-cased statement holds each text of
+// plan_count.
+func chainPlanSteps(steps []orm.QueryPlanStep, texts []string) []any {
+	out := make([]any, len(steps))
+	for i, step := range steps {
+		sql := strings.ToUpper(step.SQL)
+		count := map[string]any{}
+		for _, text := range texts {
+			count[text] = strings.Count(sql, text)
+		}
+		out[i] = map[string]any{"role": step.Role, "tables": step.Tables, "count": count}
+	}
+	return out
+}
+
 // chainPage runs GetsPage: the keys and the counts of the page, and the rows and total of a rows expect.
 func chainPage(s chainStep, core *orm.Core, limit chainLimit, c *databaseContext) (outcome, error) {
 	if limit.Count <= 0 {
@@ -1106,7 +1147,15 @@ func chainPage(s chainStep, core *orm.Core, limit chainLimit, c *databaseContext
 		}
 		keys = append(keys, value)
 	}
-	out := jsonOutcome(map[string]any{"keys": keys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage})
+	fields := map[string]any{"keys": keys, "total": page.TotalCount, "pages": page.TotalPages, "page": page.Page, "per_page": page.PerPage}
+	if s.Items {
+		items, err := chainRows(page.Items.Slice(), s.Pick)
+		if err != nil {
+			return outcome{}, err
+		}
+		fields["items"] = items
+	}
+	out := jsonOutcome(fields)
 	out.fields["total"] = page.TotalCount
 	if wantsRows(s, c) {
 		cells, err := chainCells(page.Items.Slice(), s)
@@ -1381,7 +1430,12 @@ func chainAffected(db *orm.DB) outcome {
 	return outcome{fields: affectedFields(db)}
 }
 
-// utilsOp runs utils.lock, utils.set_local and utils.local on the connection of s (INT-50, INT-51).
+// boolOutcome is the value of an op that returns a boolean (FCV-4).
+func boolOutcome(value bool) outcome {
+	return outcome{fields: map[string]any{"value": map[string]any{"bool": value}}}
+}
+
+// utilsOp runs the utils ops on the connection of s (INT-50 to INT-53, INT-134).
 func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 	db, err := connectionOf(s, c)
 	if err != nil {
@@ -1400,6 +1454,36 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.Name, text)
+	case "utils.was_inserted":
+		inserted, err := db.Utils().WasInserted(s.Table, s.Sequence)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(inserted), nil
+	case "utils.backend_waiting_for_lock":
+		waiting, err := db.Utils().BackendWaitingForLock(c.ctx)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(waiting), nil
+	case "utils.groups":
+		// The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+		utils := db.Utils()
+		names := []any{}
+		for _, group := range []struct {
+			name string
+			held bool
+		}{
+			{"aes", utils.Aes() != nil},
+			{"privileges", utils.Privileges() != nil},
+			{"schema", utils.Schema() != nil},
+			{"stats", utils.Stats() != orm.DBStats{}},
+		} {
+			if group.held {
+				names = append(names, map[string]any{"text": group.name})
+			}
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": names}}}, nil
 	}
 	value, err := db.Utils().Local(s.Name)
 	if err != nil {

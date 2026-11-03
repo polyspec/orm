@@ -17,6 +17,12 @@ type runner struct {
 	machinery bool
 }
 
+// outside reports whether the statement runs on the pool, outside a transaction and without a session.
+func (r runner) outside() bool {
+	_, pool := r.q.(*sql.DB)
+	return pool && r.tx == 0
+}
+
 // exec runs one statement.
 func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText string, args ...any) (sql.Result, error) {
 	start := time.Now()
@@ -24,6 +30,7 @@ func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText 
 		return nil, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
 	res, err := r.q.ExecContext(ctx, sqlText, args...)
+	res, err = r.d.execAgain(ctx, r.outside(), sqlText, args, res, err)
 	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
 }
 
@@ -33,7 +40,8 @@ func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText 
 	if err := r.fault(kind); err != nil {
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
-	err := mapDriverErrContext(r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...), ctx)
+	err := r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...)
+	err = mapDriverErrContext(r.d.scanAgain(ctx, r.outside(), sqlText, args, err, dest...), ctx)
 	return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 }
 
@@ -46,6 +54,8 @@ type observed struct {
 	tables func(sqlText string) []string
 	start  time.Time
 	ctx    context.Context
+	// endAgain ends the session of a catalog query that ran again (CFG-28).
+	endAgain func(error) error
 }
 
 func (o *observed) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
@@ -55,6 +65,7 @@ func (o *observed) QueryContext(ctx context.Context, query string, args ...any) 
 		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, err)
 	}
 	rows, err := o.r.q.QueryContext(ctx, query, args...)
+	rows, o.endAgain, err = o.r.d.queryAgain(ctx, o.r.outside(), query, args, rows, err)
 	if err != nil {
 		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErrContext(err, ctx))
 	}
@@ -63,6 +74,10 @@ func (o *observed) QueryContext(ctx context.Context, query string, args ...any) 
 
 // QueryEnded publishes that event when the catalog query has read all of its rows or failed while reading them.
 func (o *observed) QueryEnded(query string, err error) error {
+	if o.endAgain != nil {
+		err = o.endAgain(err)
+		o.endAgain = nil
+	}
 	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErrContext(err, o.ctx))
 }
 
@@ -85,6 +100,7 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
 	rs, err := r.q.QueryContext(ctx, sqlText, args...)
+	rs, endAgain, err := r.d.queryAgain(ctx, r.outside(), sqlText, args, rs, err)
 	if err != nil {
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
 	}
@@ -97,6 +113,9 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 	err = rs.Err()
 	if closeErr := rs.Close(); err == nil {
 		err = closeErr
+	}
+	if endAgain != nil {
+		err = endAgain(err)
 	}
 	if err := r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx)); err != nil {
 		return err

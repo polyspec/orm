@@ -20,7 +20,12 @@ from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm import codes
 from polyspec.orm._sqlite_codes import result_code_suffix
-from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
+from polyspec.orm.codec import (
+    CodecError,
+    blind_index,
+    decode as codec_decode,
+    host_encode,
+)
 from polyspec.orm.clock import wall_micros
 from polyspec.orm.canonical import canonical_request
 from polyspec.orm.bind_check import (
@@ -989,6 +994,44 @@ class _PostgresConnection:
 
     def execute(self, sql: str, values):
         text, args = for_postgres(sql, values)
+        try:
+            return self._run(text, args)
+        except OrmError as error:
+            if not self._stale_plan_outside_transaction(error):
+                raise
+        # The transaction holds one server connection through PgBouncer, and DEALLOCATE ALL makes the server parse the statement
+        # after the change on it; psycopg forgets its names with it (CFG-28).
+        self._run("BEGIN", None)
+        try:
+            self._run("DEALLOCATE ALL", None)
+            result = self._run(text, args)
+        except OrmError:
+            self._run("ROLLBACK", None)
+            raise
+        self._run("COMMIT", None)
+        return result
+
+    def _stale_plan_outside_transaction(self, error: "OrmError") -> bool:
+        # An error that a named statement from before a schema change can raise: the result type changed (0A000), a parameter keeps
+        # its old type against the new column (42883, 42804), or a value is read as that old type (22P02, 22003, 22007, 22008). A
+        # statement outside a transaction that fails has changed nothing, so it can run again, and one that fails for another reason
+        # fails the same way the second time. Inside a transaction the server has aborted it, and psycopg then reports a transaction
+        # status that is not idle.
+        from psycopg.pq import TransactionStatus
+
+        cause = error.__cause__
+        code = getattr(cause, "sqlstate", None)
+        stale = (
+            "cached plan must not change result type" in str(cause)
+            if code == "0A000"
+            else code in ("42883", "42804", "22P02", "22003", "22007", "22008")
+        )
+        return (
+            stale
+            and self.connection.info.transaction_status == TransactionStatus.IDLE
+        )
+
+    def _run(self, text: str, args):
         cursor = None
         try:
             # psycopg refuses a cursor on a connection it marked closed, so that refusal is a driver error of the
@@ -2765,14 +2808,18 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
 
         # The version is read only for a non-NULL value. With a keyring, a version it does not declare is CONFIG; the
         # single key is used only without a keyring (COD-8).
-        if value is not None and host:
-            if "aes" in host and db.aes_keyring is not None:
-                key = db.aes_keyring.key(_stored_version(version_cell))
-            else:
-                key = db.aes_key
-            value = host_decode(value, host, key)
-        if client:
-            value = codec_decode(client, value)
+        try:
+            if value is not None and host:
+                if "aes" in host and db.aes_keyring is not None:
+                    key = db.aes_keyring.key(_stored_version(version_cell))
+                else:
+                    key = db.aes_key
+                value = host_decode(value, host, key)
+            if client:
+                value = codec_decode(client, value)
+        except CodecError as error:
+            # A read of a model fails as every library failure does; the codec's own call keeps CodecError.
+            raise OrmError(error.code, str(error).partition(": ")[2], error) from error
         row[column["index"]] = value
     for child in assemble["children"]:
         if child["kind"] == "join" and child.get("assemble"):

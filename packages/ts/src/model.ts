@@ -325,7 +325,7 @@ class Assembler {
       const versionAt = schema.aesVersion !== '' && col.name === schema.aesVersion && row[col.index] != null;
       const cell = versionAt ? storedVersion(row[col.index]) : row[col.index];
       if (declared) m.values.set(col.name, convert(columnType(declared), cell, this.db.zone, declared));
-      else st.extra.set(col.name, col.type === 'date' || col.type === 'datetime' ? convert(col.type, row[col.index], this.db.zone) : row[col.index]);
+      else st.extra.set(col.name, addedColumnValue(col.type, row[col.index], this.db.zone));
     }
     for (const key of asm.key) {
       const name = present(asm.columns.find(col => col.index === key.index), `the key column at ${key.index}`).name;
@@ -1034,6 +1034,29 @@ function toJson(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
 }
 
+/** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
+function exactIntegers(value: unknown): unknown {
+  if (typeof value === 'bigint') return Reflect.apply(Reflect.get(JSON, 'rawJSON'), JSON, [String(value)]);
+  if (Array.isArray(value)) return value.map(exactIntegers);
+  if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exactIntegers(item)]));
+}
+
+/** An added column by the type its plan column states (INT-160); other types keep the driver value. A text is an integer only exactly. */
+function addedColumnValue(type: string, raw: unknown, zone: string): unknown {
+  switch (type) {
+    case 'i16': case 'i32': case 'i64': {
+      if (typeof raw !== 'string') return convert(type, raw, zone);
+      if (!/^-?(?:0|[1-9][0-9]*)$/.test(raw)) throw new OrmError(codes.CODEC_DECODE, `${type} cell is not an exact integer in its range`);
+      return convert(type, BigInt(raw), zone);
+    }
+    case 'f64': case 'bool': case 'date': case 'datetime':
+      return convert(type, raw, zone);
+    default:
+      return raw;
+  }
+}
+
 /** The JSON text of a row value: an ordered-json value as its stored text. */
 function jsonText(value: unknown): string {
   if (value instanceof StyledValue) return value.kind === 'sql-null'
@@ -1041,7 +1064,7 @@ function jsonText(value: unknown): string {
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
-  return JSON.stringify(arrayValue(value) ?? null);
+  return JSON.stringify(exactIntegers(arrayValue(value)) ?? null);
 }
 
 /** The JSON text of a row, members in row order. */
@@ -1055,7 +1078,7 @@ function jsonValue(value: unknown): unknown {
   if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
-  return arrayValue(value);
+  return exactIntegers(arrayValue(value));
 }
 
 /** Resolves a method named by the chain grammar. */
