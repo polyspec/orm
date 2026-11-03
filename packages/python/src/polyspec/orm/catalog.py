@@ -1554,6 +1554,8 @@ class CatalogConnection:
         self._parsed = parsed
         self._dialect = parsed.driver
         self._closed = False
+        # Until when a refused connect is a socket of this catalog still on the server (CFG-35).
+        self._reopen_until = 0.0
 
     @property
     def dialect(self) -> str:
@@ -1572,23 +1574,26 @@ class CatalogConnection:
         if self._dialect == "sqlite":
             wrapper = _SqliteConnection(self._parsed)
         elif self._dialect == "mysql":
-            # The socket that a budget stop closed holds its place in max_user_connections until the server ends that
-            # thread, which it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of
-            # CFG-35 at most.
-            deadline = _monotonic() + 2.0
+            # A socket that this catalog closed holds its place in max_user_connections until the server ends that thread.
+            # The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
+            # from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
             while True:
                 try:
                     wrapper = _MysqlConnection(self._parsed)
                     break
                 except OrmError as error:
                     refused = getattr(error.__cause__, "args", (None,))[:1] == (1226,)
-                    if not refused or _monotonic() >= deadline:
+                    if not refused or _monotonic() >= self._reopen_until:
                         raise
                     _sleep(0.01)
         else:
             wrapper = _PostgresConnection(self._parsed)
         session = _Session(self._dialect, wrapper)
         return session
+
+    def _close(self, session: _Session) -> None:
+        session.close()
+        self._reopen_until = _monotonic() + 2.0
 
     def _begin(self, read_only: bool) -> _Session:
         session = self._open()
@@ -1603,7 +1608,7 @@ class CatalogConnection:
                 # session (CFG-28).
                 session.run("DEALLOCATE ALL")
         except BaseException:
-            session.close()
+            self._close(session)
             raise
         return session
 
@@ -1621,6 +1626,7 @@ class CatalogConnection:
         sent, so the error is the one that ended the session (INT-155). A session that a stop abandoned has
         no connection left to roll back."""
         if session.abandoned:
+            self._reopen_until = _monotonic() + 2.0
             if error is not None:
                 raise error
             return
@@ -1628,11 +1634,11 @@ class CatalogConnection:
             if self._dialect != "sqlite" or session.raw.in_transaction:
                 session.run("ROLLBACK")
         except Exception as rollback_error:
-            session.close()
+            self._close(session)
             raise _error(
                 codes.ROW_ROLLBACK_FAILED, f"rollback: {rollback_error}", error
             ) from rollback_error
-        session.close()
+        self._close(session)
         if error is not None:
             raise error
 
@@ -1668,13 +1674,13 @@ class CatalogConnection:
                         commit_error,
                     ),
                 )
-            session.close()
+            self._close(session)
             raise _error(
                 codes.ROW_COMMIT_INDETERMINATE,
                 f"commit outcome unknown; do not retry: {commit_error}",
                 commit_error,
             ) from commit_error
-        session.close()
+        self._close(session)
         return value
 
     def current_namespace(self) -> str:

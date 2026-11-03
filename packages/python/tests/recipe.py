@@ -2408,14 +2408,41 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
+def _user_from_database_dsn(dsn: str, prefix: str) -> str:
+    """The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the
+    case database, without a password."""
+    database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+    return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "user_from_database" in step:
-        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
-        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
-    context["catalog"] = connect_catalog(dsn)
-    context["namespace"] = context["catalog"].current_namespace()
+        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
+    if "refused_message" in step:
+        try:
+            connect_catalog(dsn).current_namespace()
+        except Exception as error:  # noqa: BLE001 - any error of the refused connection
+            if step["refused_message"] not in str(error).lower():
+                raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+            return {}
+        raise AssertionError("the server accepted the connection that the step expects it to refuse")
+    catalog = connect_catalog(dsn)
+    context["namespace"] = catalog.current_namespace()
+    context["catalog"] = catalog
     context["closed"] = False
+    return {}
+
+
+def _op_hold_connection(step: dict, context: dict) -> dict:
+    session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
+    session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_release_connection(_step: dict, context: dict) -> dict:
+    context.pop("held").__exit__(None, None, None)
     return {}
 
 
@@ -3685,6 +3712,8 @@ _DATABASE_OPS = {
     "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
+    "sql.hold_connection": _op_hold_connection,
+    "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
     "events.stop_failing": _op_events_stop,

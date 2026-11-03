@@ -5,6 +5,7 @@ package recipe
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -94,9 +95,9 @@ type databaseStep struct {
 	Steps     []json.RawMessage          `json:"steps"`
 	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
 	// counted event kind, the failure text and the nested steps of a command.
-	Lines   []string `json:"lines"`
-	Through string   `json:"through"`
-	Plans   []string `json:"plans"`
+	Lines   []string      `json:"lines"`
+	Through string        `json:"through"`
+	Plans   []string      `json:"plans"`
 	Count   []string      `json:"count"`
 	Detail  string        `json:"detail"`
 	Message string        `json:"message"`
@@ -140,16 +141,16 @@ type databaseStep struct {
 	Amount      json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
-	Ref     json.RawMessage `json:"ref"`
-	Row     json.RawMessage `json:"row"`
-	Fail    bool            `json:"fail"`
-	Kind    string          `json:"kind"`
+	Ref  json.RawMessage `json:"ref"`
+	Row  json.RawMessage `json:"row"`
+	Fail bool            `json:"fail"`
+	Kind string          `json:"kind"`
 	// The ORM error of a failing subscriber (INT-96).
 	Refusal *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"refusal"`
-	Compare string          `json:"compare"`
+	Compare string `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
 	Hooks      []json.RawMessage `json:"hooks"`
@@ -199,6 +200,8 @@ type outcome struct {
 }
 
 type databaseContext struct {
+	// held is the pool of the connection that sql.hold_connection holds.
+	held *sql.DB
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
 	attempts  int
 	t         *testing.T
@@ -267,6 +270,33 @@ func caseSocketDSN(caseDSN, socket string) (string, error) {
 		return "", fmt.Errorf("dsn case-socket: the case DSN %q is not a mysql DSN", caseDSN)
 	}
 	return "mysql://" + m[1] + "@localhost/" + m[2] + "?socket=" + socket, nil
+}
+
+// refusedConnect reports whether the server refused the connection of catalog, whose first statement opens it, with text in
+// its message. The connection of the case stays.
+func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err error, text string) error {
+	if err == nil {
+		_, err = catalog.CurrentNamespace(c.ctx)
+		err = closeFirst(err, catalog.Close())
+	}
+	if err == nil {
+		return errors.New("the server accepted the connection that the step expects it to refuse")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), text) {
+		return fmt.Errorf("the server refused the connection for another reason: %w", err)
+	}
+	return nil
+}
+
+// userFromDatabaseDSN is the case DSN with the user that user_from_database names: the prefix and the last 28 characters of
+// the name of the case database, without a password.
+func userFromDatabaseDSN(dsn, prefix string) string {
+	match := mysqlCaseDSN.FindStringSubmatch(dsn)
+	name := match[2]
+	if len(name) > 28 {
+		name = name[len(name)-28:]
+	}
+	return "mysql://" + prefix + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
 }
 
 // mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
@@ -788,22 +818,34 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
 		}
 		return outcome{}, closeFirst(err, closeErr)
+	case "sql.hold_connection":
+		raw := testdb.Open(c.t, c.database, userFromDatabaseDSN(c.dsn, s.UserFromDatabase))
+		held, err := raw.Conn(c.ctx)
+		if err != nil {
+			return outcome{}, closeFirst(err, raw.Close())
+		}
+		c.held = raw
+		c.t.Cleanup(func() { _ = held.Close(); _ = raw.Close() })
+		return outcome{}, nil
+	case "sql.release_connection":
+		// The pool closes the connection that the step holds, returned or not.
+		held := c.held
+		c.held = nil
+		return outcome{}, held.Close()
 	case "catalog.close":
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
 		dsn := c.dsn
 		if s.UserFromDatabase != "" {
-			match := mysqlCaseDSN.FindStringSubmatch(dsn)
-			name := match[2]
-			if len(name) > 28 {
-				name = name[len(name)-28:]
-			}
-			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+			dsn = userFromDatabaseDSN(dsn, s.UserFromDatabase)
 		}
 		catalog, err := orm.ConnectCatalog(dsn)
-		if err != nil {
+		if err != nil && s.RefusedMessage == "" {
 			return outcome{}, err
+		}
+		if s.RefusedMessage != "" {
+			return outcome{}, refusedConnect(c, catalog, err, s.RefusedMessage)
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {

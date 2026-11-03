@@ -613,6 +613,12 @@ const connectionOf = (s, context) => (s.connection === undefined ? context.db : 
 /** The one recipe fixture that generates models (packages/ts/src/models). A model op of any other fixture names a model of a table of its own (FCV-4). */
 const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 
+/** The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the case database, without a password. */
+function userFromDatabaseDsn(dsn, prefix) {
+  const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+  return dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${prefix}${database.slice(-28)}@`);
+}
+
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
@@ -668,14 +674,25 @@ const OPS = {
     return {};
   },
   async 'catalog.reconnect'(s, context) {
-    let dsn = context.dsn;
-    if (s.user_from_database !== undefined) {
-      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
-      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    const dsn = s.user_from_database === undefined ? context.dsn : userFromDatabaseDsn(context.dsn, s.user_from_database);
+    if (s.refused_message !== undefined) {
+      const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
+      if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
+      if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+      return {};
     }
-    context.catalog = await connectCatalog(dsn);
+    const catalog = await connectCatalog(dsn);
+    context.namespace = await catalog.currentNamespace();
+    context.catalog = catalog;
     context.closed = false;
-    context.namespace = await context.catalog.currentNamespace();
+    return {};
+  },
+  async 'sql.hold_connection'(s, context) {
+    context.held = await nativeSession(context.database, userFromDatabaseDsn(context.dsn, s.user_from_database));
+    return {};
+  },
+  async 'sql.release_connection'(_, context) {
+    await context.held.close();
     return {};
   },
   async 'catalog.revision'(s, context) {
