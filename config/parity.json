@@ -94,8 +94,12 @@
           "reason": "harness: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
+          "glob": "packages/go/engine/dbspec/testdata/fixture/fixture_test.go",
           "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
+        },
+        {
+          "glob": "packages/go/internal/buildconstraints/buildconstraints_test.go",
+          "reason": "harness: reads the build constraints of every Go file of the repository, a rule of the Go test run itself rather than client behavior"
         },
         {
           "glob": "packages/go/engine/dbspec/harness_test.go",

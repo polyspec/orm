@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - The merge of a split root `in` list is tested through the public query on a table without its primary key, in the recipe `parameter_chunking`.
 - Key identity, typed lookup, the exact group value and the configured key of a collection are cases of the recipe `collection`, through the new op `collection.key` and the markdown chains `group_count_i64`, `collection_typed_key` and `collection_key_name`.
