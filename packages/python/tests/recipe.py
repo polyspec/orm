@@ -2348,7 +2348,7 @@ def _op_read_only_grid_query(step: dict, context: dict) -> dict:
     }
 
 
-def _op_connect(step: dict, _context: dict) -> dict:
+def _op_connect(step: dict, context: dict) -> dict:
     """A DSN that the library refuses fails with its code. A SQLite file that the case does not create is refused and must
     not exist afterwards: the connect creates no file."""
     dsn = step["dsn"]
@@ -2360,8 +2360,9 @@ def _op_connect(step: dict, _context: dict) -> dict:
         try:
             connect_catalog(f"sqlite://{path}").close()
         except OrmError:
-            if path.exists():
-                raise AssertionError("the connect created the SQLite file")
+            want = step["expect"][context["database"]].get("file_created", False)
+            if path.exists() != want:
+                raise AssertionError(f"file_created is {path.exists()}, want {want}")
             raise
     raise AssertionError("the connect to an absent SQLite file succeeded")
 

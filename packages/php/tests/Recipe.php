@@ -756,8 +756,9 @@ final class Recipe
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
         $message = '';
+        $port = parse_url($server[2], PHP_URL_PORT);
         try {
-            self::connectDriver($server[2]);
+            self::connectDriver("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}");
         } catch (OrmException $error) {
             $code = $error->code_;
             $message = $error->getMessage();
