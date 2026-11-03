@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 25b3b0d8df3d3b977623d987d37da9670b778067c589ec9e9c74dc0794f40478 -->
+<!-- source-sha256: 3bd947dd875861ab29f6f5883392d2762c9b3437f89cabde07fbd40f36501b47 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
 - markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
 - 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
 - Go, PHP, PHP extension은 정수가 아닌 SQLite `busy_timeout`을, Go는 형식이 틀린 `_pragma`와 SQLite 경로 `/`를 `CONFIG`로 거부하고(CFG-11, CFG-12), PHP는 그 거부에서 경로를 말한다. 읽을 수 없는 MySQL `ssl-ca`는 이를 검사하는 모든 client에서 `is not a readable file`로 읽히고, Python의 음수 timeout 거부는 `statement timeout must not be negative`로 읽힌다. `CONFIG`를 반환하는 DSN은 파일을 만들지 않는다. CFG-36과 CFG-37의 거부되는 DSN과 설정 형식은 메시지까지 recipe case이며, 이들이 대신하는 native 시험은 없앴다.
