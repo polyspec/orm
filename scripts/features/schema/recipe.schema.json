@@ -6246,6 +6246,11 @@
         "properties": {
           "op": {
             "const": "catalog.reconnect"
+          },
+          "user_from_database": {
+            "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
+            "type": "string",
+            "minLength": 1
           }
         }
       },

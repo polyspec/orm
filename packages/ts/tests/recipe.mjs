@@ -665,8 +665,13 @@ const OPS = {
     await context.catalog.close();
     return {};
   },
-  async 'catalog.reconnect'(_, context) {
-    context.catalog = await connectCatalog(context.dsn);
+  async 'catalog.reconnect'(s, context) {
+    let dsn = context.dsn;
+    if (s.user_from_database !== undefined) {
+      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    }
+    context.catalog = await connectCatalog(dsn);
     context.closed = false;
     context.namespace = await context.catalog.currentNamespace();
     return {};

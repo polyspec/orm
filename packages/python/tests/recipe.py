@@ -2372,8 +2372,12 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
-def _op_reconnect(_step: dict, context: dict) -> dict:
-    context["catalog"] = connect_catalog(context["dsn"])
+def _op_reconnect(step: dict, context: dict) -> dict:
+    dsn = context["dsn"]
+    if "user_from_database" in step:
+        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
+    context["catalog"] = connect_catalog(dsn)
     context["namespace"] = context["catalog"].current_namespace()
     context["closed"] = False
     return {}

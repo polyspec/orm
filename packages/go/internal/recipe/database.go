@@ -56,6 +56,7 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors        string          `json:"vectors"`
 	Case           string          `json:"case"`
@@ -112,11 +113,11 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
-	Lock      string          `json:"lock"`
+	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
-	Sequence int64 `json:"sequence"`
-	Isolation string          `json:"isolation"`
-	ReadOnly  bool            `json:"read_only"`
+	Sequence  int64  `json:"sequence"`
+	Isolation string `json:"isolation"`
+	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
 	TimeoutMs    int  `json:"timeout_ms"`
@@ -124,9 +125,9 @@ type databaseStep struct {
 	DefaultRetry bool `json:"default_retry"`
 	Conflicts    int  `json:"conflicts"`
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
-	Connections []string `json:"connections"`
-	Unconnected bool     `json:"unconnected"`
-	Amount    json.RawMessage `json:"amount"`
+	Connections []string        `json:"connections"`
+	Unconnected bool            `json:"unconnected"`
+	Amount      json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
 	Ref     json.RawMessage `json:"ref"`
@@ -184,7 +185,7 @@ type outcome struct {
 
 type databaseContext struct {
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts int
+	attempts  int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -760,7 +761,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
-		catalog, err := orm.ConnectCatalog(c.dsn)
+		dsn := c.dsn
+		if s.UserFromDatabase != "" {
+			match := mysqlCaseDSN.FindStringSubmatch(dsn)
+			name := match[2]
+			if len(name) > 28 {
+				name = name[len(name)-28:]
+			}
+			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		}
+		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil {
 			return outcome{}, err
 		}

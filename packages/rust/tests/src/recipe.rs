@@ -3230,7 +3230,17 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.reconnect" => {
-                let mut fresh = CatalogConnection::connect(&context.dsn).await.map_err(Failure::Call)?;
+                let dsn = match step.get("user_from_database").and_then(Value::as_str) {
+                    Some(prefix) => {
+                        let path = context.dsn.split('?').next().unwrap_or(&context.dsn);
+                        let database = path.rsplit('/').next().unwrap_or(path);
+                        let name = &database[database.len().saturating_sub(28)..];
+                        let host = context.dsn.split_once('@').map_or(context.dsn.as_str(), |(_, host)| host);
+                        format!("mysql://{prefix}{name}@{host}")
+                    }
+                    None => context.dsn.clone(),
+                };
+                let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::Call)?;
                 context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
                 *catalog = Some(fresh);
                 Output::fields(json!({}))

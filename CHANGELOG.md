@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
 - PRT-82 states the order in which a statement writes its columns, and DBS-67 that an `update` and a delete of a soft-deleted table match only rows whose column is null; `tests/planner/runtime-model.json` holds them in all dialects.
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
