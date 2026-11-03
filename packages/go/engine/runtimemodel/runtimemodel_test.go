@@ -3,11 +3,9 @@ package runtimemodel
 import (
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -55,34 +53,6 @@ const loadSetOwned = "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  s
 const loadSetExternal = "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
 
 // Requirements: DBS-156, SCH-12.
-func TestLoadSetReturnsExternalDocumentsMarked(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	model, diagnostics := LoadSet(loadSetOwned, loadSetExternal)
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
-	}
-	if len(model.Documents) != 2 || model.Documents[0].Name != "shop" || model.Documents[0].External || model.Documents[1].Name != "core" || !model.Documents[1].External {
-		got := make([]string, len(model.Documents))
-		for i, document := range model.Documents {
-			got[i] = document.Name + ":external=" + strconv.FormatBool(document.External)
-		}
-		t.Fatalf("documents = %v, want [shop:external=false core:external=true]", got)
-	}
-	withoutExternal, diagnostics := LoadSet(loadSetExternal, "")
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
-	}
-	if len(withoutExternal.Documents) != 1 || withoutExternal.Documents[0].Name != "core" || withoutExternal.Documents[0].External {
-		t.Fatalf("documents without external text = %+v, want core owned", withoutExternal.Documents)
-	}
-	if _, diagnostics := LoadSet("table item {}\n", loadSetExternal); len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleHeader {
-		t.Fatalf("LoadSet without a manifest header = %v, want header diagnostic", diagnostics)
-	}
-	if _, diagnostics := LoadSet(loadSetOwned, "table account {}\n"); len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleHeader {
-		t.Fatalf("LoadSet with external text without a header = %v, want header diagnostic", diagnostics)
-	}
-}
-
 // TestLoadRebuildsTheModelOfTheManifestText checks that reading the manifest text of a document set again
 // gives the same manifestHash and entities.
 // Requirements: DBS-104, DBS-111, DBS-120.
@@ -95,9 +65,9 @@ func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 	if strings.Contains(built.ManifestText, "#") || strings.Contains(built.ManifestText, "diagram") || !strings.HasPrefix(built.ManifestText, "dbspec 1 accounts\n") {
 		t.Fatalf("manifest text = %q", built.ManifestText)
 	}
-	loaded, diagnostics := Load(built.ManifestText)
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
+	loaded, invalid := Load(built.ManifestText)
+	if invalid != nil {
+		t.Fatal(invalid)
 	}
 	if loaded.ManifestHash != built.ManifestHash || !strings.HasPrefix(loaded.ManifestHash, "sha256:") || !slices.Equal(loaded.Order, []string{"tenant", "member"}) {
 		t.Fatalf("loaded %s %v, built %s", loaded.ManifestHash, loaded.Order, built.ManifestHash)
@@ -123,8 +93,8 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 		"table x {\n}\n":                "header",
 		parentDocument + parentDocument: "name.duplicate",
 	} {
-		if _, diagnostics := Load(text); len(diagnostics) == 0 || diagnostics[0].Rule != rule {
-			t.Errorf("Load(%q) = %v, want %s", text, diagnostics, rule)
+		if _, invalid := Load(text); invalid == nil || !strings.Contains(invalid.Problems[0], " "+rule+": ") {
+			t.Errorf("Load(%q) = %v, want %s", text, invalid, rule)
 		}
 	}
 }

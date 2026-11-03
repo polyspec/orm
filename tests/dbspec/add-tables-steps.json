@@ -1,0 +1,217 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-56",
+    "SCH-8"
+  ],
+  "cases": [
+    {
+      "id": "new-table-and-nullable-column",
+      "requirements": [
+        "INT-56",
+        "SCH-8"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "live",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table note {",
+            "  id i64 identity",
+            "  body text null",
+            "  primary key (id)",
+            "}",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(191) null",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.add_tables_steps",
+          "source": {
+            "ref": "live"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "dialect": "sqlite",
+          "expect": {
+            "none": {
+              "added": [
+                "note",
+                "users.email"
+              ],
+              "statements": [
+                "CREATE TABLE \"note\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"body\" TEXT NULL)",
+                "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(191) NULL, CONSTRAINT \"users$email\" CHECK (length(\"email\") <= 191))",
+                "INSERT INTO sqlite_sequence (name, seq) SELECT 'dbspec$rebuild', seq FROM sqlite_sequence WHERE name = 'users'",
+                "INSERT INTO \"dbspec$rebuild\" (\"id\") SELECT \"id\" FROM \"users\"",
+                "DELETE FROM \"users\"",
+                "DELETE FROM sqlite_sequence WHERE name = 'users'",
+                "DROP TABLE \"users\"",
+                "CREATE TABLE \"users\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(191) NULL, CONSTRAINT \"users$email\" CHECK (length(\"email\") <= 191))",
+                "INSERT INTO sqlite_sequence (name, seq) SELECT 'users', seq FROM sqlite_sequence WHERE name = 'dbspec$rebuild'",
+                "INSERT INTO \"users\" (\"id\", \"email\") SELECT \"id\", \"email\" FROM \"dbspec$rebuild\"",
+                "DELETE FROM \"dbspec$rebuild\"",
+                "DELETE FROM sqlite_sequence WHERE name = 'dbspec$rebuild'",
+                "DROP TABLE \"dbspec$rebuild\""
+              ],
+              "differences": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "equal-set",
+      "requirements": [
+        "INT-56",
+        "SCH-8"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(191) null",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "live",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(191) null",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.add_tables_steps",
+          "source": {
+            "ref": "live"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "dialect": "sqlite",
+          "expect": {
+            "none": {
+              "added": [],
+              "statements": [],
+              "differences": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-without-null-or-default",
+      "requirements": [
+        "INT-56",
+        "SCH-8"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "live",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.parse",
+          "lines": [
+            "dbspec 1 schema",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(191)",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "target",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.add_tables_steps",
+          "source": {
+            "ref": "live"
+          },
+          "target": {
+            "ref": "target"
+          },
+          "dialect": "sqlite",
+          "expect": {
+            "none": {
+              "added": [],
+              "statements": [],
+              "differences": [
+                "add_column users.email without null or default"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

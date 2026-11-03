@@ -52,10 +52,6 @@ func runTimed(t *testing.T, name string, deadline time.Duration, work func() err
 	t.Logf("PASS %s elapsed=%s", name, elapsed)
 }
 
-// failingCaseFixture is the build tag that makes TestFailingCaseFixture (harness_fixture_test.go) build.
-// Only TestCaseHarnessReportsOnlyFailure gives this tag, to the go test that it runs as a subprocess.
-const failingCaseFixture = "dbspecfixture"
-
 // failingCaseNames is the name of the case that TestFailingCaseFixture runs with a wrong expected value.
 func failingCaseNames(t *testing.T) []string {
 	t.Helper()
@@ -70,7 +66,7 @@ func TestCaseHarnessReportsOnlyFailure(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	names := failingCaseNames(t)
 	runTimed(t, "harness-only-failure", 2*time.Minute, func() error {
-		command := exec.Command("go", "test", "-tags", failingCaseFixture, "-run", "^TestFailingCaseFixture$", "-count=1", "-v", ".")
+		command := exec.Command("go", "test", "-run", "^TestFailingCaseFixture$", "-count=1", "-v", "./testdata/fixture")
 		output, err := command.CombinedOutput()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) {

@@ -498,14 +498,49 @@ const statementCaches = new WeakMap<object, StatementNames>();
  * Runs a prepared statement. A prepared statement that the statement cache evicted is released with DEALLOCATE on the same connection after
  * the statement's result is read. That statement is the event after the statement.
  */
-async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone, failure: () => unknown): Promise<DriverResult> {
+/**
+ * Whether error is one that a named statement from before a schema change can raise: the result type changed (0A000), a parameter keeps
+ * its old type against the new column (42883, 42804), or a value is read as that old type (22P02, 22003, 22007, 22008). A statement
+ * outside a transaction that fails has changed nothing, so it can run again, and a statement that fails for another reason fails the same
+ * way the second time (CFG-28).
+ */
+function stalePlan(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  if (code === '0A000') return error.message.includes('cached plan must not change result type');
+  return typeof code === 'string' && ['42883', '42804', '22P02', '22003', '22007', '22008'].includes(code);
+}
+
+/**
+ * Runs a statement that failed with stalePlan once more, in one transaction that holds one server connection through PgBouncer:
+ * DEALLOCATE ALL makes the server parse the statement after the change. The statement is unnamed here, since the client still lists
+ * its names as parsed; the caller discards the client for the same reason (CFG-28).
+ */
+async function pgAgain(client: pg.PoolClient, sql: string, params: readonly DriverValue[]): Promise<pg.QueryArrayResult> {
+  await client.query('BEGIN');
+  await client.query('DEALLOCATE ALL');
+  const result = await client.query({ text: sql, values: [...params], rowMode: 'array' });
+  await client.query('COMMIT');
+  return result;
+}
+
+/** pgExecute runs one statement on client. again, given outside a transaction, receives that the statement ran again, so that the caller discards client. */
+async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone, failure: () => unknown, again?: () => void): Promise<DriverResult> {
   let cache = statementCaches.get(client);
   if (cache === undefined) {
     cache = new StatementNames(cacheSize);
     statementCaches.set(client, cache);
   }
   const { name, evicted } = cache.name(sql);
-  const result = await observed('postgres', sql, done, 'statement', () => afterFailure(client.query({ name, text: sql, values: [...params], rowMode: 'array' }), failure));
+  const result = await observed('postgres', sql, done, 'statement', async () => {
+    try {
+      return await afterFailure(client.query({ name, text: sql, values: [...params], rowMode: 'array' }), failure);
+    } catch (error) {
+      if (again === undefined || !stalePlan(error)) throw error;
+      again();
+      return afterFailure(pgAgain(client, sql, params), failure);
+    }
+  });
   if (evicted !== undefined) {
     const deallocate = `DEALLOCATE "${evicted}"`;
     await observed('postgres', deallocate, done, 'deallocate', () => afterFailure(client.query(deallocate), failure));
@@ -601,11 +636,12 @@ class PostgresPoolDriver implements DriverPool {
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
+    let discard = false;
     try {
       // A connection error on a connection that the pool lent out is received by the pool. The statement's error has that code.
-      const work = pgExecute(client, sql, params, this.cacheSize, done, () => undefined);
+      const work = pgExecute(client, sql, params, this.cacheSize, done, () => undefined, () => { discard = true; });
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
-    } finally { this.release(client); }
+    } finally { this.release(client, discard); }
   }
   public async reserve(): Promise<DriverSession> {
     let client: pg.PoolClient;

@@ -402,6 +402,22 @@ impl Conn {
             Self::Sqlite(c) => c.close_on_drop(),
         }
     }
+    /// Forgets the named statements of a PostgreSQL connection, on the server and in its statement cache.
+    pub(crate) async fn forget_statements(&mut self) -> Result<(), sqlx::Error> {
+        match self {
+            Self::Postgres(c) => sqlx::Connection::clear_cached_statements(&mut **c).await,
+            _ => Ok(()),
+        }
+    }
+    /// Closes the socket on the spot, so the server ends what the connection still runs. A pool closes a discarded connection through a
+    /// flush, which reads the rest of an unread result first, and through ProxySQL waits on a read that it paused (CFG-34).
+    pub(crate) fn close_now(self) {
+        match self {
+            Self::MySql(c) => drop(c.detach()),
+            Self::Postgres(c) => drop(c.detach()),
+            Self::Sqlite(c) => drop(c.detach()),
+        }
+    }
     pub async fn acquire(pool: &Pool) -> Result<Conn, sqlx::Error> {
         Ok(match pool {
             Pool::MySql(p) => Conn::MySql(p.acquire().await?),
