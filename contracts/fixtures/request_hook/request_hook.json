@@ -654,7 +654,6 @@
           "op": "model.query",
           "connection": "db",
           "model": "HookItem",
-          "where": {},
           "compile": true,
           "expect": {
             "mysql": {

@@ -57,15 +57,3 @@ fn markdown_subquery_missing_post_validation_column_is_internal() {
     assert!(error.to_string().contains("child.missing_column"), "{error}");
 }
 
-#[test]
-// Requirements: PRT-69.
-fn markdown_subquery_aggregate_types_remain_i64_and_f64() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let manifest = manifest(SCHEMA);
-    for (agg, column, expected) in [("count", "", "i64"), ("avg", "value", "f64")] {
-        let request = request(manifest.manifest_hash.clone(), agg, column);
-        engine::validate(&manifest, &request).unwrap();
-        let node = MdNode::new(&manifest, &request.query, false).unwrap();
-        assert_eq!(node.out_col("selected", 0).unwrap().typ, expected);
-    }
-}

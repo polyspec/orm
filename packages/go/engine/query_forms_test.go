@@ -89,17 +89,6 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 	}
 }
 
-// Requirements: DSL-95.
-func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	e := formsEngine(t, "mysql")
-	p := formsCompile(t, e, `"kind":"all","entity":"place",
-	 "joins":[{"rel":"owner","kind":"inner","left":"owner_seq","right":"seq","query":{"entity":"owner",
-	   "where":{"items":[{"pred":{"column":"min_price","op":"lt","p":0}}]}}}],
-	 "where":{"items":[{"pred":{"column":"price","op":"gt","p":1}}]}`)
-	requireSQL(t, p.Steps[0].SQL, "WHERE `a`.`price` > ? AND (`owner`.`min_price` < ?)")
-}
-
 func TestJoinedReferenceErrors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")

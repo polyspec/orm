@@ -359,7 +359,8 @@ function subType(m: RuntimeModel, sub: Subquery): string {
   if (ent === undefined) throw new OrmError(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
   const column = fieldOf(ent, sub.column ?? '');
   if (column === undefined) throw new OrmError(codes.INTERNAL, `${ent.name}.${sub.column ?? ''} is missing from a validated scalar subquery`);
-  return column.type;
+  // INT-160: a sum leaves the range of its column.
+  return sub.agg === 'sum' && (column.type === 'i16' || column.type === 'i32') ? 'i64' : column.type;
 }
 
 /**

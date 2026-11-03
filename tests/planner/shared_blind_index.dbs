@@ -1,0 +1,19 @@
+dbspec 1 shared_blind_index
+
+table record {
+  id i64 identity
+  version i32
+  name varchar(191)
+  aes_a bytes null
+  aes_b bytes null
+  idx varchar(64) null
+  primary key (id)
+  unique uq_record_idx (idx)
+  settings {
+    codec aes_a aes
+    codec aes_b aes
+    aes_version version
+    blind_index aes_a idx
+    blind_index aes_b idx
+  }
+}

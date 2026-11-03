@@ -466,9 +466,10 @@ func (d *DB) Driver() string { return d.driver }
 // does not link PostgreSQL and SQLite; import the driver package for its side
 // effect.
 var (
-	driverMu   sync.RWMutex
-	sqlDrivers = map[string]string{"mysql": "mysql"}
-	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
+	driverMu     sync.RWMutex
+	sqlDrivers   = map[string]string{"mysql": "mysql"}
+	errMappers   = map[string]func(error) error{"mysql": mapMySQLErr}
+	deallocators = map[string]func(ctx context.Context, driverConn any) error{}
 	// sqliteVersion is the library version that the SQLite driver package registered.
 	sqliteVersion string
 	// sqliteRollbackHook is the function that the SQLite driver package registered to set or clear the rollback hook of a
@@ -505,6 +506,14 @@ func RegisterDriver(name, sqlDriver string, mapErr func(error) error) {
 	defer driverMu.Unlock()
 	sqlDrivers[name] = sqlDriver
 	errMappers[name] = mapErr
+}
+
+// RegisterDeallocator registers how a driver of the named database releases the named statements of a connection, on the server
+// and in the driver's statement cache together (CFG-28). Driver packages that name statements call it from init.
+func RegisterDeallocator(name string, deallocate func(ctx context.Context, driverConn any) error) {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	deallocators[name] = deallocate
 }
 
 // openSQL opens the database/sql pool. The MySQL driver reads datetime cells

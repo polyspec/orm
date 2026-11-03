@@ -70,6 +70,9 @@ final class Recipe
         'utils.lock',
         'utils.set_local',
         'utils.local',
+        'utils.was_inserted',
+        'utils.backend_waiting_for_lock',
+        'utils.groups',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -102,6 +105,24 @@ final class Recipe
         }
     }
 
+    /**
+     * Appends the pass of a case that ran on database to the file that ORM_RECIPE_RESULTS names, the line the feature
+     * checker reads (FCV-12). A run outside the checker names no file.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function report(array $case, string $database): void
+    {
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+            return;
+        }
+        $named = $database === self::NONE ? '' : " [{$database}]";
+        if (file_put_contents($path, "CASE {$case['id']}{$named} PASS\n", FILE_APPEND) === false) {
+            throw new \RuntimeException("recipe results: cannot append to {$path}");
+        }
+    }
+
     /** Runs the steps of one case on database. */
     public static function run(string $path, array $case, string $database): void
     {
@@ -130,6 +151,14 @@ final class Recipe
                 }
                 if ($step['op'] === 'planner.compile') {
                     self::planStep($step, $path, $database);
+                    continue;
+                }
+                if ($step['op'] === 'ir.param_uses') {
+                    self::paramUsesStep($step, $path, $database);
+                    continue;
+                }
+                if ($step['op'] === 'planner.columns') {
+                    self::plannerColumnsStep($step, $path, $database);
                     continue;
                 }
                 if ($step['op'] === 'generator.generate') {
@@ -209,7 +238,7 @@ final class Recipe
         $model = RuntimeModel::build(RuntimeModel::files([$schema]));
         $got = 'no error';
         try {
-            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $model->manifestHash]);
+            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]);
         } catch (OrmException $error) {
             $got = $error->code_;
         }
@@ -219,6 +248,57 @@ final class Recipe
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
         Assert::assertSame('no error', $got);
+    }
+
+    /** The model of the schema of a planner step and its input with the manifest_hash of that schema. */
+    private static function plannerRequest(array $step, string $path): array
+    {
+        $schema = realpath(dirname(dirname(__DIR__, 3) . '/' . $path) . '/' . $step['schema']);
+        if ($schema === false) {
+            Assert::fail("{$step['op']}: the schema of $path is missing");
+        }
+        $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+        return [$model, $step['input'] + ['manifest_hash' => $model->manifestHash]];
+    }
+
+    /** States the uses of each parameter of a validated request (DIA-31, PRT-67). */
+    private static function paramUsesStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        $validator = new Validator($model);
+        $validator->validate($request);
+        $uses = array_map(static fn(array $list): array => array_map(static fn(array $use): array => $use['column'] === null
+            ? ['type' => $use['type']]
+            : ($use['assign'] ?? false ? ['assign' => true] : []) + [
+                'column' => $use['column']['name'],
+                'length' => $use['column']['length'] ?? 0,
+                'null' => $use['column']['nullable'],
+                'precision' => $use['column']['precision'] ?? 0,
+                'scale' => $use['column']['scale'] ?? 0,
+                'type' => $use['type'],
+            ], $list), $validator->paramUses($request));
+        Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys(['uses' => $uses]), 'ir.param_uses');
+    }
+
+    /**
+     * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
+     * type and whether they are hidden (PRT-69, DIA-33).
+     */
+    private static function plannerColumnsStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $assemble = (new Engine($model, $dialect, 8))->compile($request)['steps'][0]['assemble'];
+            $got = [];
+            foreach ($step['names'] as $name) {
+                foreach ($assemble['columns'] as $column) {
+                    if ($column['name'] === $name) {
+                        $got[] = ['hidden' => $column['hidden'] ?? false, 'name' => $name, 'type' => $column['type']];
+                    }
+                }
+            }
+            Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys($got), "$dialect planner.columns");
+        }
     }
 
     /**
@@ -394,6 +474,13 @@ final class Recipe
             return ['refused' => $name];
         }
         Assert::fail("the call accepted the dialect $name");
+    }
+
+    /** The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database. */
+    private static function inspectedSchema(mixed $value, array $context): string
+    {
+        $name = is_string($value) ? $value : $value[$context['database']];
+        return $name === '$database' ? ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/') : $name;
     }
 
     /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
@@ -1574,6 +1661,13 @@ final class Recipe
         if ($result['error'] !== null) {
             Assert::fail("unexpected error {$result['error']->getMessage()}");
         }
+        if (isset($expect['bytes_prefix_hex'])) {
+            // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+            Assert::assertInstanceOf(Bytes::class, $result['value']);
+            Assert::assertSame($expect['bytes_length'], strlen($result['value']->bytes));
+            Assert::assertStringStartsWith($expect['bytes_prefix_hex'], bin2hex($result['value']->bytes));
+            return;
+        }
         $want = $expect['value'];
         if (!$result['decoded']) {
             self::compareCell($want, $result['value']);
@@ -2022,6 +2116,10 @@ final class Recipe
      */
     private static function databaseStep(array $step, array &$context): void
     {
+        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
+        if (isset($step['expect_unnamed'])) {
+            $step['expect'] = $step['expect_unnamed'];
+        }
         $expected = isset($step['expect'][$context['database']])
             ? self::resolveRefs($step['expect'][$context['database']], $context)
             : null;
@@ -2115,6 +2213,17 @@ final class Recipe
             case 'schema.register':
                 $context['db']->utils()->schema()->register(self::schemaArgument($s['schema'], $context));
                 return ['value' => ['bool' => true]];
+            case 'schema.empty':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->empty()]];
+            case 'schema.exists':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->exists(
+                    self::inspectedSchema($s['schema'], $context)
+                )]];
+            case 'schema.installed':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->installed(
+                    self::inspectedSchema($s['schema'], $context),
+                    $s['table']
+                )]];
             case 'schema.connect':
                 Orm::connectSchema(
                     $context['dsn'],
@@ -2351,6 +2460,9 @@ final class Recipe
                                 $text,
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
+                        }
+                        if (isset($s['conflict'])) {
+                            throw Orm::transactionConflict($s['conflict']);
                         }
                         return $last;
                     }
@@ -3145,6 +3257,12 @@ final class Recipe
                 ? $model->limit(0, $q['limit'])
                 : $model->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
         }
+        if (isset($q['force_index'])) {
+            $model->{'forceIndex' . self::pascal($q['force_index'])}();
+        }
+        if (isset($q['key_by'])) {
+            $model->{'keyName' . self::pascal($q['key_by'])}();
+        }
         if (isset($q['lock'])) {
             $model->{match ($q['lock']) {
                 'update' => 'forUpdate',
@@ -3245,18 +3363,6 @@ final class Recipe
         return $out;
     }
 
-    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
-    private static function derivedIntegers(array $row, array $names): array
-    {
-        foreach ($names as $name) {
-            if (is_string($row[$name])) {
-                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
-                $row[$name] = (int) $row[$name];
-            }
-        }
-        return $row;
-    }
-
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(array $s, array $context): bool
     {
@@ -3306,6 +3412,8 @@ final class Recipe
             if (isset($value['arith'])) {
                 $call = ($value['arith']['operation'] === 'minus' ? 'minus' : 'plus') . $name;
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
+            } elseif (isset($value['styled'])) {
+                $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
@@ -3382,6 +3490,9 @@ final class Recipe
                 } else {
                     $row = $model->get();
                 }
+                if (isset($s['ordered_text']) && $row !== null) {
+                    return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
+                }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;
             case 'model.create':
@@ -3445,6 +3556,24 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.was_inserted':
+                $utils = self::connectionOf($s, $context)->utils();
+                return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
+            case 'utils.backend_waiting_for_lock':
+                return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'utils.groups':
+                // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+                $utils = self::connectionOf($s, $context)->utils();
+                $held = [
+                    'aes' => $utils->aes(),
+                    'privileges' => $utils->privileges(),
+                    'schema' => $utils->schema(),
+                    'stats' => $utils->stats(),
+                ];
+                return ['value' => ['array' => array_map(
+                    static fn(string $text): array => ['text' => $text],
+                    array_keys(array_filter($held, static fn(mixed $group): bool => $group !== null))
+                )]];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
@@ -3467,10 +3596,17 @@ final class Recipe
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;
+        if (isset($s['group_value'])) {
+            $groups = $model->getsCount()->all();
+            if ($groups === []) {
+                Assert::fail("group_value {$s['group_value']}: the aggregate has no group row");
+            }
+            return ['json' => $groups[0]->value($s['group_value'])];
+        }
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
-                'sum' => $model->getSum(),
-                'avg' => $model->getAvg(),
+                'sum' => json_decode(json_encode($model->getSum())),
+                'avg' => json_decode(json_encode($model->getAvg())),
                 default => $model->getsCount()->toArray(),
             }];
         }
@@ -3508,7 +3644,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
+            $list[] = self::chainRow($row, $s['pick'] ?? null);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

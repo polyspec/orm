@@ -1,4 +1,4 @@
-// INT-52 wasInserted and INT-53 backendWaitingForLock on Utils, on SQLite, MySQL and PostgreSQL. The model is the clock
+// INT-53 backendWaitingForLock with a waiter on PostgreSQL; the recipe utils holds the rest. The model is the clock
 // fixture contracts/fixtures/clock.dbs. Each case runs on a case database of its own (case-database.mjs); the test fails
 // when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 //
@@ -17,16 +17,6 @@ const CASE_DEADLINE_MS = 30_000;
 
 const { clock_event: ClockEvent } = models(clockText);
 
-/** The error code that call throws, or 'none'. */
-async function codeOf(call) {
-  try {
-    await call();
-  } catch (error) {
-    return error.code;
-  }
-  return 'none';
-}
-
 /** Connects to a case database of driver, installs the clock fixture on it and runs body with the connection and its DSN. */
 async function onCase(driver, body) {
   await withCaseDatabase(driver, () => {}, async database => {
@@ -40,59 +30,12 @@ async function onCase(driver, body) {
   });
 }
 
-const drivers = ['sqlite', 'mysql', 'postgres'];
-
 /** Inserts one clock event with label in the active transaction and returns its identity key. */
 async function insertEvent(db, label) {
   const row = new ClockEvent().connect(db);
   row[CORE].setValue('label', label);
   const created = await row.create();
   return Number(created[CORE].column('seq'));
-}
-
-/** A generated insert inside a transaction is recorded for its key; a key never inserted is not; a nested rollback removes its key only. */
-for (const driver of drivers) {
-  // Requirements: INT-52.
-  caseTest(`was-inserted/tracks-generated-rows/${driver}`, CASE_DEADLINE_MS, async () => {
-    await onCase(driver, async db => {
-      const utils = db.utils();
-      let outer = 0;
-      let nested = 0;
-      await db.transaction(async () => {
-        outer = await insertEvent(db, 'outer');
-        assert.equal(utils.wasInserted('clock_event', outer), true, 'the outer insert is recorded');
-        assert.equal(utils.wasInserted('clock_event', outer + 1000), false, 'a key that was never inserted is not recorded');
-        await assert.rejects(db.transaction(async () => {
-          nested = await insertEvent(db, 'nested');
-          assert.equal(utils.wasInserted('clock_event', nested), true, 'the nested insert is recorded');
-          throw new Error('roll back the nested savepoint');
-        }, { retry: 0 }));
-        assert.equal(utils.wasInserted('clock_event', nested), false, 'a rolled back insert leaves the write set');
-        assert.equal(utils.wasInserted('clock_event', outer), true, 'the outer insert survives a nested rollback');
-      }, { retry: 0 });
-    });
-  });
-
-  /** The utility needs an active transaction and a valid entity and key; each violation is CONFIG. */
-  caseTest(`was-inserted/needs-a-transaction-and-valid-arguments/${driver}`, CASE_DEADLINE_MS, async () => {
-    await onCase(driver, async db => {
-      const utils = db.utils();
-      assert.equal(await codeOf(async () => utils.wasInserted('clock_event', 1)), 'CONFIG', 'outside a transaction');
-      await db.transaction(async () => {
-        assert.equal(await codeOf(async () => utils.wasInserted('', 1)), 'CONFIG', 'an empty entity');
-        assert.equal(await codeOf(async () => utils.wasInserted('clock_event', 0)), 'CONFIG', 'a zero key');
-        assert.equal(await codeOf(async () => utils.wasInserted('clock_event', -1)), 'CONFIG', 'a negative key');
-      }, { retry: 0 });
-    });
-  });
-
-  /** SQLite and MySQL have no backend lock view: INT-53 answers false without a statement, and PostgreSQL with no waiter answers false. */
-  // Requirements: INT-53.
-  caseTest(`backend-waiting-for-lock/no-waiter/${driver}`, CASE_DEADLINE_MS, async () => {
-    await onCase(driver, async db => {
-      assert.equal(await db.utils().backendWaitingForLock(), false, 'no backend waits for a lock');
-    });
-  });
 }
 
 /**
