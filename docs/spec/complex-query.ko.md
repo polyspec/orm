@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: a2d37fb84ff961342adad188a246a69daf3adba37e4fa64cc50ee5f98530088a -->
+<!-- source-sha256: 9cebf005b7cbe4570890105dd6c5cf6bbbd1306a8fc96f6443447848fdb549b8 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -218,3 +218,4 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
 - **CPX-3** 부모 행이 0개이면 1~6단계를 실행하지 않는다. 빈 IN 목록은 허용하지 않는다.
 - **CPX-4** 이 Plan은 값과 무관하게 형태가 고정되어 캐시된다. 사용자 `IN` 목록 길이는 2의 거듭제곱 bucket으로 채워 bucket마다 형태가 하나다. 관계 단계의 IN은 `LIST_EXPAND` 슬롯을 사용하므로 부모 행 수와 무관하게 캐시를 재사용한다.
 - **CPX-5** 한 질의에서 alias 없이 같은 자식 entity의 relation 두 개는 같은 결과 이름을 가지며, 그 질의는 `CONFIG`로 거부된다. 메시지는 그 결과 이름 `<x>_model`(many relation이면 `<x>_models`)과 alias 호출 `alias<Name>()`을 모든 구현에서 명시한다. 예: `relation user_model is used twice; call alias<Name>() on one of them, such as aliasWriter()`.
+- **CPX-6** `polyspec/orm-php-ext` package의 PHP extension은 native `Request::padIn`으로 `IN` 목록을 PHP library와 같이 채운다. 빈 key가 있거나 문자열 key인 목록에도 결과, 배열 key, warning이 같다.

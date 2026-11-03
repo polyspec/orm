@@ -6846,6 +6846,25 @@
       }
     },
     {
+      "id": "php-extension-pad-in",
+      "kind": "feature",
+      "requirements": [
+        "CPX-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
       "id": "php-extension-package-build-path",
       "kind": "feature",
       "requirements": [
@@ -7601,60 +7620,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/request.rs",
           "id": "request::plan_cache_tests::in_list_keys_are_bounded_by_bucket"
-        }
-      ]
-    },
-    {
-      "id": "in-list-padding-keeps-compiled-shape",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlanCacheBoundTest.php",
-          "id": "PlanCacheBoundTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
-          "id": "PlanCacheBoundNativeTest::testInListPaddingKeepsTheCompiledShape"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/plan-cache-in.mjs",
-          "id": "an IN list pads to its bucket by repeating its last value and renumbers its parameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_plan_cache_bound.py",
-          "id": "test_in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::plan_cache_tests::in_list_padding_keeps_the_compiled_shape"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestCanonicalizePadsInListAndRejectsOutOfRangeParam"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestPadInRepeatsTheLastCompositeTuple"
         }
       ]
     },
@@ -9428,7 +9393,8 @@
         "DSL-115",
         "DSL-155",
         "CPX-5",
-        "DSL-128"
+        "DSL-128",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9514,7 +9480,8 @@
         "DSL-115",
         "DSL-155",
         "CPX-5",
-        "DSL-128"
+        "DSL-128",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9600,7 +9567,8 @@
         "DSL-115",
         "DSL-155",
         "CPX-5",
-        "DSL-128"
+        "DSL-128",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -42697,7 +42665,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -42739,7 +42708,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",
@@ -42781,7 +42751,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "file": "contracts/fixtures/composite_keys/composite_keys.json",
       "cases": "$.cases[*].id",

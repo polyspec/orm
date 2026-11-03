@@ -102,7 +102,8 @@
   "DSL-115",
   "DSL-155",
   "CPX-5",
-  "DSL-128"
+  "DSL-128",
+  "CPX-4"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -30891,6 +30892,1180 @@
       "sqlite": {
        "error": "CONFIG",
        "message_contains": "alias<Name>()"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_in_list_padding",
+   "requirements": [
+    "CPX-4"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 3
+      },
+      "postgres": {
+       "json": 3
+      },
+      "sqlite": {
+       "json": 3
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            },
+            {
+             "int": "306"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "in": {
+           "array": [
+            {
+             "int": "6"
+            },
+            {
+             "int": "106"
+            },
+            {
+             "int": "206"
+            },
+            {
+             "int": "306"
+            },
+            {
+             "int": "406"
+            }
+           ]
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 5
+      },
+      "postgres": {
+       "json": 5
+      },
+      "sqlite": {
+       "json": 5
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?, ?, ?, ?, ?) AND `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1) AND \"a\".\"service_seq\" = $2"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2) AND \"a\".\"service_seq\" = $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4) AND \"a\".\"service_seq\" = $5"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4) AND \"a\".\"service_seq\" = $5"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN ($1, $2, $3, $4, $5, $6, $7, $8) AND \"a\".\"service_seq\" = $9"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" IN (?, ?, ?, ?, ?, ?, ?, ?) AND \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "106"
+              },
+              {
+               "int": "206"
+              },
+              {
+               "int": "306"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "406"
+              },
+              {
+               "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
       }
      }
     }

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dfb67a091a2c4b2b7dfcfac6557d2bad6e6ef18c54c073c30e514805340244e6 -->
+<!-- source-sha256: 7f52a0b179d3cb81eda4c0225ea0e519a518b241ee297950d06c401eecaf21c9 -->
 # 변경 이력
 
 ## Unreleased
@@ -292,6 +292,7 @@
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - FCV-2는 `recipe-unknown-keys`와 `hot-path-performance-measurement` unit 세 개가 native로 남는 이유를 밝힌다. loader의 거부는 어떤 case보다 먼저 일어나고, 시간은 case가 기대할 수 있는 값이 아니다
 - PRT-63의 markdown DSN 거부는 `dsn_reject`의 case이고, DSL-60, DSL-115, DSL-155, CPX-5, DSL-128은 새 case `core_conditions`, `core_columns_and_pages`, `core_writes`, `core_duplicate_relation`과 함께 `conformance_verification`이 담으며, 그 native unit은 없어졌다. FCV-2는 model core unit 네 개가 native로 남는 이유를 밝힌다.
+- `IN` 목록 채움(CPX-4)은 값 1개부터 5개까지의 문을 세 데이터베이스에서 읽는 case `core_in_list_padding`과 `composite_key_rows`의 채워진 tuple이다. runtime의 native 채움 시험은 없어졌다. PHP extension의 native `Request::padIn`은 CPX-6이다.
 
 ## 0.0.21
 
