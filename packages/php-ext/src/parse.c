@@ -1068,6 +1068,13 @@ static size_t skip_parentheses(parser *p, size_t i)
     return i + 1 < count ? i + 1 : count;
 }
 
+/* The message of DBS-162 for a parameterized type whose parameters are wrong. */
+static str type_parameters_message(str name)
+{
+    return str_eqc(name, "decimal") ? SL("decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p")
+        : str_eqc(name, "varchar") ? SL("varchar(n) needs 1 <= n <= 16383") : fmt("%S(p) needs 0 <= p <= 6", name);
+}
+
 /* Reads the type of token i. NULL if the type is wrong. */
 static ctype *read_type(parser *p, size_t i, size_t *next)
 {
@@ -1082,8 +1089,8 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
         return intern_type(p, name, NULL, 0);
     }
     if (arity == 0 || !paren) {
-        error(p, "type", p->line, column, simple ? fmt("type `%S` has no parameters", name)
-            : arity > 0 ? fmt("type `%S` needs its parameters", name) : fmt("type \"%S\" is not a dbspec type", name));
+        error(p, "type", p->line, column, simple ? fmt("%S takes no parameters", name)
+            : arity > 0 ? type_parameters_message(name) : fmt("type \"%S\" is not a dbspec type", name));
         *next = paren ? skip_parentheses(p, i + 1) : i + 1;
         return NULL;
     }
@@ -1129,7 +1136,7 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
         return NULL;
     }
     if (malformed) {
-        error(p, "type", p->line, column, fmt("type `%S` has malformed parameters", name));
+        error(p, "type", p->line, column, type_parameters_message(name));
         *next = j;
         return NULL;
     }
@@ -1144,9 +1151,7 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
         }
     }
     if (!valid) {
-        str message = str_eqc(name, "decimal") ? SL("decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p")
-            : str_eqc(name, "varchar") ? SL("varchar(n) needs 1 <= n <= 16383") : fmt("%S(p) needs 0 <= p <= 6", name);
-        error(p, "type", p->line, column, message);
+        error(p, "type", p->line, column, type_parameters_message(name));
         *next = j;
         return NULL;
     }

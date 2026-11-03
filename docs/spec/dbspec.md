@@ -98,7 +98,7 @@ Note: the reader reads a file tree that does not change while it runs. It examin
 - **DBS-25** `set.path`: A path has no normal form, a `documents` path has a `..` segment, or an `external` path has one after another segment
 - **DBS-26** `set.duplicate`: A path names a file that an earlier path names
 
-- **DBS-27** A generator that gets a set file with an error, or a listed file with a diagnostic, exits with its error status, prints every error and diagnostic, each diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`, after any file or set name, and writes nothing. The message of a word that names no type is `type "<word>" is not a dbspec type`. The shared vectors `tests/dbspec/set-files.json` hold each rule with accepting and rejecting cases as file trees (regular files, directories, symbolic links and hard links), which every client's set reader runs; TypeScript's `parseSet` also runs the cases that need no file tree. The file-tree cases need a file system with symbolic and hard links: on Windows, NTFS and the privilege to create symbolic links.
+- **DBS-27** A generator that gets a set file with an error, or a listed file with a diagnostic, exits with its error status, prints every error and diagnostic, each diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`, after any file or set name, and writes nothing. The shared vectors `tests/dbspec/set-files.json` hold each rule with accepting and rejecting cases as file trees (regular files, directories, symbolic links and hard links), which every client's set reader runs; TypeScript's `parseSet` also runs the cases that need no file tree. The file-tree cases need a file system with symbolic and hard links: on Windows, NTFS and the privilege to create symbolic links.
 
 ### Parsing a set {#parsing-a-set}
 
@@ -471,7 +471,7 @@ A reference that a tool needs to place beyond these kinds (the target table of a
 - **DBS-159** `name.format`: A name does not match `[a-z][a-z0-9_]*` or is `primary`
 - **DBS-160** `name.length`: A name is longer than 63 bytes
 - **DBS-161** `name.duplicate`: A table, column, constraint, index or diagram name repeats in its scope
-- **DBS-162** `type`: A type is unknown or its parameters are out of range
+- **DBS-162** `type`: A type is unknown or its parameters are out of range. The diagnostic stands at the type word. Its message, for a word that names no type, is `type "<word>" is not a dbspec type`; for a type of no parameters that is given parameters, `<word> takes no parameters`; and for a parameterized type whose parameters are missing, of another number, not integers or out of range, `varchar(n) needs 1 <= n <= 16383`, `time(p) needs 0 <= p <= 6`, `datetime(p) needs 0 <= p <= 6` or `decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p`
 - **DBS-163** `column`: A column combines `null`, `identity` and `default` in a way the rules reject, or a default does not fit its type
 - **DBS-164** `key`: A table has no primary key or more than one, a key column is nullable, or a key or index lists an unknown, repeated, `text` or `bytes` column, more than 16 columns, or more than 640 `varchar` characters
 - **DBS-165** `foreign_key`: A foreign key target, column types, index, arity or `set_null` nullability breaks the rules

@@ -17,7 +17,7 @@ const clientScans = [
   'tests/model-new-output-name.mjs', 'tests/model.mjs',
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/recipe.mjs', 'tests/recipe_model.mjs',
   'tests/refusal-before-request.mjs', 'tests/replica.mjs',
-  'tests/split-plan.test.mjs', 'tests/sqlite-concurrency.mjs', 'tests/statement_timeout.mjs', 'tests/styled-value-checks.mjs',
+  'tests/split-plan.test.mjs', 'tests/styled-value-checks.mjs',
   'tests/transaction-flow.mjs', 'tests/typecheck.ts',
   '../../examples/thin-slice/ts/main.mts',
 ];

@@ -48,6 +48,9 @@ use RuntimeException;
 
 final class Recipe
 {
+    /** The time of the last wait.start (FCV-4), in nanoseconds. */
+    private static int $waitStart = 0;
+
     use RecipeModel;
 
     /** The ops that RecipeModel runs, by their full names (FCV-15). */
@@ -74,6 +77,7 @@ final class Recipe
         'utils.set_local',
         'utils.local',
         'utils.was_inserted',
+        'utils.privilege',
         'utils.backend_waiting_for_lock',
         'utils.groups',
         'utils.stats',
@@ -774,6 +778,9 @@ final class Recipe
             poolIdleSize: $config['pool_idle_size'] ?? 0,
             poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
             statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+            aesKey: $config['aes_key'] ?? '',
+            aesVersion: $config['aes_version'] ?? 1,
+            aesKeys: $config['aes_keys'] ?? [],
         ));
         try {
             $rows = $db->utils()->run(
@@ -3101,6 +3108,39 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'transaction.writers':
+                // PHP runs one thread, so each writer is a process (CFG-12).
+                $extension = getenv('POLYSPEC_ORM_EXTENSION');
+                $php = is_string($extension) && $extension !== '' && extension_loaded('polyspec_orm')
+                    ? [PHP_BINARY, '-d', 'extension=' . $extension]
+                    : [PHP_BINARY];
+                $writers = [];
+                for ($i = 0; $i < $s['writers']; $i++) {
+                    $process = proc_open(
+                        [...$php, __DIR__ . '/sqlite_concurrency_writer.php', $context['dsn'], "w$i", (string) $s['writes']],
+                        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                        $pipes
+                    );
+                    $writers[] = [$process, $pipes];
+                }
+                foreach ($writers as [$process, $pipes]) {
+                    $output = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+                    $status = proc_close($process);
+                    Assert::assertSame(0, $status, "a writer process: $output");
+                }
+                $writersDb = \Polyspec\Orm\Tests\Model\connect($context['dsn'], new Config());
+                try {
+                    return ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\Service())($writersDb)->getCount()]];
+                } finally {
+                    $writersDb->close();
+                }
+            case 'wait.start':
+                self::$waitStart = hrtime(true);
+                return [];
+            case 'wait.at_least':
+                $waited = (hrtime(true) - self::$waitStart) / 1e6;
+                Assert::assertGreaterThanOrEqual($s['ms'], $waited, 'the time since wait.start');
+                return [];
             case 'session.end':
                 // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
                 $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
@@ -4346,6 +4386,20 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.privilege':
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                $privileges = self::connectionOf($s, $context)->utils()->privileges();
+                switch ($s['call']) {
+                    case 'inspect':
+                        return ['json' => $privileges->inspectTable($s['table'])];
+                    case 'grant':
+                        $privileges->grantTable($s['table'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                    case 'revoke':
+                        $privileges->revokeTable($s['table'], $s['privilege'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                }
+                Assert::fail("utils.privilege has no call {$s['call']}");
             case 'utils.was_inserted':
                 $utils = self::connectionOf($s, $context)->utils();
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];

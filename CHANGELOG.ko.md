@@ -1,24 +1,43 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c91cd0c0b3727a0b58bdf51b29564a5931a6c677fbc8af65be56c71094f317b1 -->
+<!-- source-sha256: 82b8d4b971292bbb61547fd5cc9a0682dd8b79a2ef96218f81979f5ec52494c1 -->
 # 변경 이력
 
 ## Unreleased
 
+- 이제 모든 client에서 collection view와 모든 model의 connect를 recipe가 확인하며, native extension 표면은 INT-62a 아래 자기 unit을 가진다.
+- Python package의 생성된 full-text method는 DSL-33a 아래 자기 unit을 가진다.
+- 이제 transaction 안의 schema inspection 읽기와 그 statement event를 recipe schema_install이 확인하며, 이를 반복하던 Python 파일은 사라졌다.
+- 이제 모든 client에서 PostgreSQL의 table 권한과 MySQL, SQLite의 거부를 recipe 하나가 확인하며, native extension은 INT-59a 아래 자기 unit을 유지한다.
+- dbspec rule `type`의 모든 message가 여섯 runtime에서 DBS-162가 적은 문장이다. Go, PHP, PHP extension, Rust가 parameter 오류를 각자 다르게 적지 않으며, generator case가 message 전체를 담는다. make rule이 없는 CHECK_TARGETS의 target은 사라졌고, `catalog-rust`는 없는 시험 파일을 가리키지 않는다 (#T334-3-12-6)
+- Tests: driver 오류와 native cause(PRT-79)는 모든 runtime에서 각 database가 일으킨 오류로 case `immutable_write`가 확인하며, 오류를 만들어 쓰던 native는 사라졌다.
+- 현재 version의 key와 다른 AES key를 가진 연결은 `dsn.connect`의 `config`에 있는 `aes_key`, `aes_version`, `aes_keys`를 통해 여섯 runtime 모두에서 recipe `aes_rotation`의 case `an_aes_key_that_differs_from_the_current_version_is_refused`로 실행한다. Go 시험 `TestAESKeyMustMatchKeyOfCurrentVersion`은 제거했다 (#T334-3-12-2)
+- CR15-F: MySQL insert 문장을 보는 TypeScript와 Python 시험을 c55a726cf에서 소유 unit으로 되살린다(INT-123b, INT-123c). 가짜 driver가 관찰하는 문장만 맡는다.
+- CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
+- conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
+- 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
+- Tests: MySQL lock wait timeout(CFG-6)은 모든 runtime에서 `transactions` recipe의 case `mysql_lock_wait_expiry_is_canceled`가 서버의 실제 1205로 확인하며, driver 오류를 만들어 쓰던 native는 사라졌다.
 - `clock_microseconds`, `clock_soft_delete_microseconds`, `now_defaults`는 database clock 기준 1분 범위를 허용하던 자리에서, 새 step `clock.read`로 write 앞뒤에 읽은 wall clock 사이에 저장된 clock 값을 잡는다.
 - CR15-F: 저장된 표의 내림차순 행과 NULL을 `grid_column_and_row_order`의 step으로 두었다. Go 시험은 wrapper의 plan만 남기고(SCH-6b), Rust helper 시험은 지우며, Rust commit 분류기는 단일 소유 unit이 된다(INT-118a).
 - `performance_gate`는 각 class가 가리키는 database의 `BENCH_<DATABASE>_DSN`을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - described table 읽기는 유효한 UTF-8이 아닌 값을 여섯 runtime 모두에서 그 byte로 돌려주며, TypeScript는 그런 읽기의 응답 전체를 한 번의 실행에서 가져옵니다.
 - 읽기 전용 query의 유효한 UTF-8이 아닌 값은 SQLite text를 포함해 여섯 runtime 모두에서 그 byte이고, grid 질의에서는 binary cell입니다.
 - 길이나 중첩과 관계없이 읽기 전용 query는 여섯 runtime 모두에서 응답하며, Rust도 다른 runtime처럼 token으로 query를 읽습니다.
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
 - CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.
 - CR15-F: 할당이 없는 insert가 생성 키를 돌려준다. TypeScript는 MySQL에서 bind 없는 문장의 insert id를 유지하고, PHP와 확장은 PostgreSQL에서 그 문장에 cursor를 선언하지 않는다.
 - Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
 - INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
 - `performance_gate`는 각 class가 가리키는 database의 BENCH_<DATABASE>_DSN을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 생성된 모델을 맡는다. `ts-model-check`는 TypeScript 모델 다섯 묶음을 모두 맡고, 그 scan 목록은 모델을 부르는 source를 적는다.
+- MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
+- INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
+- Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
+- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
+- Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
 - vector 파일을 읽던 PHP와 PHP extension 시험을, 그 시험만 쓰던 coverage helper와 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
@@ -27,7 +46,6 @@
 - MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
 - INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
-- recipe 실행은 runtime마다 읽은 key를 기록하고, 읽지 않은 key가 남으면 그 이름과 함께 case가 실패한다.
 - 문서: FCV-2가 `ts-dbspec-plan`과 `ts-dbspec-render-dialect`의 Rust compile fixture를 native binding 규칙이 읽는 형식으로 적는다.
 - PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
 - 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
@@ -55,9 +73,10 @@
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
-- vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
+- vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 생성된 모델을 맡는다. `ts-model-check`는 TypeScript 모델 다섯 묶음을 모두 맡고, 그 scan 목록은 모델을 부르는 source를 적는다.
+- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - 서버가 거부한 연결은 모든 클라이언트에서 `DRIVER`다. PHP와 extension은 `CONFIG`를, Rust catalog는 코드 없는 문자열을 보고했다.
 - catalog는 `max_user_connections`가 거부한 연결을 자신의 연결을 닫은 뒤 2초 안에서만 다시 시도하고, Go의 budget 중단은 rollback을 시도하지 않고 `CATALOG_LIMIT`만 보고한다.
 - recipe transactions의 case `a_rollback_fault_is_consumed_by_the_next_failed_rollback`이 새 op `fault.next_rollback`으로 모든 runtime의 INT-72를 말한다: fault는 commit된 transaction을 지나 남고, 다음 실패 callback은 FAULT를 담은 ROLLBACK을 보고하며, 그다음 transaction은 callback error만 보고한다.
@@ -391,6 +410,10 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- statement timeout(CFG-6)과 transaction pooler를 거친 격리(CFG-27, CFG-28, CFG-29)를 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `statement_timeout_ms`와 DSN `case-pooler`를 받는다. pooler를 거친 Python catalog session은 별도 요구사항(CFG-41)이 된다.
+- SQLite 잠금 대기, 쓰기 중 읽기, 동시 쓰기는 여섯 runtime의 recipe case로 실행하고, 그 동작의 native 시험은 없앤다.
+- Go에서 실패한 SQLite BEGIN은 자기 오류만 보고하고, SQLite message는 result code를 한 번만 적는다.
+- 한 SQLite 파일에 쓰는 여러 process를 요구사항(CFG-42)으로 두고 여섯 runtime에서 시험한다.
 - ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
 - PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
 - UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.

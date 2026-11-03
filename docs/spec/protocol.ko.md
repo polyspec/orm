@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: bb1adbf2abb3c53bd712987f00c6b983930645915370faeee54a1b3d7b05e289 -->
+<!-- source-sha256: 5a542563a7a2845efc7bbbbe33672ea2d594516b0ff5b0e203c7ab14bac9060b -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -189,7 +189,9 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`, Python: `cause`와 `rollback`). `ROLLBACK` 오류는 재시도하지 않는다. SQLite NOWAIT 작업과 `busy_timeout` 복원이 모두 실패하면 primary 잠금 오류의 코드를 유지하고 두 오류 객체를 순서대로 보존한다(PHP: `previous`와 `cleanup`, TypeScript: `cause`의 `AggregateError`, Go: `errors.Join`, Rust: `Error::Cleanup { primary, cleanup }`, Python: `cause`의 `ExceptionGroup`). 하나만 실패하면 그 오류를 그대로 반환한다. NOWAIT 설정, 테이블 설정 또는 잠금 작업이 실패한 뒤에도 `busy_timeout` 복원을 시도한다. NOWAIT 잠금 실패는 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
-- **PRT-79** **Native driver errors.** 각 클라이언트는 인식한 native driver 조건을 catalog code로 매핑하고, 인식하지 못한 driver 오류는 `DRIVER`로 매핑한다. ORM 오류는 driver 메시지를 유지하고 native driver 오류를 cause로 보존한다. 각 구현은 database server 없이 native 오류 매핑 단계에서 이를 검사한다.
+- **PRT-79** **Native driver errors.** 각 클라이언트는 인식한 native driver 조건을 catalog code로 매핑하고, 인식하지 못한 driver 오류는 `DRIVER`로 매핑한다. ORM 오류는 driver 메시지를 유지하고 native driver 오류를 cause로 보존한다. recipe `immutable_write`가 각 database가 일으킨 오류로 이를 검사한다.
+- **PRT-79a** `polyspec-orm`(Rust)은 PostgreSQL parameter를 client에서 bind하므로, parse에 실패한 값의 오류는 parser의 메시지를 유지한다.
+- **PRT-79b** PHP-extension package `polyspec/orm-php-ext`는 native pgsql adapter의 문장 오류 SQLSTATE를 오류의 cause에 유지한다.
 
 ### 3.1 Test faults
 
@@ -258,7 +260,7 @@ generated code는 document set의 manifest text와 `manifestHash`를 가진다. 
 
 한 프로세스는 여러 document set의 generated code를 읽을 수 있고, 연결 하나가 그중 여러 set을 처리할 수 있다. 연결은 자기에게 등록된 set으로만 요청을 계획한다. 요청이 실행될 수 있는 대상은 프로세스가 읽은 code가 아니라 연결이 쓰는 데이터베이스가 정하기 때문이다. set은 세 방법으로 연결에 등록된다. `utils().schema().register(schema)`는 set을 연결에 등록한다. generated code의 connect helper(Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript generated module의 `connect(dsn, options)`, Python generated module의 `connect(dsn, **options)`)는 연결을 열고 `connectSchema`(Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`)로 같은 방법으로 자기 set을 등록한다. `utils().schema().install(schema)`는 set의 테이블을 만들고 데이터베이스를 확인한 뒤 같은 연결에 그 set을 등록한다. 셋 다 generated schema 값, 곧 manifest text와 선언한 `manifestHash`(Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`, Python `SCHEMA`)를 받고, text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`로 실패한다. 등록은 외부 문서를 쓰는 set도 데이터베이스를 읽거나 쓰지 않는다. 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때(`install`, `addTablesAndColumns`) 확인하므로, 요청마다 연 연결은 statement 없이 set을 등록한다([schema](schema.ko.md#_6-schema-registration)). raw 연결(클라이언트의 `connect(dsn, …)`)은 set을 등록하지 않고, generated code를 읽는 것도 연결에 아무것도 등록하지 않는다. 연결에 등록되지 않은 manifest의 요청은 같은 형태의 plan이 캐시되어 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, manifest text가 선언한 `manifestHash`로 hash되지 않는 generated code의 요청도 그렇다. 다른 등록 호출은 없다. 모든 클라이언트가 이 규칙을 따른다.
 
-공통 계획 contract는 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)이 같은 요청에서 같은 SQL과 bind slot을 만들도록 요구한다. `tests/conformance`는 선언된 벡터의 실행 결과를 비교한다. PHP extension의 실행 또는 데이터베이스 증거가 없으면 구현 contract는 미완료다.
+공통 계획 contract는 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)이 같은 요청에서 같은 SQL과 bind slot을 만들도록 요구한다. recipe `conformance_verification`은 각 구현에서 같은 expect로 실행한다. PHP extension의 실행 또는 데이터베이스 증거가 없으면 구현 contract는 미완료다.
 
 ## 5. IR executors
 

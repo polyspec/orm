@@ -2923,6 +2923,200 @@
       ]
     },
     {
+      "id": "schema_inspection_reads_the_active_transaction",
+      "requirements": [
+        "INT-57",
+        "INT-58"
+      ],
+      "steps": [
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "schema.install",
+              "schema": {
+                "documents": [
+                  "user.dbs"
+                ]
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "schema.installed",
+              "schema": "public",
+              "table": "user",
+              "only": [
+                "postgres"
+              ],
+              "expect": {
+                "postgres": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            },
+            {
+              "op": "schema.empty",
+              "expect": {
+                "mysql": {
+                  "value": {
+                    "bool": true
+                  }
+                },
+                "postgres": {
+                  "value": {
+                    "bool": false
+                  }
+                },
+                "sqlite": {
+                  "value": {
+                    "bool": false
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_inspection_sends_a_schema_event",
+      "requirements": [
+        "INT-58"
+      ],
+      "steps": [
+        {
+          "op": "events.subscribe",
+          "as": "events"
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "events",
+          "compare": "shape",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "schema"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "schema"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "schema"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": []
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "install_renders_triggers",
       "requirements": [
         "DBS-108",

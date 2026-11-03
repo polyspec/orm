@@ -116,7 +116,7 @@ final class PgsqlPdoAdapterNativeTest extends TestCase
 
     public function testNativePgsqlAdapterStatementErrorCarriesItsSqlState(): void
     {
-        // Requirements: PRT-79
+        // Requirements: PRT-79b
         self::assertTrue((new ReflectionMethod(\Polyspec\Orm\Orm::class, 'connect'))->isInternal());
         $this->assertPgsqlAdapterStatementErrorCarriesItsSqlState();
     }

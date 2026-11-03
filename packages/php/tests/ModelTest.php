@@ -482,7 +482,6 @@ class ModelTest extends TestCase
             'install over some tables of the set'
         );
         self::check(self::code(fn() => $schema->exists('bad name')) === Code::CONFIG, 'invalid schema name');
-        $privileges = $db->utils()->privileges();
         switch ($db->driver()) {
             case 'mysql':
                 $name = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
@@ -492,10 +491,6 @@ class ModelTest extends TestCase
                         ->installed($name, 'missing'),
                     'mysql schema inspection'
                 );
-                self::check(
-                    self::unsupportedPrivileges($privileges),
-                    'mysql grant, inspect and revoke are unsupported'
-                );
                 break;
             case 'postgres':
                 self::check(
@@ -504,86 +499,10 @@ class ModelTest extends TestCase
                         ->installed('public', 'missing'),
                     'postgres schema inspection'
                 );
-                $got = $privileges->inspectTable('public.user');
-                self::check(
-                    $got['select'] && $got['insert'] && $got['update'] && $got['delete'] && $got['truncate'],
-                    'inspectTable'
-                );
-                self::check(
-                    self::code(fn() => $privileges->inspectTable('user')) === Code::CONFIG,
-                    'unqualified table'
-                );
-                self::check(
-                    self::code(fn() => $privileges->revokeTable('public.user', 'drop', 'nobody')) === Code::CONFIG,
-                    'unsupported privilege'
-                );
-                $role = 'orm_priv_' . getmypid();
-                $table = 'public.privilege_probe';
-                $db->pdo()->exec('CREATE TABLE "privilege_probe" ("id" INTEGER)');
-                $db->pdo()->exec('CREATE ROLE "' . $role . '"');
-                try {
-                    $owner = $privileges->inspectTable($table);
-                    self::check(
-                        $owner['select']
-                            && $owner['insert']
-                            && $owner['update']
-                            && $owner['delete']
-                            && $owner['truncate'],
-                        'inspectTable reports owner privileges'
-                    );
-                    $privileges->grantTable($table, $role);
-                    $rights = $db->pdo()->prepare(
-                        "SELECT has_schema_privilege(?, 'public', 'USAGE'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'SELECT'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'INSERT'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'UPDATE'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'DELETE')"
-                    );
-                    $rights->execute([$role, $role, $role, $role, $role]);
-                    $granted = array_map(
-                        static fn(mixed $value): bool => in_array($value, [true, 1, '1', 't', 'true'], true),
-                        $rights->fetch(PDO::FETCH_NUM)
-                    );
-                    self::check(
-                        $granted === [true, true, true, true, true],
-                        'grantTable grants schema usage and SELECT, INSERT, UPDATE and DELETE'
-                    );
-                    $privileges->revokeTable($table, ' select ', $role);
-                    $check = $db->pdo()->prepare(
-                        "SELECT has_table_privilege(?, 'public.privilege_probe', 'SELECT'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'INSERT'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'UPDATE'), "
-                        . "has_table_privilege(?, 'public.privilege_probe', 'DELETE')"
-                    );
-                    $check->execute([$role, $role, $role, $role]);
-                    $revoked = array_map(
-                        static fn(mixed $value): bool => in_array($value, [true, 1, '1', 't', 'true'], true),
-                        $check->fetch(PDO::FETCH_NUM)
-                    );
-                    self::check($revoked === [false, true, true, true], 'revokeTable removes SELECT only');
-                } finally {
-                    $db->pdo()->exec('DROP OWNED BY "' . $role . '"');
-                    $db->pdo()->exec('DROP ROLE "' . $role . '"');
-                    $db->pdo()->exec('DROP TABLE "privilege_probe"');
-                }
                 break;
             default:
                 self::check(!$schema->installed('ormexample', 'user'), 'sqlite schema inspection');
-                self::check(
-                    self::unsupportedPrivileges($privileges),
-                    'sqlite grant, inspect and revoke are unsupported'
-                );
         }
-    }
-
-    private static function unsupportedPrivileges(\Polyspec\Orm\PrivilegeUtils $privileges): bool
-    {
-        $codes = [
-            self::code(fn() => $privileges->grantTable('public.user', 'orm')),
-            self::code(fn() => $privileges->inspectTable('public.user')),
-            self::code(fn() => $privileges->revokeTable('public.user', 'SELECT', 'orm')),
-        ];
-        return $codes === [Code::CAPABILITY_UNSUPPORTED, Code::CAPABILITY_UNSUPPORTED, Code::CAPABILITY_UNSUPPORTED];
     }
 
     private static function caseDeadlockRetry(Db $db, string $dsn): void
@@ -733,55 +652,6 @@ class ModelTest extends TestCase
     // that is not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep
     // their order, and a failing batch leaves no row of the call.
     /**
-     * Updates every row of the table in an open transaction of another connection, taking the lock on that row (MySQL,
-     * PostgreSQL). Rollback releases the lock.
-     */
-    private static function holdRows(string $driver, string $dsn, string $table): PDO
-    {
-        $pdo = case_admin($dsn);
-        $quote = $driver === 'mysql' ? static fn(
-            string $n
-        ): string => "`$n`" : static fn(string $n): string => "\"$n\"";
-        $pdo->beginTransaction();
-        $pdo->exec('UPDATE ' . $quote($table) . ' SET ' . $quote('seq') . ' = ' . $quote('seq'));
-        return $pdo;
-    }
-
-    /**
-     * Another process holds every row of the PostgreSQL table for $ms milliseconds. The process returns after it holds
-     * the rows, and the resource it returns is waited for with proc_close.
-     *
-     * @return resource
-     */
-    private static function holdRowsFor(string $dsn, string $table, int $ms)
-    {
-        $code = 'require ' . var_export(
-            dirname(__DIR__, 3) . '/vendor-php/autoload.php',
-            true
-        ) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
-            . ' $pdo = \Polyspec\Orm\Tests\case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
-            . ' $pdo->exec(' . var_export(
-                'UPDATE "' . $table . '" SET "seq" = "seq"',
-                true
-            ) . '); echo "held\n"; fflush(STDOUT);'
-            . ' usleep(' . ($ms * 1000) . '); $pdo->rollBack();';
-        $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w']], $pipes);
-        if (!is_resource($process) || trim((string) fgets($pipes[1])) !== 'held') {
-            throw new RuntimeException('the holder process did not hold the rows');
-        }
-        return $process;
-    }
-
-    /** Reads the row of $model with FOR UPDATE in $db's transaction. Waits if another connection holds that row. */
-    private static function lockedRead(\Polyspec\Orm\Db $db, string $model): void
-    {
-        $db->transaction(static function () use ($db, $model): void {
-            // Keep the same parameterized SELECT across transactions and client handles.
-            (new $model())($db)->seq(1)->forUpdate()->get();
-        }, retry: 0);
-    }
-
-    /**
      * Returns after the replica has applied every change the primary committed
      * before the call. On PostgreSQL a transaction with
      * synchronous_commit=remote_apply that writes WAL, here a transactional
@@ -918,120 +788,6 @@ class ModelTest extends TestCase
                     $error === null ? 'connected' : $error->getMessage()
                 )
             );
-        }
-    }
-
-    #[DataProvider('serverDrivers')]
-    // Requirements: CFG-6.
-    public function testStatementTimeout(string $driver): void
-    {
-        // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
-        // bounds every statement, and SQLite has no session timeout. The bounded
-        // statement is a locking read of a row that another connection holds, so
-        // it waits past the bound.
-        if ($driver !== 'sqlite') {
-            $caseDsn = self::caseDsn($driver);
-            $db = self::database($driver, $caseDsn);
-            self::seed($db);
-            $db->close();
-            $holder = self::holdRows($driver, $caseDsn, 'author');
-            $bounded = \Polyspec\Orm\Tests\Model\connect(
-                $caseDsn,
-                new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200)
-            );
-            self::check(
-                self::code(fn() => self::lockedRead($bounded, Author::class)) === Code::CANCELED,
-                'a statement past the timeout'
-            );
-            $holder->rollBack();
-            self::check(
-                is_int((new Author())->connect($bounded)->getCount()),
-                'the connection is usable after its statement timeout'
-            );
-            $bounded->close();
-        }
-    }
-
-    // A pooler in transaction mode hands one server session to every client in
-    // turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
-    // connection, so the statement timeout of one connection must bound only the
-    // statements of that connection.
-    // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case
-    // database. So this case creates only one table named after itself (case_name()) in that database, and removes only
-    // that table at the end (even on failure). The table's model is generated from the dbspec document made during the
-    // run. Requirements: CFG-27, CFG-28, CFG-29.
-    public function testStatementTimeoutThroughAPooler(): void
-    {
-        $probeSetup = null;
-        $probeTable = null;
-        try {
-            $single = requiredDsn('ORM_TEST_PGBOUNCER_SINGLE_DSN');
-            if ($single === false || $single === '') {
-                throw new RuntimeException(
-                    'ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its '
-                    . 'make target, which reads the environment of make orm-test-servers'
-                );
-            }
-            $table = case_name();
-            $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary "
-                . "key (seq)\n}\n";
-            generateModels(
-                ['pooler_probe.dbs' => $probe],
-                self::$work . "/pooler-source",
-                self::$work . "/pooler",
-                'Polyspec\\Orm\\Tests\\PoolerProbe'
-            );
-            requireGeneratedClasses(self::$work . "/pooler");
-            require self::$work . "/pooler/bootstrap.php";
-            $model = 'Polyspec\\Orm\\Tests\\PoolerProbe\\' . str_replace('_', '', ucwords($table, '_'));
-            $probeSetup = \Polyspec\Orm\Tests\PoolerProbe\connect(self::$targets['postgres'], new Config());
-            $probeTable = $table;
-            $probeSetup->utils()->schema()->install(\Polyspec\Orm\Tests\PoolerProbe\schema());
-            for ($i = 0; $i < 4; $i++) {
-                (new $model())($probeSetup)->setLabel("probe-$i")->create();
-            }
-            // A direct connection holds the rows, so a locking read through the pooler
-            // waits for the lock.
-            $holder = self::holdRows('postgres', self::$targets['postgres'], $table);
-            $bounded = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config(statementTimeoutMs: 200));
-            self::check(
-                self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED,
-                'the bounded connection through the pooler'
-            );
-            $holder->rollBack();
-            $plain = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config());
-            // Both client sessions issue the same locking query repeatedly through PgBouncer.
-            for ($i = 0; $i < 6; $i++) {
-                self::lockedRead($bounded, $model);
-                self::lockedRead($plain, $model);
-            }
-            // Another process holds the rows for a declared 400 ms, past the 200 ms
-            // bound of the other connection, so the plain read waits that long.
-            $process = self::holdRowsFor(self::$targets['postgres'], $table, 400);
-            $started = hrtime(true);
-            self::lockedRead($plain, $model);
-            self::check(
-                (hrtime(true) - $started) / 1e6 >= 200,
-                'a connection without a timeout after the bounded one waits past the bound'
-            );
-            proc_close($process);
-            $holder = self::holdRows('postgres', self::$targets['postgres'], $table);
-            self::check(
-                self::code(fn() => self::lockedRead($bounded, $model)) === Code::CANCELED,
-                'the bounded connection after the plain one'
-            );
-            $holder->rollBack();
-            $bounded->close();
-            $plain->close();
-        } finally {
-            if ($probeTable !== null) {
-                try {
-                    $probeSetup->pdo()->exec("DROP TABLE IF EXISTS \"$probeTable\"");
-                } catch (Throwable $e) {
-                    self::check(false, "drop table $probeTable: {$e->getMessage()}");
-                }
-                $probeSetup->close();
-            }
         }
     }
 

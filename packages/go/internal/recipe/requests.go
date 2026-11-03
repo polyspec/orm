@@ -52,7 +52,7 @@ func auditValues(raw json.RawMessage, c *databaseContext) (map[string]any, error
 // connectConfig is the configuration of a model.connect: the keys of the bench set or the keyring of the step, and the
 // audit source of the step.
 func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
-	cfg := orm.Config{PoolSize: s.k("pool_size").PoolSize, PoolIdleSize: s.k("pool_idle_size").PoolIdle, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey}
+	cfg := orm.Config{PoolSize: s.k("pool_size").PoolSize, PoolIdleSize: s.k("pool_idle_size").PoolIdle, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey, StatementTimeoutMs: s.k("statement_timeout_ms").StatementTimeoutMs}
 	if s.k("audit_source").AuditSource != nil {
 		var values map[string]any
 		if s.k("audit_source").AuditSource.Values != nil {
@@ -97,7 +97,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
-	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
+	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.privilege", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
 		return utilsOp(s, c)
 	case "pool.transactions":
 		// Count transactions in flows of their own: the first hold of them stay open until hold have begun, so the pool

@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// A MySQL lock wait timeout (1205, innodb_lock_wait_timeout) is the expiry of the write bound of CFG-6, so the driver
-// error is CANCELED in OrmException::fromDriver, not DRIVER. The case builds the PDOException of the driver and needs
-// no database.
+// The driver errors that OrmException::fromDriver maps. Each case builds the PDOException of the driver and needs no
+// database.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/OrmExceptionLockWaitTest.php
 
@@ -20,30 +19,6 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class OrmExceptionLockWaitTest extends TestCase
 {
-    // Requirements: CFG-6.
-    public function testMysqlLockWaitTimeoutIsCanceled(): void
-    {
-        $message = 'Lock wait timeout exceeded; try restarting transaction';
-        $driverError = new PDOException($message);
-        $driverError->errorInfo = ['HY000', 1205, $message];
-        $error = OrmException::fromDriver($driverError, 'mysql', new PDO('sqlite::memory:'));
-        self::assertSame(Code::CANCELED, $error->code_, "MySQL 1205 maps to {$error->code_}");
-    }
-
-    // Requirements: PRT-79.
-    public function testUnlistedMysqlDriverErrorKeepsItsCause(): void
-    {
-        $message = 'trigger refused the write';
-        $driverError = new PDOException($message);
-        $driverError->errorInfo = ['HY000', 1644, $message];
-        $pdo = (new \ReflectionClass(PDO::class))->newInstanceWithoutConstructor();
-        $error = OrmException::fromDriver($driverError, 'mysql', $pdo);
-
-        self::assertSame(Code::DRIVER, $error->code_);
-        self::assertSame('DRIVER: ' . $message, $error->getMessage());
-        self::assertSame($driverError, $error->getPrevious());
-    }
-
     // Requirements: PLN-24.
     public function testSqliteLockedIsDriverNotDeadlock(): void
     {

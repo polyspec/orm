@@ -28,9 +28,14 @@ function catalogFixturePool(session) {
   };
 }
 
-function mysqlCatalogFixture({ expressionDefault = false, priorRows = [], postRows, partialRevokes = 0, directTriggerGrant = true } = {}) {
+function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, priorRows = [], postRows, partialRevokes = 0, directTriggerGrant = true } = {}) {
   const queries = [];
-  const columns = expressionDefault
+  const columns = autoKey
+    ? [
+        { name: 'id', nativeType: 'bigint', nullable: false, generated: false, automaticKey: true, defaultExpression: null, expressionDefault: false, checkPrecision: null },
+        { name: 'payload', nativeType: 'text', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
+      ]
+    : expressionDefault
     ? [
         { name: 'seq', nativeType: 'varchar(32)', nullable: false, generated: false, automaticKey: false, defaultExpression: 'lower(hex(random_bytes))', expressionDefault: true, checkPrecision: null },
         { name: 'n', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
@@ -41,15 +46,15 @@ function mysqlCatalogFixture({ expressionDefault = false, priorRows = [], postRo
         { name: 'seq', nativeType: 'varchar(30)', nullable: false, generated: false, automaticKey: false, defaultExpression: 'generated', expressionDefault: false, checkPrecision: null },
         { name: 'n', nativeType: 'bigint', nullable: false, generated: false, automaticKey: false, defaultExpression: null, expressionDefault: false, checkPrecision: null },
       ];
-  const keyOrdinals = new Map((expressionDefault ? ['seq'] : ['tenant', 'seq']).map((name, index) => [name, index + 1]));
+  const keyOrdinals = new Map((autoKey ? ['id'] : expressionDefault ? ['seq'] : ['tenant', 'seq']).map((name, index) => [name, index + 1]));
   const metadata = {
     table: { namespace: 'app', name: 'generated_record' },
     kind: 'table',
     columns,
-    primaryKey: expressionDefault ? ['seq'] : ['tenant', 'seq'],
+    primaryKey: autoKey ? ['id'] : expressionDefault ? ['seq'] : ['tenant', 'seq'],
     reliableRowIdentity: true,
   };
-  const stored = expressionDefault ? ['expression-key-001', 1, null] : [2, 'generated', 50];
+  const stored = autoKey ? [11, 'generated'] : expressionDefault ? ['expression-key-001', 1, null] : [2, 'generated', 50];
   let inserted = false;
   let locatorReads = 0;
   const fieldsFor = names => names.map(name => ({ name, type: columns.find(column => column.name === name)?.nativeType ?? 'varchar' }));
@@ -70,6 +75,7 @@ function mysqlCatalogFixture({ expressionDefault = false, priorRows = [], postRo
         locatorReads++;
         return { names: columns.map(column => column.name), rows: locatorReads === 1 ? priorRows : (postRows ?? (inserted ? [stored] : [])) };
       }
+      if (autoKey && sql.includes('WHERE `id`=?')) return { names: columns.map(column => column.name), rows: inserted ? [stored] : [] };
       if (sql.includes('DEFAULT(`seq`)')) return { names: columns.map(column => column.name), rows: [stored] };
     }
     throw new Error(`unexpected MySQL catalog fixture query: ${sql}`);
@@ -80,7 +86,7 @@ function mysqlCatalogFixture({ expressionDefault = false, priorRows = [], postRo
       queries.push(['execute', sql]);
       if (!sql.startsWith('INSERT INTO')) throw new Error(`unexpected MySQL execute: ${sql}`);
       inserted = true;
-      return { rows: [], affected: 1, insertId: null, columns: [] };
+      return { rows: [], affected: 1, insertId: autoKey ? 11 : null, columns: [] };
     },
     async scan(sql, _params, sink) {
       queries.push(['scan', sql]);
@@ -329,6 +335,20 @@ caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key',
     assert.ok(queries.some(([, sql]) => sql.includes('`seq`=DEFAULT(`seq`)')));
     assert.equal(queries.some(([, sql]) => sql.includes('SELECT MAX(') || sql.includes('LAST_INSERT_ID()')), false);
   });
+});
+
+// Native (FCV-2): only a fake driver observes the statements of the catalog on MySQL, whose table with a trigger is refused and which
+// publishes no statement event; the row the insert returns is the recipe case generated_key_lifecycle.
+// Requirements: INT-123b.
+caseTest('uses the MySQL statement insertId for an omitted automatic key', DATABASE, async () => {
+  const { catalog, metadata, queries } = mysqlCatalogFixture({ autoKey: true });
+  try {
+    await catalog.insertRow(metadata, [{ name: 'payload', value: 'generated' }]);
+    assert.equal(queries.filter(([, sql]) => sql.startsWith('INSERT INTO')).length, 1);
+    assert.equal(queries.some(([, sql]) => sql.includes('MAX(') || sql.includes('LAST_INSERT_ID()')), false);
+  } finally {
+    await catalog.close();
+  }
 });
 
 caseTest('uses a bounded MySQL input locator for an expression-default key', DATABASE, async () => {

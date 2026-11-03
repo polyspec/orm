@@ -42,7 +42,7 @@ type Edge = { from?: string; to?: string; kind?: string; role?: string; role_ko?
  * Sequence is one common state contract. statements lists in order the kinds of statement that sequence sends: model
  * statements (select, insert, update, delete), transaction control (begin, commit, rollback, savepoint, release, rollback_to), and
  * schema statements. Utility statements (named lock, transaction-local values, etc.) are not listed: their count and position
- * differ by dialect (MySQL's GET_LOCK and RELEASE_LOCK), and the exact list is set per dialect by the conformance vectors (tests/conformance/vectors*.json), which make conformance-check compares.
+ * differ by dialect (MySQL's GET_LOCK and RELEASE_LOCK), and the exact list per dialect is the expect of the recipe case of the same name.
  * expected holds numbers as their original text (losslessJson).
  */
 export type Sequence = { id?: string; expected?: unknown; statements?: string[] };

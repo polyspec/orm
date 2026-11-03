@@ -6,10 +6,9 @@
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime};
-use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
-use polyspec_orm_case_database::{CaseDatabase, CaseTable};
+use polyspec_orm_case_database::CaseDatabase;
 use sqlx::Connection as _;
 use std::time::Duration;
 
@@ -282,49 +281,6 @@ impl HeldRows {
     }
 }
 
-/// Reads the rows of `entity` FOR UPDATE in a transaction of `db`. If another connection holds those rows, it waits.
-async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<()> {
-    db.transaction(async || {
-        let mut core = Core::new(entity);
-        // Keep the same parameterized SELECT across transactions and client handles.
-        core.set("seq", Param::I64(1));
-        core.connect(db);
-        core.lock("update");
-        polyspec_orm::model::get(&ZoneEvent::from_core(core)).await.map(drop)
-    })
-    .retry(0)
-    .await
-}
-
-/// A statement past the connection timeout returns CANCELED. MySQL bounds
-/// SELECT statements with max_execution_time, PostgreSQL bounds every
-/// statement, and SQLite has no session timeout. The bounded statement is a
-/// locking read of a row that another connection holds.
-#[tokio::test]
-// Requirements: CFG-6.
-async fn statement_timeout() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    for driver in ["mysql", "postgres"] {
-        let database = CaseDatabase::create(driver).await;
-        let cfg = polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() };
-        let db = Db::connect(database.dsn(), 1, cfg).await.or_panic(|e| format!("{driver}: {e}"));
-        db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
-        let mut row = event(&db);
-        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
-        let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
-        let held = HeldRows::hold(&holder, "zone_event").await;
-        let err = locked_read(&db, &ENTITY).await.expect_err("a statement past the timeout");
-        assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "{driver}: {err}");
-        held.release().await;
-        let count = polyspec_orm::model::get_count(event(&db).core()).await.or_panic(|e| format!("{driver}: connection after statement timeout: {e}"));
-        assert_eq!(count, 1, "{driver}: connection after statement timeout");
-        holder.close().await;
-        db.close().await;
-        database.drop().await;
-    }
-}
-
 #[test]
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
 // Requirements: CFG-6, CFG-36.
@@ -332,75 +288,6 @@ fn statement_timeout_negative_is_unrepresentable() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;
     assert_eq!(timeout, 0);
-}
-
-/// A pooler in transaction mode hands one server session to every client in
-/// turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
-/// connection, so the statement timeout of one connection bounds only the
-/// statements of that connection.
-///
-/// PgBouncer's `orm_test_single` has a fixed database and cannot reach a new case database, so
-/// the case keeps a zone table named after itself (`orm_case_<pid>_<counter>`) in that database, and only that table
-/// is dropped at the end (even on failure).
-#[tokio::test]
-// Requirements: CFG-27, CFG-28, CFG-29.
-async fn statement_timeout_through_a_pooler() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let base = require_dsn("ORM_TEST_POSTGRES_DSN");
-    let table = CaseTable::reserve(&base);
-    // The schema and its entity, with only the zone document's table name changed. Schema and Entity take 'static values.
-    let text = include_str!("../../../../contracts/fixtures/zone.dbs").replace("zone_event", table.name());
-    let document =
-        polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{}: {errors:?}", table.name()));
-    let manifest = polyspec_orm::dbspec::manifest(&[&document]).or_panic(|errors| format!("{}: {errors:?}", table.name()));
-    let schema: &'static Schema =
-        Box::leak(Box::new(Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()))));
-    let entity: &'static Entity = Box::leak(Box::new(Entity {
-        name: Box::leak(table.name().to_owned().into_boxed_str()),
-        schema,
-        new: polyspec_orm::model::new_boxed::<ZoneEvent>,
-        collect: polyspec_orm::model::collect_boxed::<ZoneEvent>,
-    }));
-    let setup = Db::connect(&base, 1, polyspec_orm::Config::default()).await.unwrap();
-    setup.utils().schema().install(schema).await.unwrap();
-    for _ in 0..3 {
-        let mut core = Core::new(entity);
-        core.connect(&setup);
-        let mut row = ZoneEvent::from_core(core);
-        row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        polyspec_orm::model::create(&mut row).await.unwrap();
-    }
-    // A direct connection holds the rows, so a locking read through the pooler
-    // waits for the lock.
-    let held = HeldRows::hold(&setup, table.name()).await;
-    let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
-    let bounded = Db::connect_schema(&single, schema, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() }).await.unwrap();
-    let err = locked_read(&bounded, entity).await.expect_err("the bounded connection through the pooler");
-    assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
-    let plain = Db::connect_schema(&single, schema, 1, polyspec_orm::Config::default()).await.unwrap();
-    // The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
-    // the other connection, so the plain read waits that long and then succeeds.
-    let release = async {
-        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-        held.release().await;
-    };
-    let started = std::time::Instant::now();
-    let (read, ()) = tokio::join!(locked_read(&plain, entity), release);
-    assert_eq!(read.map_err(|e| e.to_string()), Ok(()), "a connection without a timeout after the bounded one");
-    assert!(started.elapsed() >= std::time::Duration::from_millis(200), "the plain read waited {:?}, not past the bound", started.elapsed());
-    // Both client sessions issue the same locking query repeatedly through PgBouncer.
-    for _ in 0..6 {
-        locked_read(&bounded, entity).await.unwrap();
-        locked_read(&plain, entity).await.unwrap();
-    }
-    let held = HeldRows::hold(&setup, table.name()).await;
-    let err = locked_read(&bounded, entity).await.expect_err("the bounded connection after the plain one");
-    assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
-    held.release().await;
-    bounded.close().await;
-    plain.close().await;
-    setup.close().await;
-    table.drop().await;
 }
 
 /// A PostgreSQL connection reads float8 values exactly in the text format

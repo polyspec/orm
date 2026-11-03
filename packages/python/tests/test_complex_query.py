@@ -49,7 +49,7 @@ class ComplexQueryTest(unittest.TestCase):
             else:
                 self.assertNotEqual(slot.get("transform"), "fulltext_boolean")
 
-    # Requirements: DSL-32, DSL-33.
+    # Requirements: DSL-33a.
     def test_public_fulltext_boolean_chain_builds_typed_ir(self):
         self.assert_fulltext_chain(
             self.models.ProductBrandLang,

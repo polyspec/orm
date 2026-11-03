@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: f24a95a4021a97f0d070143118159435592d915ca84f5a76b130c1c86beba426 -->
+<!-- source-sha256: f5eb4959c1b1e3d98550e720d1b4fdf9fd517b8d074deb04375c3fee064bd701 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -22,6 +22,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-5** 연결 설정은 풀의 최대 유휴 연결 수 `poolIdleSize`와 풀 연결의 수명(밀리초) `poolLifetimeMs`를 받는다. Go는 `orm.Config{PoolIdleSize: n, PoolLifetimeMs: ms}`, TypeScript는 `{ poolIdleSize: n, poolLifetimeMs: ms }`, Rust는 `Config { pool_idle_size: n, pool_lifetime_ms: ms, ..Default::default() }`, Python은 `connect(dsn, {"poolIdleSize": n, "poolLifetimeMs": ms})`이며, PHP는 풀이 없어 이 항목의 끝처럼 이 값을 거부한다. 풀이 이미 `poolIdleSize`개의 유휴 연결을 유지하는 동안 반환된 연결은 닫힌다. 수명이 지난 연결은 유휴 상태일 때 또는 반환될 때 닫힌다. `poolIdleSize`가 0이거나 지정하지 않으면 풀 크기까지 유휴 연결을 유지한다. `poolLifetimeMs`가 0이거나 지정하지 않으면 Rust를 뺀, 풀이 있는 모든 클라이언트는 수명 없이 연결을 유지하고, Rust는 풀의 30분 수명을 유지한다. 음수나 풀 크기보다 큰 유휴 연결 수는 `CONFIG`를 반환하며, Rust의 필드는 부호 없는 정수다. TypeScript의 SQLite 드라이버는 연결 하나를 유지하며 이 값을 사용하지 않는다. PHP에는 풀이 없으므로 0이 아닌 `poolIdleSize`나 `poolLifetimeMs`에 `CONFIG`를 반환한다.
 - **CFG-5a** Go와 Rust와 TypeScript와 Python은 MySQL과 PostgreSQL에서 connection pool을 유지하고 `stats()`가 그 pool을 보고한다. transaction은 그 기간 동안 pool의 connection 하나를 차지하므로 pool 크기를 넘는 transaction은 기다리고, 열린 connection 수는 pool 크기를 넘지 않으며, `poolIdleSize`를 넘어 반납된 connection은 닫힌다. PHP와 PHP extension에는 pool이 없고(CFG-4) SQLite의 pool은 runtime마다 다르므로, recipe `connection_pool`은 이 동작을 두 서버에서 명시한다.
 - **CFG-6** 연결 설정은 연결의 모든 문을 제한하는 `statementTimeoutMs`를 받는다. Go는 `orm.Config{StatementTimeoutMs: n}`, PHP는 `new Config(statementTimeoutMs: n)`, TypeScript는 `{ statementTimeoutMs: n }`, Rust는 `Config { statement_timeout_ms: n, ..Default::default() }`, Python은 `connect(dsn, {"statementTimeoutMs": n})`이다. 0이거나 지정하지 않으면 서버 기본값을 쓰고, 음수는 `CONFIG`를 반환한다. PostgreSQL은 `statement_timeout`으로 모든 문을 제한하며, 모든 클라이언트는 이 값을 각 서버 연결의 startup 매개변수로 전달한다. MySQL은 `max_execution_time`으로 SELECT 문을 제한하며, 쓰기는 이 값이 아니라 서버 잠금 대기 시간(`innodb_lock_wait_timeout`)이 제한한다. SQLite에는 세션 시간 제한이 없으므로 DSN의 `busy_timeout`이 그 한계다. 제한에 걸려 중단된 문은 `CANCELED`를 반환한다. MySQL 잠금 대기 시간 초과(오류 1205)는 그 쓰기 한계가 끝난 것이므로 모든 클라이언트에서 `CANCELED`를 반환한다.
+- **CFG-6a** PHP-extension package `polyspec/orm-php-ext`는 실패한 native 문장의 cursor를 닫고, 같은 연결로 다음 문장을 실행한다.
 - **CFG-7** PHP와 Python 클라이언트는 연결이 열릴 때 세션 설정을 정한다. PostgreSQL은 time zone과 `statement_timeout`을 startup 매개변수로 받고, MySQL은 `SET time_zone = '+00:00', sql_mode = '<declared modes>', SESSION max_execution_time = <ms>`를 init command 하나로 실행한다. `exit`나 fatal error로 트랜잭션 안에서 끝난 PHP 요청은 그 연결도 함께 끝내며, 서버가 트랜잭션을 rollback하고 연결의 named lock과 세션 값을 푼다.
 - **CFG-8** 연결 설정은 현재 요청의 audit 값, 곧 계정이나 요청 id처럼 audit 기록 테이블의 컬럼 이름에서 값으로 가는 map을 돌려주는 함수 `auditSource`를 받는다. Go는 `orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error)}`(트랜잭션의 context로 부른다), PHP는 `new Config(auditSource: fn (): array => [...])`, TypeScript는 `{ auditSource: () => ({...}) }`, Rust는 `Config { audit_source: Some(Arc::new(|| Ok(vec![...]))), .. }`, Python은 `connect(dsn, {"auditSource": lambda: {...}})`다. audit 값을 가진 트랜잭션은 이 함수를 한 번 부르고 그 값과 자기 값으로 audit 기록을 삽입한다([사용법](../operations/usage.ko.md#audited-writes)). ORM은 자기 audit 값을 쓰지 않으며, 함수의 오류는 트랜잭션을 실패시킨다.
 - **CFG-8a** Go는 트랜잭션의 context로 audit source를 부르므로, `WithContext` 핸들의 트랜잭션은 자기 context를 source에 넘긴다.
@@ -42,6 +43,8 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-38** PHP와 PHP extension은 connection에 session 하나를 둔다. 따라서 첫 statement 전에 server가 그 session을 끝내면 그 statement는 `CONNECTION_LOST`로 실패하고, 한 번만 전송된다.
 - **CFG-39** Go: callback 도중 context가 취소된 transaction은 `CANCELED`만 돌려주고, connection은 그 transaction의 named lock, user variable, SQLite mode를 유지하지 않는다.
 - **CFG-40** Go: `DriverFromDSN`은 DSN URI의 scheme으로 데이터베이스를 이름하고, URI가 아닌 DSN에는 `CONFIG`를 돌려준다.
+- **CFG-41** Python: transaction pooler의 server connection 하나를 거치는 catalog session은, 그 connection의 다른 client가 같은 text의 prepared statement를 아직 쥔 동안 column type이 바뀐 table을 읽는다.
+- **CFG-42** Go와 PHP와 PHP extension과 TypeScript와 Python과 Rust: 한 SQLite 파일을 여는 여러 process는 읽고 쓰는 transaction의 모든 쓰기를 transaction 재시도 없이 commit한다. 그들 사이의 잠금은 CFG-12가 기다리는 파일 잠금이기 때문이다.
 
 ## DSN 매개변수와 MySQL TLS
 

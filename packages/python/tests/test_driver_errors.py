@@ -125,27 +125,6 @@ class SqliteDriverErrorTest(unittest.TestCase):
             "parent refused (SQLITE_CONSTRAINT_TRIGGER)",
         )
 
-    # Requirements: CFG-12.
-    def test_a_lock_held_past_busy_timeout_is_canceled(self):
-        self.db.close()
-        self.db = Db.connect_schema(
-            f"sqlite://{self.path}?_pragma=busy_timeout(0)", self.models.SCHEMA
-        )
-        self.addCleanup(self.db.close)
-        self.events = []
-        self.db.subscribe(self.events.append)
-        holder = sqlite3.connect(self.path, isolation_level=None)
-        try:
-            holder.execute("BEGIN IMMEDIATE")
-            self.assert_driver_error(
-                lambda: self.parent("busy").create(),
-                "CANCELED",
-                "database is locked (SQLITE_BUSY)",
-            )
-        finally:
-            holder.execute("ROLLBACK")
-            holder.close()
-
     def test_a_busy_nowait_row_lock_is_lock_not_available(self):
         self.db.close()
         self.db = Db.connect_schema(

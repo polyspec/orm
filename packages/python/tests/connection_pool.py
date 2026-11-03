@@ -6,6 +6,8 @@
 # and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 # Usage: python -m packages.python.tests.connection_pool
 import os
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -29,6 +31,23 @@ from .server_database import with_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
 TEMP = {}
+
+
+# One writer process of test_sqlite_several_process_writers_commit_every_row: read-then-write transactions without retries.
+SQLITE_WRITER_PROCESS = """
+import sys
+from packages.python.tests.models import models
+dsn, name, count = sys.argv[1], sys.argv[2], int(sys.argv[3])
+db = models.connect(dsn)
+try:
+    for index in range(count):
+        def body(iteration=index):
+            models.Service().connect(db).get_count()
+            models.Service().connect(db).set_name(f"{name}-{iteration}").create()
+        db.transaction(body, {"retry": 0})
+finally:
+    db.close()
+"""
 
 
 def setUpModule():
@@ -290,69 +309,6 @@ class ConnectionPoolTest(unittest.TestCase):
 
         self.each(body)
 
-    # Requirements: CFG-12. Each connection commits every write while writers share one SQLite file.
-    def test_sqlite_concurrent_writers_commit_every_row(self):
-        with tempfile.TemporaryDirectory(prefix="orm-sqlite-writers-") as directory:
-            dsn = f"sqlite://{directory}/writers.sqlite3"
-            setup = models.connect(dsn)
-            install_bench(setup)
-            setup.close()
-            dbs = [models.connect(dsn) for _ in range(8)]
-
-            def write(db, name):
-                for index in range(10):
-
-                    def body(iteration=index):
-                        models.Service().connect(db).get_count()
-                        models.Service().connect(db).set_name(
-                            f"{name}-{iteration}"
-                        ).create()
-
-                    db.transaction(body, {"retry": 0})
-
-            try:
-                with ThreadPoolExecutor(max_workers=len(dbs)) as workers:
-                    futures = [
-                        workers.submit(write, db, f"connection-{index}")
-                        for index, db in enumerate(dbs)
-                    ]
-                    for future in futures:
-                        future.result()
-                self.assertEqual(models.Service().connect(dbs[0]).get_count(), 80)
-            finally:
-                for db in dbs:
-                    db.close()
-
-    # Requirements: CFG-13. A separate connection sees committed rows, not the writer's pending insert.
-    def test_sqlite_read_during_write_sees_only_committed_rows(self):
-        with tempfile.TemporaryDirectory(
-            prefix="orm-sqlite-read-during-write-"
-        ) as directory:
-            dsn = f"sqlite://{directory}/reads.sqlite3"
-            setup = models.connect(dsn)
-            install_bench(setup)
-            setup.close()
-            writer = models.connect(dsn)
-            reader = models.connect(dsn)
-            try:
-                install_bench(writer)
-                install_bench(reader)
-
-                def body():
-                    models.Service().connect(writer).set_name("pending").create()
-                    self.assertEqual(models.Service().connect(reader).get_count(), 0)
-                    count = reader.transaction(
-                        lambda: models.Service().get_count(),
-                        {"readOnly": True, "retry": 0},
-                    )
-                    self.assertEqual(count, 0)
-
-                writer.transaction(body, {"retry": 0})
-                self.assertEqual(models.Service().connect(reader).get_count(), 1)
-            finally:
-                reader.close()
-                writer.close()
-
     def test_idle_size_and_lifetime(self):
         def body(dialect, dsn):
             if dialect == "sqlite":
@@ -397,6 +353,33 @@ class ConnectionPoolTest(unittest.TestCase):
                 db.close()
 
         self.each(body)
+
+    # Requirements: CFG-42. A recipe case runs on the connections of one test process in Python, so this test starts the processes.
+    def test_sqlite_several_process_writers_commit_every_row(self):
+        with tempfile.TemporaryDirectory(prefix="orm-sqlite-processes-") as directory:
+            dsn = f"sqlite://{directory}/processes.sqlite3"
+            setup = models.connect(dsn)
+            install_bench(setup)
+            setup.close()
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+            children = [
+                subprocess.Popen(
+                    [sys.executable, "-c", SQLITE_WRITER_PROCESS, dsn, f"process-{index}", "40"],
+                    cwd=root,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                for index in range(6)
+            ]
+            for child in children:
+                output, _ = child.communicate()
+                self.assertEqual(child.returncode, 0, output)
+            reader = models.connect(dsn)
+            try:
+                self.assertEqual(models.Service().connect(reader).get_count(), 240)
+            finally:
+                reader.close()
 
     # Requirements: INT-92.
     def test_idle_server_end_discards_connection(self):

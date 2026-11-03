@@ -1784,7 +1784,6 @@
         "packages/php/tests/OrmExceptionLockWaitTest.php",
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/model_read.c",
-        "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ModelStreamReadTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/python/tests/test_driver_cells.py",
@@ -2666,8 +2665,6 @@
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
-        "tests/conformance/vectors.postgres.json",
-        "tests/conformance/vectors.sqlite.json",
         "packages/php/tests/bench.php",
         "packages/php/src/Model.php",
         "packages/php-ext/src/model_read.c",
@@ -2905,51 +2902,6 @@
         "packages/php/tests/bootstrap.php"
       ]
     },
-    "connection-statement-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
-    "connection-busy-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
-    "connection-statement-timeout-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/statement_timeout.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-pool-resource-bounds-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -3115,36 +3067,6 @@
         "packages/ts/tests/group_rows.mjs"
       ]
     },
-    "model-json-ordered-number-text-unit-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "config/parity.json",
-        "contracts/check-inputs.json",
-        "packages/go/model/styled_state_test.go",
-        "packages/go/orm/model.go",
-        "packages/php/src/Model.php",
-        "packages/php/tests/ModelJsonTextTest.php",
-        "packages/php-ext/src/model_output.c",
-        "packages/php-ext/tests/ModelNativeTest.php",
-        "packages/php/tests/NativeFixtureVectors.php",
-        "packages/python/src/polyspec/orm/model.py",
-        "packages/python/tests/test_model_json_text.py",
-        "packages/rust/orm/src/model.rs",
-        "packages/rust/orm/tests/model_output.rs",
-        "packages/ts/src/model.ts",
-        "packages/ts/tests/model_json_output.test.mts"
-      ]
-    },
     "feature-verify-rust": {
       "scope": "suite",
       "needs": [
@@ -3216,40 +3138,6 @@
         "php-extension-tools",
         "python",
         "mysql-privilege-server"
-      ]
-    },
-    "connection-sqlite-concurrent-writers-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
       ]
     },
     "python-check": {
@@ -3781,8 +3669,6 @@
         "tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
-        "tests/conformance/vectors.postgres.json",
-        "tests/conformance/vectors.sqlite.json",
         "packages/go/internal/conformance/**",
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/ts/tests/recipe.mjs",
@@ -3809,8 +3695,6 @@
         "tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
-        "tests/conformance/vectors.postgres.json",
-        "tests/conformance/vectors.sqlite.json",
         "packages/go/internal/conformance/**",
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/ts/tests/recipe.mjs",
@@ -5078,6 +4962,16 @@
         "packages/rust/tests/tests/complex_query_postgres.rs",
         "packages/rust/tests/tests/complex_query_sqlite.rs",
         "packages/rust/tests/src/recipe.rs"
+      ]
+    },
+    "connection-sqlite-several-processes-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
       ]
     }
   },

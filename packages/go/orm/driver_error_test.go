@@ -37,16 +37,6 @@ func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
 	}
 }
 
-// TestMapMySQLErrClassifiesLockWaitTimeout checks that a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) is CANCELED,
-// the expiry of the write bound of CFG-6, and not DRIVER.
-func TestMapMySQLErrClassifiesLockWaitTimeout(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	err := mapMySQLErr(&mysql.MySQLError{Number: 1205, Message: "Lock wait timeout exceeded; try restarting transaction"})
-	if got := ErrorCode(err); got != CodeCanceled {
-		t.Fatalf("mapped MySQL lock wait timeout 1205 = %q, want %q: %v", got, CodeCanceled, err)
-	}
-}
-
 func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{1290, 1792} {
@@ -54,24 +44,6 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 		if got := ErrorCode(err); got != CodeReadOnly {
 			t.Fatalf("mapped MySQL read-only error %d = %q, want %q: %v", number, got, CodeReadOnly, err)
 		}
-	}
-}
-
-// Requirements: PRT-79.
-func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	driverErr := &mysql.MySQLError{Number: 1644, Message: "trigger refused the write"}
-	mapped := mapDriverErr(driverErr)
-	var ormErr *ir.Error
-	if !errors.As(mapped, &ormErr) {
-		t.Fatalf("mapped error = %T, want *ir.Error", mapped)
-	}
-	if ormErr.Code != CodeDriver || ormErr.Msg != "Error 1644: trigger refused the write" {
-		t.Fatalf("mapped error = (%q, %q), want DRIVER and the native message", ormErr.Code, ormErr.Msg)
-	}
-	var nativeCause *mysql.MySQLError
-	if !errors.Is(mapped, driverErr) || !errors.As(ormErr.Cause, &nativeCause) || nativeCause != driverErr {
-		t.Fatalf("mapped error does not preserve the exact driver cause: %#v", ormErr.Cause)
 	}
 }
 

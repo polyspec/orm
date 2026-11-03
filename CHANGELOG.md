@@ -3,21 +3,40 @@
 
 ## Unreleased
 
+- Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.
+- The generated full-text method of the Python package has its own unit under DSL-33a.
+- Schema inspection reads inside a transaction and its statement event now come from the recipe schema_install; the Python files that repeated it are gone.
+- Table privileges on PostgreSQL and their refusal on MySQL and SQLite now come from one recipe in every client; the native extension keeps its own unit under INT-59a.
+- Every message of the dbspec rule `type` has the words DBS-162 states, in all six runtimes: Go, PHP, the PHP extension and Rust no longer word a parameter error their own way, and the generator cases hold each whole message. Targets of CHECK_TARGETS with no make rule are gone, and `catalog-rust` no longer names test files that do not exist (#T334-3-12-6)
+- Tests: a driver error and its native cause (PRT-79) are the case `immutable_write` in every runtime, raised by each database; the natives that built the error are gone.
+- A connection with an AES key that differs from the key of its current version is the case `an_aes_key_that_differs_from_the_current_version_is_refused` of the recipe `aes_rotation` in all six runtimes, through `aes_key`, `aes_version` and `aes_keys` in the `config` of `dsn.connect`, and the Go test `TestAESKeyMustMatchKeyOfCurrentVersion` is gone (#T334-3-12-2)
+- CR15-F: the TypeScript and Python tests of the MySQL insert statements return from c55a726cf as owner units (INT-123b, INT-123c), which hold only the statements a fake driver observes.
+- CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
+- The expected fields of the conformance vector files are gone with their chains and calls: `tests/conformance/vectors.json` keeps the vector names and requirements, and `vectors.postgres.json` and `vectors.sqlite.json` fold into the expects of the recipe `conformance_verification`.
+- The whole-run conformance checker is gone: `make conformance-check` runs the native bodies that remain and the result helpers, the state contracts of `contracts/interfaces.json` compare with their recipe cases in a test, and the database state reader is `tests/conformance/check/state.mts`.
+- Tests: a MySQL lock wait timeout (CFG-6) is the case `mysql_lock_wait_expiry_is_canceled` of the `transactions` recipe, against a real 1205 from the server, in every runtime; the natives that built the driver error are gone.
 - `clock_microseconds`, `clock_soft_delete_microseconds` and `now_defaults` hold a stored clock value between a wall-clock read before the write and one after it, through the new step `clock.read`, where they allowed one minute of the database clock.
 - CR15-F: the rows of a stored table in descending order, with a NULL, are steps of `grid_column_and_row_order`; the Go test keeps the plan of its wrapper (SCH-6b), the Rust helper test is removed, and the Rust commit classifier is a single-owner unit (INT-118a).
 - `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.
 - A value of a read-only query that is not valid UTF-8 is its bytes in all six runtimes, and a binary cell in a grid query, including a SQLite text.
 - A read-only query of any length or nesting answers in all six runtimes, and Rust reads a query by its tokens as the others do.
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - CR15-F: generated keys are held by the recipe cases `generated_keys` and `generated_key_lifecycle`; the TypeScript and Python natives that repeated them over fake drivers are removed, and the Rust test keeps the phases, cancellation and joined inserts of INT-123a.
 - CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
 - CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
 - Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
 - `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
+- The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
+- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
+- The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
+- Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
 - The Rust test `coverage_conformance_verification`, which read the vector files, is gone; the bindings of its units name the recipe test `conformance_verification` of each database. The binary `conformance` stays: the `generated` and `fixed-clock` checks run it.
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
@@ -26,7 +45,6 @@
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
-- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - Docs: FCV-2 states the Rust compile fixtures of `ts-dbspec-plan` and `ts-dbspec-render-dialect` in the form the native-binding rule reads.
 - PHP and the PHP extension refuse a number stored in a SQLite TIME or DATETIME column of a described read with GRID_TEMPORAL_VALUE, as the other runtimes do, and temporal_write_and_limits holds the temporal writes, keys and limits.
 - A Rust page of exactly its byte budget answers, and all runtimes state a budget refusal in the same message, which INT-115 states.
@@ -57,9 +75,10 @@
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
-- The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
+- The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - A connection that the server refuses is `DRIVER` in every client; PHP and its extension reported `CONFIG`, and the Rust catalog an uncoded text.
 - A catalog retries a connection that `max_user_connections` refuses only within 2 s of closing one of its own, and a budget stop in Go reports `CATALOG_LIMIT` alone, with no rollback attempted.
 - The case `a_rollback_fault_is_consumed_by_the_next_failed_rollback` of the recipe transactions states INT-72 in every runtime through the new op `fault.next_rollback`: the fault outlives a committed transaction, the next failed callback reports ROLLBACK carrying FAULT, and the transaction after it reports only the callback error.
@@ -396,6 +415,10 @@ Docs: FCV-2 states each public-surface unit of `interface_contract` with its own
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- The statement timeout (CFG-6) and its isolation through a transaction pooler (CFG-27, CFG-28, CFG-29) run as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `statement_timeout_ms` and the DSN `case-pooler`. The Python catalog session through a pooler is a requirement of its own (CFG-41).
+- The SQLite lock wait, read during a write and concurrent writers run as recipe cases in the six runtimes; the native tests of those behaviours are gone.
+- A failed SQLite BEGIN in Go reports only its error, and a SQLite message names its result code once.
+- Several processes writing one SQLite file are a requirement (CFG-42), tested in the six runtimes.
 - The model JSON output of an ordered-json value is the recipe case `ordered_json_keeps_its_text_in_the_model_json_output` in six runtimes, with the new step key `json_output`, and its native tests leave; the read of a SQL NULL and an empty text is the recipe `catalog_connection` alone. `to_json_text` of Python alone is COD-68.
 - A PHP test run no longer holds a copy of each recipe in its data sets: at PHP's default memory limit it no longer dies while it builds the suite.
 - The UTC connection behaviour (CFG-2, DIA-57, DSL-141) runs as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `case?<query>`. A TypeScript MySQL connection whose TLS handshake refuses the certificate now returns `CONFIG`, as CFG-16 states, instead of `DRIVER`.

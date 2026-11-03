@@ -53,15 +53,6 @@ func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
 	}
 }
 
-func TestSqliteLockedIsDriverNotDeadlock(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	for _, n := range []int{6, 262} {
-		if got := sqliteCode(n, "database table is locked"); got != orm.CodeDriver {
-			t.Fatalf("SQLITE_LOCKED %d code = %q, want %q", n, got, orm.CodeDriver)
-		}
-	}
-}
-
 // TestResultCodeNamesMatchTable compares result_codes.go, which orm-gen sqlite-codes generates, with the
 // sqlite_result_codes table of docs/spec/sqlite-result-codes.yaml: every listed code has its name, and the file holds no other code.
 // A listed code ends a message with its name, and an unlisted one with its number. It checks the generator against its
