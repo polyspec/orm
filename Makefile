@@ -1499,6 +1499,8 @@ RECIPE_VECTORS_RUN = for database in sqlite mysql postgres; do node tests/confor
 .PHONY: conformance-generated-methods-check conformance-fixed-clock-check conformance-recipe-vectors-unit
 conformance-generated-methods-check: conformance-recipe-vectors-unit $(addprefix conformance-generated-methods-check/,$(RECIPE_VECTORS_LANGUAGES))
 conformance-fixed-clock-check: conformance-recipe-vectors-unit $(addprefix conformance-fixed-clock-check/,$(RECIPE_VECTORS_LANGUAGES))
+CHECK_TARGETS += conformance-generated-methods-check conformance-fixed-clock-check
+CI_TARGETS_conformance += conformance-generated-methods-check conformance-fixed-clock-check
 conformance-recipe-vectors-unit:
 	$(NODE) --test tests/conformance/check/recipe_vectors.test.mts
 define RECIPE_VECTORS_TARGETS
