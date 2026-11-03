@@ -339,7 +339,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsDbCase.php",
         "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
@@ -403,7 +402,6 @@
         "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
-        "packages/php/tests/GroupRowsDbCases.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
         "packages/php/tests/AuthenticatedEncryptionFixtureCases.php",
@@ -684,7 +682,6 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/group_rows_db.mjs",
         "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/engine_features.mjs"
@@ -28662,56 +28659,6 @@
         "INT-31"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/group_rows_db_test.go",
-          "id": "TestGroupRowsDatabase"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsDbTest.php",
-          "id": "GroupRowsDbTest::testGroupRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/GroupRowsDbNativeTest.php",
-          "id": "GroupRowsDbNativeTest::testGroupRows"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows_db.mjs",
-          "id": "group_rows_database",
-          "command": [
-            "env",
-            "ORM_GROUP_DATABASE=sqlite",
-            "ORM_GROUP_DSN=${BENCH_SQLITE_DSN}",
-            "node",
-            "--conditions=orm-test",
-            "--test",
-            "--test-reporter=${ORM_NODE_REPORTER}",
-            "tests/group_rows_db.mjs"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows_db.py",
-          "id": "test_group_rows_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
-          "id": "coverage_group_rows_db::coverage_group_rows_db",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
-          ]
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",

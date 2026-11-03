@@ -8,7 +8,6 @@ mod coverage_complex_query;
 #[path = "../common/coverage_database.rs"]
 mod coverage_database;
 mod coverage_env;
-mod coverage_group_rows_db;
 mod result_chains;
 #[path = "../common/result_code.rs"]
 mod result_code;

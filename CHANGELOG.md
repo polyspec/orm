@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The group_rows_db natives and the physical check are gone; the recipe holds the values and the exact read-only statements (#T334-3-4-25)
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - Nine more write cases of the conformance vectors run in the recipe conformance_verification (#T334-3-4-23)
 - The plan steps of a page hold in the recipe case `page_plan_steps` of `complex_query` on every runtime: the steps are the statements that the page sends, and a bad page, a bad size, a limited chain and an unconnected model are refused (DSL-159).
