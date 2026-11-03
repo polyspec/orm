@@ -980,9 +980,18 @@ function dbspecParse(step, bound) {
 
 // dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plan-cases.json objects of its steps, or fails on diagnostics.
 function dbspecPlanSteps(step, bound) {
+  if (!['mysql', 'postgres', 'sqlite'].includes(step.dialect)) {
+    return dialectRefusal(step.dialect, () => planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect));
+  }
   const result = planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect);
   if (result.diagnostics.length > 0) throw new Error(`plan steps: ${result.diagnostics.map(d => d.message).join('; ')}`);
   return { steps: result.steps.map(stepFields) };
+}
+
+// dialectRefusal runs a call that takes the dialect name and returns {refused: name} when it throws a TypeError that names it (DBS-174).
+function dialectRefusal(name, call) {
+  assert.throws(call, { name: 'TypeError', message: new RegExp(name) });
+  return { refused: name };
 }
 
 // stepFields is the object of one step as docs/spec/plans.md "Steps" writes it.
@@ -1899,6 +1908,10 @@ async function checkDbspecFiles(step, dir, database) {
     }
     case 'dbspec.render': {
       const { documents } = await readDocuments(dir, step.documents);
+      if (step.dialect !== undefined) {
+        assert.deepEqual(dialectRefusal(step.dialect, () => renderDbspec(documents, step.dialect)), expect, 'refused dialect');
+        break;
+      }
       for (const dialect of ['mysql', 'postgres', 'sqlite']) {
         const rendered = renderDbspec(documents, dialect);
         assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);

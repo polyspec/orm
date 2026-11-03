@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- Key prefix methods, scanned chain methods, used external tables, the absence of lint suppressions and the manifest hash of generated code are cases of the `generator` recipe in all six runtimes, and their native tests are gone; the command line of the generator, the type of a generated member and the loading of a generated module stay native, each with its reason in docs/spec/feature-coverage.md.
+- The recipe `schema_install` holds the difference an install names: the outcome of every op takes `message_suffix`, and `install_external_drift` expects the message to end with `column user.coverage_missing does not exist`. The three tests of `CoverageSchemaInstallNativeTest` that read `coverageItemsOf` are gone; that recipe and `SchemaSetTest` hold them. (#T334-3-4-15)
+- The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.
 - The recipe `parameter_chunking` holds that a limit on a split list fails with `IR_INVALID` before any statement (PRT-76), not only its code.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - The statement runner is the recipe `statement_runner`, whose cases all six runtimes run on MySQL, PostgreSQL and SQLite through the new op `utils.run`. The Go `TxFrame.Run` and the Rust `TxFrame::run` return a MySQL text column as text, where they returned bytes. A frame used after its transaction ended now fails with `CONFIG` in Go, TypeScript, PHP and the PHP extension: Go returned `DRIVER`, and TypeScript and PHP ran the statement. A statement that is not text fails with `CONFIG` in TypeScript, where it returned `DRIVER` (INT-150a, INT-150b).
