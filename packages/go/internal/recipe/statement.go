@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
@@ -136,6 +138,12 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 			return outcome{}, true, err
 		}
 		return outcome{api: &subscription{stop: stop}, fields: map[string]any{}}, true, nil
+	case "fault.next_rollback":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, true, err
+		}
+		return outcome{fields: map[string]any{}}, true, failNextRollback(db)
 	case "events.stop_failing", "events.unsubscribe":
 		sub, err := boundAPI[*subscription](s.Ref, c)
 		if err != nil {
@@ -318,4 +326,99 @@ func eventValue(e orm.StatementEvent, numbers map[int64]int64, c *databaseContex
 		[]any{"transaction", transaction},
 		[]any{"error", failure},
 	}}, nil
+}
+
+// serverTransactions runs the nested steps twice on the connection and reads the server transactions of each run by the
+// difference of the probe (INT-149). The probe runs in a frame of its own, so its cost is measured first. The excess of a
+// run is what it spent beyond one per event, and the first run of a client that prepares each text in a round trip of its
+// own may spend one more for each text.
+func serverTransactions(s databaseStep, c *databaseContext) (outcome, error) {
+	db, err := connectionOf(s, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	frameRows := func(text string) ([][]any, error) {
+		var rows [][]any
+		err := db.Utils().Run(func(frame *orm.TxFrame) error {
+			result, err := frame.Run("utility", []string{}, text)
+			if err != nil {
+				return err
+			}
+			rows = result.Rows
+			return nil
+		})
+		return rows, err
+	}
+	probe := func() (int64, error) {
+		rows, err := frameRows(s.Probe)
+		if err != nil {
+			return 0, err
+		}
+		if len(rows) != 1 || len(rows[0]) != 1 {
+			return 0, fmt.Errorf("the probe returned %d rows, want one cell", len(rows))
+		}
+		return strconv.ParseInt(fmt.Sprint(cellText(rows[0][0])), 10, 64)
+	}
+	fields := map[string]any{}
+	if c.database == "postgres" {
+		rows, err := frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'")
+		if err != nil {
+			return outcome{}, err
+		}
+		// Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+		pooled := os.Getenv("ORM_TEST_POSTGRES_DSN") != os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
+		fields["time_zone"] = fmt.Sprint(cellText(rows[0][0]))
+		fields["time_zone_from_startup"] = pooled || fmt.Sprint(cellText(rows[0][1])) == "client"
+	}
+	first, err := probe()
+	if err != nil {
+		return outcome{}, err
+	}
+	second, err := probe()
+	if err != nil {
+		return outcome{}, err
+	}
+	cost := second - first
+	prepares := slices.Contains(s.FirstRunPrepareClients, "go")
+	rec := &recording{}
+	before := second
+	for _, run := range []string{"first", "second"} {
+		rec.events = nil
+		stop, err := db.Subscribe(rec.receive)
+		if err != nil {
+			return outcome{}, err
+		}
+		err = runNested(s.Steps, c)
+		stop()
+		if err != nil {
+			return outcome{}, err
+		}
+		after, err := probe()
+		if err != nil {
+			return outcome{}, err
+		}
+		texts := map[string]bool{}
+		for _, event := range rec.events {
+			texts[event.SQL] = true
+		}
+		spent := after - before - cost
+		before = after
+		excess := spent - int64(len(rec.events))
+		if run == "first" && prepares {
+			excess -= int64(len(texts))
+		}
+		fields[run+"_excess"] = excess
+		fields["events"] = int64(len(rec.events))
+		fields["texts"] = int64(len(texts))
+	}
+	fields["probe_cost"] = cost
+	return outcome{fields: fields}, nil
+}
+
+// cellText is a cell of a probe: the driver gives a bigint as a number or as its text bytes.
+func cellText(cell any) any {
+	if bytes, ok := cell.([]byte); ok {
+		return string(bytes)
+	}
+	return cell
 }
