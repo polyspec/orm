@@ -4187,6 +4187,9 @@ final class Recipe
                 } else {
                     $row = $model->get();
                 }
+                if (($s['json_output'] ?? false) === true && $row !== null) {
+                    return ['json' => $row->toJson()];
+                }
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
                 }

@@ -3335,6 +3335,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if step.get("json_output") is True and row is not None:
+        return {"json": row.to_json_text()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}

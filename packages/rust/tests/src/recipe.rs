@@ -5470,6 +5470,9 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    if step["json_output"] == json!(true) {
+                        return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
+                    }
                     if let Some(column) = step["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),

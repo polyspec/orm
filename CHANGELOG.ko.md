@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 51531d6eabcf136de603a00461f1d98a53866e7f2c91dad6bab37505fe3b89cb -->
+<!-- source-sha256: e82bb3f4a1e2095b8eb9ce12d487dd2faec5ce9b07b3b947bf3964af5bfb91b2 -->
 # 변경 이력
 
 ## Unreleased
 
+- ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
+- PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
 - 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.

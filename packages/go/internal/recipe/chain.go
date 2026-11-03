@@ -122,6 +122,7 @@ type chainStep struct {
 	Pick            []string                   `json:"pick"`
 	KeyBy           string                     `json:"key_by"`
 	OrderedText     string                     `json:"ordered_text"`
+	JSONOutput      bool                       `json:"json_output"`
 	GroupValue      string                     `json:"group_value"`
 	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
@@ -939,6 +940,13 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		row, ok := m.(*tableRow)
 		if !ok && m != nil {
 			return outcome{}, fmt.Errorf("model.get_by: the row is a %T", m)
+		}
+		if s.JSONOutput && row != nil {
+			text, err := json.Marshal(row.m)
+			if err != nil {
+				return outcome{}, err
+			}
+			return jsonOutcome(string(text)), nil
 		}
 		if s.OrderedText != "" && row != nil {
 			text, err := orderedText(row, s.OrderedText)
