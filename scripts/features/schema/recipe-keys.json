@@ -770,7 +770,9 @@
       "connection",
       "count",
       "detail",
+      "elapsed",
       "expect",
+      "message",
       "on",
       "only",
       "op",
@@ -780,7 +782,9 @@
       "connection",
       "count",
       "detail",
+      "elapsed",
       "expect",
+      "message",
       "on",
       "only",
       "op",
@@ -790,7 +794,9 @@
       "connection",
       "count",
       "detail",
+      "elapsed",
       "expect",
+      "message",
       "on",
       "only",
       "op",
@@ -800,11 +806,19 @@
       "connection",
       "count",
       "detail",
+      "elapsed",
       "expect",
+      "message",
       "on",
       "only",
       "op",
       "plans"
+    ],
+    "dbspec.schema": [
+      "connection",
+      "expect",
+      "only",
+      "op"
     ]
   }
 }

@@ -25,6 +25,7 @@ import { withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
+import { applyOps } from './recipe_apply.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -507,7 +508,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -794,11 +795,14 @@ const OPS = {
   },
 };
 
+// The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
+const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
+
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
 const OP_DEADLINE_MS = 20000;
 
 async function runStep(s, context) {
-  const op = OPS[s.op] ?? MODEL_OPS[s.op];
+  const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
@@ -810,7 +814,7 @@ async function runStep(s, context) {
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
   let actual;
   try {
-    actual = await within(Promise.resolve().then(() => op(s, context)), OP_DEADLINE_MS, `${s.op} on ${context.database}`);
+    actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;

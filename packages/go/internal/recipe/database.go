@@ -94,9 +94,11 @@ type databaseStep struct {
 	Lines   []string `json:"lines"`
 	Through string   `json:"through"`
 	Plans   []string `json:"plans"`
-	Count   string   `json:"count"`
-	Detail  string   `json:"detail"`
-	On      *applyOn `json:"on"`
+	Count   []string      `json:"count"`
+	Detail  string        `json:"detail"`
+	Message string        `json:"message"`
+	Elapsed *applyElapsed `json:"elapsed"`
+	On      *applyOn      `json:"on"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`

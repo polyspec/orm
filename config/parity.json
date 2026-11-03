@@ -719,6 +719,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_keys.mjs",
         "packages/ts/tests/recipe_generator.mjs"
       ],
@@ -9310,6 +9311,93 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
           "symbol": "statement_events_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_apply-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplyMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-mysql.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_apply-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplyPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-postgres.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_apply-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplySqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs"
         }
       ]
     },

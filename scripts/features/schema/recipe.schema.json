@@ -886,7 +886,8 @@
             "dbspec.apply",
             "dbspec.recover",
             "dbspec.rollback",
-            "dbspec.finalize"
+            "dbspec.finalize",
+            "dbspec.schema"
           ]
         }
       },
@@ -1220,6 +1221,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.finalize"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.schema"
         }
       ]
     },
@@ -6982,21 +6986,47 @@
             }
           },
           "count": {
-            "description": "The event kind whose reports the value counts; every event when absent.",
-            "type": "string",
-            "minLength": 1
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "detail": {
-            "description": "A text that the message of the failure holds.",
+            "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
             "minLength": 1
           },
-          "on": {
-            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
             "type": "object",
             "required": [
-              "event",
-              "steps"
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
             ],
             "additionalProperties": false,
             "properties": {
@@ -7004,7 +7034,18 @@
                 "type": "string",
                 "minLength": 1
               },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
               "every": {
+                "const": true
+              },
+              "stop": {
                 "const": true
               },
               "steps": {
@@ -7048,21 +7089,47 @@
             }
           },
           "count": {
-            "description": "The event kind whose reports the value counts; every event when absent.",
-            "type": "string",
-            "minLength": 1
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "detail": {
-            "description": "A text that the message of the failure holds.",
+            "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
             "minLength": 1
           },
-          "on": {
-            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
             "type": "object",
             "required": [
-              "event",
-              "steps"
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
             ],
             "additionalProperties": false,
             "properties": {
@@ -7070,7 +7137,18 @@
                 "type": "string",
                 "minLength": 1
               },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
               "every": {
+                "const": true
+              },
+              "stop": {
                 "const": true
               },
               "steps": {
@@ -7114,21 +7192,47 @@
             }
           },
           "count": {
-            "description": "The event kind whose reports the value counts; every event when absent.",
-            "type": "string",
-            "minLength": 1
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "detail": {
-            "description": "A text that the message of the failure holds.",
+            "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
             "minLength": 1
           },
-          "on": {
-            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
             "type": "object",
             "required": [
-              "event",
-              "steps"
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
             ],
             "additionalProperties": false,
             "properties": {
@@ -7136,7 +7240,18 @@
                 "type": "string",
                 "minLength": 1
               },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
               "every": {
+                "const": true
+              },
+              "stop": {
                 "const": true
               },
               "steps": {
@@ -7180,21 +7295,47 @@
             }
           },
           "count": {
-            "description": "The event kind whose reports the value counts; every event when absent.",
-            "type": "string",
-            "minLength": 1
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "detail": {
-            "description": "A text that the message of the failure holds.",
+            "description": "A text that the message of the failure holds, compared without case.",
             "type": "string",
             "minLength": 1
           },
-          "on": {
-            "description": "Nested steps that run inside the event handler, at the first event of the kind or at each with every.",
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
             "type": "object",
             "required": [
-              "event",
-              "steps"
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
             ],
             "additionalProperties": false,
             "properties": {
@@ -7202,7 +7343,18 @@
                 "type": "string",
                 "minLength": 1
               },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
               "every": {
+                "const": true
+              },
+              "stop": {
                 "const": true
               },
               "steps": {
@@ -7213,6 +7365,30 @@
                 }
               }
             }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.schema": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "description": "Introspects the database of a named connection; the value is the schema text of its manifest, empty on a database with no table.",
+        "properties": {
+          "op": {
+            "const": "dbspec.schema"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
           },
           "only": {
             "$ref": "#/$defs/only"
