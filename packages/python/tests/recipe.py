@@ -82,6 +82,7 @@ from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
 from .case_database import case_database
+from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_generator
 from .server_database import with_database
@@ -4173,3 +4174,5 @@ def _dispatch_model_op(name: str):
 
 for _name in _TABLE_OPS:
     _MODEL_OPS[_name] = _dispatch_model_op(_name)
+
+_DATABASE_OPS.update(apply_ops(_sql, _run_database_step))

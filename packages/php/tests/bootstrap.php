@@ -38,6 +38,7 @@ require_once __DIR__ . '/CollectionWeakTypedKeyCases.php';
 require_once __DIR__ . '/GroupRowsModelFixture.php';
 require_once __DIR__ . '/GroupRowsCases.php';
 require_once __DIR__ . '/RecipeModel.php';
+require_once __DIR__ . '/RecipeApply.php';
 require_once __DIR__ . '/RecipeKeys.php';
 require_once __DIR__ . '/RecipeGenerator.php';
 require_once __DIR__ . '/Recipe.php';

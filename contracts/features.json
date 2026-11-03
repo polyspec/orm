@@ -12867,6 +12867,7 @@
         }
       ],
       "parity": [
+        "statement-runner-python-active-frame",
         "statement-runner-frame-after-its-transaction-ended",
         "statement-runner-non-text-statement",
         "statement_runner-mysql",

@@ -408,6 +408,7 @@
         "packages/php/tests/RecipeRecording.php",
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
+        "packages/php/tests/RecipeApply.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/RecipeKeys.php",
@@ -721,6 +722,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_keys.mjs",
         "packages/ts/tests/recipe_generator.mjs"
       ],
@@ -997,6 +999,7 @@
         "packages/python/tests/recipe.py",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_keys.py",
         "packages/python/tests/recipe_generator.py"
       ],
@@ -1074,6 +1077,7 @@
         "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/tests/src/lib.rs",
         "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/src/recipe_apply.rs",
         "packages/rust/tests/src/recipe_generator.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
@@ -2859,7 +2863,8 @@
         "COD-58",
         "COD-59",
         "COD-60",
-        "CFG-28"
+        "CFG-28",
+        "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -2910,7 +2915,8 @@
         "COD-58",
         "COD-59",
         "COD-60",
-        "CFG-28"
+        "CFG-28",
+        "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -2961,7 +2967,8 @@
         "COD-58",
         "COD-59",
         "COD-60",
-        "CFG-28"
+        "CFG-28",
+        "INT-75"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -8872,6 +8879,150 @@
       ]
     },
     {
+      "id": "dbspec_apply-mysql",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplyMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_mysql.rs",
+          "symbol": "dbspec_apply_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_apply-postgres",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplyPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_postgres.rs",
+          "symbol": "dbspec_apply_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec_apply-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "PLN-89",
+        "PLN-90",
+        "PLN-91",
+        "PLN-92",
+        "PLN-93",
+        "PLN-94",
+        "PLN-95",
+        "PLN-96",
+        "PLN-104",
+        "PLN-105"
+      ],
+      "file": "contracts/fixtures/dbspec_apply/dbspec_apply.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
+          "symbol": "TestRecipeDbspecApplySqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
+          "symbol": "dbspec_apply_sqlite"
+        }
+      ]
+    },
+    {
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
@@ -9002,6 +9153,35 @@
           "symbol": "utils_recipe_sqlite"
         }
       ]
+    },
+    {
+      "id": "statement-runner-python-active-frame",
+      "kind": "feature",
+      "requirements": [
+        "INT-161"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_active_frame_is_the_frame_of_the_runner_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_active_frame_is_the_frame_of_the_runner_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_active_frame_is_the_frame_of_the_runner_postgres"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "statement_runner",
+        "part": "owner/python"
+      }
     },
     {
       "id": "statement_runner-mysql",
