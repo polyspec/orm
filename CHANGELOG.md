@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.
 - A function and a subquery on one output name answer COLUMN_ALIAS_CONFLICT as the compile case `planner_function_and_subquery_share_an_output_name` on every runtime; the scalar aggregate type copies and the extension's native planner test are gone, and the extension's planner target runs the compile recipe (#T334-3-6-2)

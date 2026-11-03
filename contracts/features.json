@@ -1217,10 +1217,7 @@
         "packages/ts/src/bin/orm-gen.ts",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
-        "packages/python/tests/test_alias_columns.py",
-        "packages/python/tests/test_subqueries.py",
         "packages/python/tests/test_related_output.py",
-        "packages/python/tests/test_remove_columns.py",
         "packages/python/tests/test_model_json_text.py",
         "packages/python/tests/test_styled_column_states.py",
         "packages/python/tests/test_styled_sql_null.py",
@@ -1681,15 +1678,12 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
-            "packages/python/tests/test_alias_columns.py",
-            "packages/python/tests/test_subqueries.py",
             "packages/python/tests/test_related_output.py",
-            "packages/python/tests/test_remove_columns.py",
             "packages/python/tests/test_model_json_text.py",
             "packages/python/tests/test_styled_column_states.py",
             "packages/python/tests/test_styled_sql_null.py",
@@ -5642,7 +5636,8 @@
         "ir-validate",
         "dbspec-operator-validation-limits",
         "planner_scalar_subquery_aggregate_types",
-        "request-manifest-hash-mismatch"
+        "request-manifest-hash-mismatch",
+        "column-function-factories-native"
       ],
       "fixtures": [
         "contracts/fixtures/restore_keys.dbs",
