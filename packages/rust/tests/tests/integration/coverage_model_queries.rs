@@ -6,29 +6,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
-// Requirements: CPX-5, DSL-128.
-async fn duplicate_relation_name_reports_config_alias_hint() {
-    let fixture = super::temp_sqlite::TempSqlite::create("orm-cpx5");
-    let db = polyspec_orm::Db::connect(&fixture.dsn(), 1, polyspec_orm::Config::default()).await.unwrap();
-    let error = Author::new()
-        .connect(&db)
-        .relation(User::new().match_user_seq_with_seq())
-        .relation(User::new().match_user_seq_with_seq())
-        .get_query()
-        .await
-        .unwrap_err();
-    match error {
-        polyspec_orm::Error::Engine { code, msg } => {
-            assert_eq!(code, "CONFIG");
-            assert!(msg.contains("user_model"), "{msg}");
-            assert!(msg.contains("alias<Name>()"), "{msg}");
-        }
-        error => panic!("expected CONFIG, got {error}"),
-    }
-    db.close().await;
-}
-
-#[tokio::test]
 // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-74, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
 async fn coverage_model_query_rows() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

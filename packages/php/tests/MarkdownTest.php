@@ -98,43 +98,6 @@ function markdown_test_server_received_messages(array $server): array
 #[Large]
 class MarkdownTest extends TestCase
 {
-    // Requirements: PRT-63.
-    public function testParseDsn(): void
-    {
-        $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
-        self::assertFalse(
-            $got !== ['127.0.0.1:4100', 'tracker', MARKDOWN_TOKEN],
-            'parseMarkdownDsn() = ' . json_encode($got)
-        );
-        foreach (
-            [
-            'markdown://127.0.0.1:4100/tracker',
-            'markdown://127.0.0.1:4100/tracker?token=',
-            'markdown://127.0.0.1:4100/tracker?token=a&token=b',
-            'markdown://127.0.0.1:4100/tracker?token=a&mode=ro',
-            'markdown://127.0.0.1/tracker?token=a',
-            'markdown://127.0.0.1:0/tracker?token=a',
-            'markdown://127.0.0.1:port/tracker?token=a',
-            'markdown://localhost:4100/tracker?token=a',
-            'markdown://10.0.0.1:4100/tracker?token=a',
-            'markdown://user@127.0.0.1:4100/tracker?token=a',
-            'markdown://127.0.0.1:4100/?token=a',
-            'markdown://127.0.0.1:4100/a/b?token=a',
-            ] as $input
-        ) {
-            $e = markdown_error(static fn() => Orm::parseMarkdownDsn($input));
-            self::assertFalse(
-                $e?->code_ !== Code::CONFIG,
-                "parseMarkdownDsn($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
-            );
-            $e = markdown_error(static fn() => Orm::connect($input, new Config()));
-            self::assertFalse(
-                $e?->code_ !== Code::CONFIG,
-                "connect($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
-            );
-        }
-    }
-
     // Requirements: PRT-64.
     public function testSessionMessages(): void
     {

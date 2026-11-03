@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 302aea409ca800ae595e92620f65a8662eba5b235e6555277f5903c629d3c108 -->
+<!-- source-sha256: 5ac3af1df1994a9b27c666acb108f30ca6cf72e776800fdcc0987625ea7d99d5 -->
 # 변경 이력
 
 ## Unreleased
@@ -288,6 +288,7 @@
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - FCV-2는 `recipe-unknown-keys`와 `hot-path-performance-measurement` unit 세 개가 native로 남는 이유를 밝힌다. loader의 거부는 어떤 case보다 먼저 일어나고, 시간은 case가 기대할 수 있는 값이 아니다
+- PRT-63의 markdown DSN 거부는 `dsn_reject`의 case이고, DSL-60, DSL-115, DSL-155, CPX-5, DSL-128은 새 case `core_conditions`, `core_columns_and_pages`, `core_writes`, `core_duplicate_relation`과 함께 `conformance_verification`이 담으며, 그 native unit은 없어졌다. FCV-2는 model core unit 네 개가 native로 남는 이유를 밝힌다.
 
 ## 0.0.21
 
