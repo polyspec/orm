@@ -131,7 +131,7 @@ The creation spelling follows the host language. The method role, stored request
 - **INT-27** Go static model types declare each chain found by scanning source calls; and Rust static model types do the same; and TypeScript static model types do the same. PHP and Python resolve names as the next item says. A chain no scanned call names has no method until code calls it and the models are generated again.
 - **INT-28** The `polyspec/orm` PHP generator scan checks found names but declares no method; and PHP client `polyspec/orm` resolves call names dynamically through `__call`; and PHP-extension client `polyspec/orm-php-ext` does the same; and Python package `polyspec-orm` resolves call names at runtime through `__getattr`.
 
-The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.
+The case `terminal_by` of the recipe `conformance_verification` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.
 
 ### 5.3 Execution methods
 

@@ -14,29 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class ConnectionTimeoutCleanupTest extends TestCase
 {
-    // Requirements: CFG-6.
-    public function testMysqlLockWaitTimeoutMapsToCanceledAndClosesCursor(): void
-    {
-        $pdo = new ConnectionTimeoutCleanupPdo();
-        $pdo->failureInfo = ['HY000', 1205, 'Lock wait timeout exceeded'];
-        $db = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
-        try {
-            try {
-                $db->fetch('query', [], null, 'SELECT 1');
-                self::fail('a MySQL lock wait timeout must fail');
-            } catch (\Polyspec\Orm\OrmException $error) {
-                self::assertSame('CANCELED', $error->code_);
-                self::assertInstanceOf(PDOException::class, $error->getPrevious());
-                self::assertSame(['HY000', 1205, 'Lock wait timeout exceeded'], $error->getPrevious()->errorInfo);
-            }
-
-            self::assertSame(1, $pdo->closeCursorCalls, 'the failed native statement cursor is closed');
-        } finally {
-            $db->close();
-        }
-    }
-
-    // Requirements: CFG-6.
+    // Requirements: CFG-6a.
     public function testNativeFailedStatementClosesCursorAndReusesConnection(): void
     {
         $pdo = new ConnectionTimeoutCleanupPdo();

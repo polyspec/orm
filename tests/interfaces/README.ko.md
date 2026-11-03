@@ -1,5 +1,5 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: b200c8b93dfbac14bf2fd2d791b25c1f268dd1bb70b2d3334efcb9da9ad075a8 -->
+<!-- source-sha256: c34dd3a1e1bc22ee6caf1847cfa2ce14c62156431fad50056af0ea49cd4388a7 -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
@@ -30,11 +30,7 @@ node tests/interfaces/check/main.mts --language php --self-test
 node tests/interfaces/check/main.mts --language php-extension
 ```
 
-적합성 결과를 공통 state contract(`contracts/interfaces.json`의 `sequences`)와 비교한다: `make conformance-check`가 적합성 실행기를 자기 실행의 directory에 실행한 뒤 다음을 실행한다.
-
-```sh
-ORM_PYTHON=packages/python/.venv/bin/python node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
-```
+공통 state contract(`contracts/interfaces.json`의 `sequences`)는 데이터베이스마다 같은 이름의 recipe case에서 성립한다. `tests/conformance/check/recipe_vectors.test.mts`가 각 contract를 그 case의 statement 종류, expect와 비교하고, 각 runtime이 그 case를 실행한다.
 
 sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utility statement는 적지 않는다. 그 수와 위치는 dialect마다 다르다(적합성 vector가 정확히 적는다). 차이는 더해지거나 빠진 statement를 위치, kind, SQL과 함께, 다른 결과는 두 값으로, 없는 출력은 그 경로로 적는다.
 

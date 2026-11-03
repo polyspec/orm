@@ -68,7 +68,7 @@ const validTests = (part: string, tests: unknown): tests is string[] => Array.is
     file.slice(part.length + 1).split('/').every(segment =>
       segment && segment !== '.' && segment !== '..' && /^[A-Za-z0-9_.-]+$/.test(segment)));
 const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
-const stateReader = resolve(checkerRoot, 'tests/conformance/check/main.mts');
+const stateReader = resolve(checkerRoot, 'tests/conformance/check/state.mts');
 
 function requirements(feature: Feature, coverage: Coverage, errors: string[], parityConfig?: ParityConfig): Item[] {
   const selectedDatabase = selectedDatabases.get(feature);
@@ -953,9 +953,9 @@ function prepared(spec: Spec, builds: Builds): Prepared[] {
     env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
-// state is the digest of the database that the state reader (tests/conformance/check/main.mts state) prints.
+// state is the digest of the database that the state reader (tests/conformance/check/state.mts) prints.
 async function state(database: string, dsn: string, timeoutMs: number): Promise<string> {
-  const result = await run(process.execPath, [stateReader, 'state', '--driver', database, '--dsn', dsn], checkerRoot, timeoutMs);
+  const result = await run(process.execPath, [stateReader, '--driver', database, '--dsn', dsn], checkerRoot, timeoutMs);
   if (result.error) throw new Error(`database state reader: ${result.error.replaceAll(dsn, '[redacted]')}`);
   const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(result.value ?? '');
   if (!match?.[1]) throw new Error('database state reader returned an invalid digest');

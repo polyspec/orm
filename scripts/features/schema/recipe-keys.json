@@ -140,16 +140,16 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "collection.connect": [
       "connection",
       "expect",
       "op",
       "row"
-    ],
-    "collection.key": [
-      "expect",
-      "keys",
-      "op"
     ],
     "sql.exec": [
       "only",
@@ -856,17 +856,17 @@
       "expect",
       "op"
     ],
+    "utils.stats": [
+      "connection",
+      "expect",
+      "op"
+    ],
     "pool.transactions": [
       "connection",
       "expect",
       "hold",
       "op",
       "transactions"
-    ],
-    "utils.stats": [
-      "connection",
-      "expect",
-      "op"
     ],
     "dbspec.plan": [
       "as",
