@@ -2049,8 +2049,8 @@ async function checkBuilder(step, database) {
   }
   if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
   const expect = step.expect[database];
-  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
-    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || callError.message !== expect.message) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} ${expect.message}`, { cause: callError });
   }
 }
 
