@@ -18,7 +18,7 @@ import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, perf
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
 
 /** A native test command of a coverage owner or dependent (contracts/features.json). */
-export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; symbols?: Record<string, string>; recipe?: string; symbol?: string; database?: string };
+export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; case_database?: true; symbols?: Record<string, string>; recipe?: string; symbol?: string; database?: string };
 /** The owning client part of a feature. */
 export type Owner = { part: string; tests: string[]; commands?: Record<string, NativeCommand[]> };
 /** A dependent part of a feature. */
@@ -153,6 +153,11 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[], pa
   if (selected) return items.filter(item => selected.has(itemPart(item)));
   return items;
 }
+
+// onCaseDatabases is whether the native commands of an item make their own case databases (FCV-14), so the item has no
+// bench database and no state to read.
+const onCaseDatabases = (item: { command?: NativeCommand[] | undefined }): boolean =>
+  Array.isArray(item.command) && item.command.length > 0 && item.command.every(entry => entry?.case_database === true);
 
 // itemPart is the unit name of a coverage item: an owner client is `owner/<language>`, a dependent is `dependent/<id>`
 // (same as coverageParts in scripts/features/owners.mts).
@@ -296,7 +301,7 @@ export function checkCoverage(
               values.some(value => !seen.includes(value.id) || typeof value.value_json !== 'string' ||
                 value.database !== item.database || !value.value_json || !validJSON(value.value_json)))
             errors.push(`${key}: executed case IDs differ from contract`);
-          if (coverage.kind === 'database' && !item.recipe &&
+          if (coverage.kind === 'database' && !item.recipe && !onCaseDatabases(item) &&
               (typeof report.state_before !== 'string' || !report.state_before ||
                report.state_before !== report.state_after))
             errors.push(`${key}: database state changed or was not observed`);
@@ -304,7 +309,7 @@ export function checkCoverage(
         if (item.recipe) continue;
         if (!isDeepStrictEqual(executions[0]?.results, executions[1]?.results))
           errors.push(`${key}: results changed on repeated execution`);
-        if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
+        if (coverage.kind === 'database' && !onCaseDatabases(item) && executions[0]?.state_before !== executions[1]?.state_before)
           errors.push(`${key}: database state changed between executions`);
     }
     if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature, parityConfig).has(language)))
@@ -484,11 +489,12 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
       (item.language === 'python' && command.runner !== 'python') ||
       (item.language === 'go' && command.runner !== 'go') ||
       (item.language === 'rust' && command.runner !== 'cargo') ||
-      (item.database !== 'none' && (typeof command.dsn_env !== 'string' ||
+      (command.case_database !== undefined && (command.case_database !== true || command.dsn_env !== undefined)) ||
+      (item.database !== 'none' && command.case_database === undefined && (typeof command.dsn_env !== 'string' ||
         !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env) ||
         ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN'].includes(command.dsn_env))) ||
       !validSymbols ||
-      Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env', 'symbols'].includes(key)))
+      Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env', 'case_database', 'symbols'].includes(key)))
     throw new Error('invalid native test command');
   const testPath = resolve(root, command.test);
   if (await realpath(testPath) !== testPath) throw new Error('symbolic test path');
@@ -1006,8 +1012,9 @@ export async function executeCoverage(
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
         for (const spec of native) if (spec.format === 'case') spec.cwd ??= cwd;
         const dsnEnv = command[0]?.dsn_env ?? '';
-        const dsn = item.database === 'none' || item.recipe ? null : process.env[dsnEnv] ?? '';
-        if (item.database !== 'none' && !item.recipe && !dsn) {
+        const ownDatabase = onCaseDatabases(item);
+        const dsn = item.database === 'none' || item.recipe || ownDatabase ? null : process.env[dsnEnv] ?? '';
+        if (item.database !== 'none' && !item.recipe && !ownDatabase && !dsn) {
           errors.push(`${key}: missing database DSN in ${dsnEnv}`);
           continue;
         }

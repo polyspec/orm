@@ -1070,6 +1070,28 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
 });
 
 // Requirements: FCV-4.
+// Requirements: FCV-14.
+caseTest('a native command on its own case database runs with no bench DSN and reads no state', PROCESS, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
+  const fileOf = (database: string) => `packages/ts/tests/${database}.mjs`;
+  const manifest = (fields: { case_database?: true; dsn_env?: string }): SampleManifest => ({
+    features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
+      coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
+        typescript: { part: 'packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
+          [database, [{ runner: 'node', test: fileOf(database), cases: ['first'], ...fields }]])) },
+      } } }] });
+  try {
+    await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
+    for (const database of databases)
+      await writeFile(join(root, fileOf(database)), `console.log('CASE first [${database}] PASS');\n`);
+    assert.deepEqual(await runSelected(manifest({ case_database: true }), root, ['owner/typescript']), []);
+    for (const fields of [{}, { case_database: true as const, dsn_env: 'ORM_COVERAGE_TEST_SQLITE_DSN' }])
+      assert.match((await runSelected(manifest(fields), root, ['owner/typescript'])).join('\n'), /invalid native test command/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('checker reads physical database state around each native test run', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
   const owner = 'packages/ts/tests/owner.mjs';
@@ -1088,7 +1110,7 @@ caseTest('checker reads physical database state around each native test run', PR
     db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
     db.close();
     // One run of the file prints the case of every database of its item list; each item takes its own line.
-    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`);\n");
+    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); for (const database of ['mysql', 'postgres', 'sqlite']) void database, console.log('CASE first PASS');\n");
     // Exercise only the SQLite slot; the other database declarations are checked separately.
     const feature = manifest.features[0];
     feature.coverage.kind = 'database';
