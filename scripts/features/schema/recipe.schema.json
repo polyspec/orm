@@ -2205,7 +2205,7 @@
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
