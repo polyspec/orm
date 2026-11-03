@@ -1,16 +1,19 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0ea977b4f5395f95c2a361344b566219d8ac27e61fd10e490b033b6393bc8a1c -->
+<!-- source-sha256: 55efd2b08c3771bf5e83e3348d37664c4cd8e4b7a53fa44faa1e1c9aa31d333f -->
 # 변경 이력
 
 ## Unreleased
 
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
+- PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
+- `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
 - Rust의 세 database stress apply는 각 database의 deadline을 step 수로 정한다. step마다 250 ms에 1분을 더한 값이다(testcase `step_budget`). apply는 step이 30 s 동안 없으면 멈추는 stall guard(testcase `StallGuard`)로 감시하며, step이 적용될 때마다 그 기한이 다시 시작된다. Go stress test와 같은 근거다. 11개 CPU 부하 프로세스 아래에서 세 실행을 동시에 돌리면, 기존 60 s probe deadline은 실행마다 `mysql.apply.stress_plan: exceeded 60s`로 실패했다(63.6~64 s). step 기준 deadline으로는 같은 부하에서 79.5~82.3 s에 통과하고, 단독으로는 22.7 s다(T343-5).
 - compiler fixture는 cargo target lease를 기다리는 시간을 deadline 밖에 둔다. 각 case의 Rust trial은 그 기다림에 deadline을 두지 않으며, tests/cargo-test.mts의 build에 deadline이 없는 것과 같다. scripts/rust/compiler-fixtures.mts는 lease 아래의 자기 compile에만 PROCESS deadline을 준다. 그래서 다른 실행의 build 뒤에서 기다리던 case는 `deadline 5m0s exceeded`로 실패하지 않고 통과한다(T343-6).
 - dbspec의 한계와 stress unit은 recipe `tests/dbspec/limits.json`의 case이며, 그 문서는 `dbspec.format`의 줄 형태 `repeat`와 `fill`로 쓴다. native 한계 시험과 round trip만 하던 stress 시험은 사라졌고 `make dbspec-stress-bench`의 parse 시간 측정은 남는다.
 - DSL-49와 DSL-50의 chain 값은 recipe `dsl`과 `dsl-dynamic`의 case가 되었다. `markdown.send`는 Eq, Ne, Gt의 chain method와 list parameter를 받고, PHP extension과 Python의 native 시험을 지웠다. 컴파일러가 거부하는 사용은 Go, TypeScript, Rust에서 native로 남는다.
 
+- audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.

@@ -626,7 +626,14 @@ const OPS = {
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     const statement = typeof s.sql === 'string' ? s.sql : s.sql[context.database];
-    if (statement !== undefined) await nativeQuery(context.database, context.dsn, [statement]);
+    if (statement === undefined) return {};
+    if (!s.refused) {
+      await nativeQuery(context.database, context.dsn, [statement]);
+      return {};
+    }
+    // Any driver error of the refused statement passes.
+    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => false, () => true);
+    if (!refused) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
     return {};
   },
   // The request hook and AES ops of FCV-4 (T334-3-4): each calls the public API of the same name on a bound connection.
@@ -1678,7 +1685,9 @@ Object.assign(OPS, {
       if (binds === undefined || mask.bind >= binds.length) throw new Error(`mask ${JSON.stringify(mask)} names no captured bind`);
       binds[mask.bind] = { text: mask.value };
     }
-    return { value: { array: events } };
+    if (s.compare !== 'statements') return { value: { array: events } };
+    // compare "statements" keeps the sql and the kind: the bound clock of a soft delete differs on each run.
+    return { value: { array: events.map(event => ({ object: event.object.filter(([name]) => name === 'sql' || name === 'kind') })) } };
   },
 });
 

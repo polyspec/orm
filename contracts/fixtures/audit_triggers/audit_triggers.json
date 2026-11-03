@@ -436,6 +436,12 @@
           }
         },
         {
+          "op": "sql.exec",
+          "sql": "INSERT INTO item (title, audit_seq) VALUES ('raw', 999)",
+          "reason": "a raw insert that names no audit record: the foreign key refuses a child without a parent",
+          "refused": true
+        },
+        {
           "op": "model.delete",
           "connection": "db",
           "model": "Audit",
@@ -2878,14 +2884,150 @@
           }
         },
         {
-          "op": "catalog.read_only_query",
-          "sql": "SELECT COUNT(*) FROM label WHERE deleted_at IS NULL",
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "soft_delete_statements",
+      "requirements": [
+        "DBS-67"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db",
+          "audit_source": {
+            "values": {
+              "actor": {
+                "text": "default"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "keep"
+            },
+            "color": {
+              "text": "x"
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "db",
+          "model": "Label",
+          "values": {
+            "name": {
+              "text": "gone"
+            },
+            "color": {
+              "text": "x"
+            }
+          }
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.delete",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "id": {
+              "int": "2"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "db",
+          "model": "Label",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "name": {
+              "text": "keep"
+            }
+          },
+          "columns": [
+            "name"
+          ],
           "expect": {
             "mysql": {
               "rows": [
                 [
                   {
-                    "int": "1"
+                    "text": "keep"
                   }
                 ]
               ]
@@ -2894,7 +3036,7 @@
               "rows": [
                 [
                   {
-                    "int": "1"
+                    "text": "keep"
                   }
                 ]
               ]
@@ -2903,10 +3045,347 @@
               "rows": [
                 [
                   {
-                    "int": "1"
+                    "text": "keep"
                   }
                 ]
               ]
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "Label",
+          "where": {
+            "name": {
+              "text": "gone"
+            }
+          },
+          "columns": [
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": []
+            },
+            "postgres": {
+              "rows": []
+            },
+            "sqlite": {
+              "rows": []
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "compare": "statements",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`id` = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE `label` SET `deleted_at` = CURRENT_TIMESTAMP(6) WHERE `label`.`id` = ? AND `label`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT `a`.`id` AS `a__id`, `a`.`name` AS `a__name`, `a`.`color` AS `a__color`, `a`.`deleted_at` AS `a__deleted_at` FROM `label` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"id\" = $1"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE \"label\" SET \"deleted_at\" = $1 WHERE \"label\".\"id\" = $2 AND \"label\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = $1"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"id\" = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "UPDATE \"label\" SET \"deleted_at\" = ? WHERE \"label\".\"id\" = ? AND \"label\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "update"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"name\" AS \"a__name\", \"a\".\"color\" AS \"a__color\", \"a\".\"deleted_at\" AS \"a__deleted_at\" FROM \"label\" AS \"a\" WHERE \"a\".\"deleted_at\" IS NULL AND \"a\".\"name\" = ?"
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
             }
           }
         }

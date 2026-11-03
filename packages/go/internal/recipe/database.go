@@ -63,6 +63,7 @@ type databaseStep struct {
 	Text     string          `json:"text"`
 	Mode     string          `json:"mode"`
 	SQL      json.RawMessage `json:"sql"`
+	Refused  bool            `json:"refused"`
 	MaxRows  int             `json:"max_rows"`
 	MaxBytes int             `json:"max_bytes"`
 	Page     json.RawMessage `json:"page"`
@@ -872,7 +873,21 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		raw := testdb.Open(c.t, c.database, c.dsn)
 		defer testcase.Close(c.t, raw)
-		if _, err := raw.ExecContext(c.ctx, statement); err != nil {
+		if s.Refused && c.database == "sqlite" {
+			// A native SQLite connection starts with foreign keys off; the runners of the other clients open it with them on.
+			raw.SetMaxOpenConns(1)
+			if _, err := raw.ExecContext(c.ctx, "PRAGMA foreign_keys = ON"); err != nil {
+				return outcome{}, err
+			}
+		}
+		_, err = raw.ExecContext(c.ctx, statement)
+		if s.Refused {
+			if err == nil {
+				return outcome{}, fmt.Errorf("the database accepted the statement that the step expects it to refuse: %s", statement)
+			}
+			return outcome{fields: map[string]any{}}, nil
+		}
+		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, nil

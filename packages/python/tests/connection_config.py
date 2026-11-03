@@ -17,6 +17,7 @@ from urllib.parse import unquote, urlsplit
 import psycopg
 import pymysql
 
+from polyspec.orm.catalog import connect_catalog
 from polyspec.orm.errors import OrmError
 from . import testcase
 from .case_database import case_database
@@ -129,6 +130,37 @@ class ConnectionConfigTest(unittest.TestCase):
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one
     # connection must bound only the statements of that connection. The pool of that DSN is bound to the database of
     # ORM_TEST_POSTGRES_DSN, so the case makes one table of its own name there and drops it at the end.
+    # Through the one server connection of ORM_TEST_PGBOUNCER_SINGLE_DSN, another client leaves a named statement, a schema change
+    # changes its result type, and a catalog session runs the same text: the DEALLOCATE ALL that opens the session, and no
+    # ROLLBACK of an earlier session, is what makes the Parse reach the server.
+    # Requirements: CFG-28.
+    def test_catalog_session_after_a_schema_change_through_a_pooler(self):
+        single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
+        if not single:
+            raise AssertionError(
+                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run make orm-test-servers"
+            )
+        table = f"pooler_{uuid.uuid4().hex[:8]}"
+        catalog = connect_catalog(single)
+        with psycopg.connect(single, autocommit=True) as setup:
+            setup.execute(f"CREATE TABLE {table} (id int PRIMARY KEY, v int)")
+            setup.execute(f"INSERT INTO {table} VALUES (1, 5)")
+            try:
+                with psycopg.connect(
+                    single, prepare_threshold=0, autocommit=True
+                ) as holder:
+                    holder.execute(f"SELECT id, v FROM {table} WHERE id = %s", (1,))
+                    setup.execute(
+                        f"ALTER TABLE {table} ALTER COLUMN v TYPE varchar(16) USING v::text"
+                    )
+                    result = catalog.read_only_query(
+                        f"SELECT id, v FROM {table} WHERE id = $1", (1,)
+                    )
+                    self.assertEqual(result.rows, [[1, "5"]])
+            finally:
+                catalog.close()
+                setup.execute(f"DROP TABLE {table}")
+
     # Requirements: CFG-27, CFG-28, CFG-29.
     def test_statement_timeout_through_a_pooler(self):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")

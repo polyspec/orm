@@ -1897,9 +1897,18 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
         if isinstance(step["sql"], str)
         else step["sql"].get(context["database"])
     )
-    if statement is not None:
+    if statement is None:
+        return {}
+    if not step.get("refused"):
         native_query(context["database"], context["dsn"], [statement])
-    return {}
+        return {}
+    try:
+        native_query(context["database"], context["dsn"], [statement])
+    except Exception:  # noqa: BLE001 - any driver error of the refused statement
+        return {}
+    raise AssertionError(
+        f"the database accepted the statement that the step expects it to refuse: {statement}"
+    )
 
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
@@ -2542,6 +2551,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
     for mask in step.get("masks", {}).get(context["database"], []):
         binds = events[mask["event"]]["object"][1][1]["array"]
         binds[mask["bind"]] = {"text": mask["value"]}
+    if step.get("compare") == "statements":
+        # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
+            for event in events
+        ]
     return {"value": {"array": events}}
 
 

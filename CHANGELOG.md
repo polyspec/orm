@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
+- The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
+- `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.
 - The limit and stress units of dbspec are the cases of the recipe `tests/dbspec/limits.json`, whose documents are written by the `repeat` and `fill` line forms of `dbspec.format`; the native limit tests and the round-trip-only stress tests are gone, and the parse time measurements of `make dbspec-stress-bench` stay.
 - The audit transactions, the selected audit columns and the restore of a soft-deleted row are the cases of the recipe `audit_triggers`, which all six runtimes run on MySQL, PostgreSQL and SQLite; their hand-written tests are gone, and the Go context of the audit source (CFG-8a) and the Rust transaction forms (INT-44a) stay native (T334-3-4-11).
