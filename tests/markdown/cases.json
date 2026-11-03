@@ -82,6 +82,25 @@
         "first": { "count": 1, "active": true, "age": 30, "unselected": "COLUMN_UNSELECTED" }
       }
     },
+    { "id": "group_count_i64", "expect": [{ "id": 1, "row_count": 1 }] },
+    {
+      "id": "collection_typed_key",
+      "expect": {
+        "length": 1,
+        "keys": [1],
+        "first": 1,
+        "get": 1,
+        "get_text": null,
+        "get_missing": null,
+        "has": true,
+        "has_text": false,
+        "fetched": "started",
+        "fetched_text": null,
+        "fetched_missing": null,
+        "array": [{ "id": 1, "task": "T1", "note": "started" }]
+      }
+    },
+    { "id": "collection_key_name", "expect": { "error": "CODEC_DECODE" } },
     { "id": "sum", "expect": 16 },
     { "id": "avg", "expect": 27.5 },
     { "id": "paginate", "expect": { "items": [{ "id": "P3", "name": "Cara" }], "total_count": 3, "total_pages": 2 } },

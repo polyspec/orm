@@ -16,6 +16,7 @@ import threading
 import time
 import types
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -142,6 +143,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "ir.answer":
                     _answer(step, database)
+                    continue
+                if step["op"] == "collection.key":
+                    _collection_key(step, database)
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
@@ -326,6 +330,45 @@ def _answer(step: dict, database: str) -> None:
         got = _request_params(sent)
     if not same(got, want):
         raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
+
+
+def _collection_key(step: dict, database: str) -> None:
+    """Runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each key, the
+    index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63,
+    PRT-35)."""
+
+    def native(entry):
+        kind = entry["type"]
+        if kind == "null":
+            return None
+        if kind == "bytes":
+            return bytes.fromhex(entry["hex"])
+        if kind == "datetime":
+            return datetime.fromisoformat(entry["value"])
+        return entry["value"]
+
+    names = {str: "text", bool: "bool", int: "int", bytes: "bytes", datetime: "datetime"}
+    collection = Collection()
+    try:
+        groups = []
+        for index, entry in enumerate(step["keys"]):
+            key = native(entry)
+            first = collection.get(key)
+            groups.append(index if first is None else first["group"])
+            if first is None:
+                collection.put(key, {"group": index})
+        got = {
+            "groups": groups,
+            "types": [names[type(native(entry))] for entry in step["keys"]],
+        }
+        stored = collection.keys()
+        distinct = [native(step["keys"][group]) for group in dict.fromkeys(groups)]
+        if stored != distinct or [type(key) for key in stored] != [type(key) for key in distinct]:
+            raise AssertionError(f"the keys changed their native values or order: {stored}")
+    except OrmError as error:
+        got = {"error": error.code, "message": str(error)}
+    if got != step["expect"][database]:
+        raise AssertionError(f"got {got}, want {step['expect'][database]}")
 
 
 def _request_params(sent: list) -> list:
@@ -2485,6 +2528,14 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
+def _derived_integers(row: dict, step: dict) -> dict:
+    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
+    for name in step.get("derived_integers", []):
+        if isinstance(row[name], str):
+            row[name] = int(row[name])
+    return row
+
+
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2534,8 +2585,9 @@ def _chain_built(step: dict, context: dict) -> Model:
     if relation is not None:
         # The columns of this relation are read of each child row; they do not narrow its statement.
         child = build.relation({k: v for k, v in relation.items() if k != "columns"})
-        # This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-        child.connect(db)
+        # Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+        if relation.get("connect") is True:
+            child.connect(db)
         model.core.relation(relation.get("many") is True, child)
     return _by_key(model, step, context)
 
@@ -2641,7 +2693,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+        "json": [
+            _derived_integers(_row_json(row, step.get("pick")), step)
+            for row in rows.values()
+        ],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2960,23 +3015,49 @@ def _install_hook(step: dict, context: dict) -> None:
                 query.setdefault("set", []).append({"column": a["column"], "p": p})
                 for row in query.get("rows") or []:
                     row.append(add_param(a["value"]))
+            elif action == "assign_first":
+                query["set"] = [
+                    {"column": a["column"], "p": add_param(a["value"])},
+                    *(query.get("set") or []),
+                ]
+            elif action == "rewrite":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        assignment["p"] = add_param(a["value"])
+            elif action == "invalid_param":
+                and_where(
+                    query,
+                    {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
             elif action == "record":
                 context["records"].append(
                     {"kind": query["kind"], "entity": query["entity"]}
                 )
+            elif action == "record_param":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        context["records"].append(
+                            {
+                                "kind": query["kind"],
+                                "entity": query["entity"],
+                                "param": _plain(params[assignment["p"]], None),
+                            }
+                        )
             elif action == "fail":
                 raise OrmError(a["code"], f"request hook refused {query['kind']}")
             else:
                 raise AssertionError(f"hook action {action} is unknown")
         return query
 
-    context["hook_bases"][name] = base
-    context["bound"][name] = base.with_request_hook(hook)
+    # With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+    target = step.get("as", name)
+    context["hook_bases"][target] = base
+    context["bound"][target] = base.with_request_hook(hook)
 
 
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
-    return {}
+    return {"bind": context["bound"][step["as"]]} if "as" in step else {}
 
 
 def _op_hook_records(_step: dict, context: dict) -> dict:
@@ -2989,6 +3070,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
             "object": [
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
+                *([["param", record["param"]]] if "param" in record else []),
             ]
         }
         for record in records
@@ -3099,6 +3181,15 @@ def _run_database_step(step: dict, context: dict) -> None:
         if suffix is not None and not str(error).endswith(suffix):
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
+            ) from error
+        holds = expected.get("message_holds")
+        if holds is not None and holds not in str(error):
+            raise AssertionError(
+                f"error message {str(error)!r} does not hold {holds!r}"
+            ) from error
+        if expected.get("driver_cause") is True and error.__cause__ is None:
+            raise AssertionError(
+                f"error {str(error)!r} has no driver cause"
             ) from error
         return
     except CallbackError:
