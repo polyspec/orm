@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Go, PHP and the PHP extension read a MySQL `BIGINT UNSIGNED` past the signed range instead of refusing it, and the row baseline tells the two largest values apart.
 - The catalog read shapes, grid binary row, row baseline, byte capacity, described temporal matrix and SQLite identity natives are cases of the catalog_connection recipe. A catalog insert of a key of defaults alone takes no assignment in TypeScript, Python, PHP and the extension as in Go and Rust, and PHP reads a PostgreSQL bytea of a page and takes a snapshot of a binary cell instead of refusing them.
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
 - The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.

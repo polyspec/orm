@@ -2181,7 +2181,8 @@ final class Catalog
             'binary', 'decimal' => $value,
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
                 ? (int) $value
-                : ($dialect === 'sqlite'
+                // SQLite keeps a text in an INTEGER column; a BIGINT UNSIGNED reaches past PHP_INT_MAX as its digits.
+                : ($dialect === 'sqlite' || (is_string($value) && ctype_digit($value))
                     ? $value
                     : throw new OrmException(Code::CATALOG_VALUE, "integer of native type \"$nativeType\"")),
             'float' => is_numeric($value)

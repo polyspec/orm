@@ -812,8 +812,11 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
     if (integer) {
         zend_long n;
         if (!cat_parse_int(v, &n)) {
-            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152). */
-            if (strcmp(dialect, "sqlite") == 0) {
+            /* SQLite keeps a text that is not an integer as stored, in an INTEGER column too (INT-152);
+             * a BIGINT UNSIGNED reaches past zend_long as its digits (DIA-39). */
+            if (strcmp(dialect, "sqlite") == 0
+                || (Z_TYPE_P(v) == IS_STRING && Z_STRLEN_P(v) > 0
+                    && strspn(Z_STRVAL_P(v), "0123456789") == Z_STRLEN_P(v))) {
                 ZVAL_COPY(out, v);
                 return true;
             }
