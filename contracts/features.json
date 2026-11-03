@@ -4432,6 +4432,7 @@
       ],
       "parity": [
         "generator",
+        "php-generator-scan-vector-in-both-php-modes",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -4439,7 +4440,6 @@
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods",
-        "mechanically-derived-chain-method-names",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",
@@ -4454,6 +4454,7 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/ts/tests/model-new-output-name.mjs",
@@ -4462,7 +4463,6 @@
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
-        "packages/go/generator/gen_go_key_prefix_test.go",
         "packages/go/generator/gen_go_output_test.go",
         "packages/go/generator/gen_go_output_internal_test.go",
         "packages/go/generator/gen_go_packages_test.go",
@@ -4673,6 +4673,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
               "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
@@ -4816,7 +4817,8 @@
         "dbspec-apply-cleanup-rust",
         "dbspec-apply-cleanup-python",
         "dbspec-apply-cleanup-php",
-        "dbspec-apply-cleanup-errors"
+        "dbspec-apply-cleanup-errors",
+        "dbspec-dialect-refusal"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4875,7 +4877,6 @@
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/dbspec-plan-physical.mjs",
-        "packages/ts/tests/dbspec-plan.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
         "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -4883,7 +4884,7 @@
         "packages/ts/tests/dbspec-plan-comparisons.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/ts/tests/dbspec-render-physical.mjs",
         "packages/python/tests/dbspec_render_physical.py",
         "packages/rust/orm/tests/dbspec_render_physical.rs",
@@ -4928,7 +4929,7 @@
         "packages/ts/tests/browser-entry.mjs",
         "packages/python/tests/dbspec_ddl.py",
         "packages/python/tests/dbspec_plans.py",
-        "packages/python/tests/test_dbspec_render_dialect.py",
+        "packages/python/tests/test_dbspec_dialect_refusal_none.py",
         "packages/python/tests/test_dbspec_plan_cases.py",
         "packages/python/tests/test_dbspec_plan_invalid.py",
         "packages/python/tests/test_dbspec_plan_chains.py",
@@ -5006,7 +5007,10 @@
         "packages/ts/tests/dbspec-mermaid-none.test.mjs",
         "packages/go/engine/dbspec/recipe_mermaid_test.go",
         "packages/python/tests/test_dbspec_mermaid_none.py",
-        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php"
+        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php",
+        "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -5139,8 +5143,7 @@
             "packages/ts/tests/dbspec-analyze.mjs",
             "packages/ts/tests/dbspec-rules.mjs",
             "packages/ts/tests/dbspec-render.mjs",
-            "packages/ts/tests/dbspec-render-dialect.mjs",
-            "packages/ts/tests/dbspec-plan.mjs",
+            "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
             "packages/ts/tests/dbspec-plan-cases.mjs",
             "packages/ts/tests/dbspec-plan-invalid.mjs",
             "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -5185,7 +5188,7 @@
           "inputs": [
             "packages/python/tests/dbspec_ddl.py",
             "packages/python/tests/dbspec_plans.py",
-            "packages/python/tests/test_dbspec_render_dialect.py",
+            "packages/python/tests/test_dbspec_dialect_refusal_none.py",
             "packages/python/tests/test_dbspec_plan_cases.py",
             "packages/python/tests/test_dbspec_plan_invalid.py",
             "packages/python/tests/test_dbspec_plan_chains.py",
@@ -9271,7 +9274,7 @@
         "packages/go/engine/dbspec/render_test.go",
         "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
         "packages/php/tests/DriverErrorTest.php",
@@ -13985,10 +13988,29 @@
       ],
       "parity": [
         "statement-runner-database",
-        "coverage-statement-runner-statement-runner"
+        "statement-runner-frame-after-its-transaction-ended",
+        "statement-runner-non-text-statement",
+        "coverage-statement-runner-statement-runner",
+        "statement_runner-mysql",
+        "statement_runner-postgres",
+        "statement_runner-sqlite"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "contracts/fixtures/statement_runner/statement_runner.json"
+      ],
       "tests": [
+        "packages/go/orm/recipe_statement_runner_test.go",
+        "packages/php/tests/StatementRunnerRecipeTest.php",
+        "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+        "packages/ts/tests/statement_runner-mysql.test.mjs",
+        "packages/ts/tests/statement_runner-postgres.test.mjs",
+        "packages/ts/tests/statement_runner-sqlite.test.mjs",
+        "packages/python/tests/test_statement_runner_mysql.py",
+        "packages/python/tests/test_statement_runner_postgres.py",
+        "packages/python/tests/test_statement_runner_sqlite.py",
+        "packages/rust/tests/tests/statement_runner_mysql.rs",
+        "packages/rust/tests/tests/statement_runner_postgres.rs",
+        "packages/rust/tests/tests/statement_runner_sqlite.rs",
         "packages/ts/tests/statement-runner.mjs",
         "packages/go/orm/statement_runner_test.go",
         "packages/php/tests/StatementRunnerTest.php",
@@ -13997,7 +14019,6 @@
         "packages/rust/orm/tests/statement_runner.rs",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
         "packages/ts/tests/statement-runner-run.mjs",
-        "packages/go/orm/coverage_statement_runner_test.go",
         "packages/php/tests/CoverageStatementRunnerTest.php",
         "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
         "packages/ts/tests/coverage_statement_runner.mjs",
@@ -14077,18 +14098,18 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_statement_runner_test.go"
+              "packages/go/orm/recipe_statement_runner_test.go"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14096,12 +14117,12 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -14109,12 +14130,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -14346,7 +14367,7 @@
     {
       "id": "php-dbspec-dialect-rejection-cases",
       "paths": [
-        "packages/php/tests/DbspecDialectRejectionCases.php"
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php"
       ],
       "tests": [
         "packages/php/tests/DbspecRenderTest.php",

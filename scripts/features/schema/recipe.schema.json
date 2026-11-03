@@ -690,6 +690,11 @@
             "error": {
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "message_suffix": {
+              "description": "The text that the message of the error ends with.",
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -811,6 +816,7 @@
             "events.fail_subscriber",
             "events.stop_failing",
             "events.unsubscribe",
+            "utils.run",
             "events.captured",
             "planner.compile",
             "dbspec.parse",
@@ -1010,6 +1016,9 @@
         },
         {
           "$ref": "#/$defs/ops/events.unsubscribe"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.run"
         },
         {
           "$ref": "#/$defs/ops/events.captured"
@@ -1996,11 +2005,8 @@
             "$ref": "#/$defs/ref"
           },
           "dialect": {
-            "enum": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ]
+            "type": "string",
+            "description": "A dialect of DBS-174; any other name expects refused."
           },
           "expect": {
             "type": "object",
@@ -2010,20 +2016,37 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "steps"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "steps": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    },
-                    "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "steps"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        },
+                        "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                      }
+                    }
+                  },
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
+                    }
                   }
-                }
+                  }
+                ]
               }
             }
           }
@@ -4043,6 +4066,59 @@
           }
         }
       },
+      "utils.run": {
+        "type": "object",
+        "required": [
+          "op",
+          "statements"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.run"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "tables",
+                "sql"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tables": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "sql": {
+                  "$ref": "#/$defs/sql"
+                },
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              }
+            }
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "events.captured": {
         "type": "object",
         "required": [
@@ -4280,6 +4356,10 @@
               "pattern": "\\.dbs$"
             }
           },
+          "dialect": {
+            "type": "string",
+            "description": "A dialect name that the call refuses (DBS-174); absent renders all three dialects."
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -4288,36 +4368,53 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "mysql",
-                  "postgres",
-                  "sqlite"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "mysql": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "mysql",
+                      "postgres",
+                      "sqlite"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "mysql": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "postgres": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sqlite": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     }
                   },
-                  "postgres": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "sqlite": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
                     }
                   }
-                }
+                  }
+                ]
               }
             }
           }
@@ -5230,6 +5327,29 @@
                             "items": {
                               "type": "string",
                               "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
+                            }
+                          },
+                          "text": {
+                            "type": "object",
+                            "description": "Texts that the generated files of the set hold together, and texts that they do not hold.",
+                            "required": [
+                              "includes",
+                              "excludes"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "includes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "excludes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
                             }
                           }
                         }

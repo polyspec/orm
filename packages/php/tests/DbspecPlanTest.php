@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 // The native plan checks beside tests/dbspec/plan-cases.json (its cases run as the recipe in DbspecPlanCasesTest): the
-// comparison harness of the PHP compare, and the unknown dialect rule (DBS-174), which no public call accepts.
+// comparison harness of the PHP compare.
 
-use InvalidArgumentException;
 use PDO;
 use RuntimeException;
 use Polyspec\Orm\Dbspec\Change;
@@ -71,15 +70,6 @@ class DbspecPlanTest extends TestCase
         self::assertTrue($result[4], 'case plan input is returned');
         self::assertSame($result[0], $result[5], 'case helper returns the same plan');
         self::assertSame('', $result[6], 'valid case input has no diagnostic output');
-    }
-
-    // Requirements: DBS-174.
-    public function testUnknownDialect(): void
-    {
-        $plan = plan_of('plan/unknown-dialect', plan_vectors()['cases'][0]['plan']);
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('oracle');
-        Dbspec::planSteps(null, $plan, 'oracle');
     }
 
     public function testFreshConnectionRulesCoverEveryDatabase(): void

@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Assert;
+use InvalidArgumentException;
 use Polyspec\OrderedJson\Kind;
 use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
@@ -341,6 +342,15 @@ final class Recipe
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
+            if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
+                $plan = self::dbspecBound($step['plan'], $bound);
+                $got = self::dialectRefusal(
+                    $step['dialect'],
+                    static fn() => Dbspec::planSteps($source, $plan, $step['dialect']),
+                );
+                Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+                return;
+            }
             $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
             $steps = $result->steps ?? Assert::fail('plan steps: ' . self::diagnostics($result->diagnostics));
             $got = ['steps' => array_map(static fn(PlanStep $s): array => self::planStepFields($s), $steps)];
@@ -348,6 +358,21 @@ final class Recipe
             Assert::fail("OP_UNKNOWN $op");
         }
         Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+    }
+
+    /**
+     * Runs a call that takes the dialect name and returns {refused: name} when it throws an InvalidArgumentException that
+     * names it (DBS-174).
+     */
+    private static function dialectRefusal(string $name, callable $call): array
+    {
+        try {
+            $call();
+        } catch (InvalidArgumentException $refusal) {
+            Assert::assertStringContainsString($name, $refusal->getMessage());
+            return ['refused' => $name];
+        }
+        Assert::fail("the call accepted the dialect $name");
     }
 
     /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
@@ -706,6 +731,11 @@ final class Recipe
                 return;
             case 'dbspec.render':
                 [, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                if (array_key_exists('dialect', $step)) {
+                    $got = self::dialectRefusal($step['dialect'], static fn() => Dbspec::render($documents, $step['dialect']));
+                    Assert::assertSame($expect, $got, 'refused dialect');
+                    return;
+                }
                 foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
                     $result = Dbspec::render($documents, $dialect);
                     if ($result->diagnostics !== []) {
@@ -2185,6 +2215,27 @@ final class Recipe
             case 'events.unsubscribe':
                 (self::boundValue($s['ref'], $context)->stop)();
                 return [];
+            case 'utils.run':
+                // One Utils::run whose function runs the statements in order on its frame (INT-150); the value is the rows of the last.
+                $rows = self::connectionOf($s, $context)->utils()->run(
+                    static function (TxFrame $frame) use ($s, $context): array {
+                        $last = [];
+                        foreach ($s['statements'] as $statement) {
+                            $text = is_string($statement['sql']) ? $statement['sql'] : $statement['sql'][$context['database']];
+                            $last = $frame->run(
+                                $statement['kind'],
+                                $statement['tables'],
+                                $text,
+                                array_map(self::toValue(...), $statement['params'] ?? []),
+                            );
+                        }
+                        return $last;
+                    }
+                );
+                return ['value' => ['array' => array_map(static fn (array $row): array => ['array' => array_map(
+                    static fn (mixed $cell): array => self::plainWrapper($cell, null),
+                    array_values($row),
+                )], $rows)]];
             case 'events.captured':
                 $subscription = self::boundValue($s['ref'], $context);
                 if ($subscription->recording === null) {
