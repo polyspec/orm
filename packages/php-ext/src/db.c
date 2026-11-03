@@ -3825,6 +3825,34 @@ static bool statement_impl(zval *self, zval *r, zval *out)
     return ok;
 }
 
+/* Db::pagePlanSteps: the steps of the plan of a page request, from the prepare_read that Db::paginate runs. */
+static bool page_plan_steps_impl(zval *self, zval *frame, zval *r, zval *out)
+{
+    if (!unsupported_on_markdown(self, "getPagePlanSteps")) {
+        return false;
+    }
+    zval plan;
+    if (prepare_read(self, frame, r, "read", out, &plan, NULL) != 0) {
+        return false;
+    }
+    array_init(out);
+    zval *st;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(aget(&plan, "steps")), st)
+    {
+        ZVAL_DEREF(st);
+        zval step;
+        array_init(&step);
+        setk(&step, "role", aget(st, "role"));
+        setk(&step, "tables", aget(st, "tables"));
+        setk(&step, "sql", aget(st, "sql"));
+        push(out, &step);
+        zval_ptr_dtor(&step);
+    }
+    ZEND_HASH_FOREACH_END();
+    zval_ptr_dtor(&plan);
+    return true;
+}
+
 /* Db::subscribe: the subscriber joins the connection's subscribers under the next number. The returned closure removes that
  * subscriber. The closure's function is an internal function whose reserved slot holds the number; zend_create_fake_closure
  * copies the function, so each closure keeps its own number. */
@@ -4662,6 +4690,18 @@ ZEND_METHOD(Polyspec_Orm_Db, paginate)
         Z_PARAM_OBJECT_OF_CLASS(r, cls("Polyspec\\Orm\\Request"))
     ZEND_PARSE_PARAMETERS_END();
     if (!paginate_impl(ZEND_THIS, frame, r, return_value)) {
+        RETURN_THROWS();
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, pagePlanSteps)
+{
+    zval *frame, *r;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(frame)
+        Z_PARAM_OBJECT_OF_CLASS(r, cls("Polyspec\\Orm\\Request"))
+    ZEND_PARSE_PARAMETERS_END();
+    if (!page_plan_steps_impl(ZEND_THIS, frame, r, return_value)) {
         RETURN_THROWS();
     }
 }

@@ -395,6 +395,29 @@ go-test-check/cross-runtime: lease-tool python-venv-check php-vendor-check orm-c
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 
+# DSL-159: the plan steps of a page, through the generated terminal of each runtime, on a SQLite case database.
+.PHONY: get-page-plan-steps-check get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
+get-page-plan-steps-check: get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
+get-page-plan-steps-check/go:
+	$(GO_TEST) ./packages/go/complexquery -run '^TestGetPagePlanSteps$$' -count=1
+get-page-plan-steps-check/php: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php/tests/ComplexQueryDbTest.php
+get-page-plan-steps-check/php-extension: php-vendor-check php-models
+	@set -eu; \
+	run_dir="$(abspath .runtime/run)/get-page-plan-steps-php-extension-$$$$"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	mkdir -p "$$run_dir/php-extension"; \
+	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php-ext/tests/ComplexQueryNativeTest.php
+get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
+	$(HOLD_TYPESCRIPT)
+	$(TSC_BUILD)
+	$(NODE) --test --test-name-pattern='getPagePlanSteps' packages/ts/tests/complex-query-request.mjs
+get-page-plan-steps-check/python: python-venv-check
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
+get-page-plan-steps-check/rust: lease-tool
+	cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page -- --exact --test-threads=1
+
 # The DB-independent Go public-plan case exercises the generated Product query and rejects SQLite before execution.
 complex-query-go-plan-check:
 	$(GO_TEST) ./packages/go/complexquery -run '^TestComplexQueryPublicPlan$$' -count=1

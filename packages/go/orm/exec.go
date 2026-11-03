@@ -347,6 +347,34 @@ func getQuery(ex executor, r *request) (*Statement, error) {
 	return &Statement{SQL: st.SQL, Binds: args}, nil
 }
 
+// QueryPlanStep is one statement of a plan: role is main, count or relation, tables are the tables that it reads.
+type QueryPlanStep struct {
+	Role   string
+	Tables []string
+	SQL    string
+}
+
+// pagePlanSteps is the steps of the plan of a page request, from the plan call that paginate runs.
+func pagePlanSteps(ex executor, r *request) ([]QueryPlanStep, error) {
+	d := ex.base()
+	if err := d.unsupportedOnMarkdown("getPagePlanSteps"); err != nil {
+		return nil, err
+	}
+	if err := preparePage(ex, r); err != nil {
+		return nil, err
+	}
+	c, err := d.plan(r)
+	if err != nil {
+		return nil, err
+	}
+	steps := make([]QueryPlanStep, len(c.plan.Steps))
+	for i := range c.plan.Steps {
+		st := &c.plan.Steps[i]
+		steps[i] = QueryPlanStep{Role: st.Role, Tables: slices.Clone(st.Tables), SQL: st.SQL}
+	}
+	return steps, nil
+}
+
 // Execute runs one compiled statement st, a step of a plan of the engine
 // (engine.Engine.Compile, planner.Planner.Compile), with the request
 // parameters params, on the connection or on its active transaction. Its bind
@@ -1154,16 +1182,21 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 }
 
 // paginate runs the page statement with its relations and the count statement.
+// preparePage is what a page does to its request before its plan: the hook of the handle and the check of its lock.
+func preparePage(ex executor, r *request) error {
+	if err := applyRequestHook(ex, r); err != nil {
+		return err
+	}
+	return checkLock(ex, r)
+}
+
 func paginate(ex executor, r *request) (*result, int64, error) {
 	done, err := ex.enter()
 	if err != nil {
 		return nil, 0, err
 	}
 	defer done()
-	if err := applyRequestHook(ex, r); err != nil {
-		return nil, 0, err
-	}
-	if err := checkLock(ex, r); err != nil {
+	if err := preparePage(ex, r); err != nil {
 		return nil, 0, err
 	}
 	d, ctx := ex.base(), ex.context()

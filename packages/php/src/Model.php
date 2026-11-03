@@ -1751,6 +1751,19 @@ abstract class Model implements \JsonSerializable, ModelMetadata
      */
     public function getsPage(int $page, int $perPage): Page
     {
+        [$db, $frame, $q, $r] = $this->pageRequest($page, $perPage);
+        [$plan, $result, $total] = $db->paginate($frame, $r);
+        $items = $q->assemble($db, $r, $plan, $result);
+        return new Page($items, $total, intdiv($total + $perPage - 1, $perPage), $page, $perPage);
+    }
+
+    /**
+     * The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps.
+     *
+     * @return array{0: Db, 1: ?TxFrame, 2: static, 3: Request}
+     */
+    private function pageRequest(int $page, int $perPage): array
+    {
         if ($page < 1 || $perPage < 1) {
             throw new OrmException(Code::CONFIG, 'getsPage requires a positive page and perPage');
         }
@@ -1760,10 +1773,18 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         [$db, $frame] = $this->executor();
         $q = clone $this;
         $q->limit = ['offset' => ($page - 1) * $perPage, 'count' => $perPage];
-        $r = $q->build('paginate', $db);
-        [$plan, $result, $total] = $db->paginate($frame, $r);
-        $items = $q->assemble($db, $r, $plan, $result);
-        return new Page($items, $total, intdiv($total + $perPage - 1, $perPage), $page, $perPage);
+        return [$db, $frame, $q, $q->build('paginate', $db)];
+    }
+
+    /**
+     * The steps of the plan that getsPage runs, in their order, without executing it.
+     *
+     * @return list<array{role: string, tables: list<string>, sql: string}>
+     */
+    public function getPagePlanSteps(int $page, int $perPage): array
+    {
+        [$db, $frame, , $r] = $this->pageRequest($page, $perPage);
+        return $db->pagePlanSteps($frame, $r);
     }
 
     /** @return array{sql: string, binds: list<mixed>} the statement of gets() without executing it */
