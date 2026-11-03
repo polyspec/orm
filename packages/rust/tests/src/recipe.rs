@@ -216,7 +216,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.compile" => return planner_compile(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
-        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
+        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
         }
         "dbspec.parse_emit"
@@ -498,7 +498,7 @@ fn plan_dialect(name: &str) -> Result<Dialect, String> {
     }
 }
 
-/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps,
+/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps, add_tables_steps,
 /// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
 /// of the step is compared, as JSON, with the expect of `database`.
 fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
@@ -533,6 +533,17 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
                 Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
+        }
+        "dbspec.add_tables_steps" => {
+            let source = bound_document(&step["source"], bound)?;
+            let target = bound_document(&step["target"], bound)?;
+            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let result = dbspec::add_tables_and_columns_steps(&source, &[], &target, dialect);
+            serde_json::json!({
+                "added": result.added,
+                "statements": result.steps.iter().map(|s| s.statement.as_str()).collect::<Vec<&str>>(),
+                "differences": result.differences,
+            })
         }
         "dbspec.diff" => {
             let source = optional_document(step, "source", bound)?;
@@ -2528,7 +2539,12 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                    match step["message_contains"].as_str() {
+                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                        _ => orm(error),
+                    }
+                })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }

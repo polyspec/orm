@@ -819,6 +819,7 @@
             "dbspec.compare",
             "dbspec.emit_plan",
             "dbspec.plan_steps",
+            "dbspec.add_tables_steps",
             "utils.aes_status",
             "dbspec.parse_emit",
             "dbspec.manifest",
@@ -929,6 +930,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan_steps"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.add_tables_steps"
         },
         {
           "$ref": "#/$defs/ops/dbspec.chain"
@@ -1252,6 +1256,11 @@
           },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
+          },
+          "message_contains": {
+            "description": "With an expected error: the text that its message holds.",
+            "type": "string",
+            "minLength": 1
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -2133,6 +2142,75 @@
                   }
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.add_tables_steps": {
+        "type": "object",
+        "required": [
+          "op",
+          "source",
+          "target",
+          "dialect",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.add_tables_steps"
+          },
+          "source": {
+            "$ref": "#/$defs/ref",
+            "description": "The installed schema."
+          },
+          "target": {
+            "$ref": "#/$defs/ref",
+            "description": "The newer schema."
+          },
+          "dialect": {
+            "enum": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ]
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "added",
+                  "statements",
+                  "differences"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "added": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "statements": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "differences": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
               }
             }
           }

@@ -78,7 +78,7 @@ final class Recipe
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
-        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain',
+        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
         'dbspec.compare',
     ];
 
@@ -345,6 +345,18 @@ final class Recipe
             ];
         } elseif ($op === 'dbspec.emit_plan') {
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
+        } elseif ($op === 'dbspec.add_tables_steps') {
+            $result = Dbspec::addTablesAndColumnsSteps(
+                self::dbspecBound($step['source'], $bound),
+                [],
+                self::dbspecBound($step['target'], $bound),
+                $step['dialect']
+            );
+            $got = [
+                'added' => $result[0],
+                'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
+                'differences' => $result[2],
+            ];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -2049,9 +2061,14 @@ final class Recipe
                 )->close();
                 return ['value' => ['bool' => true]];
             case 'schema.add_tables_and_columns':
-                $added = $context['db']->utils()->schema()->addTablesAndColumns(
-                    self::schemaArgument($s['schema'], $context),
-                );
+                try {
+                    $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                        self::schemaArgument($s['schema'], $context),
+                    );
+                } catch (\Throwable $error) {
+                    Assert::assertStringContainsString($s['message_contains'] ?? '', $error->getMessage());
+                    throw $error;
+                }
                 return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
             case 'statements.count':
                 $count = 0;

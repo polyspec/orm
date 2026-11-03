@@ -4430,6 +4430,8 @@
       "parity": [
         "generator",
         "php-generator-scan-vector-in-both-php-modes",
+        "php-phpstan-finds-the-query-methods-in-both-php-modes",
+        "generated-external-model-reads-its-table",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -4879,6 +4881,7 @@
         "packages/ts/tests/dbspec-plan-chains.mjs",
         "packages/ts/tests/dbspec-plan-parse.mjs",
         "packages/ts/tests/dbspec-plan-comparisons.mjs",
+        "packages/ts/tests/dbspec-add-tables-steps.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
         "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
@@ -4932,6 +4935,7 @@
         "packages/python/tests/test_dbspec_plan_chains.py",
         "packages/python/tests/test_dbspec_plan_parse.py",
         "packages/python/tests/test_dbspec_plan_comparisons.py",
+        "packages/python/tests/test_dbspec_add_tables_steps.py",
         "packages/python/tests/test_dbspec_analyze.py",
         "packages/python/tests/test_dbspec_set_files.py",
         "packages/python/tests/test_dbspec_show_create.py",
@@ -5146,6 +5150,7 @@
             "packages/ts/tests/dbspec-plan-chains.mjs",
             "packages/ts/tests/dbspec-plan-parse.mjs",
             "packages/ts/tests/dbspec-plan-comparisons.mjs",
+            "packages/ts/tests/dbspec-add-tables-steps.mjs",
             "packages/ts/tests/plan_case.mjs",
             "packages/ts/tests/dbspec-apply-cleanup.mjs",
             "packages/ts/tests/dbspec-unicode.mjs",
@@ -5191,6 +5196,7 @@
             "packages/python/tests/test_dbspec_plan_chains.py",
             "packages/python/tests/test_dbspec_plan_parse.py",
             "packages/python/tests/test_dbspec_plan_comparisons.py",
+            "packages/python/tests/test_dbspec_add_tables_steps.py",
             "packages/python/tests/dbspec_apply.py",
             "packages/python/tests/test_dbspec_analyze.py",
             "packages/python/tests/test_dbspec_set_files.py",
@@ -5629,18 +5635,12 @@
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
         "packages/rust/tests/tests/decimal_physical.rs",
-        "packages/go/orm/add_tables_and_columns_test.go",
-        "packages/php/tests/AddTablesAndColumnsTest.php",
-        "packages/rust/orm/tests/add_tables_and_columns.rs",
-        "packages/ts/tests/add-tables-and-columns.mjs",
         "packages/rust/orm/tests/external_documents.rs",
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_schema_install.py",
         "packages/python/tests/test_schema_install_uses.py",
-        "packages/python/tests/test_add_tables_and_columns.py",
-        "packages/python/tests/test_add_tables_steps.py",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
         "packages/python/tests/schema_inspection.py",
@@ -5708,44 +5708,6 @@
           "inputs": [
             "packages/php/tests/EngineTest.php",
             "tests/ir/validate.json"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestAddTablesAndColumns' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/add_tables_and_columns_test.go",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/AddTablesAndColumnsTest.php",
-            "packages/php/tests/case_database.php",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-typescript",
-          "command": "node packages/ts/tests/add-tables-and-columns.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/add-tables-and-columns.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-add-tables-and-columns-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/add_tables_and_columns.rs",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
@@ -5828,13 +5790,11 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_schema_install.py",
             "packages/python/tests/test_schema_install_uses.py",
-            "packages/python/tests/test_add_tables_and_columns.py",
-            "packages/python/tests/test_add_tables_steps.py",
             "packages/python/tests/test_installed_differences.py",
             "packages/python/tests/test_schema_inspection.py",
             "packages/python/tests/test_schema_utils.py",

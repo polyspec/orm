@@ -306,6 +306,58 @@ caseTest('generated manifest text and hash match', PROCESS, async () => {
   }
 });
 
+// The generated schema value carries the external text at run time: the generated connect registers a set that uses an
+// external document, and the model of a used external table, compiled by tsc, reads a row of that table.
+// Requirements: DBS-110, DBS-173.
+caseTest('generated external model reads its table', PROCESS, async () => {
+  const runDir = join(root, '.runtime/run');
+  await mkdir(runDir, { recursive: true });
+  const consumerDir = await mkdtemp(join(runDir, 'ts-generated-external-'));
+  try {
+    const fixtures = join(root, 'contracts/fixtures/external');
+    await mkdir(join(consumerDir, 'set/core'), { recursive: true });
+    await writeFile(join(consumerDir, 'set/member.dbs'), await readFile(join(fixtures, 'member.dbs'), 'utf8'));
+    await writeFile(join(consumerDir, 'set/core/core.dbs'), await readFile(join(fixtures, 'core.dbs'), 'utf8'));
+    const set = join(consumerDir, 'set/dbspec-set.json');
+    await writeFile(set, JSON.stringify({ schema: 1, documents: ['member.dbs'], external: ['core/core.dbs'] }));
+    const consumer = join(consumerDir, 'consumer.ts');
+    const path = join(consumerDir, 'external.sqlite');
+    await writeFile(consumer, `import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { connect, ExtAccount } from './generated/models.js';
+
+const raw = new DatabaseSync(${JSON.stringify(path)});
+raw.exec("CREATE TABLE ext_account (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)");
+raw.exec("INSERT INTO ext_account (seq, name) VALUES (1, 'kim')");
+raw.close();
+const db = await connect(${JSON.stringify(`sqlite://${path}`)});
+try {
+  const row = await new ExtAccount().connect(db).getBySeq(1);
+  assert.equal(row?.getName(), 'kim');
+} finally {
+  await db.close();
+}
+`);
+    const generated = join(consumerDir, 'generated');
+    const generatedRun = await runLogged('typescript-generated-external-generate', [bin, 'gen', '--set', set, '--out', generated, '--scan', consumer], root);
+    assert.equal(generatedRun.passed, true, generatedRun.output);
+    assert.equal(generatedRun.code, 0, generatedRun.output);
+    const compiled = join(consumerDir, 'compiled');
+    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const checked = await runLogged('typescript-generated-external-compile', [
+      tsc, '--ignoreConfig', '--strict', '--types', 'node', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+      '--rootDir', consumerDir, '--outDir', compiled, consumer,
+    ], root);
+    assert.equal(checked.passed, true, checked.output);
+    assert.equal(checked.code, 0, checked.output);
+    const executed = await runLogged('typescript-generated-external-runtime', [join(compiled, 'consumer.js')], root);
+    assert.equal(executed.passed, true, executed.output);
+    assert.equal(executed.code, 0, executed.output);
+  } finally {
+    await rm(consumerDir, { recursive: true, force: true });
+  }
+});
+
 // writeTextIfChanged (T341-2): a file that already holds the text is left as it is, and a changed file is written to a temporary file of its
 // directory and renamed over the old one, so a reader never sees a partial file.
 function writeIfChangedDirectory() {
