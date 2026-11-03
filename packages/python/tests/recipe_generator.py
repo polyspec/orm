@@ -36,6 +36,7 @@ def _generated_methods(model, root: Path) -> set:
     names = set()
     for node in ast.parse((out / "models.py").read_text(encoding="utf-8")).body:
         if isinstance(node, ast.ClassDef):
+            names.add(_snake(node.name))
             for member in node.body:
                 if isinstance(member, ast.FunctionDef):
                     names.add(f"{_snake(node.name)}.{_without_prefix(member.name)}")
@@ -69,6 +70,9 @@ def _generate(step: dict, recipe_dir: Path, root: Path) -> set:
             model, str(root / before["output"]), [str(root / before["scan"])]
         )
     documents = _document_texts(recipe_dir, [step["schema"]])
+    replace = options.get("schema_replace")
+    if replace is not None:
+        documents = [text.replace(replace["from"], replace["to"]) for text in documents]
     model = model_of_documents(
         parse_document_set(
             documents, _document_texts(recipe_dir, options.get("used", []))
@@ -86,12 +90,21 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
     with tempfile.TemporaryDirectory(prefix="orm-recipe-generator-") as work:
         try:
             names = _generate(step, recipe_dir, Path(work).resolve())
+            text = "".join(
+                file.read_text(encoding="utf-8")
+                for file in sorted((Path(work) / "model").iterdir())
+                if file.is_file()
+            )
         except OrmError as error:
             if "error" not in want:
                 raise
             if error.code != want["error"]:
                 raise AssertionError(
                     f"error code {error.code}, want {want['error']}: {error}"
+                ) from error
+            if "message" in want and want["message"] not in str(error):
+                raise AssertionError(
+                    f"error does not contain {want['message']}: {error}"
                 ) from error
             if (Path(work) / "model").exists():
                 raise AssertionError("a refused generation wrote its output") from error
@@ -110,3 +123,9 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
     for name in want["value"]["excludes"]:
         if name in names:
             raise AssertionError(f"generated code declares {name}")
+    for part in want["value"].get("text", {}).get("includes", []):
+        if part not in text:
+            raise AssertionError(f"generated text lacks {part}")
+    for part in want["value"].get("text", {}).get("excludes", []):
+        if part in text:
+            raise AssertionError(f"generated text holds {part}")

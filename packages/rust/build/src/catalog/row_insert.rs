@@ -36,7 +36,7 @@ impl CatalogConnection {
         let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
         connection.discard_on_drop();
         cancelled(&cancellation)?;
-        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
+        super::begin_session(&mut connection, write_transaction_statement(&self.dialect)).await?;
         let result = async {
             cancelled(&cancellation)?;
             if self.dialect == "mysql" && keys.is_none() {

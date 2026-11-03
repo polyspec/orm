@@ -83,33 +83,6 @@ func Brands() *model.ProductModel {
 	buildScannedModule(t)
 }
 
-// Requirements: DSL-116.
-func TestStoredColumnNameIsRejectedThroughExportedGenerate(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	write := scannedModule(t)
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Invalid() *model.ProductModel { return model.Product().NewName("x") }
-`)
-	m := namesManifest(t, namesDiagram)
-	if err := Generate(Options{Model: m, OutputDir: "model"}); err != nil {
-		t.Fatal(err)
-	}
-	err := Generate(Options{Model: m, OutputDir: "model", Scan: []string{"./..."}})
-	if err == nil || !strings.Contains(err.Error(), "Name is a column; use SetName") {
-		t.Fatalf("stored-column NewName call error = %v, want column rejection", err)
-	}
-	product := readModelFile(t, "product.go")
-	if !strings.Contains(product, "SetName(") {
-		t.Fatal("generated product model does not expose SetName")
-	}
-	if strings.Contains(product, "NewName(") {
-		t.Fatal("generated product model exposes NewName for its stored name column")
-	}
-}
-
 // Requirements: DBS-112, DBS-114, INT-66.
 // TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
 // an external consumer that compiles against either the current or corrected getter signature.
@@ -151,9 +124,6 @@ func TestPriceGetterSelection(t *testing.T) {
 }
 `)
 	generateModel(t, namesManifest(t, namesDiagram))
-	if strings.Contains(readModelFile(t, "product.go"), "//nolint") {
-		t.Fatal("generated model carries a Go lint suppression")
-	}
 	testScannedModule(t)
 }
 
@@ -259,58 +229,6 @@ func Title() string { return other.Product().Title() }
 	product := readModelFile(t, "product.go")
 	if strings.Contains(string(product), "Title") {
 		t.Fatal("a method of another package's Product result was generated on ProductModel")
-	}
-	buildScannedModule(t)
-}
-
-// fixtureDocument reads a document of contracts/fixtures/external. It must run
-// before scannedModule, which changes the working directory.
-func fixtureDocument(t *testing.T, name string) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "external", name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
-
-// TestGoExternalModelsWithoutCallsAreWritten checks that a used external table keeps its model when no scanned source
-// calls it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it, and the source
-// calls ExtNote only.
-// Requirements: DBS-173.
-func TestGoExternalModelsWithoutCallsAreWritten(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	note := `dbspec 1 ext_note
-
-use ext_core { ext_session }
-
-table ext_note {
-  seq i64 identity
-  title varchar(191)
-  primary key (seq)
-}
-`
-	core := fixtureDocument(t, "core.dbs")
-	write := scannedModule(t)
-	m, diagnostics := runtimemodel.LoadSet(note, core)
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
-	}
-	write("example/example.go", `package example
-
-import "example.com/ormexample/model"
-
-func Load() {
-	_ = model.ExtNote()
-}
-`)
-	if err := generateGo(m, "model", "", []string{"./example"}); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"ext_session.go"} {
-		if _, err := os.Stat(filepath.Join("model", name)); err != nil {
-			t.Errorf("no model for the used external table of %s that no source calls: %v", name, err)
-		}
 	}
 	buildScannedModule(t)
 }

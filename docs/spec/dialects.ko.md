@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: d72944f3f749034a9bb25d61f82b5031e08839c1c6fe5f1b5e652f0746b292e8 -->
+<!-- source-sha256: 8aa8f33dffe0e7e6b15e8928436d0fbbbb85d40c6a7d5a6d4bb0fa05c4c583aa -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -395,7 +395,7 @@ markdown executor의 표면과 그 판정은 `tests/markdown/flowmark.version`�
 - **DIA-182** `orderByRandom` — 결과: 지원; 규칙: 순서에 seed를 쓰지 않는다
 - **DIA-183** audit 값을 가진 transaction — 결과: `CAPABILITY_UNSUPPORTED`
 - **DIA-184** `isolation`, `timeoutMs` option — 결과: `CAPABILITY_UNSUPPORTED`
-- **DIA-185** `getQuery()`, statement event, `subscribe()` — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: SQL 텍스트가 없다
+- **DIA-185** `getQuery()`, `getPagePlanSteps()`, statement event, `subscribe()` — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: SQL 텍스트가 없다
 - **DIA-186** `force_index` — 결과: `CAPABILITY_UNSUPPORTED`; 규칙: index는 이름을 지정하지 않고 파생된다
 - **DIA-187** `fulltext` — 결과: `OPERATOR_NOT_ALLOWED`; 규칙: SQLite는 table에 full-text index가 없다(orm dialects.md)
 - **DIA-188** lock, local setting, privilege, AES rotation utility — 결과: `CAPABILITY_UNSUPPORTED`

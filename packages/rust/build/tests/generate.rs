@@ -95,40 +95,6 @@ fn generates_called_methods() {
 }
 
 #[test]
-// Requirements: DSL-116.
-fn stored_column_name_is_rejected_as_an_output_name() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let setter = generate_with_schema(bench(), "fn main() { let _ = Author::new().set_name(\"stored\"); }").unwrap();
-    assert!(setter.contains("pub fn set_name"), "{setter}");
-
-    let error = generate_with_schema(bench(), "fn main() { let _ = Author::new().new_name(\"alias\"); }")
-        .expect_err("a stored column cannot be attached as an output-only name");
-    assert!(error.contains("name is a column name"), "{error}");
-}
-
-#[test]
-// Requirements: DSL-127, DSL-130, PLN-22.
-fn column_names_of_the_model_rules_are_rejected_through_the_builder() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for (column, reason) in [
-        ("create", "column name is a reserved method name: create"),
-        ("delete", "column name is a reserved method name: delete"),
-        ("restore", "column name is a reserved method name: restore"),
-        ("random", "column name is a reserved method name: random"),
-        ("price_gt_limit", "column name may not contain the segment \"gt\": price_gt_limit"),
-        ("with_tax", "column name may not contain the segment \"with\": with_tax"),
-    ] {
-        let document = format!("dbspec 1 names\n\ntable item {{\n  seq i64 identity\n  {column} i32\n  primary key (seq)\n}}\n");
-        let error = generate_with_document(&document, "fn main() {}").expect_err(column);
-        assert!(error.contains(&format!("item.{column}: {reason}")), "{column}: {error}");
-    }
-    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  min_price i32\n  primary key (seq)\n}\n";
-    generate_with_document(document, "fn main() {}").expect("a column name that only contains a rule word as text is accepted");
-    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  restored_at i32\n  primary key (seq)\n}\n";
-    generate_with_document(document, "fn main() {}").expect("a column name that only begins with a method name is accepted");
-}
-
-#[test]
 // Requirements: DSL-33, PRT-75.
 fn generates_fulltext_boolean_methods_for_multiple_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -212,14 +178,6 @@ fn rejects_unknown_names_of_a_known_model() {
     let err = generate("fn main() {\n    ZoneEvent::new().and_lk_start_dt(\"x\").name(\"y\");\n}\n").unwrap_err();
     assert!(err.contains("main.rs:2:22: ZoneEvent has no method and_lk_start_dt"), "{err}");
     assert!(err.contains("main.rs:2:43: ZoneEvent has no method name"), "{err}");
-}
-
-#[test]
-// The test of DSL-37 (docs/spec).
-fn rejects_argument_count() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let err = generate("fn main() { let x = ZoneEvent::new(); x.seq(1, 2); }").unwrap_err();
-    assert!(err.contains("ZoneEvent::seq takes 1 values, not 2"), "{err}");
 }
 
 #[test]
@@ -364,17 +322,6 @@ fn generated_field_types_follow_the_runtime_model() {
 }
 
 #[test]
-// Requirements: DSL-129.
-fn generated_method_collision_is_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let document = "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n";
-    let error = generate_with_document(document, "fn main() { let _ = Item::new().sum_amount(); }")
-        .expect_err("the condition method must not shadow the generated aggregate");
-    assert!(error.contains("item.sum_amount"), "{error}");
-    assert!(error.contains("fixed method"), "{error}");
-}
-
-#[test]
 fn styled_setter_result_handling_preserves_model_calls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
@@ -461,31 +408,6 @@ fn relation_getters_report_a_mismatched_relation_value() {
     }
 }
 
-/// A set that uses an external document (`uses`) makes models for the tables it owns and read-only models
-/// for the tables it uses from external documents, none for an unused external table, and carries the
-/// text of the used tables in the schema value.
-// Requirements: DBS-101, DBS-104, DBS-110.
-#[test]
-fn generation_leaves_external_tables_out() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let fixtures = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let set = set_file(&dir, &[fixtures.join("member.dbs")], &[fixtures.join("core.dbs")]);
-    let out = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate();
-    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
-    remove_test_dir(&dir);
-    let text = text.or_panic(|e| format!("generate: {e}"));
-    assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
-    assert!(text.contains("pub struct ExtAccount ") && text.contains("pub struct ExtAudit "), "the used external tables have models");
-    assert!(!text.contains("pub struct ExtSession "), "the unused external table ext_session has a model");
-    assert!(text.contains("polyspec_orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
-    let external = external.or_panic(|e| format!("orm_external.dbs: {e}"));
-    assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
-    assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
-}
-
 /// The same source and schema give the same generated source however the scan and output path are written (relative to the package directory, absolute,
 /// a path with `./`, or a path with a trailing `/`).
 #[test]
@@ -540,26 +462,6 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
 }
 
-/// The text of the impl block of the model `name`, from its header to the next impl block.
-fn impl_of<'a>(text: &'a str, name: &str) -> &'a str {
-    let header = format!("impl {name} {{");
-    let start = text.find(&header).unwrap_or_else(|| panic!("no impl block of {name}"));
-    let rest = &text[start + header.len()..];
-    let end = rest.find("\nimpl ").unwrap_or(rest.len());
-    &rest[..end]
-}
-
-#[test]
-// Requirements: DSL-154.
-fn key_prefix_methods_come_from_the_schema_without_a_scan() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    // The source calls no method of a model, so every method of a key prefix comes from the schema (T156).
-    let schema = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit_columns.dbs");
-    let text = generate_with_schema(schema, "fn main() {}\n").unwrap();
-    assert!(impl_of(&text, "Card").contains("pub fn audit_seq<"), "Card lacks audit_seq, the prefix of ix_card_audit");
-    assert!(impl_of(&text, "CardHistory").contains("pub fn seq<"), "CardHistory lacks seq, the prefix of ix_card_history_row");
-}
-
 /// The check of the generated files (orm-gen gen --check of the Go module): it reports no line for the current
 /// files, reports a changed and a missing file, and writes nothing.
 // Requirements: DBS-175.
@@ -605,32 +507,6 @@ fn check_keeps_the_output_directory_on_generation_error() {
     remove_test_dir(&dir);
     assert!(err.is_err(), "a call the schema does not allow must fail the check");
     assert!(!created, "the check created the output directory");
-}
-
-/// Requirements: DBS-173. The used table of an external document keeps its model when no scanned source calls it and no
-/// owned table references it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it,
-/// and the source calls ExtNote only.
-#[test]
-fn unused_external_tables_keep_their_models() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), "fn main() { let _ = ExtNote::new(); }").unwrap();
-    let note = dir.join("note.dbs");
-    std::fs::write(
-        &note,
-        "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n",
-    )
-    .unwrap();
-    let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
-    let set = set_file(&dir, &[note], &[external.join("core.dbs")]);
-    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
-    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    remove_test_dir(&dir);
-    let text = text.or_panic(|e| format!("generate: {e}"));
-    assert!(text.contains("pub struct ExtSession "), "a used external table that no source calls has no model");
 }
 
 #[test]

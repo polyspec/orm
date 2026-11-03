@@ -15,7 +15,7 @@ pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let n = NEXT.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!("orm-recipe-generator-{}-{n}", std::process::id()));
     let result = generate(step, dir, &root);
-    let outcome = if result.is_err() && root.join("model").exists() { Err("a refused generation wrote its output".to_string()) } else { compare(want, result) };
+    let outcome = if result.is_err() && root.join("model").exists() { Err("a refused generation wrote its output".to_string()) } else { compare(want, result).and_then(|()| compare_text(want, &root)) };
     std::fs::remove_dir_all(&root).map_err(|e| format!("remove {}: {e}", root.display()))?;
     outcome
 }
@@ -29,6 +29,11 @@ fn compare(want: &Value, result: Result<BTreeSet<String>, String>) -> Result<(),
         };
         if !message.starts_with(&format!("{code}: ")) {
             return Err(format!("error does not start with {code}: {message}"));
+        }
+        if let Some(text) = want["message"].as_str() {
+            if !message.contains(text) {
+                return Err(format!("error does not contain {text:?}: {message}"));
+            }
         }
         if let Some(line) = want["position"]["line"].as_i64() {
             if !message.contains(&format!(".rs:{line}:")) {
@@ -46,6 +51,29 @@ fn compare(want: &Value, result: Result<BTreeSet<String>, String>) -> Result<(),
     for name in want["value"]["excludes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
         if names.contains(name) {
             return Err(format!("generated code declares {name}"));
+        }
+    }
+    Ok(())
+}
+
+/// Compares the generated files of the set with the texts of the expect.
+fn compare_text(want: &Value, root: &Path) -> Result<(), String> {
+    let wanted = &want["value"]["text"];
+    if wanted.is_null() {
+        return Ok(());
+    }
+    let mut text = String::new();
+    for entry in std::fs::read_dir(root.join("model")).map_err(|e| e.to_string())? {
+        text.push_str(&std::fs::read_to_string(entry.map_err(|e| e.to_string())?.path()).map_err(|e| e.to_string())?);
+    }
+    for part in wanted["includes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if !text.contains(part) {
+            return Err(format!("generated text lacks {part}"));
+        }
+    }
+    for part in wanted["excludes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if text.contains(part) {
+            return Err(format!("generated text holds {part}"));
         }
     }
     Ok(())
@@ -70,6 +98,12 @@ fn generate(step: &Value, dir: &Path, root: &Path) -> Result<BTreeSet<String>, S
     let schema = step["schema"].as_str().ok_or("generator.generate needs a schema")?;
     let used: Vec<&str> = options["used"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
     let set = set_file(&root.join(".set"), dir, &[schema], &used)?;
+    if let Some(from) = options["schema_replace"]["from"].as_str() {
+        let to = options["schema_replace"]["to"].as_str().unwrap_or_default();
+        let document = set.with_file_name(file_name(schema));
+        let text = std::fs::read_to_string(&document).map_err(|e| e.to_string())?;
+        std::fs::write(&document, text.replace(from, to)).map_err(|e| e.to_string())?;
+    }
     let path = polyspec_orm_build::Builder::set(set).scan(root).out_dir(root.join("model")).try_generate()?;
     let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
     Ok(generated_methods(&text))
@@ -80,14 +114,20 @@ fn set_file(at: &Path, dir: &Path, documents: &[&str], external: &[&str]) -> Res
     for (group, names) in [("set", documents), ("external", external)] {
         std::fs::create_dir_all(at.join(group)).map_err(|e| e.to_string())?;
         for name in names {
-            std::fs::copy(dir.join(name), at.join(group).join(name)).map_err(|e| format!("{name}: {e}"))?;
+            std::fs::copy(dir.join(name), at.join(group).join(file_name(name))).map_err(|e| format!("{name}: {e}"))?;
         }
     }
-    let external: Vec<String> = external.iter().map(|name| format!("../external/{name}")).collect();
+    let documents: Vec<&str> = documents.iter().map(|name| file_name(name)).collect();
+    let external: Vec<String> = external.iter().map(|name| format!("../external/{}", file_name(name))).collect();
     let set = at.join("set/dbspec-set.json");
     let text = serde_json::json!({"schema": 1, "documents": documents, "external": external}).to_string();
     std::fs::write(&set, text).map_err(|e| e.to_string())?;
     Ok(set)
+}
+
+/// The file name of a document that the recipe names relative to its directory.
+fn file_name(path: &str) -> &str {
+    path.rsplit('/').next().unwrap_or(path)
 }
 
 /// The methods of each generated model as table.name, without the language prefix of the name (FCV-4).
@@ -96,6 +136,7 @@ fn generated_methods(text: &str) -> BTreeSet<String> {
     for section in text.split("pub struct ").skip(1) {
         let model = section.split(|c: char| !c.is_alphanumeric()).next().unwrap_or_default();
         let table = snake(model);
+        names.insert(table.clone());
         for piece in section.split("pub fn ").skip(1) {
             let method = piece.split(|c: char| !c.is_alphanumeric() && c != '_').next().unwrap_or_default();
             names.insert(format!("{table}.{}", without_prefix(method)));

@@ -9,11 +9,15 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Assert;
+use InvalidArgumentException;
 use Polyspec\OrderedJson\Kind;
 use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogColumn;
+use Polyspec\Orm\Chain;
+use Polyspec\Orm\Collection;
 use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\CatalogResult;
 use Polyspec\Orm\CatalogTablePage;
@@ -28,6 +32,7 @@ use Polyspec\Orm\Dbspec\Difference;
 use Polyspec\Orm\Dbspec\Plan;
 use Polyspec\Orm\Dbspec\PlanStep;
 use Polyspec\Orm\Engine;
+use Polyspec\Orm\Func;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
@@ -37,6 +42,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\TxFrame;
 use Polyspec\Orm\Validator;
 use RuntimeException;
 
@@ -60,23 +66,10 @@ final class Recipe
         'model.restore',
         'model.save',
         'model.update',
-    ];
-
-    /** The table models of the statement-event fixture that have no generated class: each names its table (FCV-4). */
-    public const TABLE_MODELS = [
-        'EventProbe' => 'event_probe',
-        'HookItem' => 'hook_item',
-        'HookEntry' => 'hook_entry',
-        'HookUpsert' => 'hook_upsert',
-        'RotRow' => 'rot_row',
-        'ChunkAuthor' => 'chunk_author',
-        'ChunkPair' => 'chunk_pair',
-        'Item' => 'item',
-        'Card' => 'card',
-        'Tag' => 'tag',
-        'Membership' => 'membership',
-        'Label' => 'label',
-        'Audit' => 'audit',
+        'model.chain',
+        'utils.lock',
+        'utils.set_local',
+        'utils.local',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -149,6 +142,14 @@ final class Recipe
                 }
                 if ($step['op'] === 'dsn.connect') {
                     self::dsnConnectStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'keyring.versions') {
+                    self::keyringVersionsStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.builder') {
+                    self::markdownBuilderStep($step, $database);
                     continue;
                 }
                 if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
@@ -345,6 +346,15 @@ final class Recipe
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
+            if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
+                $plan = self::dbspecBound($step['plan'], $bound);
+                $got = self::dialectRefusal(
+                    $step['dialect'],
+                    static fn() => Dbspec::planSteps($source, $plan, $step['dialect']),
+                );
+                Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+                return;
+            }
             $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
             $steps = $result->steps ?? Assert::fail('plan steps: ' . self::diagnostics($result->diagnostics));
             $got = ['steps' => array_map(static fn(PlanStep $s): array => self::planStepFields($s), $steps)];
@@ -352,6 +362,21 @@ final class Recipe
             Assert::fail("OP_UNKNOWN $op");
         }
         Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+    }
+
+    /**
+     * Runs a call that takes the dialect name and returns {refused: name} when it throws an InvalidArgumentException that
+     * names it (DBS-174).
+     */
+    private static function dialectRefusal(string $name, callable $call): array
+    {
+        try {
+            $call();
+        } catch (InvalidArgumentException $refusal) {
+            Assert::assertStringContainsString($name, $refusal->getMessage());
+            return ['refused' => $name];
+        }
+        Assert::fail("the call accepted the dialect $name");
     }
 
     /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
@@ -534,11 +559,24 @@ final class Recipe
         throw new \RuntimeException('the listener received no request message');
     }
 
-    /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */
+    /**
+     * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+     * driver: the one implementation of dsn.connect (FCV-4).
+     */
     private static function connectDriver(string $dsn): string
     {
         $db = Orm::connect($dsn, new Config());
         try {
+            $rows = $db->utils()->run(
+                static fn (TxFrame $frame): array => $frame->run(
+                    StatementEvent::UTILITY,
+                    [],
+                    'SELECT 1',
+                ),
+            );
+            Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
+            Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
+            Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             return $db->driver();
         } finally {
             $db->close();
@@ -733,6 +771,11 @@ final class Recipe
                 return;
             case 'dbspec.render':
                 [, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                if (array_key_exists('dialect', $step)) {
+                    $got = self::dialectRefusal($step['dialect'], static fn() => Dbspec::render($documents, $step['dialect']));
+                    Assert::assertSame($expect, $got, 'refused dialect');
+                    return;
+                }
                 foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
                     $result = Dbspec::render($documents, $dialect);
                     if ($result->diagnostics !== []) {
@@ -1227,6 +1270,55 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
+     * versions (INT-74, INT-130), against the expect of database.
+     */
+    private static function keyringVersionsStep(array $step, string $database): void
+    {
+        $expect = $step['expect'][$database];
+        try {
+            $keyring = self::aesKeyring($step['keyring']);
+        } catch (OrmException $error) {
+            Assert::assertSame($expect['error'] ?? null, $error->code_, 'the error of the keyring');
+            return;
+        }
+        Assert::assertArrayNotHasKey('error', $expect, 'the keyring was built');
+        Assert::assertSame($expect['current'], $keyring->currentVersion, 'the current version');
+        Assert::assertSame($expect['versions'], $keyring->versions(), 'the versions');
+    }
+
+    /**
+     * Runs one markdown.builder step (FCV-4): the builder calls on the slots model, then getCount, on the listener of
+     * sendFirst. The terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+     */
+    private static function markdownBuilderStep(array $step, string $database): void
+    {
+        self::loadBindModels();
+        $caught = null;
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step, &$caught): void {
+            $model = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db);
+            try {
+                foreach ($step['calls'] as $call) {
+                    $model = match ($call) {
+                        'limit_zero_count' => $model->limit(0, 0),
+                        'limit_negative_offset' => $model->limit(-1, 1),
+                        'empty_i64_list' => $model->i64Value([]),
+                        'empty_varchar_list' => $model->varcharValue([]),
+                    };
+                }
+                $model->getCount();
+            } catch (OrmException $error) {
+                $caught = $error;
+                throw $error;
+            }
+        });
+        Assert::assertNull($message, 'the terminal sent a message before its error');
+        $expect = $step['expect'][$database];
+        Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
+        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
     }
 
     /**
@@ -1776,6 +1868,7 @@ final class Recipe
                 'dsn' => $dsn,
                 'schema' => $schema,
                 'fixture' => dirname(__DIR__, 3) . '/' . $recipe['fixture'],
+                'tablePath' => $recipe['fixture'] !== self::GENERATED_FIXTURE,
                 'bound' => ['database' => ['text' => $name]],
                 'db' => $db,
                 'schema' => $schema,
@@ -1879,9 +1972,6 @@ final class Recipe
             $context['bound'][$step['as']] = array_key_exists('bind', $actual)
                 ? $actual['bind']
                 : ($actual['value'] ?? null);
-            if (isset($actual['row'])) {
-                $context['rows'][$step['as']] = $actual['row'];
-            }
             $context['fields'][$step['as']] = $actual;
         }
         if ($expected === null) {
@@ -1894,6 +1984,11 @@ final class Recipe
         foreach (array_keys($expected) as $key) {
             $compared[$key] = $actual[$key] ?? null;
         }
+        if (array_key_exists('json', $expected)) {
+            // A JSON object has no member order, and a PHP array compares its keys in order.
+            $expected['json'] = self::sortedMembers($expected['json']);
+            $compared['json'] = self::sortedMembers($compared['json']);
+        }
         $want = self::normalizedNull($expected);
         $got = self::normalizedNull($compared);
         if ($want !== $got) {
@@ -1902,6 +1997,19 @@ final class Recipe
                     . ', got ' . json_encode($got, JSON_UNESCAPED_UNICODE)
             );
         }
+    }
+
+    /** The value with the members of every object sorted by name. */
+    private static function sortedMembers(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+        $out = array_map(self::sortedMembers(...), $value);
+        if (!array_is_list($out)) {
+            ksort($out);
+        }
+        return $out;
     }
 
     /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
@@ -2068,6 +2176,34 @@ final class Recipe
                         $s['page_with']['order_by'],
                         $page->hasMore,
                     );
+                    if (isset($s['page_with']['column_name'])) {
+                        $columns = $page->metadata->columns;
+                        $first = $columns[0];
+                        $columns[0] = new CatalogColumn(
+                            $s['page_with']['column_name'],
+                            $first->nativeType,
+                            $first->nullable,
+                            $first->generated,
+                            $first->automaticKey,
+                            $first->defaultExpression,
+                            $first->expressionDefault,
+                            $first->checkPrecision,
+                        );
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $columns,
+                                $page->metadata->primaryKey,
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2112,6 +2248,27 @@ final class Recipe
             case 'events.unsubscribe':
                 (self::boundValue($s['ref'], $context)->stop)();
                 return [];
+            case 'utils.run':
+                // One Utils::run whose function runs the statements in order on its frame (INT-150); the value is the rows of the last.
+                $rows = self::connectionOf($s, $context)->utils()->run(
+                    static function (TxFrame $frame) use ($s, $context): array {
+                        $last = [];
+                        foreach ($s['statements'] as $statement) {
+                            $text = is_string($statement['sql']) ? $statement['sql'] : $statement['sql'][$context['database']];
+                            $last = $frame->run(
+                                $statement['kind'],
+                                $statement['tables'],
+                                $text,
+                                array_map(self::toValue(...), $statement['params'] ?? []),
+                            );
+                        }
+                        return $last;
+                    }
+                );
+                return ['value' => ['array' => array_map(static fn (array $row): array => ['array' => array_map(
+                    static fn (mixed $cell): array => self::plainWrapper($cell, null),
+                    array_values($row),
+                )], $rows)]];
             case 'events.captured':
                 $subscription = self::boundValue($s['ref'], $context);
                 if ($subscription->recording === null) {
@@ -2121,6 +2278,13 @@ final class Recipe
                     throw new RuntimeException('an event has a negative elapsed time');
                 }
                 $events = self::capturedEvents($subscription->recording->events, $s['compare'] ?? '');
+                // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
+                foreach ($s['masks'][$context['database']] ?? [] as $mask) {
+                    if (!isset($events[$mask['event']]['object'][1][1]['array'][$mask['bind']])) {
+                        Assert::fail('mask ' . json_encode($mask) . ' names no captured bind');
+                    }
+                    $events[$mask['event']]['object'][1][1]['array'][$mask['bind']] = ['text' => $mask['value']];
+                }
                 if (($s['compare'] ?? '') === 'statements') {
                     // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
                     $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
@@ -2200,8 +2364,11 @@ final class Recipe
                     }
                     try {
                         $pdo->exec($statement);
-                    } catch (\PDOException) {
-                        // Any driver error of the refused statement passes.
+                    } catch (\PDOException $error) {
+                        // Any driver error of the refused statement passes, unless the step names its text.
+                        if (isset($s['refused_message'])) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        }
                         return [];
                     }
                     throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");
@@ -2289,13 +2456,17 @@ final class Recipe
         foreach ($set['documents'] as $name) {
             $documents[$name] = (string) file_get_contents(dirname($setPath) . '/' . $name);
         }
+        $external = [];
+        foreach ($set['external'] ?? [] as $name) {
+            $external[$name] = (string) file_get_contents(dirname($setPath) . '/' . $name);
+        }
         $work = sys_get_temp_dir() . '/orm-php-recipe-models-' . getmypid() . '-' . $key;
         is_dir($work) || mkdir($work, 0o700, true);
         register_shutdown_function(static function () use ($work): void {
             exec('rm -rf ' . escapeshellarg($work));
         });
         $namespace = 'Polyspec\\Orm\\Tests\\RecipeModels\\F' . substr($key, 0, 12);
-        generateModels($documents, "$work/source", "$work/models", $namespace);
+        generateModels($documents, "$work/source", "$work/models", $namespace, $external);
         requireGeneratedClasses("$work/models");
         require_once "$work/models/bootstrap.php";
         return self::$modelNamespaces[$key] = $namespace;
@@ -2305,109 +2476,6 @@ final class Recipe
     private static function pascal(string $name): string
     {
         return implode('', array_map(ucfirst(...), explode('_', $name)));
-    }
-
-    /** A model of a table model of the fixture, of the class that the generator gives its table, connected to db. */
-    private static function tableModel(string $model, Db $db, array $context): Model
-    {
-        if (!isset(self::TABLE_MODELS[$model])) {
-            Assert::fail("model $model has no table entry");
-        }
-        return self::newRow(self::TABLE_MODELS[$model], $db, $context);
-    }
-
-    /** Sets the columns of an object of recipe wrappers on a generated model by its setters. */
-    private static function setValues(Model $model, array $raw, array $context): Model
-    {
-        return self::setColumns($model, self::mapAssignments($raw, $context));
-    }
-
-    /** Adds the equalities of the where object to a generated model by its column filters, ANDed. */
-    private static function whereOf(Model $model, array $raw, array $context): Model
-    {
-        $first = true;
-        foreach (self::mapAssignments($raw, $context) as $name => $value) {
-            $method = ($first ? '' : 'and') . self::pascal((string) $name);
-            $model->$method($value);
-            $first = false;
-        }
-        return $model;
-    }
-
-    /** A model.query step: the rows of the parent, each with the columns of its relation child when one is named. */
-    private static function queryOp(array $s, array $context): array
-    {
-        $db = self::connectionOf($s, $context);
-        $parent = self::whereOf(self::tableModel($s['model'], $db, $context), $s['where'] ?? [], $context);
-        foreach ($s['order'] ?? [] as $column) {
-            $order = 'orderBy' . self::pascal($column) . 'Asc';
-            $parent->$order();
-        }
-        $rel = $s['relation'] ?? null;
-        if ($rel !== null) {
-            $child = self::tableModel($rel['model'], $db, $context);
-            foreach ($rel['match'] as [$left, $right]) {
-                $match = 'match' . self::pascal($left) . 'With' . self::pascal($right);
-                $child->$match();
-            }
-            if ($rel['many']) {
-                $parent->relations($child);
-            } else {
-                $parent->relation($child);
-            }
-        }
-        $offset = $s['offset'] ?? 0;
-        $limit = $s['limit'] ?? 0;
-        $paged = ($s['page'] ?? false) === true;
-        $page = null;
-        if ($paged) {
-            if (!($limit > 0)) {
-                Assert::fail('a paged model.query needs a limit above 0');
-            }
-            $page = $parent->getsPage(intdiv($offset, $limit) + 1, $limit);
-            $parents = [];
-            foreach ($page->items as $row) {
-                $parents[] = $row;
-            }
-        } else {
-            // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
-            if ($limit > 0) {
-                $parent->limit($offset, $limit);
-            }
-            $parents = [];
-            foreach ($parent->gets() as $row) {
-                $parents[] = $row;
-            }
-        }
-        $rows = [];
-        foreach ($parents as $row) {
-            $own = self::project($row, $s['columns']);
-            if ($rel === null) {
-                $rows[] = $own;
-                continue;
-            }
-            foreach (self::relatedRows($row, $rel) as $childRow) {
-                $rows[] = [...$own, ...self::project($childRow, $rel['columns'])];
-            }
-        }
-        return $paged ? ['rows' => $rows, 'total' => $page->totalCount] : ['rows' => $rows];
-    }
-
-    /** The child rows that the relation of a parent read attached: each child of a many relation, or the one child. */
-    private static function relatedRows(Model $parent, array $rel): array
-    {
-        $name = self::pascal(self::TABLE_MODELS[$rel['model']]);
-        if ($rel['many']) {
-            $get = 'get' . $name . 'Models';
-            $out = [];
-            foreach ($parent->$get() as $child) {
-                $out[] = $child;
-            }
-            return $out;
-        }
-        $get = 'get' . $name . 'Model';
-        $child = $parent->$get();
-        return $child === null ? [] : [$child];
     }
 
     /** The cells of the columns of a loaded model, each with the recipe wrapper of its value (FCV-4). */
@@ -2649,115 +2717,633 @@ final class Recipe
         return $db;
     }
 
-    /** A model op on a table model of the fixture: the entity that the fixture gives its table (FCV-4). */
+    /** The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4). */
+    private const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
+
+    /** The chain name of a predicate operator of FCV-4, written before its column. */
+    private const OPERATOR_NAMES = [
+        'eq' => '', 'ne' => 'Ne', 'gt' => 'Gt', 'ge' => 'Ge', 'lt' => 'Lt', 'le' => 'Le', 'in' => '', 'not_in' => 'Ne',
+        'between' => 'Between', 'like' => 'Lk', 'binary_like' => 'Lb', 'is_null' => '', 'not_null' => 'Ne',
+    ];
+
+    /** A new model of a model name of the fixture, on no connection (FCV-4). */
+    private static function chainModel(string $model, array $context): Model
+    {
+        $class = self::modelClass($context, Chain::snake($model));
+        return new $class();
+    }
+
+    /** A model of a model name, connected to db. */
+    private static function tableModel(string $model, Db $db, array $context): Model
+    {
+        return self::chainModel($model, $context)->connect($db);
+    }
+
+    /** The native argument of a value wrapper: null, the list of an array, or one value. */
+    private static function chainValue(array $raw, array $context): mixed
+    {
+        return self::nativeValue(self::databaseValue(self::stepArgument($raw, $context), $context));
+    }
+
+    /** The public function of a function call (F5). */
+    private static function chainFunc(array $call): Func
+    {
+        $name = lcfirst(self::pascal($call['fn']));
+        if (!method_exists(Orm::class, $name)) {
+            Assert::fail("function {$call['fn']} has no recipe entry");
+        }
+        $numbers = [];
+        foreach ($call['args'] ?? [] as $arg) {
+            if (isset($arg['int'])) {
+                $numbers[] = (int) $arg['int'];
+            }
+        }
+        return $numbers === [] ? Orm::$name() : Orm::$name($numbers[count($numbers) - 1]);
+    }
+
+    /** The column of a function call on a column. */
+    private static function fnColumn(array $call): string
+    {
+        foreach ($call['args'] ?? [] as $arg) {
+            if (isset($arg['column'])) {
+                return $arg['column'];
+            }
+        }
+        Assert::fail("function {$call['fn']} names no column");
+    }
+
+    /** Calls the chain method of a condition: its connector, then its key. */
+    private static function chainCall(Model $model, string $conn, string $key, array $args): void
+    {
+        $model->{$conn === '' ? lcfirst($key) : $conn . $key}(...$args);
+    }
+
+    /**
+     * Adds the predicate raw to model, joined by conn. $build holds the joined models that its predicates name, and the
+     * enclosing model that an outer reference names.
+     */
+    private static function chainPredicate(Model $model, string $conn, array $raw, object $build, array $context): void
+    {
+        if (count($raw) === 1) {
+            $name = array_key_first($raw);
+            $value = $raw[$name];
+            switch ($name) {
+                case 'chain':
+                    foreach ($value as $i => $item) {
+                        $itemConn = $i === 0 && $item[0] === '' ? $conn : $item[0];
+                        if (count($item) === 1) {
+                            $model->$itemConn();
+                        } else {
+                            self::chainNested($model, $itemConn, $item[1], $build, $context);
+                        }
+                    }
+                    return;
+                case 'and':
+                case 'or':
+                    foreach ($value as $i => $item) {
+                        self::chainNested($model, $i === 0 ? $conn : $name, $item, $build, $context);
+                    }
+                    return;
+                case 'not':
+                    $negated = $conn === '' ? 'not' : $conn . 'Not';
+                    $model->$negated(static function (Model $group) use ($value, $build, $context): void {
+                        self::chainPredicate($group, '', $value, $build, $context);
+                    });
+                    return;
+                case 'placed':
+                    if (!isset($build->joined[$value])) {
+                        Assert::fail("placed $value names no join");
+                    }
+                    $model->{$conn === '' ? 'and' : $conn}($build->joined[$value]);
+                    return;
+                case 'tuple':
+                    [$columns, $rows] = $value;
+                    $key = 'Tuple' . implode('With', array_map(self::pascal(...), $columns));
+                    $values = array_map(static fn (array $row): array => array_map(
+                        static fn (array $item): mixed => self::chainValue($item, $context),
+                        $row,
+                    ), $rows);
+                    self::chainCall($model, $conn, $key, [$values]);
+                    return;
+            }
+        }
+        if (isset($raw['expr'], $raw['cmp'])) {
+            $operator = array_key_first($raw['cmp']);
+            $key = self::OPERATOR_NAMES[$operator] . self::pascal(self::fnColumn($raw['expr']));
+            $args = [self::chainFunc($raw['expr']), self::chainValue($raw['cmp'][$operator], $context)];
+            self::chainCall($model, $conn, $key, $args);
+            return;
+        }
+        $first = true;
+        foreach ($raw as $column => $value) {
+            self::chainLeaf($model, $first ? $conn : 'and', (string) $column, $value, $build, $context);
+            $first = false;
+        }
+    }
+
+    /** A predicate inside a list: an and, an or or a chain opens a group callback of the model. */
+    private static function chainNested(Model $model, string $conn, array $raw, object $build, array $context): void
+    {
+        if (count($raw) === 1 && in_array(array_key_first($raw), ['and', 'or', 'chain'], true)) {
+            $model->{$conn === '' ? 'and' : $conn}(static function (Model $group) use ($raw, $build, $context): void {
+                self::chainPredicate($group, '', $raw, $build, $context);
+            });
+            return;
+        }
+        self::chainPredicate($model, $conn, $raw, $build, $context);
+    }
+
+    /** Adds {column: value} or {column: {operator: operand}}. */
+    private static function chainLeaf(
+        Model $model,
+        string $conn,
+        string $column,
+        array $raw,
+        object $build,
+        array $context,
+    ): void {
+        $name = self::pascal($column);
+        if (count($raw) === 1 && array_key_exists(array_key_first($raw), self::OPERATOR_NAMES)) {
+            $operator = array_key_first($raw);
+            $operand = $raw[$operator];
+            $prefix = self::OPERATOR_NAMES[$operator];
+            if ($operator === 'is_null' || $operator === 'not_null') {
+                self::chainCall($model, $conn, $prefix . $name, [null]);
+            } elseif ($operator === 'between') {
+                $pair = [self::chainValue($operand[0], $context), self::chainValue($operand[1], $context)];
+                self::chainCall($model, $conn, $prefix . $name, [$pair]);
+            } elseif (isset($operand['column'])) {
+                [$ref, $right] = explode('.', $operand['column'], 2);
+                if (!isset($build->joined[$ref])) {
+                    Assert::fail("column operand {$operand['column']} names no join");
+                }
+                $compare = $prefix === '' ? 'Eq' : $prefix;
+                self::chainCall($model, $conn, $name . $compare . self::pascal($right), [$build->joined[$ref]]);
+            } elseif (isset($operand['outer'])) {
+                if ($build->outer === null) {
+                    Assert::fail("outer {$operand['outer']} has no enclosing query");
+                }
+                $compare = $prefix === '' ? 'Eq' : $prefix;
+                self::chainCall($model, $conn, $name . $compare . self::pascal($operand['outer']), [$build->outer]);
+            } elseif (isset($operand['sub'])) {
+                $child = self::chainModel($operand['sub']['model'], $context);
+                self::chainQuery($child, $operand['sub'], self::chainState($build->outer), $context);
+                self::chainCall($model, $conn, $prefix . $name, [$child]);
+            } elseif (isset($operand['fn'])) {
+                self::chainCall($model, $conn, $prefix . $name, [self::chainFunc($operand)]);
+            } else {
+                self::chainCall($model, $conn, $prefix . $name, [self::chainValue($operand, $context)]);
+            }
+            return;
+        }
+        self::chainCall($model, $conn, $name, [self::chainValue($raw, $context)]);
+    }
+
+    /** The state of building one query. */
+    private static function chainState(?Model $outer = null): object
+    {
+        return (object) ['joined' => [], 'outer' => $outer];
+    }
+
+    /** One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name. */
+    private static function chainColumn(Model $model, mixed $entry, array $context): void
+    {
+        if (is_string($entry)) {
+            $model->{'addColumn' . self::pascal($entry)}();
+            return;
+        }
+        $expr = $entry['expr'];
+        if (isset($expr['sub'])) {
+            $sub = $expr['sub'];
+            $method = 'addColumn' . self::pascal($entry['as']);
+            $model->{$method}(static function (Model $outer) use ($sub, $context): Model {
+                $child = self::chainModel($sub['model'], $context);
+                self::chainQuery($child, $sub, self::chainState($outer), $context);
+                return $child;
+            });
+            return;
+        }
+        $method = 'addColumn' . self::pascal(self::fnColumn($expr)) . 'Alias' . self::pascal($entry['as']);
+        $model->{$method}(self::chainFunc($expr));
+    }
+
+    /** Applies the fields of q to model, in the order that a chain writes them. */
+    private static function chainQuery(
+        Model $model,
+        array $q,
+        object $build,
+        array $context,
+        bool $withLimit = true,
+    ): void {
+        $columns = $q['columns'] ?? null;
+        if ($columns === 'all') {
+            $model->addAllColumns();
+        } elseif ($columns !== null) {
+            $model->removeAllColumns();
+            foreach ($columns as $entry) {
+                self::chainColumn($model, $entry, $context);
+            }
+        }
+        foreach ($q['add_columns'] ?? [] as $entry) {
+            self::chainColumn($model, $entry, $context);
+        }
+        foreach ($q['remove_columns'] ?? [] as $column) {
+            $model->{'removeColumn' . self::pascal($column)}();
+        }
+        if (isset($q['aggregate'])) {
+            if (isset($q['aggregate']['column'])) {
+                $model->{$q['aggregate']['agg'] . self::pascal($q['aggregate']['column'])}();
+            }
+            foreach ($q['aggregate']['group_by'] ?? [] as $column) {
+                $model->{'groupBy' . self::pascal($column)}();
+            }
+        }
+        foreach ($q['joins'] ?? [] as $join) {
+            $child = self::chainModel($join['model'], $context);
+            $inner = self::chainState($build->outer);
+            if (isset($join['alias'])) {
+                $child->{'alias' . self::pascal($join['alias'])}();
+            }
+            if (isset($join['on'])) {
+                $on = $join['on'];
+                $child->on(static function (Model $group) use ($on, $inner, $context): void {
+                    self::chainPredicate($group, '', $on, $inner, $context);
+                });
+            }
+            self::chainQuery($child, $join, $inner, $context);
+            $method = (($join['kind'] ?? 'inner') === 'left' ? 'leftJoin' : 'join')
+                . self::pascal($join['match'][0]) . 'With' . self::pascal($join['match'][1]);
+            $model->$method($child);
+            if (isset($join['as'])) {
+                $build->joined[$join['as']] = $child;
+            }
+        }
+        foreach ($q['relations'] ?? [] as $relation) {
+            $child = self::chainRelation($relation, $build, $context);
+            ($relation['many'] ?? false) === true ? $model->relations($child) : $model->relation($child);
+        }
+        if (isset($q['where'])) {
+            self::chainPredicate($model, '', $q['where'], $build, $context);
+        }
+        foreach ($q['order'] ?? [] as $entry) {
+            if (is_string($entry)) {
+                $descending = str_starts_with($entry, '-');
+                $model->{'orderBy' . self::pascal(ltrim($entry, '-')) . ($descending ? 'Desc' : 'Asc')}();
+                continue;
+            }
+            $direction = ($entry['dir'] ?? 'asc') === 'desc' ? 'Desc' : 'Asc';
+            if (isset($entry['fn'])) {
+                $method = 'orderBy' . self::pascal(self::fnColumn($entry['fn'])) . $direction;
+                $model->{$method}(self::chainFunc($entry['fn']));
+            } else {
+                $model->{'orderBy' . self::pascal($entry['column']) . $direction}();
+            }
+        }
+        if ($withLimit && isset($q['limit'])) {
+            is_int($q['limit'])
+                ? $model->limit(0, $q['limit'])
+                : $model->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
+        }
+        if (isset($q['lock'])) {
+            $model->{match ($q['lock']) {
+                'update' => 'forUpdate',
+                'share' => 'forShare',
+                'update_nowait' => 'forUpdateNoWait',
+                'share_nowait' => 'forShareNoWait',
+            }}();
+        }
+    }
+
+    /** The child model of a relation. */
+    private static function chainRelation(array $relation, object $build, array $context): Model
+    {
+        $child = self::chainModel($relation['model'], $context);
+        foreach ($relation['match'] ?? [] as [$left, $right]) {
+            $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
+        }
+        if (isset($relation['alias'])) {
+            $child->{'alias' . self::pascal($relation['alias'])}();
+        }
+        foreach ($relation['possible'] ?? [] as $column => $value) {
+            $child->{'possible' . self::pascal((string) $column)}(self::chainValue($value, $context));
+        }
+        if (($relation['parent_node'] ?? false) === true) {
+            $child->parentNode();
+        }
+        self::chainQuery($child, $relation, self::chainState($build->outer), $context);
+        if (($relation['group_limit'] ?? 0) > 0) {
+            $child->groupLimit($relation['group_limit']);
+        }
+        if (isset($relation['key_by'])) {
+            $child->{'keyName' . self::pascal($relation['key_by'])}();
+        }
+        if (($relation['delete_lock'] ?? false) === true) {
+            $child->deleteLock();
+        }
+        return $child;
+    }
+
+    /** The model of a read: the fields of the step applied. A terminal by runs through chainKey. */
+    private static function chainBuilt(array $s, array $context): Model
+    {
+        // A bound chain is read again: a terminal leaves it as it was (DSL-98).
+        if (isset($s['from'])) {
+            return self::boundValue($s['from'], $context);
+        }
+        $db = self::connectionOf($s, $context);
+        $model = self::tableModel($s['model'], $db, $context);
+        $build = self::chainState();
+        $paged = ($s['page'] ?? false) === true;
+        self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
+        if (!$paged && isset($s['offset'], $s['limit'])) {
+            $model->limit($s['offset'], is_int($s['limit']) ? $s['limit'] : $s['limit']['count']);
+        }
+        if (isset($s['relation'])) {
+            // The columns of this relation are read of each child row; they do not narrow its statement.
+            $relation = $s['relation'];
+            unset($relation['columns']);
+            $child = self::chainRelation($relation, $build, $context);
+            // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
+            $child->connect($db);
+            ($relation['many'] ?? false) === true ? $model->relations($child) : $model->relation($child);
+        }
+        return $model;
+    }
+
+    /** The name and the arguments of the keys of a terminal by, in the written order. */
+    private static function chainKey(array $s, array $context): array
+    {
+        $names = [];
+        $args = [];
+        foreach ($s['key'] as $column => $value) {
+            $names[] = self::pascal((string) $column);
+            $args[] = self::chainValue($value, $context);
+        }
+        return [implode('And', $names), $args];
+    }
+
+    /** The JSON of a row, narrowed to pick when it is named; a missing row is null. */
+    private static function chainRow(?Model $row, ?array $pick): mixed
+    {
+        if ($row === null) {
+            return null;
+        }
+        $values = json_decode($row->toJson(), true, 512, JSON_THROW_ON_ERROR);
+        if ($pick === null || $pick === []) {
+            return $values;
+        }
+        $out = [];
+        foreach ($pick as $name) {
+            if (!array_key_exists($name, $values)) {
+                Assert::fail("the row has no field $name");
+            }
+            $out[$name] = $values[$name];
+        }
+        return $out;
+    }
+
+    /** The expect of the database of the case compares rows of wrappers. */
+    private static function chainWantsRows(array $s, array $context): bool
+    {
+        return isset($s['expect'][$context['database']]['rows']);
+    }
+
+    /** The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation. */
+    private static function chainCells(iterable $parents, array $s): array
+    {
+        $rel = $s['relation'] ?? null;
+        $rows = [];
+        foreach ($parents as $row) {
+            $own = self::project($row, $s['columns']);
+            if ($rel === null) {
+                $rows[] = $own;
+                continue;
+            }
+            foreach (self::relatedRows($row, $rel) as $childRow) {
+                $rows[] = [...$own, ...self::project($childRow, $rel['columns'])];
+            }
+        }
+        return $rows;
+    }
+
+    /** The child rows that the relation of a parent read attached: each child of a many relation, or the one child. */
+    private static function relatedRows(Model $parent, array $rel): array
+    {
+        $name = self::pascal(Chain::snake($rel['model']));
+        if ($rel['many']) {
+            $get = 'get' . $name . 'Models';
+            $out = [];
+            foreach ($parent->$get() as $child) {
+                $out[] = $child;
+            }
+            return $out;
+        }
+        $get = 'get' . $name . 'Model';
+        $child = $parent->$get();
+        return $child === null ? [] : [$child];
+    }
+
+    /** Sets the members of an object of values on a model, in the written order: an arith entry is plus or minus. */
+    private static function chainAssign(Model $model, array $values, array $context): Model
+    {
+        foreach ($values as $column => $value) {
+            $name = self::pascal((string) $column);
+            if (isset($value['arith'])) {
+                $call = ($value['arith']['operation'] === 'minus' ? 'minus' : 'plus') . $name;
+                $model->$call(self::chainValue($value['arith']['amount'], $context));
+            } elseif (isset($value['object'])) {
+                $codec = $model::meta()['columns'][$column]['codec'] ?? [];
+                $model->{'set' . $name}(self::styledArgument($value, $codec, []));
+            } else {
+                $model->{'set' . $name}(self::chainValue($value, $context));
+            }
+        }
+        return $model;
+    }
+
+    /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
+    private static function chainWrite(array $s, array $context, \Closure $terminal): array
+    {
+        $table = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+        $model = self::chainAssign($table, $s['values'] ?? [], $context);
+        foreach ($s['attached'] ?? [] as $name => $value) {
+            $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));
+        }
+        if (isset($s['duplication'])) {
+            $duplicate = self::chainModel($s['model'], $context);
+            $model->duplication(self::chainAssign($duplicate, $s['duplication'], $context));
+        }
+        $row = $terminal($model);
+        $fields = ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        // With columns, the rows expect compares the row that the write returns (INT-38).
+        if (isset($s['columns'])) {
+            $fields['rows'] = self::chainCells([$row], $s);
+        }
+        return $fields;
+    }
+
+    /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
+    private static function chainTarget(array $s, array $context): Model
+    {
+        $model = isset($s['row'])
+            ? self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)
+            : self::chainAssign(
+                self::tableModel($s['model'], self::connectionOf($s, $context), $context),
+                // The key form sets the key on a new model, with no read before it (FCV-4).
+                $s['key'] ?? $s['values'] ?? [],
+                $context,
+            );
+        if (isset($s['revision'])) {
+            $model->expectRevision($s['revision']['column'], self::chainValue($s['revision']['value'], $context));
+        }
+        return $model;
+    }
+
+    private static function countFields(int $n): array
+    {
+        return ['json' => $n, 'value' => ['int' => (string) $n]];
+    }
+
+    /** A model op of a fixture that generates no models: each field maps to one call of the public builder (FCV-4). */
     private static function tableModelOp(array $s, array $context): array
     {
-        $table = self::TABLE_MODELS[$s['model']];
         switch ($s['op']) {
-            case 'model.create':
-                $row = self::newRow($table, self::connectionOf($s, $context), $context);
-                self::setColumns($row, self::mapAssignments($s['values'], $context))->create();
-                // With `as`, the created row is bound with the record of the path and connection that made it.
-                return isset($s['as']) ? ['bind' => $row, 'row' => self::rowRecord($s, $context)] : [];
-            case 'model.get_by':
-                if (isset($s['key'])) {
-                    throw new RuntimeException('model.get_by with key has no table-model path');
-                }
-                $where = self::mapAssignments($s['where'], $context);
-                if (count($where) !== 1) {
-                    throw new RuntimeException('model.get_by names one column of the recipe');
-                }
-                $column = (string) array_key_first($where);
-                $row = self::newRow($table, self::connectionOf($s, $context), $context);
-                return [
-                    'bind' => $row->{'getBy' . self::studly($column)}($where[$column]),
-                    'row' => self::rowRecord($s, $context),
-                ];
-            case 'model.update':
-                // The key form sets the key and the assignments on a new model, with no read before it, so a key
-                // that names no row is an update that matches none (FCV-4).
-                if (isset($s['key'])) {
-                    $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
-                    self::setColumns(
-                        self::setValues($model, $s['key'], $context),
-                        self::mapAssignments($s['set'], $context),
-                    )->update();
-                    return [];
-                }
-                self::setColumns(self::boundValue($s['row'], $context), self::mapAssignments($s['set'], $context))
-                    ->update();
-                return [];
-            case 'model.delete':
-                if (isset($s['row'])) {
-                    self::boundValue($s['row'], $context)->delete();
-                    return [];
-                }
-                $rows = self::whereOf(
-                    self::tableModel($s['model'], self::connectionOf($s, $context), $context),
-                    $s['where'],
-                    $context,
-                )->gets();
-                foreach ($rows as $row) {
-                    $row->delete();
-                }
-                return [];
+            case 'model.chain':
+                return ['bind' => self::chainBuilt($s, $context)];
+            case 'model.query':
+                return self::chainGets($s, $context);
             case 'model.count':
-                if (isset($s['where'])) {
-                    $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
-                    return ['value' => ['int' => (string) self::whereOf($model, $s['where'], $context)->getCount()]];
+                $model = self::chainBuilt($s, $context);
+                if (isset($s['key'])) {
+                    [$name, $args] = self::chainKey($s, $context);
+                    return self::countFields($model->{'getCountBy' . $name}(...$args));
                 }
-                $row = self::newRow($table, self::connectionOf($s, $context), $context);
-                return ['value' => ['int' => (string) $row->getCount()]];
+                return self::countFields($model->getCount());
+            case 'model.get_by':
+                $model = self::chainBuilt($s, $context);
+                if (isset($s['key'])) {
+                    [$name, $args] = self::chainKey($s, $context);
+                    $row = $model->{'getBy' . $name}(...$args);
+                } else {
+                    $row = $model->get();
+                }
+                $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
+                return $row === null ? $fields : ['bind' => $row] + $fields;
+            case 'model.create':
+                $restore = ($s['restore_or_create'] ?? false) === true;
+                return self::chainWrite(
+                    $s,
+                    $context,
+                    static fn (Model $m): Model => $restore ? $m->restoreOrCreate() : $m->create(),
+                );
+            case 'model.duplicate_create':
+                return self::chainWrite($s, $context, static fn (Model $m): Model => $m->create());
+            case 'model.save':
+                return self::chainWrite($s, $context, static fn (Model $m): Model => $m->save());
+            case 'model.restore':
+                return self::chainWrite($s, $context, static fn (Model $m): Model => $m->restore());
             case 'model.creates':
                 $db = self::connectionOf($s, $context);
                 $models = [];
-                foreach ($s['rows'] as $values) {
-                    $models[] = self::setValues(self::tableModel($s['model'], $db, $context), $values, $context);
+                if (isset($s['rows_sequence'])) {
+                    $sequence = $s['rows_sequence'];
+                    for ($i = 0; $i < $sequence['count']; $i++) {
+                        $row = self::chainModel($s['model'], $context);
+                        $row->{'set' . self::pascal($sequence['column'])}($sequence['from'] + $i);
+                        $models[] = self::chainAssign($row, $sequence['values'] ?? [], $context);
+                    }
+                } else {
+                    foreach ($s['rows'] as $values) {
+                        $models[] = self::chainAssign(self::chainModel($s['model'], $context), $values, $context);
+                    }
                 }
-                $count = self::tableModel($s['model'], $db, $context)->creates($models, $s['batch']);
-                return ['value' => ['int' => (string) $count]];
-            case 'model.duplicate_create':
-                $db = self::connectionOf($s, $context);
-                $row = self::setValues(self::tableModel($s['model'], $db, $context), $s['values'], $context);
-                $other = self::tableModel($s['model'], $db, $context);
-                $row->duplication(self::setValues($other, $s['duplication'], $context));
-                $row->create();
+                $table = self::tableModel($s['model'], $db, $context);
+                return self::countFields($table->creates($models, $s['batch'] ?? count($models)));
+            case 'model.update':
+                $model = self::chainTarget($s, $context);
+                self::chainAssign($model, $s['set'] ?? [], $context)->update(($s['optimistic'] ?? false) === true);
                 return [];
-            case 'model.restore':
-                $model = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
-                $restored = self::setValues($model, $s['values'], $context)->restore();
-                // With columns, the rows expect compares the row that restore returns (INT-38).
-                return isset($s['columns']) ? ['rows' => [self::project($restored, $s['columns'])]] : [];
-            case 'model.query':
-                return self::queryOp($s, $context);
+            case 'model.delete':
+                $recursive = ($s['recursive'] ?? false) === true;
+                if (isset($s['row'])) {
+                    $bound = self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context);
+                    if ($bound instanceof Collection) {
+                        $bound->delete($recursive);
+                        return [];
+                    }
+                }
+                if (isset($s['where'])) {
+                    // A delete by where loads the rows and deletes each one (FCV-4).
+                    foreach (self::chainBuilt($s, $context)->gets() as $row) {
+                        $row->delete();
+                    }
+                    return [];
+                }
+                self::chainTarget($s, $context)->delete($recursive);
+                return [];
+            case 'utils.lock':
+                self::connectionOf($s, $context)->utils()->lock($s['name']);
+                return [];
+            case 'utils.set_local':
+                $utils = self::connectionOf($s, $context)->utils();
+                $utils->setLocal($s['name'], self::chainValue($s['value'], $context));
+                return [];
+            case 'utils.local':
+                return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
         }
-        Assert::fail("model op {$s['op']} has no table-model path");
+        Assert::fail("OP_UNKNOWN {$s['op']}");
     }
 
-    /**
-     * The record of a bound row (coordinator ruling on row routing): the path that made it, its model and
-     * the connection it was made on. A model op of the {row} form runs on this path and connection.
-     */
-    private static function rowRecord(array $s, array $context): array
+    /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
+    private static function chainGets(array $s, array $context): array
     {
-        return ['path' => 'table', 'model' => $s['model'], 'db' => self::connectionOf($s, $context)];
-    }
-
-    /**
-     * A model op of the {row} form, which names no model and no connection: the bound row routes it, and a row that no
-     * bound row holds fails by its name.
-     */
-    private static function rowOp(array $s, array $context): array
-    {
-        $name = is_string($s['row']) ? $s['row'] : (string) ($s['row']['ref'] ?? '');
-        $record = $context['rows'][$name] ?? null;
-        if ($record === null) {
-            Assert::fail("{$s['op']} names row $name, which no bound row holds");
+        $model = self::chainBuilt($s, $context);
+        if (($s['compile'] ?? false) === true) {
+            return ['json' => $model->getQuery()];
         }
-        if ($record['path'] !== 'table') {
-            Assert::fail("{$s['op']}: row $name was bound by the {$record['path']} path, which has no row form");
+        $aggregate = $s['aggregate'] ?? null;
+        if ($aggregate !== null) {
+            return ['json' => match ($aggregate['agg']) {
+                'sum' => $model->getSum(),
+                'avg' => $model->getAvg(),
+                default => $model->getsCount()->toArray(),
+            }];
         }
-        return self::tableModelOp(['model' => $record['model']] + $s, $context);
+        if (($s['page'] ?? false) === true) {
+            $limit = $s['limit'] ?? 0;
+            $count = is_int($limit) ? $limit : $limit['count'];
+            if ($count <= 0) {
+                Assert::fail('a page needs a limit count above 0');
+            }
+            $offset = ($s['offset'] ?? 0) + (is_array($limit) ? ($limit['offset'] ?? 0) : 0);
+            $page = $model->getsPage(intdiv($offset, $count) + 1, $count);
+            $fields = ['json' => [
+                'total' => $page->totalCount,
+                'pages' => $page->totalPages,
+                'page' => $page->page,
+                'per_page' => $page->perPage,
+                'keys' => $page->items->keys(),
+            ], 'total' => $page->totalCount];
+            if (self::chainWantsRows($s, $context)) {
+                $fields['rows'] = self::chainCells($page->items, $s);
+            }
+            return $fields;
+        }
+        if (isset($s['key'])) {
+            [$name, $args] = self::chainKey($s, $context);
+            $rows = $model->{'getsBy' . $name}(...$args);
+        } else {
+            $rows = $model->gets();
+        }
+        $list = [];
+        foreach ($rows as $row) {
+            $list[] = self::chainRow($row, $s['pick'] ?? null);
+        }
+        $fields = ['bind' => $rows, 'json' => $list];
+        if (self::chainWantsRows($s, $context)) {
+            $fields['rows'] = self::chainCells($rows, $s);
+        }
+        return $fields;
     }
 
     /** A bound value of {"ref": "<name>"} or {"ref": "<name>.<path>"}. */

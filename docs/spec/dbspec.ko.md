@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: c67002c20afc059e93318d4db817f9823d9e8cbc136155541807a1b7e3c661d2 -->
+<!-- source-sha256: b1acd163bc6b1a5f3514fa35b49e666bc0211415ba358794c1da34e2c11241d3 -->
 # dbspec
 
 [English](dbspec.md)
@@ -324,7 +324,7 @@ table audit_table {
 - **DBS-109** **Plan.** plan은 database 전체를 바꾸므로([plans](plans.ko.md#apply)) target schema text에 `use` 줄이 있는 plan은 `plan` 오류다. 외부 문서를 쓰는 집합은 install과 addTablesAndColumns로 설치하고 올린다.
 - **DBS-110** **Runtime.** 외부 문서에서 쓰는 table은 각각 쓰는 집합의 runtime model에서 그 문서의 위치에 놓이는 **external entity**이며, 이름은 table 이름이고 외부 정의만으로, 곧 column, primary key, unique key만으로 만들며 setting, index, foreign key는 없다. 생성 코드는 다른 entity처럼 model을 주므로 select, join, subquery와 relation에 쓰이고, generator의 relation getter로 이어지며, 조건을 받는다. 문서로 만든 model과 manifest text와 external text로 만든 model은 같다. 이름이 집합의 entity와 겹치는 external entity는 `name.duplicate` diagnostic이다. 쓰기는 소유자만 한다: external entity의 모든 쓰기(create, creates, update, save, delete, restore, restoreOrCreate, upsert, restartIdentity)는 어떤 statement보다 먼저 `CONFIG` `<table> is owned by another document set`로 실패한다. 소유한 table의 audit 기록 table은 외부 table일 수 있다. 그 table을 소유한 집합이 같은 연결에 등록되어 있으면 audit 값을 가진 transaction이 그곳에 기록을 삽입한다([Audit](#audit)).
 - **DBS-173** **External models.** generator는 set이 `use` 줄로 쓰는 외부 문서의 모든 table에 대해, 스캔한 source가 그 table을 호출하는지와 관계없이 읽기 전용 model을 쓴다. 스캔은 model이 어떤 method를 가질지만 정하고 어떤 model이 있을지는 정하지 않으며, model을 있게 하려고 source에 호출을 유지하지 않는다.
-- **DBS-174** `mysql`, `postgres`, `sqlite` 중 어느 것도 아닌 dialect 이름은 statement를 만들기 전에 거부된다: `renderDbspec`과 `planSteps`는 그 이름을 적은 `TypeError`를 던진다.
+- **DBS-174** `mysql`, `postgres`, `sqlite` 중 어느 것도 아닌 dialect 이름은 render와 plan steps가 statement를 만들기 전에 거부된다. Go는 panic을, PHP와 PHP 확장은 `InvalidArgumentException`을, TypeScript와 Python은 `TypeError`를 던지며, 그 메시지에 이름을 적는다. Rust는 dialect를 enum 타입으로 받으므로 컴파일러가 그 이름을 거부한다.
 
 ## Runtime model
 
@@ -461,6 +461,7 @@ vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize
 - **DBS-151** 32 MiB 한도의 위치는 1줄 1열이다. column이 1000개를 넘는 table은 1001번째 column 이름에서 `limit` error다
 - **DBS-152** check: predicate는 먼저 읽는다. 읽기는 산술 연산자, 함수, `null` literal 같은 predicate 형식 밖의 token과, 형식이 column을 요구하는 자리의 literal(`in`, `is`의 대상, 두 literal 비교의 첫 literal), 그리고 비교, `in`, `is`가 뒤따르지 않는 operand를 보고한다. 그 operand 뒤에 `and`, `or`, `)`, 끝이 오면 operand에서, 그 밖에는 뒤따르는 token에서 보고한다. 읽기 diagnostic이 있는 predicate는 더 확인하지 않는다. 끝까지 읽힌 predicate는 column과 type을 확인하고, 그중 source 순서의 첫 diagnostic을 보고한다. 모르는 column, `cascade`나 `set_null` foreign key의 column, `bytes` column은 그 column, 비교에서 상대 column과 만나지 않는 column은 뒤쪽 column, 만나는 column의 default가 아닌 literal은 그 literal, `bool` operand(column이나 `true`, `false`)에 쓴 `<`, `<=`, `>`, `>=`는 그 연산자가 위치다
 - **DBS-153** 한 줄의 `syntax` diagnostic은 최대 하나다. check 식은 첫 diagnostic만 보고한다. 참조 안의 잘못된 이름은 `name.format`을 보고하고 더 해석하지 않는다. 자기 줄이 실패한 column이나 table에 대한 참조는 더 보고하지 않는다. 실패한 줄은 첫 단어가 정하는 종류와 선언하려던 이름을 유지하며, 이를 알기 위해서만 tab을 공백으로 읽는다. 그래서 실패한 key나 index 줄도 column을 모르는 key나 index를 선언한 것으로 보므로, 그 column에 기대는 규칙은 보고하지 않는다. 실패한 `primary key` 줄은 그 table의 primary key 없음과 identity 규칙을 가리고, 실패한 `primary key`, `unique`, `index` 줄은 그 table foreign key의 선두 index 규칙과 그 table을 참조하는 foreign key의 참조 key 규칙을 가린다
+- **DBS-181** 한 table의 두 번째 `primary key` 줄은 그 `primary`에서 `key` diagnostic 하나를 보고하고 그 column은 더 해석하지 않는다.
 - **DBS-154** 첫 줄이 아닌 header(앞에 comment나 빈 줄이 있는 경우 포함), 그리고 정확히 `dbspec`, 공백, `1`, 공백, 이름이 아닌 header 줄(예: tab이 있는 줄)은 `header` error다 parse는 첫 error만이 아니라 문서의 모든 error를 원문 순서로 보고한다. `encoding`, `header`, `limit` error는 parse를 멈춘다.
 
 - **DBS-155** `signature`: 문서 파일이 `dbspec ` bytes로 시작하지 않는다([파일](#files)). byte check와 file reader가 parse 전에 보고한다

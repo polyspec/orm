@@ -100,6 +100,11 @@ impl T {
         polyspec_orm::model::gets_page(self, page, per_page).await
     }
 
+    /// Returns the steps of the plan that gets_page runs, in their order, without executing it.
+    pub async fn get_page_plan_steps(&self, page: u32, per_page: u32) -> polyspec_orm::Result<Vec<polyspec_orm::QueryPlanStep>> {
+        polyspec_orm::model::get_page_plan_steps(&self.__orm, page, per_page).await
+    }
+
     /// Returns the statement of gets without executing it.
     pub async fn get_query(&self) -> polyspec_orm::Result<polyspec_orm::Statement> {
         polyspec_orm::model::get_query(&self.__orm).await

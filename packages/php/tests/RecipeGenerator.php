@@ -24,6 +24,9 @@ final class RecipeGenerator
                 Assert::assertNotSame(0, $code, "generation succeeded, want error {$want['error']}");
                 Assert::assertStringContainsString("orm-gen: {$want['error']}: ", $error);
                 Assert::assertDirectoryDoesNotExist("$root/model", 'a refused generation writes nothing');
+                if (isset($want['message'])) {
+                    Assert::assertStringContainsString($want['message'], $error);
+                }
                 if (isset($want['position'])) {
                     Assert::assertStringContainsString(".php:{$want['position']['line']}:", $error);
                 }
@@ -36,6 +39,13 @@ final class RecipeGenerator
             }
             foreach ($want['value']['excludes'] as $name) {
                 Assert::assertNotContains($name, $names, "generated code declares $name");
+            }
+            $text = implode('', array_map(file_get_contents(...), glob("$root/model/*") ?: []));
+            foreach ($want['value']['text']['includes'] ?? [] as $part) {
+                Assert::assertStringContainsString($part, $text, "generated text lacks $part");
+            }
+            foreach ($want['value']['text']['excludes'] ?? [] as $part) {
+                Assert::assertStringNotContainsString($part, $text, "generated text holds $part");
             }
         } finally {
             self::remove($root);
@@ -60,6 +70,12 @@ final class RecipeGenerator
             }
         }
         $set = self::setFile("$root/.set", $dir, [$step['schema']], $options['used'] ?? []);
+        if (isset($options['schema_replace'])) {
+            $document = dirname($set) . '/' . basename($step['schema']);
+            $text = (string) file_get_contents($document);
+            $replace = $options['schema_replace'];
+            file_put_contents($document, str_replace($replace['from'], $replace['to'], $text));
+        }
         return self::run($set, "$root/model", 'model', $root);
     }
 
@@ -84,11 +100,11 @@ final class RecipeGenerator
         foreach (['set' => $documents, 'external' => $external] as $group => $names) {
             is_dir("$at/$group") || mkdir("$at/$group", 0o700, true);
             foreach ($names as $name) {
-                copy("$dir/$name", "$at/$group/$name");
+                copy("$dir/$name", "$at/$group/" . basename($name));
             }
         }
-        $external = array_map(static fn(string $name): string => "../external/$name", $external);
-        return OrmGenTestSupport::setFile("$at/set", $documents, $external);
+        $external = array_map(static fn(string $name): string => '../external/' . basename($name), $external);
+        return OrmGenTestSupport::setFile("$at/set", array_map(basename(...), $documents), $external);
     }
 
     /** @return list<string> the methods of each generated model as table.name, without the language prefix (FCV-4) */
@@ -97,7 +113,9 @@ final class RecipeGenerator
         $names = [];
         foreach (glob("$out/*.php") ?: [] as $file) {
             $table = self::snake(basename($file, '.php'));
-            foreach (OrmGenTestSupport::phpMethodNames($file) as $method) {
+            $names[] = $table;
+            preg_match_all('/^    public function (\w+)\(/m', (string) file_get_contents($file), $members);
+            foreach ([...OrmGenTestSupport::phpMethodNames($file), ...$members[1]] as $method) {
                 $names[] = "$table." . self::snake((string) preg_replace('/^(?:get|new|alias)(?=[A-Z])/', '', $method));
             }
         }

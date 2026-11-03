@@ -107,34 +107,6 @@ final class ModelNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-129.
-    public function testSharedPhpGeneratorRejectsTheMethodCollisionUsedWithNativeModels(): void
-    {
-        self::assertTrue((new ReflectionClass(Model::class))->isInternal(), 'the PHP extension Model is native');
-        $dir = sys_get_temp_dir() . '/orm-php-ext-generated-collision-' . getmypid();
-        is_dir($dir) || mkdir($dir, 0o700, true);
-        try {
-            $set = "$dir/dbspec-set.json";
-            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['collision.dbs'], 'external' => []]));
-            file_put_contents(
-                "$dir/collision.dbs",
-                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n"
-                . "  primary key (seq)\n}\n"
-            );
-            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
-                'gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Extension\\Tests\\Collision'
-            ]);
-            self::assertNotSame(0, $code, "$output $message");
-            self::assertStringContainsString(
-                'item.sum_amount: the condition method sumAmount is also the model method sumAmount',
-                $output . $message
-            );
-            self::assertDirectoryDoesNotExist("$dir/model");
-        } finally {
-            exec('rm -rf ' . escapeshellarg($dir));
-        }
-    }
-
     public function testOrmGeneratorSubclassKeepsItsPhpMetaImplementation(): void
     {
         require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';
@@ -290,27 +262,6 @@ final class ModelNativeTest extends TestCase
         }
 
         self::assertSame($model, $model->limit(0, 4)->addAllColumns()->forUpdate());
-    }
-
-    // Requirements: INT-88, INT-89.
-    public function testTerminalReturnsTheFirstRecordedBuilderError(): void
-    {
-        require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';
-
-        $model = new \Polyspec\Orm\Tests\Model\Author();
-        self::assertTrue((new \ReflectionMethod(Model::class, 'getCount'))->isInternal());
-        self::assertSame($model, $model->limit(-1, 1)->limit(0, 0));
-        self::assertNull($model->connection(), 'the terminal must fail before resolving a connection');
-        try {
-            $model->getCount();
-            self::fail('the terminal must return the recorded builder error before issuing SQL');
-        } catch (OrmException $error) {
-            self::assertSame('CONFIG', $error->code_);
-            self::assertSame(
-                'CONFIG: limit requires a non-negative offset and a positive count',
-                $error->getMessage()
-            );
-        }
     }
 
     public function testWeakScalarNullArgumentsKeepUserlandTypeErrors(): void

@@ -54,9 +54,10 @@ final class Generator
 
     /** Column naming rules of the DSL. */
     private const RESERVED_SEGMENTS = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb',
-        'between', 'tuple'];
+        'between', 'fulltext', 'tuple'];
     private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by',
-        'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
+        'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between',
+        'fulltext'];
     private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit',
         'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
@@ -610,7 +611,7 @@ final class Generator
 
     private static function checkColumnName(string $entity, string $n): void
     {
-        $fail = static fn(string $msg): OrmException => new OrmException(Code::SCHEMA_INVALID, "$entity.$n: $msg");
+        $fail = static fn(string $msg): OrmException => new OrmException(Code::CONFIG, "$entity.$n: $msg");
         if (preg_match('/^[a-z][a-z0-9_]*$/', $n) !== 1) {
             throw $fail("column name must be snake_case: $n");
         }
@@ -668,7 +669,7 @@ final class Generator
             }
             if (isset($names[strtolower($p)])) {
                 throw new OrmException(
-                    Code::SCHEMA_INVALID,
+                    Code::CONFIG,
                     "{$e['entity']}.{$c['name']}: the condition method " . self::camel($c['name'])
                     . ' is also the model method ' . $names[strtolower($p)]
                 );

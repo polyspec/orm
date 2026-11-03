@@ -1,0 +1,870 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "DBS-103",
+    "DBS-104",
+    "DBS-110",
+    "DBS-173",
+    "DSL-116",
+    "DSL-127",
+    "DSL-129",
+    "DSL-130",
+    "DSL-154",
+    "DSL-37",
+    "DSL-38",
+    "INT-66",
+    "PLN-1",
+    "PLN-22"
+  ],
+  "cases": [
+    {
+      "id": "column-named-create",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "create"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.create: column name is a reserved method name: create"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-named-delete",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "delete"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.delete: column name is a reserved method name: delete"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-named-restore",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "restore"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.restore: column name is a reserved method name: restore"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-named-random",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "random"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.random: column name is a reserved method name: random"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-prefix-order_by",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "order_by_x"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.order_by_x: column name may not start with \"order_by\": order_by_x"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-prefix-get",
+      "requirements": [
+        "DSL-127",
+        "PLN-22"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "get_name"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.get_name: column name may not start with \"get\": get_name"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-restored-at-is-accepted",
+      "requirements": [
+        "DSL-127"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "restored_at"
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "item"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-segment-gt",
+      "requirements": [
+        "DSL-130"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "price_gt_limit"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.price_gt_limit: column name may not contain the segment \"gt\": price_gt_limit"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-segment-with",
+      "requirements": [
+        "DSL-130"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "with_tax"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.with_tax: column name may not contain the segment \"with\": with_tax"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-segment-fulltext",
+      "requirements": [
+        "DSL-130"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "fulltext_note"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.fulltext_note: column name may not contain the segment \"fulltext\": fulltext_note"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-min-price-is-accepted",
+      "requirements": [
+        "DSL-130"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "min_price"
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "item"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "column-collides-with-a-generated-method",
+      "requirements": [
+        "DSL-129"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "options": {
+            "schema_replace": {
+              "from": "column_under_test",
+              "to": "sum_amount"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message": "item.sum_amount"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown-column",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().LtNoSuchColumn(1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().ltNoSuchColumn(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().lt_no_such_column(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->ltNoSuchColumn(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().lt_no_such_column(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown-operator",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().XyzPrice(1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().xyzPrice(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().xyz_price(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->xyzPrice(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().xyz_price(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "operator-not-for-the-column",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().LkPrice(\"x\")\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().lkPrice('x');\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().lk_price('x')\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->lkPrice('x');\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().lk_price(\"x\");\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "unknown-finder-column",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().GetsByNoSuch(1)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().getsByNoSuch(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().gets_by_no_such(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->getsByNoSuch(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().gets_by_no_such(1);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "order-without-direction",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().OrderByPriceAndSeq()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().orderByPriceAndSeq();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().order_by_price_and_seq()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->orderByPriceAndSeq();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().order_by_price_and_seq();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "too-many-arguments",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().SeqAndName(1, \"x\", 2)\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().seqAndName(1, 'x', 2);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().seq_and_name(1, 'x', 2)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->seqAndName(1, 'x', 2);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().seq_and_name(1, \"x\", 2);\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "too-few-arguments",
+      "requirements": [
+        "DSL-37"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().LtPrice()\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().ltPrice();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().lt_price()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->ltPrice();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().lt_price();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "new-of-a-stored-column",
+      "requirements": [
+        "DSL-116"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Use() {\n\t_ = model.Product().NewName(\"x\")\n}\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Product } from '../model/models.js';\n\nnew Product().newName('x');\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Product\n\nProduct().new_name('x')\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Product;\n\n(new Product())->newName('x');\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::Product;\n\nfn run() {\n    let _ = Product::new().new_name(\"x\");\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stored-column-has-a-setter",
+      "requirements": [
+        "DSL-116"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.set_name"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key-prefix-methods-come-from-the-schema",
+      "requirements": [
+        "DSL-154"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../audit_columns.dbs",
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "card.audit_seq",
+                  "card_history.seq"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scanned-chain-methods-are-generated",
+      "requirements": [
+        "DSL-38",
+        "PLN-1"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().GtPrice(1).OrBrandSeq(2).AndLtPrice(3).OrderByPriceDescAndSeqAsc().NewScore(1).Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner())\n}\n\nfunc Score(p *model.ProductModel) any { return p.GetScore() }\n\nfunc Owner(p *model.ProductModel) (any, error) { return p.GetOwner() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\nconst row = new Product().gtPrice(1).orBrandSeq(2).andLtPrice(3).orderByPriceDescAndSeqAsc().newScore(1).relation(new Brand().matchBrandSeqWithSeq().aliasOwner());\nrow.getScore();\nrow.getOwner();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Brand, Product\n\nrow = Product().gt_price(1).or_brand_seq(2).and_lt_price(3).order_by_price_desc_and_seq_asc().new_score(1).relation(Brand().match_brand_seq_with_seq().alias_owner())\nrow.get_score()\nrow.get_owner()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$row = (new Product())->gtPrice(1)->orBrandSeq(2)->andLtPrice(3)->orderByPriceDescAndSeqAsc()->newScore(1)->relation((new Brand())->matchBrandSeqWithSeq()->aliasOwner());\n$row->getScore();\n$row->getOwner();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn run() {\n    let row = Product::new().gt_price(1).or_brand_seq(2).and_lt_price(3).order_by_price_desc_and_seq_asc().new_score(1).relation(Brand::new().match_brand_seq_with_seq().alias_owner());\n    let _ = row.get_score();\n    let _ = row.get_owner();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "product.gt_price",
+                  "product.or_brand_seq",
+                  "product.and_lt_price",
+                  "product.order_by_price_desc_and_seq_asc",
+                  "product.score",
+                  "product.owner",
+                  "brand.match_brand_seq_with_seq"
+                ],
+                "excludes": [
+                  "product.and_price"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "used-external-table-that-no-source-calls-has-a-model",
+      "requirements": [
+        "DBS-173"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "note.dbs",
+          "options": {
+            "used": [
+              "../generator_scan/core.dbs"
+            ],
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ExtNoteModel { return model.ExtNote() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { ExtNote } from '../model/models.js';\n\nnew ExtNote().limit(1);\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import ExtNote\n\nExtNote().limit(1)\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\ExtNote;\n\n(new ExtNote())->limit(1);\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::ExtNote;\n\nfn run() {\n    let _ = ExtNote::new();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "ext_note",
+                  "ext_session"
+                ],
+                "excludes": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "owned-and-used-tables-have-models",
+      "requirements": [
+        "DBS-110"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/member.dbs",
+          "options": {
+            "used": [
+              "../generator_scan/core.dbs"
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [
+                  "ext_post",
+                  "ext_post_history",
+                  "ext_account",
+                  "ext_audit"
+                ],
+                "excludes": [
+                  "ext_session"
+                ],
+                "text": {
+                  "includes": [
+                    "dbspec 1 ext_core"
+                  ],
+                  "excludes": [
+                    "ext_session"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "generated-code-suppresses-no-finding",
+      "requirements": [
+        "INT-66"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "../generator_scan/names.dbs",
+          "options": {
+            "sources": {
+              "go": {
+                "example/example.go": "package example\n\nimport \"example.com/ormexample/model\"\n\nfunc Load() *model.ProductModel {\n\treturn model.Product().GtPrice(1).OrBrandSeq(2).AndLtPrice(3).OrderByPriceDescAndSeqAsc().NewScore(1).Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner())\n}\n\nfunc Score(p *model.ProductModel) any { return p.GetScore() }\n\nfunc Owner(p *model.ProductModel) (any, error) { return p.GetOwner() }\n"
+              },
+              "typescript": {
+                "example/example.ts": "import { Brand, Product } from '../model/models.js';\n\nconst row = new Product().gtPrice(1).orBrandSeq(2).andLtPrice(3).orderByPriceDescAndSeqAsc().newScore(1).relation(new Brand().matchBrandSeqWithSeq().aliasOwner());\nrow.getScore();\nrow.getOwner();\n"
+              },
+              "python": {
+                "example/example.py": "from model.models import Brand, Product\n\nrow = Product().gt_price(1).or_brand_seq(2).and_lt_price(3).order_by_price_desc_and_seq_asc().new_score(1).relation(Brand().match_brand_seq_with_seq().alias_owner())\nrow.get_score()\nrow.get_owner()\n"
+              },
+              "php": {
+                "example/example.php": "<?php\n\nuse Example\\Model\\Brand;\nuse Example\\Model\\Product;\n\n$row = (new Product())->gtPrice(1)->orBrandSeq(2)->andLtPrice(3)->orderByPriceDescAndSeqAsc()->newScore(1)->relation((new Brand())->matchBrandSeqWithSeq()->aliasOwner());\n$row->getScore();\n$row->getOwner();\n"
+              },
+              "rust": {
+                "example/example.rs": "mod own { include!(\"../model/orm_model.rs\"); }\nuse own::{Brand, Product};\n\nfn run() {\n    let row = Product::new().gt_price(1).or_brand_seq(2).and_lt_price(3).order_by_price_desc_and_seq_asc().new_score(1).relation(Brand::new().match_brand_seq_with_seq().alias_owner());\n    let _ = row.get_score();\n    let _ = row.get_owner();\n}\n"
+              }
+            }
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [],
+                "excludes": [],
+                "text": {
+                  "includes": [],
+                  "excludes": [
+                    "#[allow(",
+                    "#![allow(",
+                    "//nolint",
+                    "# noqa",
+                    "@phpstan-ignore",
+                    "phpcs:ignore",
+                    "eslint-disable",
+                    "@ts-ignore"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "generated-code-carries-the-manifest-hash",
+      "requirements": [
+        "DBS-103",
+        "DBS-104"
+      ],
+      "steps": [
+        {
+          "op": "generator.generate",
+          "schema": "item.dbs",
+          "expect": {
+            "none": {
+              "value": {
+                "includes": [],
+                "excludes": [],
+                "text": {
+                  "includes": [
+                    "sha256:8bd0b5ae418dcc26203da8f936e1c4ef14d250b687cec601bdcf8e8df7261175"
+                  ],
+                  "excludes": []
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
