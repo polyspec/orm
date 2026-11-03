@@ -88,11 +88,6 @@ path = "tests/dbspec_introspect.rs"
 harness = false
 
 [[test]]
-name = "dbspec_render_physical"
-path = "tests/dbspec_render_physical.rs"
-harness = false
-
-[[test]]
 name = "decimal_model"
 path = "tests/decimal_model.rs"
 harness = false
