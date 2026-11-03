@@ -29,6 +29,11 @@ impl Connections {
         self.0.insert(name.to_owned(), db);
     }
 
+    /// Every bound connection by its name.
+    pub fn all(&self) -> HashMap<String, Db> {
+        self.0.clone()
+    }
+
     /// The connection `name`; one that model.connect did not open fails its step by name.
     pub fn bound(&self, name: &str) -> Result<Db, String> {
         self.0.get(name).cloned().ok_or_else(|| format!("model op: connection {name} is not bound by model.connect"))

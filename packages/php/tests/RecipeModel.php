@@ -66,7 +66,7 @@ trait RecipeModel
      * The audit source of the audit_source of a model.connect (FCV-4, CFG-8): it returns its values or fails with its
      * own error.
      */
-    private static function auditSourceOf(array $s, array $context): ?\Closure
+    private static function auditSourceOf(RecipeStep $s, array $context): ?\Closure
     {
         $spec = $s['audit_source'] ?? null;
         if ($spec === null) {
@@ -80,12 +80,14 @@ trait RecipeModel
     }
 
     /** Runs one model op of s and returns the fields that its expect compares. */
-    private static function modelOp(array $s, array $context): array
+    private static function modelOp(RecipeStep $s, array $context): array
     {
         if ($s['op'] === 'model.connect') {
             // The case schema is registered on the connection, as the statement-event ops need it
             // (FCV-4, model.connect).
             // A step with aes_keyring connects with that keyring in place of the bench key (FCV-4, model.connect).
+            // PHP holds one connection, and its Config refuses a pool size, so pool_size has nothing to configure here.
+            $s->has('pool_size');
             $source = self::auditSourceOf($s, $context);
             $config = isset($s['aes_keyring'])
                 ? new Config(
@@ -126,7 +128,7 @@ trait RecipeModel
     }
 
     /** model.create and model.count of a CompositeAccount built with no connection (PLN-16). */
-    private static function unconnectedAccountOp(array $s, array $context): array
+    private static function unconnectedAccountOp(RecipeStep $s, array $context): array
     {
         return match ($s['op']) {
             'model.create' => (static function () use ($s, $context): array {
@@ -260,7 +262,7 @@ trait RecipeModel
         return $model;
     }
 
-    private static function compositeAccountOp(array $s, array $context, Db $db): array
+    private static function compositeAccountOp(RecipeStep $s, array $context, Db $db): array
     {
         $CA = \Polyspec\Orm\Tests\Model\CompositeAccount::class;
         switch ($s['op']) {
@@ -448,7 +450,7 @@ trait RecipeModel
     }
 
     /** Runs the model ops of the composite keys recipe on CompositeMembership: model.creates and model.count by tenant_id. */
-    private static function compositeMembershipOp(array $s, array $context, Db $db): array
+    private static function compositeMembershipOp(RecipeStep $s, array $context, Db $db): array
     {
         switch ($s['op']) {
             case 'model.creates':
@@ -538,7 +540,7 @@ trait RecipeModel
         );
     }
 
-    private static function authorOp(array $s, array $context, Db $db): array
+    private static function authorOp(RecipeStep $s, array $context, Db $db): array
     {
         $Author = \Polyspec\Orm\Tests\Model\Author::class;
         switch ($s['op']) {
@@ -613,7 +615,7 @@ trait RecipeModel
     }
 
     /** Runs model.delete of s on the User model: the rows of where (seq only), each deleted with the collection. */
-    private static function userOp(array $s, array $context, Db $db): array
+    private static function userOp(RecipeStep $s, array $context, Db $db): array
     {
         if ($s['op'] !== 'model.delete') {
             Assert::fail("op {$s['op']} has no User entry");
@@ -630,7 +632,7 @@ trait RecipeModel
      * Runs model.query of s on the NoteReader model with its relation to the external SharedNote model: each row of
      * NoteReader in seq order with the title of its SharedNote row, which a row whose relation is missing leaves out.
      */
-    private static function noteReaderOp(array $s, array $context, Db $db): array
+    private static function noteReaderOp(RecipeStep $s, array $context, Db $db): array
     {
         $relation = $s['relation'] ?? null;
         if ($s['op'] !== 'model.query' || !is_array($relation)) {

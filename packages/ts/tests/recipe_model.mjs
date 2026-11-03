@@ -200,6 +200,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return { bind: db };
     },
     async 'model.create'(s, context) {
+      if (s.model !== 'CompositeAccount') throw new Error(`model ${s.model} has no model.create entry`);
       await compositeSet(s.unconnected === true ? undefined : connection(s.connection, context), objectValues(s.values, context)).create();
       return {};
     },
@@ -223,6 +224,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return {};
     },
     async 'model.duplicate_create'(s, context) {
+      if (s.model !== 'CompositeAccount') throw new Error(`model ${s.model} has no model.duplicate_create entry`);
       const db = connection(s.connection, context);
       const model = compositeSet(db, objectValues(s.values, context));
       await model.duplication(compositeSet(db, objectValues(s.duplication, context))).create();
@@ -322,6 +324,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       return { rows };
     },
     async 'model.query'(s, context) {
+      const { columns } = s;
       const db = connection(s.connection, context);
       if (s.model === 'NoteReader') {
         // The rows of NoteReader in seq order, each with the title of its SharedNote row; a reader without a note
@@ -331,7 +334,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
         if (relation.model !== 'SharedNote' || !isMatch(relation.match) || !isTitle(relation.columns)) {
           throw new Error(`NoteReader relation ${JSON.stringify(relation)} has no recipe entry`);
         }
-        if (!isSeq(s.columns) || !isSeq(s.order) || Object.keys(s.where ?? {}).length > 0) throw new Error('NoteReader query has no recipe entry for this shape');
+        if (!isSeq(columns) || !isSeq(s.order) || Object.keys(s.where ?? {}).length > 0) throw new Error('NoteReader query has no recipe entry for this shape');
         const collection = await new NoteReader().connect(db).relation(new SharedNote().matchSharedNoteSeqWithSeq()).orderBySeqAsc().gets();
         const rows = [];
         for (const row of collection.values()) {
@@ -342,7 +345,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
         return { rows };
       }
       if (s.model === 'Author') {
-        const model = chain(db, objectValues(s.where, context), s.columns);
+        const model = chain(db, objectValues(s.where, context), columns);
         for (const column of s.order ?? []) {
           if (ORDERS[column] === undefined) throw new Error(`Author column ${column} has no recipe order`);
           model[ORDERS[column]]();
@@ -350,7 +353,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
         const offset = s.offset ?? 0;
         if ((s.limit ?? 0) > 0 || offset > 0) model.limit(offset, s.limit ?? 0);
         const collection = await model.gets();
-        return { rows: collection.values().map(row => cells(row, s.columns)) };
+        return { rows: collection.values().map(row => cells(row, columns)) };
       }
       const model = compositeFilter(db, objectValues(s.where, context));
       if (s.tuples !== undefined) {
@@ -381,7 +384,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
       const collection = await model.gets();
       const rows = [];
       for (const row of collection.values()) {
-        const cells = s.columns.map(column => {
+        const cells = columns.map(column => {
           if (COMPOSITE_GETTERS[column] === undefined) throw new Error(`CompositeAccount column ${column} has no recipe getter`);
           return wrap(row[COMPOSITE_GETTERS[column]]());
         });
@@ -401,6 +404,7 @@ export function modelOps({ native, databaseValue, stepArgument, auditSourceOf })
     },
     async 'model.arithmetic'(s, context) {
       const db = connection(s.connection, context);
+      if (s.model !== 'Author') throw new Error(`model ${s.model} has no model.arithmetic entry`);
       if (s.column !== 'read_count') throw new Error(`Author column ${s.column} has no recipe arithmetic`);
       const row = await new Author().connect(db).getBySeq(objectValues(s.key, context).seq);
       if (row === null) throw new Error('model.arithmetic: the key names no row');
