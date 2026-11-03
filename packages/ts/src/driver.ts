@@ -218,6 +218,10 @@ export function driverError(name: DriverName, error: unknown): OrmError {
   const suffix = name === 'sqlite' && source.errcode !== undefined ? sqliteResultCodeSuffix(source.errcode) : '';
   const message = (typeof text === 'string' ? text : errorText(error)) + suffix;
   if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
+  // A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
+  if (name === 'mysql' && source.code !== undefined && /CERT|UNABLE_TO_VERIFY|SELF_SIGNED/.test(source.code)) {
+    return new OrmError(codes.CONFIG, `mysql TLS connection failed: ${message}`, error);
+  }
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, and MySQL 1317/3024, PostgreSQL 57014,
   // and SQLite 9 all report a statement that was stopped before it finished; SQLite BUSY reports a lock that
@@ -860,7 +864,7 @@ function mysqlTls(url: URL): string | undefined {
 function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
-    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);
+    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} is not a readable file: ${errorText(error)}`, error);
   }
 }
 

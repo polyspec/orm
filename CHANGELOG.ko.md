@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9cf2d6bc995caf25704ba38e9559f63803a671dadb1f2f74e2bd71eca3956839 -->
+<!-- source-sha256: a03b6fed45bc5f54050265019be14aee5e9c75573cdc9faa713f7cf6e51cfe41 -->
 # 변경 이력
 
 ## Unreleased
 
+- markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
+- 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
+- Go, PHP, PHP extension은 정수가 아닌 SQLite `busy_timeout`을, Go는 형식이 틀린 `_pragma`와 SQLite 경로 `/`를 `CONFIG`로 거부하고(CFG-11, CFG-12), PHP는 그 거부에서 경로를 말한다. 읽을 수 없는 MySQL `ssl-ca`는 이를 검사하는 모든 client에서 `is not a readable file`로 읽히고, Python의 음수 timeout 거부는 `statement timeout must not be negative`로 읽힌다. `CONFIG`를 반환하는 DSN은 파일을 만들지 않는다. CFG-36과 CFG-37의 거부되는 DSN과 설정 형식은 메시지까지 recipe case이며, 이들이 대신하는 native 시험은 없앴다.
 - `model_queries`와 `model_writes`의 coverage는 FCV-12가 정한 대로 recipe를 지정한다(`recipe`, `symbol`, 그리고 그 데이터베이스에서 `only`로 빠지는 case를 뺀 `cases`). Rust workspace 실행은 Rust recipe owner의 program을 건너뛴다. 이전에는 case symbol이 없는 첫 owner에서 skip 목록이 예외를 던졌다.
 - builder 오류의 recipe case는 그것이 대신한 native test처럼 message 전체를 비교하고, Rust는 `limit`에 다른 runtime과 같은 문자열을 준다
 - recipe가 이미 가진 case를 tests/bind/vectors.json에서 없앴다: 그 파일은 native host 값과 Go, Rust가 compile 시점에 거부하는 case만 가지며, 제거한 `message`와 `control` 구역을 읽는 runtime은 없다(T334-3-24).

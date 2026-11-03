@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- The refusal of a markdown connect (PRT-64) is a recipe case, `markdown.connect`, on a listener each runtime runs, and the native tests it replaces are gone. A refused TLS connection in Rust names no database in its message (CFG-16).
+- A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.
+- Go, PHP and the PHP extension refuse a SQLite `busy_timeout` that is not a whole number, and Go refuses a malformed `_pragma` and the SQLite path `/`, each with `CONFIG` (CFG-11, CFG-12), and PHP names the path in that refusal. An unreadable MySQL `ssl-ca` reads `is not a readable file` in every client that checks it, and the Python refusal of a negative timeout reads `statement timeout must not be negative`. A DSN that returns `CONFIG` creates no file. The refused DSN and configuration forms of CFG-36 and CFG-37 are recipe cases, with their messages, and the native tests they replace are gone.
 - The coverage of `model_queries` and `model_writes` names its recipes as FCV-12 writes (`recipe`, `symbol`, and `cases` without a case that `only` leaves out on that database). The Rust workspace run skips the program of a Rust recipe owner, where the skip list threw on the first owner with no case symbols.
 - The recipe case of a builder error compares the whole message, as the native tests it replaced did, and Rust gives `limit` the same text as the other runtimes
 - The cases of tests/bind/vectors.json that a recipe already holds are gone from it: the file keeps the native host values and the cases that Go and Rust refuse at compile time, and no runtime reads its removed `message` and `control` sections (T334-3-24).

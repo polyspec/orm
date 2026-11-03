@@ -2874,7 +2874,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]

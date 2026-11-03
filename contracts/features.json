@@ -74,7 +74,9 @@
         "pool-idle-server-end",
         "dsn_connection-mysql",
         "dsn_connection-postgres",
-        "dsn_connection-sqlite"
+        "dsn_connection-sqlite",
+        "dsn-reject-checked",
+        "dsn-reject-parameters"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -83,12 +85,13 @@
         "packages/php/tests/markdown_test_server.php",
         "packages/python/tests/coverage_case.py",
         "packages/php/tests/request_termination_child.php",
-        "contracts/fixtures/dsn_connection/dsn_connection.json"
+        "contracts/fixtures/dsn_connection/dsn_connection.json",
+        "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
+        "contracts/fixtures/dsn_reject/dsn_reject_parameters.json"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
         "packages/go/orm/timezone_test.go",
-        "packages/go/orm/sqlite_file_name_test.go",
         "packages/go/model/replica_test.go",
         "packages/ts/tests/replica.mjs",
         "packages/rust/tests/tests/replica.rs",
@@ -113,7 +116,6 @@
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
         "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
         "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
@@ -137,7 +139,6 @@
         "packages/python/tests/test_sqlite_version.py",
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
-        "packages/python/tests/mysql_tls.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
         "packages/python/tests/connection_utc.py",
@@ -183,7 +184,16 @@
         "packages/ts/tests/dsn_connection-sqlite.test.mjs",
         "packages/python/tests/test_dsn_connection_mysql.py",
         "packages/python/tests/test_dsn_connection_postgres.py",
-        "packages/python/tests/test_dsn_connection_sqlite.py"
+        "packages/python/tests/test_dsn_connection_sqlite.py",
+        "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+        "packages/php/tests/DsnRejectParametersRecipeTest.php",
+        "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+        "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+        "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+        "packages/python/tests/test_dsn_reject_checked_none.py",
+        "packages/python/tests/test_dsn_reject_parameters_none.py",
+        "packages/go/orm/recipe_dsn_reject_test.go"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -353,12 +363,11 @@
         },
         {
           "id": "dsn-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'ParseDSN|ConnectionsUseUTC' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/dsn_test.go",
             "packages/go/orm/mysql_tls_test.go",
-            "packages/go/orm/sqlite_file_name_test.go",
             "packages/go/orm/timezone_test.go"
           ]
         },
@@ -433,7 +442,7 @@
           "shard": "other",
           "inputs": [
             "Makefile",
-            "packages/php-ext/tests/MysqlTlsNativeTest.php"
+            "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php"
           ]
         },
         {
@@ -548,15 +557,6 @@
             "tests/dsn/sqlite-paths.json",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/placeholders.py"
-          ]
-        },
-        {
-          "id": "dsn-mysql-tls-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.mysql_tls",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/mysql_tls.py",
-            "packages/python/src/polyspec/orm/database.py"
           ]
         },
         {

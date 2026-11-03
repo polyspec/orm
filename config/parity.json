@@ -3860,33 +3860,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmConnectsWithTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_verifies_the_server_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_verifies_the_server_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_connects_with_tls"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_verifies_the_server_identity"
         }
       ]
     },
@@ -3899,33 +3899,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLTLSConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUntrustedTlsIdentity"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"mysql_tls_refuses_an_untrusted_identity\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/connections"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_connections"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "mysql_tls_refuses_an_untrusted_identity"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_refuses_another_ca_and_another_host"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::mysql_tls_refuses_an_untrusted_identity"
         }
       ]
     },
@@ -3933,33 +3933,259 @@
       "id": "connection-mysql-tls-unsupported-options",
       "kind": "feature",
       "requirements": [
-        "CFG-18"
+        "CFG-18",
+        "CFG-36"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLSRejectsUnsupportedOptions"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_verify_ca"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testUnsupportedTlsOptions"
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_verify_ca\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
-          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUnsupportedTlsOptions"
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_verify_ca\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/unsupported-parameters"
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_verify_ca"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_unsupported_tls_options"
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_verify_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_required"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_required\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_required\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_required"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_required"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_preferred"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_preferred\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_preferred\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_preferred"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_preferred"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_disabled"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_disabled\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_disabled\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_disabled"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_disabled"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_lower_case"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_lower_case\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_lower_case\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_lower_case"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_lower_case"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_empty"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_empty\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_empty\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_empty"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_empty"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_mode_without_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_mode_without_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_mode_without_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_mode_without_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_mode_without_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_relative_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_relative_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_relative_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_relative_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_relative_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_ca_without_mode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_ca_without_mode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_ca_without_mode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_ca_without_mode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_ca_without_mode"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/tls_unreadable_ca"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"tls_unreadable_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"tls_unreadable_ca\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "tls_unreadable_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "tls_unreadable_ca"
         },
         {
           "implementation": "rust",
@@ -4166,63 +4392,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestSQLiteDSNRequiresAbsolutePath"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_relative_path"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_relative_path\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_relative_path\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_relative_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_relative_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_relative_path"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/sqlite_file_name_test.go",
-          "id": "TestSQLiteFileNameIsThePath"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_root_path"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testSqliteDsnRequiresAbsolutePath"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_root_path\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_root_path\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_root_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_root_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_root_path"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/sqlite_file_name_is_the_path"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testSqliteFileName"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"sqlite_file_name_is_the_path\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRequiresAbsoluteSqlitePath"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DsnTestExtensionTest.php",
-          "id": "DsnTestExtensionTest::testSqliteFileName"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"sqlite_file_name_is_the_path\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/sqlite-requires-absolute-path"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/sqlite-file-name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_sqlite_dsn_requires_absolute_path"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_sqlite_file_name_is_the_path"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "sqlite_dsn_requires_absolute_path"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_file_name.rs",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
           "id": "sqlite_file_name_is_the_path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "sqlite_file_name_is_the_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::sqlite_file_name_is_the_path"
         }
       ]
     },
@@ -4235,53 +4491,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestParseDSN"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLS"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/dsn_parameters_of_this_page"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"dsn_parameters_of_this_page\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMysqlTlsKeepsTheCaPathOfAHostName"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"dsn_parameters_of_this_page\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/invalid"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "dsn_parameters_of_this_page"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "dsn_parameters_of_this_page"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "driver_parameters_reach_sqlx"
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_txlock_immediate\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_txlock_immediate\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_txlock_immediate"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "dsn_rejects_txlock"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_txlock_immediate"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"sqlite_txlock_deferred\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"sqlite_txlock_deferred\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "sqlite_txlock_deferred"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::sqlite_txlock_deferred"
         }
       ]
     },
@@ -4289,33 +4585,134 @@
       "id": "connection-dsn-other-parameters",
       "kind": "feature",
       "requirements": [
-        "CFG-20"
+        "CFG-20",
+        "CFG-37"
       ],
       "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_charset\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_charset\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_charset"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_charset"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_sslmode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_sslmode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_sslmode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_sslmode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"mysql_bracket_parameter\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"mysql_bracket_parameter\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "mysql_bracket_parameter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "mysql_bracket_parameter"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"postgres_application_name\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"postgres_application_name\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "postgres_application_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "postgres_application_name"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"postgres_ssl_mode\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"postgres_ssl_mode\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "postgres_ssl_mode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "postgres_ssl_mode"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "id": "DsnRejectParametersRecipeTest::testNone with data set \"sqlite_cache\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "id": "DsnRejectParametersRecipeTestExtensionTest::testNone with data set \"sqlite_cache\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
+          "id": "sqlite_cache"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py",
+          "id": "sqlite_cache"
+        },
         {
           "implementation": "go",
           "test": "packages/go/orm/dsn_test.go",
           "id": "TestParseDSN"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
         },
         {
           "implementation": "rust",
@@ -4413,39 +4810,154 @@
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_mysql_offset"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testParseRejects"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_mysql_offset\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_mysql_offset\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/timezone"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/invalid"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_mysql_offset"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_dsn_rejects_non_utc_timezones"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_mysql_offset"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "non_utc_time_zones_are_rejected"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_mysql_offset"
         },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_dsn_reject_test.go",
-          "id": "TestRecipeDsnRejectNone"
+          "id": "TestRecipeDsnRejectNone/timezone_postgres_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_postgres_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_postgres_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_postgres_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_postgres_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_postgres_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_sqlite_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_sqlite_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_sqlite_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_sqlite_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_sqlite_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_sqlite_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/timezone_unknown_zone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"timezone_unknown_zone\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"timezone_unknown_zone\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "timezone_unknown_zone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "timezone_unknown_zone"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::timezone_unknown_zone"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"dsn_parameters_of_this_page\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"dsn_parameters_of_this_page\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "dsn_parameters_of_this_page"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::dsn_parameters_of_this_page"
         }
       ]
     },
@@ -8203,6 +8715,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -8249,6 +8765,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -8295,6 +8815,10 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-16",
+        "CFG-2",
+        "CFG-19",
+        "CFG-26",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -13408,33 +13932,34 @@
       "id": "connection-statement-timeout-negative-refused",
       "kind": "feature",
       "requirements": [
-        "CFG-6"
+        "CFG-6",
+        "CFG-36"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestStatementTimeoutRejectsNegative"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectCheckedNone/negative_statement_timeout"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testNegativeStatementTimeoutIsRejectedBeforeConnecting"
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "id": "DsnRejectCheckedRecipeTest::testNone with data set \"negative_statement_timeout\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "id": "DsnRejectCheckedRecipeTestExtensionTest::testNone with data set \"negative_statement_timeout\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/statement-timeout-negative-refused"
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs",
+          "id": "negative_statement_timeout"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout_negative_refused"
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py",
+          "id": "negative_statement_timeout"
         },
         {
           "implementation": "rust",
@@ -13712,33 +14237,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownConnectRefused"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/markdown_connect_refused"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testConnectRefused"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMarkdownConnectionRefusesConnectError"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/connect-refused"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_connect_refused"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_connect_refused"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::markdown_connect_refused"
         }
       ]
     },
@@ -41192,11 +41717,14 @@
       "requirements": [
         "CFG-1",
         "CFG-2",
+        "CFG-5",
         "CFG-11",
+        "CFG-12",
         "CFG-17",
         "CFG-19",
         "CFG-26",
-        "FCV-15"
+        "FCV-15",
+        "PRT-64"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",
@@ -41230,6 +41758,90 @@
           "symbol": "dsn_reject_none"
         }
       ]
+    },
+    {
+      "id": "dsn-reject-checked",
+      "kind": "suite",
+      "requirements": [
+        "CFG-36"
+      ],
+      "file": "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "symbol": "TestRecipeDsnRejectCheckedNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectCheckedRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnRejectCheckedRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectCheckedRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnRejectCheckedRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_checked-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_checked_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "dsn-reject-parameters",
+      "kind": "suite",
+      "requirements": [
+        "CFG-37"
+      ],
+      "file": "contracts/fixtures/dsn_reject/dsn_reject_parameters.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectParametersRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DsnRejectParametersRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectParametersRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DsnRejectParametersRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject_parameters-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_parameters_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "schema_install-mysql",

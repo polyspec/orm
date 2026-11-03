@@ -173,23 +173,6 @@ class MarkdownTest extends TestCase
         );
     }
 
-    // Requirements: PRT-64.
-    public function testConnectRefused(): void
-    {
-        $server = start_markdown_test_server(
-            ['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']
-        );
-        $e = markdown_error(static fn() => Orm::connect($server[2], new Config())->close());
-        self::assertFalse(
-            $e?->code_ !== Code::CONFIG || $e->getMessage() !== "CONFIG: connect: the token is not the corpus's token",
-            'connect error = ' . ($e?->getMessage() ?? 'none') . "; want the server's CONFIG"
-        );
-        self::assertFalse(
-            ($got = markdown_test_server_received_messages($server)) !== [MARKDOWN_CONNECT_LINE],
-            'messages = ' . json_encode($got)
-        );
-    }
-
     // Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
     public function testRejectedSurfaces(): void
     {

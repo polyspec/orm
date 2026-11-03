@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: fc5cebdbb95a80cf718f6e474df8adb8e7134c9fe9deacc21d759070f080a40a -->
+<!-- source-sha256: 3c6a4f358332df2c426966b3d86fc44869fd410768dd00c935278bce11f12fd7 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -27,7 +27,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-9** 흐름은 자기 언어의 취소 수단을 연결 핸들에 적용해 문을 취소한다. Go의 `db.WithContext(ctx)`와 TypeScript의 `db.withSignal(signal)`은 같은 연결을 가리키는 핸들이다. 모델은 연결에 연결하듯 핸들에 연결하고, 핸들에서 시작한 트랜잭션도 같은 취소를 따르며, 컨텍스트나 시그널을 취소하면 실행 중인 문이 `CANCELED`로 끝나고 연결은 계속 쓸 수 있다. Python의 `db.with_future(future)`는 제공한 `asyncio.Future`가 취소될 때 MySQL, PostgreSQL, SQLite 연결에서 실행 중인 문을 취소하는 핸들을 돌려준다. Python SQL은 동기 실행이므로 이벤트 루프가 취소를 처리하도록 `asyncio.to_thread`에서 실행한다. transaction 정리는 취소하지 않으며 rollback 뒤 root 연결을 다시 쓸 수 있다. Python markdown executor는 문 취소를 지원하지 않는다. Rust는 문의 future를 버리면 문이 취소되고 풀로 돌아가기 전에 대여한 연결을 닫는다. PostgreSQL은 실행 중인 문을 취소하고 MySQL은 실행 중인 질의를 종료하며, TypeScript의 SQLite 드라이버는 문 하나를 중간에 양보하지 않고 실행하므로 시그널은 실행 중인 문이 아니라 다음 문에 적용된다. PHP `$db->withCancellation($source)`는 같은 논리 connection의 handle을 반환한다. `$source->cancel()`은 그 source에 연결된 handle에서 시작한 모든 진행 중 statement를 `CANCELED`로 끝반환한다. SQLite는 progress handler로 virtual machine을 interrupt하고 MySQL은 control connection이 해당 source의 active server connection을 종료하며, transaction rollback 뒤 root handle은 다음 statement 전에 다시 연결한다. PostgreSQL에서는 PHP가 `pdo_pgsql`과 `ext-pgsql`을 모두 필요로 하며, 같은 물리 연결에서 protocol cancel request를 보내고 중단된 transaction을 rollback한 뒤 root 연결을 다시 사용한다. transaction 정리는 취소하지 않는다. PHP markdown executor는 문 취소를 지원하지 않는다. 체인에는 취소 연산이 없고 연결 핸들이 그 역할을 맡는다. 핸들은 별도의 값이므로 Go의 `db.Root()`, Python의 `db.root()`, TypeScript의 `db.root()`는 파생의 기준이 된 연결을 돌려주며, 한 연결에서 파생한 핸들들은 같은 연결로 비교된다.
 - **CFG-10** MySQL `socket` 매개변수는 Unix 소켓으로 연결한다. 클라이언트는 낙관적 갱신에 필요한 found-rows 개수를 켠다.
 - **CFG-11** SQLite 경로는 절대 경로여야 한다. 클라이언트는 파일을 열기 전에 경로를 UTF-8로 percent-decode한다: `sqlite:///var/lib/my%20data.sqlite`는 `/var/lib/my data.sqlite`를 열고, `%25`, `%23`, `%3F`는 글자 그대로의 `%`, `#`, `?`가 된다. 뒤에 hexadecimal 두 자리가 없는 `%`, decode한 NUL byte, UTF-8이 아닌 decode 결과는 `CONFIG`를 반환한다. `tests/dsn/sqlite-paths.json`이 공유 case를 담으며 모든 클라이언트가 자기 DSN 테스트에서 실행한다. 클라이언트는 외래 키를 켠다. 쓰기 트랜잭션은 `BEGIN IMMEDIATE`로 시작해 시작 시점부터 데이터베이스의 쓰기 잠금을 가진다. 따라서 두 쓰기 트랜잭션은 차례로 실행되고, 읽은 뒤에 쓰는 트랜잭션도 실패하지 않는다. `readOnly` 옵션을 쓴 트랜잭션은 `BEGIN`으로 시작하고 쓰기 잠금을 얻지 않는다. 시작 문은 클라이언트가 정하며, `_txlock`이 있는 DSN은 `CONFIG`를 반환한다.
-- **CFG-12** SQLite 연결은 다른 연결이 가진 잠금을 최대 5000밀리초 기다린다. Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation은 DSN 매개변수 `_pragma=busy_timeout(ms)`로 다른 시간을 정한다. 예를 들어 `sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(10000)`이며, `busy_timeout(0)`은 기다리지 않는다. 대기가 끝날 때까지 다른 연결이 잠금을 놓지 않으면 `CANCELED`를 반환한다. `DEADLOCK`만 재시도하므로 이 트랜잭션은 다시 실행하지 않는다. 모든 `_pragma=name(value)` 매개변수는 연결에서 `PRAGMA name = value`를 실행한다.
+- **CFG-12** SQLite 연결은 다른 연결이 가진 잠금을 최대 5000밀리초 기다린다. Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation은 DSN 매개변수 `_pragma=busy_timeout(ms)`로 다른 시간을 정한다. 예를 들어 `sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(10000)`이며, `busy_timeout(0)`은 기다리지 않고, 정수가 아닌 값은 `CONFIG`를 반환한다. 대기가 끝날 때까지 다른 연결이 잠금을 놓지 않으면 `CANCELED`를 반환한다. `DEADLOCK`만 재시도하므로 이 트랜잭션은 다시 실행하지 않는다. 모든 `_pragma=name(value)` 매개변수는 연결에서 `PRAGMA name = value`를 실행한다. `CONFIG`를 반환하는 DSN은 파일을 만들지 않는다.
 - **CFG-13** SQLite 읽기는 다른 연결이 쓰기 트랜잭션을 연 동안에도 실행되며, 그 전에 커밋된 행을 반환한다. 클라이언트는 데이터베이스 파일의 저널 모드를 그대로 두며 WAL을 요구하지 않는다. 기본 롤백 저널에서는 쓰기의 커밋 중에 시작한 읽기가 `busy_timeout` 안에서 커밋을 기다린다. `_pragma=journal_mode(WAL)`은 파일을 WAL로 바꾸며, WAL에서는 읽기가 커밋을 기다리지 않는다. 이 모드는 파일에 남는다.
 - **CFG-14** `@polyspec/orm`의 SQLite 드라이버(TypeScript)는 잠금을 동기적으로 기다리므로 기다리는 동안 이벤트 루프가 멈춘다. 따라서 TypeScript 프로세스는 SQLite 파일 하나에 `Db` 하나를 연다. 그 `Db`의 트랜잭션은 차례로 실행되고, 여러 프로세스는 잠금 대기로 파일을 함께 쓴다.
 
@@ -47,7 +47,7 @@ MySQL DSN은 모든 클라이언트가 구현하는 한 가지 모드로 TLS 연
 mysql://user:password@db.example:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/etc/orm/mysql-ca.pem
 ```
 
-- **CFG-16** `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 연결을 실패시킨다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
+- **CFG-16** `ssl-mode=VERIFY_IDENTITY`와 인증 기관의 PEM file 절대 경로인 `ssl-ca`는 server 인증서를 그 인증 기관으로, DSN의 host를 인증서로 검사하는 TLS로 연결한다. 다른 인증 기관이 서명했거나 다른 host를 이름한 인증서는 `CONFIG`로 연결을 실패시키고, 메시지는 `TLS connection failed`를 담는다. 그러면 password는 TLS 안에서만 전달되며, 클라이언트는 server의 RSA 공개 키를 요청하지 않는다.
 - **CFG-17** host는 server 인증서가 이름하는 host 이름이며 IP 주소가 아니다. TypeScript driver가 주소 host를 이름 `localhost`로 검사하기 때문이며, 모든 클라이언트는 `ssl-mode`와 함께 쓴 주소에 `CONFIG`를 반환한다. 이 모드는 TCP로 연결하며 `socket`을 받지 않는다.
 - **CFG-18** `VERIFY_CA`나 `REQUIRED` 같은 `ssl-mode`의 다른 값, `ssl-ca` 없는 `ssl-mode`, `ssl-mode` 없는 `ssl-ca`, 상대 `ssl-ca` 경로, 읽을 수 없는 CA file은 Rust를 뺀 모든 클라이언트에서 `CONFIG`를 반환한다. Rust의 매개변수는 아래에 있다.
 - **CFG-19** Go와 Rust를 뺀 모든 클라이언트는 다음 매개변수만 받고 다른 매개변수에는 `CONFIG`를 반환한다. MySQL은 `timezone`, `socket`, `ssl-mode`, `ssl-ca`, PostgreSQL은 `timezone`, `host`, `sslmode`, SQLite는 `timezone`, `_pragma`, 그리고 그 자체로 `CONFIG`를 반환하는 `_txlock`이다.
@@ -88,6 +88,9 @@ PgBouncer 설정:
 - **CFG-31** 문 취소는 PgBouncer를 거치면 best effort이며 보장되지 않는다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달하지만, 이 경로는 신뢰할 수 없다. PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있으며, 다중 프로세스 구성에서는 peering이 1.19에서 들어오기 전까지 취소 요청이 유실되었다. SQLx 0.9에는 CancelRequest API가 없어 Rust 클라이언트에는 PgBouncer를 거치는 지원되는 취소 경로가 없다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다. 유실된 취소는 문을 계속 실행 상태로 두므로, 호출자는 취소가 서버에 닿는다고 의존해서는 안 된다.
 - **CFG-32** `polyspec-orm` crate, 곧 Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
 - **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
+- **CFG-36** Go, PHP, PHP extension, TypeScript, Python은 CFG-18이 나열한 각 형식과 음수 `poolSize`, `poolIdleSize`, `poolLifetimeMs`, `statementTimeoutMs`에 대해 연결을 열기 전에 `CONFIG`를 반환한다. Rust의 설정은 이 값을 부호 없는 타입으로 담는다.
+- **CFG-37** PHP, PHP extension, TypeScript, Python은 CFG-19가 이름 짓지 않은 매개변수에 `CONFIG`를 반환한다. Go와 Rust는 그 매개변수를 드라이버로 넘긴다(CFG-20).
+
 ProxySQL 설정:
 
 - **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
