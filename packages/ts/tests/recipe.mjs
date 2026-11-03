@@ -23,7 +23,7 @@ import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
@@ -54,7 +54,7 @@ function registerRecipeCase(recipeCase, database, deadline, body) {
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
   if (database !== NONE) return databaseRecipe(path, database);
-  const text = readFileSync(path, 'utf8');
+  const text = readFileSync(resolve(root, path), 'utf8');
   checkKeys(path, text);
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
@@ -83,6 +83,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
+          else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -484,6 +485,29 @@ async function fixtureSchema(setPath) {
 }
 
 const NONE_FIXTURE = 'none';
+
+/**
+ * Installs the fixture of a recipe on the empty database of dsn and inserts its seed rows, so that a native conformance
+ * body reads the rows that the expects of the recipe state (tests/conformance/check/recipe_vectors.mts).
+ */
+export async function prepareRecipeDatabase(path, database, dsn) {
+  const recipe = JSON.parse(readFileSync(path, 'utf8'));
+  const { schema, installFirst } = await fixtureSchema(resolve(root, recipe.fixture));
+  const db = await Db.connect(dsn);
+  const catalog = await connectCatalog(dsn);
+  try {
+    for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
+    const namespace = await catalog.currentNamespace();
+    const context = { catalog, namespace, database, dsn, bound: new Map(), tablePath: true, db, schema, dir: resolve(root, dirname(path)) };
+    for (const [table, values] of Object.entries(recipe.seed?.rows ?? {})) {
+      const metadata = await catalog.describeTable({ namespace, name: table });
+      for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
+    }
+  } finally {
+    await catalog.close();
+    await db.close();
+  }
+}
 
 async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
@@ -1715,7 +1739,8 @@ function chainBuilt(s, context) {
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
   if (s.from !== undefined) return byKey(refOf(s.from, context));
-  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const model = coreModel(s.model, context);
+  const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
@@ -1766,10 +1791,13 @@ const TABLE_OPS = {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
-      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      const steps = s.plan_page === undefined
+        ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
+        : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
       return { json: steps.map(step => {
         const sql = step.sql.toUpperCase();
-        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };

@@ -1759,8 +1759,11 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
     for (name, v) in row_values(m)? {
+        // A time or datetime text from the database has the column precision; the JSON form has six digits, as the array form.
+        let temporal_text = c.ent.entity_schema()?.field(&name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
         let document = match &v {
             Val::Ordered(o) => o.compact(),
+            Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)).to_string(),
             other => other.to_json()?.to_string(),
         };
         let text = if styled_column(c, &name)? {
