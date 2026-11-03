@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- `make client-db-go-check`는 `go-test-check`가 돌리지 않는 Go package를 돌리고 `TestMarkdownConformance`는 `markdown-conformance-check/go`에 맡기므로, 다른 target이 runner와 server를 주는 시험에서 더는 실패하지 않는다(T334-3-27).
 - described catalog read의 Go 시험 표는 시간대를 따르는 값에 `CATALOG_VALUE`를 기대한다. T334-3-3-8이 구현한 INT-103의 규칙이다(T334-3-3-16).
 - PHP process는 생성된 model을 쓸 때만 그 file을 읽어 들인다. `bootstrap.php`는 class를 `Registry::classes`에 넘기고, runtime model과 chain의 column 조회는 parse된 entity를 읽으며, `Registry::verify`가 class를 처음 쓸 때 entity와 비교하므로 수정된 class는 여전히 첫 statement 전에 `CONFIG`로 실패한다. 이 변경을 받으려면 model을 다시 생성해야 한다(T358).
 - `make recipe-runners-check`가 runtime마다 recipe runner가 하나임을 강제한다(FCV-15). PHP runner는 `model.` 접두사로 dispatch하지 않고 model op의 이름을 적으며, 어떤 recipe와 runner도 쓰지 않던 `utils.set_local`, `utils.local`, `utils.lock`을 schema에서 뺐다(T334-3-25).

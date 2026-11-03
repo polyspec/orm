@@ -1,10 +1,10 @@
 // The unit tests of the client database lanes: the Rust thread cap of the pooler lane (T343-1), the Go owner of the
 // repeated member name case of model_writes (T343-2-1) and its declaration on every owner (T343-2).
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../tests/testcase.mts';
-import { resolve } from 'node:path';
-import { rustDatabaseCoverageSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
+import { dirname, relative, resolve } from 'node:path';
+import { GO_LANE_PACKAGES, GO_LANE_SKIP, rustDatabaseCoverageSkipArguments, rustPoolerThreadArguments, rustTargetPoolSize } from './client-db-test.mts';
 import { readFeatures, type CoverageOwner, type Language, type NativeCommand } from './features/manifest.mts';
 
 const root = resolve(import.meta.dirname, '..');
@@ -72,4 +72,22 @@ caseTest('model_writes declares the repeated member name case on every owner and
     }
   }
   assert.ok(rustDatabaseCoverageSkipArguments(manifest, root).includes(symbols.rust ?? ''), 'the generic Rust run skips the case');
+});
+
+// The packages of go-test-check, which builds and exports what their cross-runtime tests need (T334-3-27).
+const goTestCheckRoots = ['packages/go/cmd', 'packages/go/procevent', 'packages/go/internal'];
+
+caseTest('the Go lane runs every package of packages/go that go-test-check does not run (T334-3-27)', COMPUTE, () => {
+  const packages = new Set(readdirSync(resolve(root, 'packages/go'), { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.go'))
+    .map(entry => relative(root, dirname(resolve(entry.parentPath, entry.name))))
+    .filter(path => !path.split('/').includes('testdata')));
+  const expected = [...packages].filter(path => !goTestCheckRoots.some(owner => path === owner || path.startsWith(`${owner}/`))).map(path => `./${path}`).sort();
+  assert.deepEqual([...GO_LANE_PACKAGES].sort(), expected);
+});
+
+caseTest('the Go lane leaves the markdown conformance test to the target that passes its server (T334-3-27)', COMPUTE, () => {
+  const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
+  assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
+  assert.equal(GO_LANE_SKIP, '^TestMarkdownConformance$');
 });

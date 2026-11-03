@@ -30,7 +30,35 @@ const env = (name: string): string => process.env[name] ?? '';
 
 const go = (...args: string[]): Command => ({ program: 'node', args: ['tests/go-test.mts', '-v', '-timeout', '0', '-count=1', ...args], cwd: root });
 // tests/go-test.mts gives the run the tag ormtest, so the rollback and statement fault tests run in it.
-const GO: Command[] = [go('./packages/go/...')];
+// The packages of the lane are those of packages/go without the ones of go-test-check (cmd, procevent, internal), whose cross-runtime
+// tests need the runner binaries and fixtures that target builds and exports.
+export const GO_LANE_PACKAGES = [
+  './packages/go/bench',
+  './packages/go/bindmessages',
+  './packages/go/bindmodel',
+  './packages/go/complexmodel',
+  './packages/go/complexquery',
+  './packages/go/decimalmodel',
+  './packages/go/engine',
+  './packages/go/engine/dbspec',
+  './packages/go/engine/dialect',
+  './packages/go/engine/internal/meet',
+  './packages/go/engine/ir',
+  './packages/go/engine/plan',
+  './packages/go/engine/planner',
+  './packages/go/engine/runtimemodel',
+  './packages/go/generator',
+  './packages/go/markdownmodel',
+  './packages/go/model',
+  './packages/go/orm',
+  './packages/go/orm/mysqlonly',
+  './packages/go/orm/pg',
+  './packages/go/orm/sqlite',
+  './packages/go/testcase',
+];
+// TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes.
+export const GO_LANE_SKIP = '^TestMarkdownConformance$';
+const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 'AddTablesAndColumnsTest',
   'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
