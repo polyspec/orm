@@ -196,6 +196,7 @@ def check_refused_generation(step: dict, recipe_dir: Path) -> None:
             else:
                 (root / name).write_bytes((recipe_dir / entry["path"]).read_bytes())
         out = root / "model"
+        check = ["--check"] if step.get("check") else []
         done = subprocess.run(
             [
                 sys.executable,
@@ -206,7 +207,7 @@ def check_refused_generation(step: dict, recipe_dir: Path) -> None:
                 str(root / "dbspec-set.json"),
                 "--out",
                 str(out),
-                *(["--check"] if step.get("check") else []),
+                *check,
             ],
             capture_output=True,
             text=True,

@@ -98,7 +98,7 @@ Note: the reader reads a file tree that does not change while it runs. It examin
 - **DBS-25** `set.path`: A path has no normal form, a `documents` path has a `..` segment, or an `external` path has one after another segment
 - **DBS-26** `set.duplicate`: A path names a file that an earlier path names
 
-- **DBS-27** A generator that gets a set file with an error, or a listed file with a diagnostic, exits with its error status, prints every error and diagnostic, and writes nothing. The shared vectors `tests/dbspec/set-files.json` hold each rule with accepting and rejecting cases as file trees (regular files, directories, symbolic links and hard links), which every client's set reader runs; TypeScript's `parseSet` also runs the cases that need no file tree. The file-tree cases need a file system with symbolic and hard links: on Windows, NTFS and the privilege to create symbolic links.
+- **DBS-27** A generator that gets a set file with an error, or a listed file with a diagnostic, exits with its error status, prints every error and diagnostic, each diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`, after any file or set name, and writes nothing. The shared vectors `tests/dbspec/set-files.json` hold each rule with accepting and rejecting cases as file trees (regular files, directories, symbolic links and hard links), which every client's set reader runs; TypeScript's `parseSet` also runs the cases that need no file tree. The file-tree cases need a file system with symbolic and hard links: on Windows, NTFS and the privilege to create symbolic links.
 
 ### Parsing a set {#parsing-a-set}
 
