@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5378fff0acc45f9d70de606097e71d59b5e19d00b28e49afd8260e8f0c93a501 -->
+<!-- source-sha256: daa88516f033a38bca11720861a9a49825848d293db11911539dd029f218fec1 -->
 # 변경 이력
 
 ## Unreleased
 
+- Tests: MySQL lock wait timeout(CFG-6)은 모든 runtime에서 `transactions` recipe의 case `mysql_lock_wait_expiry_is_canceled`가 서버의 실제 1205로 확인하며, driver 오류를 만들어 쓰던 native는 사라졌다.
 - Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
