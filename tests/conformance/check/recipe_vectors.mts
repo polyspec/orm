@@ -77,8 +77,11 @@ const shapes: Record<string, (steps: Json[]) => Json> = {
   delete_recursive: ([loaded, members_left, service_left]) => ({
     members: size((loaded as { service_member_models: Json }).service_member_models), members_left, service_left,
   }) as Json,
-  // A body reads the count from the test entry point (protocol.md "Test write result"), which no recipe step reaches, so this file states it.
-  affected_counts: () => ({ update_changed: 1, update_unchanged: 1, upsert_inserted: 1, upsert_updated: 1 }),
+  // The steps db.last_affected follow the two creates and the two updates in the order that the body reads them.
+  affected_counts: steps => {
+    const [upsert_inserted, upsert_updated, update_unchanged, update_changed] = steps.map(step => plain((step as { value: Json }).value));
+    return { update_changed, update_unchanged, upsert_inserted, upsert_updated } as Json;
+  },
 };
 
 /** The steps of a case with those of its transactions, in the order they run. */
