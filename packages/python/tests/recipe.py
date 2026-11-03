@@ -660,33 +660,21 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 rendered["statements"], expect[dialect], f"{dialect} statements"
             )
     elif op == "dbspec.analyze":
-        if "document" not in step:
-            text, header_set = _inline_document(step)
-            analysis = analyze_dbspec(text, header_set)
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect.get("tokens", []), "tokens")
+        if "document" in step:
+            text, header_set = (directory / step["document"]).read_bytes().decode("utf-8"), {}
         else:
-            text = (directory / step["document"]).read_bytes().decode("utf-8")
-            analysis = analyze_dbspec(text, {})
-            parsed_document, positions, _diagnostics = parse_dbspec(text, {})
-            if list(analysis.diagnostics):
-                raise AssertionError(
-                    f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
-                )
-            _expect_equal(
-                emit_dbspec(analysis.document),
-                emit_dbspec(parsed_document),
-                "the analysis holds the parsed document",
-            )
-            _expect_equal(
-                analysis.positions,
-                positions,
-                "the analysis holds the positions of the parse",
-            )
-            if not expect.get("tokens"):
-                raise AssertionError("the expect names no tokens")
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect["tokens"], "tokens")
+            text, header_set = _inline_document(step)
+        analysis = analyze_dbspec(text, header_set)
+        if "document" in step and list(analysis.diagnostics):
+            raise AssertionError(f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}")
+        parsed_document, positions, diagnostics = parse_dbspec(text, header_set)
+        _expect_equal(analysis.document, parsed_document, "the analysis holds the parsed document")
+        _expect_equal(analysis.positions, positions, "the analysis holds the positions of the parse")
+        _expect_equal(list(analysis.diagnostics), list(diagnostics), "the analysis holds the diagnostics of the parse")
+        if "tokens" not in expect:
+            raise AssertionError("the expect names no tokens")
+        tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+        _expect_equal(tokens, expect["tokens"], "tokens")
     elif op == "dbspec.parse_positions":
         if "document" in step:
             text = (directory / step["document"]).read_bytes().decode("utf-8")

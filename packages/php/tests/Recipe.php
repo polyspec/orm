@@ -788,21 +788,19 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
-                if (!array_key_exists('document', $step)) {
-                    [$text, $set] = self::inlineDocument($step);
-                    self::checkTokens(Dbspec::analyze($text, $set)->tokens, $expect['tokens'] ?? []);
-                    return;
-                }
-                $text = self::dbspecFile($dir, $step['document']);
-                $analysis = Dbspec::analyze($text, []);
-                $parsed = Dbspec::parse($text, []);
-                if ($analysis->diagnostics !== []) {
+                [$text, $set] = array_key_exists('document', $step)
+                    ? [self::dbspecFile($dir, $step['document']), []]
+                    : self::inlineDocument($step);
+                $analysis = Dbspec::analyze($text, $set);
+                if (array_key_exists('document', $step) && $analysis->diagnostics !== []) {
                     Assert::fail(self::diagnostics($analysis->diagnostics));
                 }
-                $same = $analysis->document !== null && $parsed->document !== null
-                    && Dbspec::emit($analysis->document) === Dbspec::emit($parsed->document)
-                    && $analysis->positions == $parsed->positions;
-                if (!$same) {
+                $parsed = Dbspec::parse($text, $set);
+                if (
+                    $analysis->document != $parsed->document
+                    || $analysis->positions != $parsed->positions
+                    || $analysis->diagnostics != $parsed->diagnostics
+                ) {
                     Assert::fail('the analysis differs from the parse');
                 }
                 self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);

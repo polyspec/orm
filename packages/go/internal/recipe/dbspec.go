@@ -135,21 +135,20 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		if s.Document == "" {
-			text, set := inlineDocument(s)
-			analysis := dbspec.Analyze(text, set)
-			return checkTokens(analysis.Tokens, want.Tokens)
+		text, set := inlineDocument(s)
+		if s.Document != "" {
+			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.Document)))
+			if err != nil {
+				return err
+			}
+			text, set = string(raw), nil
 		}
-		text, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.Document)))
-		if err != nil {
-			return err
-		}
-		analysis := dbspec.Analyze(string(text), nil)
-		parsed, positions, _ := dbspec.Parse(string(text), nil)
-		if len(analysis.Diagnostics) > 0 {
+		analysis := dbspec.Analyze(text, set)
+		if s.Document != "" && len(analysis.Diagnostics) > 0 {
 			return errors.New(runtimemodel.DiagnosticsError(analysis.Diagnostics))
 		}
-		if dbspec.Emit(analysis.Document) != dbspec.Emit(parsed) || !reflect.DeepEqual(analysis.Positions, positions) {
+		parsed, positions, diagnostics := dbspec.Parse(text, set)
+		if !reflect.DeepEqual(analysis.Document, parsed) || !reflect.DeepEqual(analysis.Positions, positions) || !reflect.DeepEqual(analysis.Diagnostics, diagnostics) {
 			return errors.New("the analysis differs from the parse")
 		}
 		return checkTokens(analysis.Tokens, want.Tokens)

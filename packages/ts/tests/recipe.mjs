@@ -1972,19 +1972,14 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.analyze': {
-      if (step.document === undefined) {
-        const { text, set } = inlineDocument(step);
-        const analysis = analyzeDbspec(text, set);
-        assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens ?? [], 'tokens');
-        break;
-      }
-      const text = await readFile(resolve(dir, step.document), 'utf8');
-      const analysis = analyzeDbspec(text, {});
-      const parsed = parseDbspec(text, {});
-      assert.deepEqual(analysis.diagnostics, [], 'the analysis has no diagnostic');
-      assert.equal(emitDbspec(analysis.document), emitDbspec(parsed.document), 'the analysis holds the parsed document');
+      const { text, set } = step.document === undefined ? inlineDocument(step) : { text: await readFile(resolve(dir, step.document), 'utf8'), set: {} };
+      const analysis = analyzeDbspec(text, set);
+      const parsed = parseDbspec(text, set);
+      if (step.document !== undefined) assert.deepEqual(analysis.diagnostics, [], 'the analysis has no diagnostic');
+      assert.deepEqual(analysis.document, parsed.document, 'the analysis holds the parsed document');
       assert.deepEqual(analysis.positions, parsed.positions, 'the analysis holds the positions of the parse');
-      assert.ok(expect.tokens?.length > 0, 'the expect names tokens');
+      assert.deepEqual(analysis.diagnostics, parsed.diagnostics, 'the analysis holds the diagnostics of the parse');
+      assert.ok(Array.isArray(expect.tokens), 'the expect names tokens');
       assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens, 'tokens');
       break;
     }

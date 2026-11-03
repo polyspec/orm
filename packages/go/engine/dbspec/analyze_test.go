@@ -47,22 +47,6 @@ func TestAnalyzeInvalidByte(t *testing.T) {
 	}
 }
 
-// TestAnalyzeIsParse checks that Analyze returns the result of Parse unchanged.
-func TestAnalyzeIsParse(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, text := range []string{
-		joinLines(sampleDocument, false),
-		"dbspec 1 shop\ntable t {\n  id i64 identity foo\n}\n",
-		"dbspec\t1 shop\n",
-	} {
-		document, positions, diagnostics := Parse(text, nil)
-		analysis := Analyze(text, nil)
-		if !reflect.DeepEqual(analysis.Document, document) || !reflect.DeepEqual(analysis.Positions, positions) || !reflect.DeepEqual(analysis.Diagnostics, diagnostics) {
-			t.Fatalf("Analyze differs from Parse for %q", text)
-		}
-	}
-}
-
 // TestFormat checks that a document with no diagnostic formats to its
 // canonical text, that the output formats to itself, and that a document with
 // a diagnostic is refused with the diagnostics of Parse.
