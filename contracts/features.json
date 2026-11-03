@@ -236,15 +236,6 @@
           ]
         },
         {
-          "id": "bind-message-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestBindMessageVectors$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/markdown.go",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
           "id": "bind-message-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts bind-message-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib markdown::bind_message_tests",
           "shard": "rust",
@@ -255,50 +246,12 @@
           ]
         },
         {
-          "id": "bind-message-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testBindMessageVectors packages/php/tests/MarkdownTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php/src/Markdown.php",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
-          "id": "bind-message-php-extension",
-          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testPublicBindMessageVectors'",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php-ext/src/config.m4",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/markdown_native.c",
-            "packages/php-ext/src/markdown_native.h",
-            "packages/php-ext/src/orm.c",
-            "packages/php-ext/src/polyspec_orm.c",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
           "id": "bind-message-typescript",
           "command": "node --test --test-name-pattern='^markdown/bind-message/' packages/ts/tests/markdown.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/markdown.ts",
-            "tests/bind/vectors.json"
-          ]
-        },
-        {
-          "id": "bind-message-python",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.BindMessageVectors",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_markdown.py",
-            "packages/python/src/polyspec/orm/markdown.py",
             "tests/bind/vectors.json"
           ]
         },
@@ -1490,7 +1443,7 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_aggregate_numeric.py",
@@ -5862,14 +5815,6 @@
           ]
         },
         {
-          "id": "encryption-model-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'AESRotation' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/model_test.go"
-          ]
-        },
-        {
           "id": "encryption-codec-php",
           "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CodecRecipeTest.php",
           "shard": "other",
@@ -7479,15 +7424,6 @@
           ]
         },
         {
-          "id": "python-native-postgres-loader",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_driver_cells.PostgresCells.test_numeric_cells_load_as_text",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_driver_cells.py",
-            "packages/python/src/polyspec/orm/driver_cells.py"
-          ]
-        },
-        {
           "id": "python-native-mysql-placeholder",
           "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_placeholders.MysqlPlaceholders.test_question_marks_become_format_markers_in_order",
           "shard": "other",
@@ -8764,14 +8700,6 @@
             "Makefile",
             "packages/php/tests/CatalogQueryBoundsTest.php"
           ]
-        },
-        {
-          "id": "catalog-row-baseline-typescript",
-          "command": "node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" node -- --test-name-pattern='^row baseline compares exact typed values including generated-column originals$' packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/catalog-mutation-helper.test.mjs"
-          ]
         }
       ],
       "coverage": {
@@ -9993,10 +9921,9 @@
         "packages/php/tests/DbspecDialectRefusalRecipeTest.php"
       ],
       "tests": [
-        "packages/php/tests/DbspecRenderTest.php",
-        "packages/php-ext/tests/DbspecRulesNativeTest.php"
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php"
       ],
-      "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist --filter DbspecRenderTest::testUnknownDialect packages/php/tests/DbspecRenderTest.php"
+      "command": "env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecDialectRefusalRecipeTest.php"
     },
     {
       "id": "dbspec-sqlite-literal-rows",

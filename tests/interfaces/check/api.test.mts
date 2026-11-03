@@ -101,7 +101,7 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['client-model-terminal-write', ['INT-34', 'INT-35', 'INT-36', 'INT-37', 'INT-38', 'INT-39', 'DSL-109']],
   ['client-runtime-model', ['DBS-110', 'DBS-111', 'DBS-112', 'DBS-113', 'DBS-114', 'DBS-115', 'DBS-116', 'DBS-117', 'DBS-118', 'DBS-119', 'DBS-120']],
   ['generated-model-field-access', ['INT-1', 'INT-2', 'INT-3', 'INT-4', 'INT-5', 'INT-6', 'INT-7', 'INT-8', 'INT-25', 'DSL-48', 'DSL-49', 'DSL-51', 'INT-10', 'INT-98', 'INT-99']],
-  ['client-model-terminal-read', ['INT-29', 'INT-30', 'INT-31', 'INT-32', 'INT-33', 'DSL-62', 'DSL-63', 'DSL-65', 'DSL-66', 'DSL-68']],
+  ['client-model-terminal-read', ['INT-29', 'INT-30', 'INT-31', 'INT-32', 'INT-33', 'DSL-62', 'DSL-63', 'DSL-65', 'DSL-159', 'DSL-66', 'DSL-68']],
   ['client-query-ir', ['PRT-1', 'PRT-2', 'PRT-9', 'PRT-10', 'PRT-12', 'PRT-16', 'PRT-19', 'PRT-70']],
   ['client-engine', ['INT-76', 'INT-88', 'INT-133', 'PRT-18', 'PRT-24', ...Array.from({ length: 16 }, (_, index) => `DIA-${index + 1}`), ...Array.from({ length: 16 }, (_, index) => `DIA-${index + 18}`), 'DIA-35', 'DIA-36', 'PRT-32']],
   ['runtime-model-load-set', ['SCH-12']],
