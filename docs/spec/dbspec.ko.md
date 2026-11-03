@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 776f62fc5e31d93cf4c2279ca46817867a1aa82f24f3cb891b8858af9aba8361 -->
+<!-- source-sha256: 45f7fbfa6cb705ebee562e918789edf3a0decce3171a0cc3e2cec444df65ce7a -->
 # dbspec
 
 [English](dbspec.md)
@@ -99,7 +99,7 @@ table users {
 - **DBS-25** `set.path`: 경로에 정규형이 없거나, `documents` 경로에 `..` segment가 있거나, `external` 경로에서 다른 segment 뒤에 `..`이 있다
 - **DBS-26** `set.duplicate`: 경로의 파일이 앞의 경로의 파일과 같다
 
-- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하되 parse된 문서의 diagnostic은 파일이나 set 이름 뒤에 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력하고, 아무것도 쓰지 않는다. 어떤 type도 가리키지 않는 단어의 message는 `type "<word>" is not a dbspec type`이다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
+- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하되 parse된 문서의 diagnostic은 파일이나 set 이름 뒤에 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
 
 
 ### Set parse {#parsing-a-set}
@@ -473,7 +473,7 @@ vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize
 - **DBS-159** `name.format`: 이름이 `[a-z][a-z0-9_]*`가 아니거나 `primary`다
 - **DBS-160** `name.length`: 이름이 63 bytes보다 길다
 - **DBS-161** `name.duplicate`: table, column, constraint, index, diagram 이름이 범위 안에서 겹친다
-- **DBS-162** `type`: type을 모르거나 parameter가 범위를 벗어난다
+- **DBS-162** `type`: type을 모르거나 parameter가 범위를 벗어난다. diagnostic의 위치는 type 단어다. 그 message는 어떤 type도 가리키지 않는 단어이면 `type "<word>" is not a dbspec type`, parameter가 없는 type에 parameter가 주어지면 `<word> takes no parameters`, parameter를 받는 type의 parameter가 없거나 개수가 다르거나 정수가 아니거나 범위를 벗어나면 `varchar(n) needs 1 <= n <= 16383`, `time(p) needs 0 <= p <= 6`, `datetime(p) needs 0 <= p <= 6`, `decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p` 중 하나다
 - **DBS-163** `column`: column의 `null`, `identity`, `default` 조합이 규칙에 어긋나거나 default가 type에 맞지 않는다
 - **DBS-164** `key`: primary key가 없거나 둘 이상이거나, key column이 nullable이거나, key나 index가 모르는·반복된·`text`·`bytes` column, 16개 넘는 column, 640자 넘는 `varchar`를 나열한다
 - **DBS-165** `foreign_key`: foreign key의 대상, column type, index, column 수, `set_null` nullability가 규칙에 어긋난다

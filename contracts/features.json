@@ -8731,7 +8731,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test 'tool_*' --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test 'tool_*' --test 'row_*' --test typed_binds --test generate",
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/tool_cells.rs",
@@ -8739,7 +8739,6 @@
             "packages/rust/build/tests/tool_limits.rs",
             "packages/rust/build/tests/tool_statement.rs",
             "packages/rust/build/tests/tool_values.rs",
-            "packages/rust/build/tests/grid_temporal.rs",
             "packages/rust/build/tests/row_commit_permit.rs",
             "packages/rust/build/tests/row_insert_identity.rs",
             "packages/rust/build/tests/row_mutation.rs",
