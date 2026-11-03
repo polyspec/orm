@@ -1,5 +1,5 @@
 //! The bench schema of contracts/fixtures/bench/bench.dbs, and a SQLite file of a test case with that schema installed.
-//! sqlite_concurrency, transaction_flow, val_text and soft_delete use them.
+//! transaction_flow, val_text and soft_delete use them.
 
 use std::path::PathBuf;
 use std::sync::LazyLock;

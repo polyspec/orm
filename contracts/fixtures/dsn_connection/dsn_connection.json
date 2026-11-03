@@ -2334,7 +2334,8 @@
               ],
               "expect": {
                 "sqlite": {
-                  "error": "CANCELED"
+                  "error": "CANCELED",
+                  "message_holds": "(SQLITE_BUSY)"
                 }
               }
             },

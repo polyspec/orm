@@ -2908,21 +2908,6 @@
         "packages/php/tests/bootstrap.php"
       ]
     },
-    "connection-busy-timeout-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-        "packages/php/src/OrmException.php"
-      ]
-    },
     "connection-pool-resource-bounds-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -3189,40 +3174,6 @@
         "php-extension-tools",
         "python",
         "mysql-privilege-server"
-      ]
-    },
-    "connection-sqlite-concurrent-writers-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/python/tests/connection_pool.py"
-      ]
-    },
-    "connection-sqlite-read-during-write-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
       ]
     },
     "python-check": {

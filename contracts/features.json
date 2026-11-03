@@ -111,7 +111,6 @@
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
-        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
@@ -394,17 +393,6 @@
           ]
         },
         {
-          "id": "connection-sqlite-busy-timeout-php-extension",
-          "command": "make connection-busy-timeout-php-extension-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
-            "packages/php-ext/src/db.c",
-            "packages/php/src/OrmException.php"
-          ]
-        },
-        {
           "id": "dsn-mysql-tls-typescript",
           "command": "node packages/ts/tests/mysql_tls.mjs",
           "shard": "other",
@@ -548,35 +536,6 @@
           "inputs": [
             "packages/python/tests/connection_pool.py",
             "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-concurrent-writers-python",
-          "command": "make connection-sqlite-concurrent-writers-python-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/python/tests/connection_pool.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-read-during-write-python",
-          "command": "make connection-sqlite-read-during-write-python-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/python/tests/connection_pool.py"
-          ]
-        },
-        {
-          "id": "connection-sqlite-read-during-write-php-extension",
-          "command": "make connection-sqlite-read-during-write-php-extension-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/db.c",
-            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
           ]
         },
         {
@@ -2497,11 +2456,7 @@
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/goexit_test.go",
         "packages/go/orm/context_reset_test.go",
-        "packages/go/model/sqlite_concurrency_test.go",
-        "packages/php/tests/SqliteConcurrencyTest.php",
         "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/ts/tests/sqlite-concurrency.mjs",
-        "packages/rust/orm/tests/sqlite_concurrency.rs",
         "packages/go/orm/coverage_transaction_failure_test.go",
         "packages/php/tests/RollbackTest.php",
         "packages/php/tests/TransactionFailureTest.php",
@@ -2610,14 +2565,6 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_transaction_flow.py"
-          ]
-        },
-        {
-          "id": "transactions-sqlite-locking-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'TestSQLite' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/sqlite_concurrency_test.go"
           ]
         },
         {
@@ -2796,31 +2743,6 @@
             "packages/php/bin/orm-sqlite-cancel-build.php",
             "packages/php/composer.json",
             "Makefile"
-          ]
-        },
-        {
-          "id": "sqlite-concurrency-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/SqliteConcurrencyTest.php",
-            "packages/php/tests/sqlite_concurrency_writer.php"
-          ]
-        },
-        {
-          "id": "sqlite-concurrency-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts sqlite-concurrency-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test sqlite_concurrency",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/sqlite_concurrency.rs"
-          ]
-        },
-        {
-          "id": "sqlite-concurrency-typescript",
-          "command": "node packages/ts/tests/sqlite-concurrency.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/sqlite-concurrency.mjs"
           ]
         },
         {

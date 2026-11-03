@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 471344224c0e8d1251bf74dab644cf67987d58a5cfcca387ea8d62b5201a16e8 -->
+<!-- source-sha256: 1621ed3d811ce3c7b84d3554684c12e75c935d76e2788c676d66ff407ae1285e -->
 # 변경 이력
 
 ## Unreleased
@@ -518,6 +518,7 @@
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
 - statement timeout(CFG-6)과 transaction pooler를 거친 격리(CFG-27, CFG-28, CFG-29)를 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `statement_timeout_ms`와 DSN `case-pooler`를 받는다. pooler를 거친 Python catalog session은 별도 요구사항(CFG-41)이 된다.
+- SQLite 잠금 대기, 쓰기 중 읽기, 동시 쓰기는 여섯 runtime의 recipe case로 실행하고, 그 동작의 native 시험은 없앤다.
 
 ## 0.0.21
 
