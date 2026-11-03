@@ -350,12 +350,17 @@ final class Recipe
         if (isset($outcome['error'])) {
             foreach ($dialects as $dialect) {
                 $code = 'no error';
+                $message = '';
                 try {
                     (new Engine($model, $dialect, 8))->compile($request);
                 } catch (OrmException $error) {
                     $code = $error->code_;
+                    $message = $error->getMessage();
                 }
                 Assert::assertSame($outcome['error'], $code, "$dialect planner.compile");
+                if (isset($outcome['message'])) {
+                    Assert::assertSame($outcome['message'], $message, "$dialect planner.compile message");
+                }
             }
             return;
         }

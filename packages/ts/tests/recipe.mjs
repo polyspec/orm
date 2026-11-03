@@ -1181,8 +1181,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }

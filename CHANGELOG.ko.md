@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2122b8e7cd23c96a0ed151115b65844a80083843348f25e1150828d4591ab874 -->
+<!-- source-sha256: 1e8ea6f7f08095e94ae4772702e0d49af29b65b6136664d3cc8a99bc0e571920 -->
 # 변경 이력
 
 ## Unreleased
 
+- - output 이름 충돌의 compile case는 planner.compile expect의 선택 항목 message로 모든 dialect의 오류 문장 전체를 시험한다 (#T334-3-6-2)
 - - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)

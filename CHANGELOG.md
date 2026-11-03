@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- - The compile case of an output name conflict holds the exact text of the error in every dialect, by the optional message of a planner.compile expect (#T334-3-6-2)
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
 - The cleanup errors of apply (PLN-97 to PLN-101, PLN-106) and a rollback of a recorded step outside the plan are cases of the `dbspec.apply_fault` recipe in every runtime, through injected statements; the native tests are gone (#T334-3-18).
 - `conformance-generated-methods-check` also compares the bodies `now_defaults`, `delete_recursive` and `affected_counts` with the expects of their recipe cases.

@@ -826,9 +826,15 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     let input = ir_request::request(&step["input"], &manifest.manifest_hash);
     if let Some(code) = want.get("error").and_then(Value::as_str) {
         for (name, dialect) in PLAN_DIALECTS {
-            let got = engine::compile(&manifest, dialect, &input).err().map(|error| error.code().to_owned());
+            let error = engine::compile(&manifest, dialect, &input).err();
+            let got = error.as_ref().map(|error| error.code().to_owned());
             if got.as_deref() != Some(code) {
                 return Err(format!("{name}: error {got:?}, want {code}"));
+            }
+            if let (Some(error), Some(message)) = (&error, want.get("message").and_then(Value::as_str)) {
+                if error.to_string() != message {
+                    return Err(format!("{name}: message {error}, want {message}"));
+                }
             }
         }
         return Ok(());

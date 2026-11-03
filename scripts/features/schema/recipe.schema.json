@@ -2554,6 +2554,10 @@
                     "properties": {
                       "error": {
                         "type": "string"
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "The exact text of the error of every dialect, when the case holds it."
                       }
                     }
                   }
