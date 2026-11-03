@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
@@ -168,7 +169,7 @@ func checkDBSpec(s step, dir, database string) error {
 		}
 	case "dbspec.format":
 		var want struct {
-			Text        []string `json:"text"`
+			Text        textLines `json:"text"`
 			Diagnostics []struct {
 				Rule   string `json:"rule"`
 				Line   int    `json:"line"`
@@ -343,6 +344,56 @@ func joinText(lines []string, crlf, mixed bool) string {
 }
 
 // inlineDocument returns the text of a step and the set of its other documents, joined with the step's line endings.
+// textLines is the lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+type textLines []string
+
+// UnmarshalJSON expands the forms of a text as it decodes them.
+func (l *textLines) UnmarshalJSON(data []byte) error {
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err != nil {
+		return err
+	}
+	out := []string{}
+	for _, item := range items {
+		var line string
+		if json.Unmarshal(item, &line) == nil {
+			out = append(out, line)
+			continue
+		}
+		var form struct {
+			Fill *struct {
+				Text  string `json:"text"`
+				Count int    `json:"count"`
+			} `json:"fill"`
+			Repeat *struct {
+				Var   string    `json:"var"`
+				From  int       `json:"from"`
+				Count int       `json:"count"`
+				Lines textLines `json:"lines"`
+			} `json:"repeat"`
+		}
+		if err := json.Unmarshal(item, &form); err != nil {
+			return err
+		}
+		if form.Fill != nil {
+			out = append(out, strings.Repeat(form.Fill.Text, form.Fill.Count))
+			continue
+		}
+		if form.Repeat == nil {
+			return fmt.Errorf("the text line %s is no text, repeat or fill", item)
+		}
+		mark := "{" + form.Repeat.Var + "}"
+		for i := form.Repeat.From; i < form.Repeat.From+form.Repeat.Count; i++ {
+			text := strconv.Itoa(i)
+			for _, inner := range form.Repeat.Lines {
+				out = append(out, strings.ReplaceAll(inner, mark, text))
+			}
+		}
+	}
+	*l = out
+	return nil
+}
+
 func inlineDocument(s step) (string, map[string]string) {
 	set := map[string]string{}
 	for name, lines := range s.Set {

@@ -95,6 +95,48 @@
     ]
   },
   "$defs": {
+    "textLine": {
+      "description": "A line of a dbspec.format text, or a form that a helper expands to lines, so that a long document need not be written out in full: repeat gives its lines count times with {var} replaced by from, from + 1, ...; fill gives one line of its text repeated count times.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "required": ["repeat"],
+          "additionalProperties": false,
+          "properties": {
+            "repeat": {
+              "type": "object",
+              "required": ["var", "from", "count", "lines"],
+              "additionalProperties": false,
+              "properties": {
+                "var": {"type": "string", "pattern": "^[a-z]+$"},
+                "from": {"type": "integer"},
+                "count": {"type": "integer", "minimum": 1},
+                "lines": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/textLine"}}
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["fill"],
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "object",
+              "required": ["text", "count"],
+              "additionalProperties": false,
+              "properties": {
+                "text": {"type": "string"},
+                "count": {"type": "integer", "minimum": 1}
+              }
+            }
+          }
+        }
+      ]
+    },
     "requirements": {
       "type": "array",
       "minItems": 1,
@@ -4176,7 +4218,7 @@
             "type": "array",
             "minItems": 1,
             "items": {
-              "type": "string"
+              "$ref": "#/$defs/textLine"
             }
           },
           "expect": {
@@ -4194,7 +4236,7 @@
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                      "type": "string"
+                      "$ref": "#/$defs/textLine"
                     }
                   },
                   "diagnostics": {

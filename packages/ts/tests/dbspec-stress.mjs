@@ -37,7 +37,6 @@ function generate() {
   });
 }
 
-// Requirements: DBS-123.
 caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async ({ step }) => {
     const text = await generate();
     step(`generated ${Buffer.byteLength(text)} bytes`);

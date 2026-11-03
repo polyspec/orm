@@ -1496,7 +1496,22 @@ function inlineDocument(step) {
   const mixed = step.mixed === true;
   const set = {};
   for (const [name, lines] of Object.entries(step.set ?? {})) set[name] = joinText(lines, crlf, mixed);
-  return { text: joinText(step.text, crlf, mixed), set };
+  return { text: joinText(expandLines(step.text), crlf, mixed), set };
+}
+
+// expandLines is the lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+function expandLines(items) {
+  const out = [];
+  for (const item of items) {
+    if (typeof item === 'string') out.push(item);
+    else if (item.fill !== undefined) out.push(item.fill.text.repeat(item.fill.count));
+    else {
+      const { var: name, from, count, lines } = item.repeat;
+      const inner = expandLines(lines);
+      for (let i = from; i < from + count; i++) for (const line of inner) out.push(line.replaceAll(`{${name}}`, String(i)));
+    }
+  }
+  return out;
 }
 
 // emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.
@@ -1664,12 +1679,12 @@ async function checkDbspecFiles(step, dir, database) {
         checkRefusal(text, set, expect.diagnostics);
         break;
       }
-      const expected = `${expect.text.join('\n')}\n`;
-      assert.equal(emitStable(text, set), expected, 'emission');
+      const expected = `${expandLines(expect.text).join('\n')}\n`;
+      assert.ok(emitStable(text, set) === expected, 'emission');
       const formatted = formatDbspec(text, set);
       assert.deepEqual(formatted.diagnostics, [], 'the text formats');
-      assert.equal(formatted.text, expected, 'formatted text');
-      assert.equal(formatDbspec(formatted.text, set).text, formatted.text, 'a formatted text is its own format');
+      assert.ok(formatted.text === expected, 'formatted text');
+      assert.ok(formatDbspec(formatted.text, set).text === formatted.text, 'a formatted text is its own format');
       break;
     }
     case 'dbspec.parse_set': {

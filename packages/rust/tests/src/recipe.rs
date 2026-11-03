@@ -758,7 +758,30 @@ fn inline_text(step: &Value) -> (String, BTreeMap<String, String>) {
             set.insert(name.clone(), joined_lines(&lines_of(lines), crlf, mixed));
         }
     }
-    (joined_lines(&lines_of(&step["text"]), crlf, mixed), set)
+    let lines = expanded_lines(&step["text"]);
+    (joined_lines(&lines.iter().map(String::as_str).collect::<Vec<_>>(), crlf, mixed), set)
+}
+
+/// The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+fn expanded_lines(items: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    for item in items.as_array().into_iter().flatten() {
+        if let Some(line) = item.as_str() {
+            out.push(line.to_owned());
+        } else if let Some(fill) = item.get("fill") {
+            out.push(fill["text"].as_str().unwrap_or_default().repeat(fill["count"].as_u64().unwrap_or(0) as usize));
+        } else {
+            let repeat = &item["repeat"];
+            let inner = expanded_lines(&repeat["lines"]);
+            let mark = format!("{{{}}}", repeat["var"].as_str().unwrap_or_default());
+            let from = repeat["from"].as_i64().unwrap_or(0);
+            for i in from..from + repeat["count"].as_i64().unwrap_or(0) {
+                let text = i.to_string();
+                out.extend(inner.iter().map(|line| line.replace(&mark, &text)));
+            }
+        }
+    }
+    out
 }
 
 /// The text and the set of a dbspec step: inline when the step has text, else the document file of the step.
@@ -810,14 +833,15 @@ fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> 
 /// The dbspec.format op: the text of the step formats to the expect's text, and the emission of the text is that text too,
 /// and the formatted text formats to itself; or the text is refused with the expect's diagnostics.
 fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
-    if lines_of(&step["text"]).is_empty() {
+    if expanded_lines(&step["text"]).is_empty() {
         return Err("dbspec.format has no text".to_owned());
     }
     let (text, set) = inline_text(step);
     if let Some(want_diagnostics) = want["diagnostics"].as_array() {
         return check_refusal(&text, &set, want_diagnostics);
     }
-    let expected = joined_lines(&lines_of(&want["text"]), false, false);
+    let want_lines = expanded_lines(&want["text"]);
+    let expected = joined_lines(&want_lines.iter().map(String::as_str).collect::<Vec<_>>(), false, false);
     let emitted = emit_stable(&text, &set)?;
     if emitted != expected {
         return Err(format!("emission:\n{emitted}\nwant\n{expected}"));
