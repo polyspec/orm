@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)
 - The keyring versions of INT-74 and INT-130 and the first builder error of INT-88 and INT-89 are the cases of the recipes `public-interface` and `public-interface-signed`, which every runtime runs through the new ops `keyring.versions` and `markdown.builder`; PHP and the PHP extension now record the refusal of a condition value at the chain call, as Go, TypeScript, Python and Rust do, so the terminal returns the first error (T334-3-24).
