@@ -234,11 +234,10 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		model, diagnostics := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
-		if len(diagnostics) > 0 {
-			// Go returns the diagnostics of SCHEMA_INVALID (SCH-12) and no code.
-			if want.Error != "SCHEMA_INVALID" {
-				return fmt.Errorf("diagnostics %s, want %+v", runtimemodel.DiagnosticsError(diagnostics), want)
+		model, invalid := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
+		if invalid != nil {
+			if invalid.Code() != want.Error {
+				return fmt.Errorf("%v, want %+v", invalid, want)
 			}
 			return nil
 		}

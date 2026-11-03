@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Go `runtimemodel.LoadSet` fails with the code `SCHEMA_INVALID` that SCH-12 states, as a `*SetLoadError`, and the recipe helper reads that code instead of translating diagnostics.
 - The Python coverage files of request_hook and statement_events and the statement runner are removed: their cases are the recipes, which take their databases from their run (FCV-9), so nothing in those files reads `ORM_FEATURE_DATABASE` or `ORM_FEATURE_DSN`. The Python performance gate reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`.
 - The request_hook recipe holds what the native tests held in every runtime: the hooked handle shares the subscribers of its connection and leaves the original handle unhooked, the hook reads a bound parameter, a planned read binds the value the hook added, an invalid parameter index and a restore with no key run no statement, a child with no handle reads under the scope of its parent, and the three restore key rewrites. `hook.install` with `as` and the hook actions `assign_first`, `rewrite`, `invalid_param` and `record_param` are in all six runtimes.
 - The merge of a split root `in` list is tested through the public query on a table without its primary key, in the recipe `parameter_chunking`.

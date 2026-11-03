@@ -65,9 +65,9 @@ func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 	if strings.Contains(built.ManifestText, "#") || strings.Contains(built.ManifestText, "diagram") || !strings.HasPrefix(built.ManifestText, "dbspec 1 accounts\n") {
 		t.Fatalf("manifest text = %q", built.ManifestText)
 	}
-	loaded, diagnostics := Load(built.ManifestText)
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
+	loaded, invalid := Load(built.ManifestText)
+	if invalid != nil {
+		t.Fatal(invalid)
 	}
 	if loaded.ManifestHash != built.ManifestHash || !strings.HasPrefix(loaded.ManifestHash, "sha256:") || !slices.Equal(loaded.Order, []string{"tenant", "member"}) {
 		t.Fatalf("loaded %s %v, built %s", loaded.ManifestHash, loaded.Order, built.ManifestHash)
@@ -93,8 +93,8 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 		"table x {\n}\n":                "header",
 		parentDocument + parentDocument: "name.duplicate",
 	} {
-		if _, diagnostics := Load(text); len(diagnostics) == 0 || diagnostics[0].Rule != rule {
-			t.Errorf("Load(%q) = %v, want %s", text, diagnostics, rule)
+		if _, invalid := Load(text); invalid == nil || !strings.Contains(invalid.Problems[0], " "+rule+": ") {
+			t.Errorf("Load(%q) = %v, want %s", text, invalid, rule)
 		}
 	}
 }
