@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
 - The recipe `tests/planner/runtime-model.json` holds what Go `runtime_model_test.go` held and all six runtimes run it: i16 read and plus, the insert of a default or a missing required column (PRT-81), and the audit slot of audited writes (PRT-32, PRT-82). `planner.compile` compares an audit slot with its `name` and, with `assemble_types`, the output types.
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.

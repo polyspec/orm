@@ -2833,6 +2833,7 @@
         "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
         "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
@@ -2840,7 +2841,9 @@
         "tests/planner/default-select-set.json",
         "tests/planner/default-select-set.dbs",
         "tests/planner/runtime-model.json",
-        "tests/planner/runtime-model.dbs"
+        "tests/planner/runtime-model.dbs",
+        "tests/dbspec/runtime-model.json",
+        "tests/dbspec/runtime-model-shop.dbs"
       ]
     },
     "model-types-php-extension-check": {

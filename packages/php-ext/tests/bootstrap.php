@@ -80,6 +80,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecRulesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecDialectRefusalRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DefaultSelectSetRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RuntimeModelPlansRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RuntimeModelEntitiesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecLoadSetRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecLimitsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DslRecipeTest.php';

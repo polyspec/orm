@@ -1067,6 +1067,10 @@
       },
       "internal": [
         {
+          "glob": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "reason": "test: the public surface of the Rust runtime model that no other runtime has, the diagnostics of parse_manifest and the foreign keys, unique key columns, default literal, audit history and action and immutable of runtime_model (FCV-2)"
+        },
+        {
           "glob": "packages/rust/orm/src/driver/tests.rs",
           "reason": "test: calls the crate-private parent-slot expansion and SQLite binding helpers directly; public composite relation behavior is covered by the six-client composite-key feature cases"
         },
@@ -7526,7 +7530,9 @@
       "kind": "suite",
       "requirements": [
         "SCH-12",
-        "DBS-156"
+        "DBS-156",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -28209,11 +28215,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/generate.rs",
           "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_names_entities_and_reads_settings"
         }
       ]
     },
@@ -30878,6 +30879,48 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/runtime_model_plans_none.rs",
           "symbol": "runtime_model_plans_none"
+        }
+      ]
+    },
+    {
+      "id": "runtime-model-entities",
+      "kind": "suite",
+      "requirements": [
+        "DBS-65",
+        "DBS-85",
+        "DBS-111",
+        "DBS-112"
+      ],
+      "file": "tests/dbspec/runtime-model.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_runtime_model_entities_test.go",
+          "symbol": "TestRecipeRuntimeModelEntitiesNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelEntitiesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RuntimeModelEntitiesRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RuntimeModelEntitiesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/runtime_model_entities-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_runtime_model_entities_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/runtime_model_entities_none.rs",
+          "symbol": "runtime_model_entities_none"
         }
       ]
     },

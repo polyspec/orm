@@ -4498,6 +4498,7 @@
         "packages/python/tests/test_model_fields.py",
         "packages/python/tests/test_default_select_set_none.py",
         "packages/python/tests/test_runtime_model_plans_none.py",
+        "packages/python/tests/test_runtime_model_entities_none.py",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",

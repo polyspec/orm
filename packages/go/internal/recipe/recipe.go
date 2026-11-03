@@ -209,7 +209,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
-		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.read_file", "dbspec.read_bytes":
+		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)

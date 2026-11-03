@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- recipe `tests/dbspec/runtime-model.json`과 새 op `dbspec.runtime_model`은 Rust `dbspec_runtime.rs`가 entity 이름, 테이블, key, setting, field 값에 대해 검사하던 내용을 담고 여섯 런타임이 모두 실행한다(DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set`은 manifest text를 다시 읽어 그 hash가 나오는지도 검사한다(DBS-100, DBS-103). Rust만 노출하는 것은 native로 남고 FCV-2에 적었다.
 - recipe `tests/planner/runtime-model.json`은 Go `runtime_model_test.go`가 담던 내용을 담고 여섯 런타임이 모두 실행한다. i16 read와 plus, default 또는 빠진 필수 컬럼의 insert(PRT-81), audit 쓰기의 audit slot(PRT-32, PRT-82)이다. `planner.compile`은 audit slot을 `name`과 함께, `assemble_types`이면 출력 타입도 비교한다.
 - 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
