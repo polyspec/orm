@@ -1983,11 +1983,8 @@
             "$ref": "#/$defs/ref"
           },
           "dialect": {
-            "enum": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ]
+            "type": "string",
+            "description": "A dialect of DBS-174; any other name expects refused."
           },
           "expect": {
             "type": "object",
@@ -1997,20 +1994,37 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "steps"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "steps": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    },
-                    "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "steps"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        },
+                        "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                      }
+                    }
+                  },
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
+                    }
                   }
-                }
+                  }
+                ]
               }
             }
           }
@@ -4320,6 +4334,10 @@
               "pattern": "\\.dbs$"
             }
           },
+          "dialect": {
+            "type": "string",
+            "description": "A dialect name that the call refuses (DBS-174); absent renders all three dialects."
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -4328,36 +4346,53 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "mysql",
-                  "postgres",
-                  "sqlite"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "mysql": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "mysql",
+                      "postgres",
+                      "sqlite"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "mysql": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "postgres": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sqlite": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     }
                   },
-                  "postgres": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "sqlite": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
                     }
                   }
-                }
+                  }
+                ]
               }
             }
           }

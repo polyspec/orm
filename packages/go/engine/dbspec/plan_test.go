@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
-	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // loadPlanCases reads the cases of tests/dbspec/plan-cases.json, the recipe in plan-cases.json. Its cases are run by
@@ -41,21 +39,6 @@ func planSourceOf(lines []string) (*Document, error) {
 }
 
 // Requirements: DBS-174.
-func TestPlanStepsRejectsUnknownDialect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	runTimed(t, "plan steps reject an unknown dialect", 5*time.Second, func() (err error) {
-		c := loadPlanCases(t)[0]
-		return withPlanCase(c.Source, c.Plan, func(source *Document, plan *Plan, diagnostics []Diagnostic) (err error) {
-			if len(diagnostics) != 0 {
-				return fmt.Errorf("parse plan: %v", diagnostics)
-			}
-			return unknownDialectPanic("PlanSteps", func() {
-				_, _ = PlanSteps(source, plan, Dialect("oracle"))
-			})
-		})
-	})
-}
-
 // parsePlanCase returns the source document and the parsed plan of a plan case
 // given as its source and plan lines, with the diagnostics of the parse.
 func parsePlanCase(source, plan []string) (*Document, *Plan, []Diagnostic, error) {
