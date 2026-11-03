@@ -71,6 +71,9 @@ class _Expect(dict):
             return _Recording(outcome, self._read, "expect.")
         return outcome
 
+    def get(self, key: Any, default: Any = None) -> Any:
+        return self[key] if key in self else default
+
 
 class ReadStep(_Recording):
     """A step of a run, with check for what stayed unread at its end."""
