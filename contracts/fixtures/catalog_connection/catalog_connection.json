@@ -1,6 +1,9 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "INT-8",
+    "INT-4",
+    "COD-31",
     "INT-101",
     "INT-103",
     "INT-104",

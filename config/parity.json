@@ -8087,6 +8087,9 @@
       "id": "catalog_connection-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -8151,6 +8154,9 @@
       "id": "catalog_connection-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -8215,6 +8221,9 @@
       "id": "catalog_connection-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -10077,6 +10086,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -10131,6 +10142,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -10185,6 +10198,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -16275,51 +16290,6 @@
         "artifact": "git-tag",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "model-ordered-json-output-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-16",
-        "COD-26"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/styled_state_test.go",
-          "id": "TestModelOrderedJSONOutputPreservesExactText"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelJsonTextTest.php",
-          "id": "ModelJsonTextTest::testModelJsonTextPreservesOrderedJsonNumberText"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testNativeModelJsonPreservesOrderedJsonNumberText"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_json_output.test.mts",
-          "id": "model/ordered-json-output-text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_json_text.py",
-          "id": "test_model_output_preserves_ordered_json_number_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_json_text.py",
-          "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/model_output.rs",
-          "id": "json_output_keeps_the_ordered_json_text"
-        }
-      ]
     },
     {
       "id": "rust-rollback-fault-entry",
@@ -29442,52 +29412,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::removing_an_added_column_keeps_the_function_column"
-        }
-      ]
-    },
-    {
-      "id": "model-read-null-and-empty-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-31",
-        "INT-4",
-        "INT-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
-          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
-          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
-          "id": "catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
-          "id": "catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
-          "id": "catalog_connection_sqlite::catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/val_text.rs",
-          "id": "sql_null_and_empty_text_are_two_values"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_catalog_connection_test.go",
-          "id": "TestRecipeCatalogConnectionSqlite"
         }
       ]
     },
@@ -43796,6 +43720,50 @@
           "id": "StatementEventsTestExtensionTest::testStatementEventEntryPointsAreNative"
         }
       ]
+    },
+    {
+      "id": "python-model-json-text",
+      "kind": "feature",
+      "requirements": [
+        "COD-68"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_key_that_javascript_reorders_keeps_its_place"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_collection_writes_the_texts_of_its_rows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_related_row_is_written_under_its_relation_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_other_values_are_written_as_json_stringify_writes_them"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_value_that_json_cannot_write_fails_with_codec_encode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_json_dumps_cannot_encode_a_model"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
     }
   ],
   "errors": {

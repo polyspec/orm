@@ -76,24 +76,7 @@ class ModelJsonTextTest(unittest.TestCase):
             .add_column_read_count()
         )
 
-    # Requirements: COD-26.
-    def test_a_row_writes_the_stored_ordered_json_text_in_row_order(self):
-        row = self.author().get_by_seq(1)
-        text = row.to_json_text()
-        self.assertEqual(text, ROW_TEXT)
-        self.assertEqual(list(json.loads(text)), list(row.to_array()))
-
-    # Requirements: COD-16, COD-26.
-    def test_model_output_preserves_ordered_json_number_text(self):
-        stored = '{"z":9007199254740993,"b":1.50,"a":1e2}'
-        row = self.models.Author().set_json_setting(
-            StyledValue.value(parse_json(stored))
-        )
-        self.assertEqual(
-            row.to_json_text(),
-            '{"json_setting":{"kind":"value","value":' + stored + "}}",
-        )
-
+    # Requirements: COD-68.
     def test_a_key_that_javascript_reorders_keeps_its_place(self):
         row = self.author().get_by_seq(1)
         row.set_json_setting(StyledValue.value(parse_json('{"b":1,"1":2}')))
@@ -101,6 +84,7 @@ class ModelJsonTextTest(unittest.TestCase):
             '"json_setting":{"kind":"value","value":{"b":1,"1":2}}', row.to_json_text()
         )
 
+    # Requirements: COD-68.
     def test_a_collection_writes_the_texts_of_its_rows(self):
         rows = self.author().seq([1, 2]).order_by_seq_asc().gets()
         second = (
@@ -113,6 +97,7 @@ class ModelJsonTextTest(unittest.TestCase):
         self.assertEqual(rows.to_json_text(), f"[{ROW_TEXT},{second}]")
         self.assertEqual(self.author().seq([9]).gets().to_json_text(), "[]")
 
+    # Requirements: COD-68.
     def test_a_related_row_is_written_under_its_relation_name(self):
         user = (
             self.models.User()
@@ -125,6 +110,7 @@ class ModelJsonTextTest(unittest.TestCase):
             '{"seq":1,"name":"u","author_models":[' + ROW_TEXT + "]}",
         )
 
+    # Requirements: COD-68.
     def test_other_values_are_written_as_json_stringify_writes_them(self):
         row = self.author().get_by_seq(1)
         row.core.set_new(
@@ -154,6 +140,7 @@ class ModelJsonTextTest(unittest.TestCase):
         self.assertIn('"text":"é\\n\\u0001\\"\\\\/ "', text)
         self.assertIn('"map":{"z":{},"a":[]}', text)
 
+    # Requirements: COD-68.
     def test_a_value_that_json_cannot_write_fails_with_codec_encode(self):
         for value in (b"raw", float("nan"), float("inf"), {1: "key"}, object()):
             row = self.author().get_by_seq(1)
@@ -162,6 +149,7 @@ class ModelJsonTextTest(unittest.TestCase):
                 row.to_json_text()
             self.assertEqual(caught.exception.code, "CODEC_ENCODE", repr(value))
 
+    # Requirements: COD-68.
     def test_json_dumps_cannot_encode_a_model(self):
         with self.assertRaises(TypeError):
             json.dumps(self.author().get_by_seq(1))

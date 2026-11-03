@@ -433,6 +433,7 @@
       "expect",
       "from",
       "joins",
+      "json_output",
       "key",
       "limit",
       "lock",

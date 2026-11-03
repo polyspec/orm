@@ -1941,6 +1941,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.json_output === true && row !== null) return { json: row.toJSONText() };
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },

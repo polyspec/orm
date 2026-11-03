@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a48a7a2c6d5415ca8a6ae7459b996c143401279471ce0bb35a1033d47e99fb92 -->
+<!-- source-sha256: 30f2d518d24df98abd841b6bacf86adb7ac0ece76e3305417607a413e8f21a49 -->
 # 변경 이력
 
 ## Unreleased
@@ -358,6 +358,8 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
+- PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
 - UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.
 - Go `DriverFromDSN`은 별도 요구사항(CFG-40)이 되고, Go와 Rust의 generated model 연결은 그 연결을 하는 recipe 밖에 시험을 더 두지 않는다.
 - 공백이 든 `ip` column의 조건 값은 Go와 TypeScript처럼 PHP, PHP extension, Python, Rust에서도 조건을 만들 때 `CODEC_ENCODE`로 실패한다(COD-38). `INET6_ATON`으로 SQL에서 인코딩하는 MySQL에서는 NULL로 읽혀 어떤 행과도 맞지 않았고, SQLite와 PostgreSQL의 Python은 `OrmError`가 아닌 `CodecError`를 올렸다.
