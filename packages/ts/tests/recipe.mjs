@@ -11,6 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
+import { lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -1888,6 +1889,7 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  'db.last_affected': (s, context) => ({ value: { int: String(lastAffected(connectionOf(s, context))) } }),
   async 'db.notify'(s, context) {
     await connectionOf(s, context).notify(s.channel, s.payload);
     return {};

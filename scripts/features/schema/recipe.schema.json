@@ -844,6 +844,7 @@
             "model.count",
             "model.get_by",
             "model.query",
+            "db.last_affected",
             "events.subscribe",
             "events.fail_subscriber",
             "events.stop_failing",
@@ -1097,6 +1098,9 @@
         },
         {
           "$ref": "#/$defs/ops/model.delete"
+        },
+        {
+          "$ref": "#/$defs/ops/db.last_affected"
         },
         {
           "$ref": "#/$defs/ops/events.subscribe"
@@ -7046,6 +7050,27 @@
           "name": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      },
+      "db.last_affected": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.last_affected",
+            "description": "The rows that the last write of the connection matched, through the test entry point of the runtime (F15)."
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },

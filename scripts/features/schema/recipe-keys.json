@@ -454,6 +454,11 @@
       "unconnected",
       "where"
     ],
+    "db.last_affected": [
+      "connection",
+      "expect",
+      "op"
+    ],
     "events.subscribe": [
       "as",
       "connection",
