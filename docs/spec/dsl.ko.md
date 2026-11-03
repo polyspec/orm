@@ -124,8 +124,8 @@ Key   = [Operator] Column
 .and_photo_url('a.png').and_photo_url(['a', 'b']).and_photo_url(None).and_ne_seq([1, 2])
 ```
 
-- **DSL-49** null은 nullable 컬럼에서만 허용한다. Go·Rust·TypeScript는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
-- **DSL-50** 목록은 연산자가 없거나 `Eq`·`Ne`일 때만 허용한다. 다른 연산자는 목록과 null을 거부한다.
+- **DSL-49** Go는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고, Rust와 TypeScript도 같으며, PHP와 Python은 `CONFIG`를 반환한다. null은 nullable 컬럼에서만 허용한다.
+- **DSL-50** Go는 `Eq`와 `Ne`가 아닌 연산자의 목록과 null을 컴파일 단계에서 거부하고, Rust와 TypeScript도 같으며, PHP와 Python은 `CONFIG`를 반환한다. 목록은 연산자가 없거나 `Eq`·`Ne`일 때만 허용한다.
 - **DSL-51** PHP, TypeScript, Python은 각자의 null 값을, Go는 `orm.Null`을, Rust는 `Null`을 사용한다.
 - **DSL-52** Go 메서드는 컬럼별 허용 값 타입을 제네릭 타입 매개변수로 제한한다. 정수 컬럼은 `int`, `int32`, `int64`와 각 타입의 슬라이스를 허용한다.
 - **DSL-53** 실행하지 않은 모델을 값으로 넘기면 `IN (SELECT …)`, `Ne`와 함께 쓰면 `NOT IN`을 출력한다. 모델은 `addColumn<Col>()`로 컬럼 하나만 추가해야 하며 아니면 `CONFIG`를 반환한다.

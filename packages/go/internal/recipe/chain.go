@@ -104,7 +104,7 @@ type chainRelation struct {
 	DeleteLock bool            `json:"delete_lock"`
 }
 
-// chainStep is a model op of a recipe with entities.
+// chainStep is a model op of the table path.
 type chainStep struct {
 	chainQuery
 	Op              string                     `json:"op"`
@@ -800,7 +800,7 @@ func jsonOutcome(value any) outcome {
 	return outcome{fields: map[string]any{"json": value}}
 }
 
-// chainOp runs a model op of a recipe with entities.
+// chainOp runs a model op of the table path.
 func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 	var s chainStep
 	if err := json.Unmarshal(raw, &s); err != nil {
@@ -1208,6 +1208,14 @@ func chainWrite(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	}
 	out := jsonOutcome(value)
 	out.api = row
+	// With columns, the rows expect compares the row that the write returns (INT-38).
+	if len(s.Columns) > 0 {
+		cells, err := chainCells([]*tableRow{row}, s)
+		if err != nil {
+			return outcome{}, err
+		}
+		out.fields["rows"] = cells
+	}
 	return out, nil
 }
 
@@ -1273,6 +1281,10 @@ func chainTarget(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error)
 	}
 	core := chainCore(s.Model, c)
 	core.Connect(db)
+	// The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+	if len(s.Key) > 0 {
+		return core, chainAssign(core, s.Key, c)
+	}
 	return core, chainAssign(core, s.Values, c)
 }
 

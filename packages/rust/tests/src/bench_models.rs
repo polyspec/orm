@@ -54,6 +54,18 @@ pub trait CaseModels: Send + 'static {
         let refusal = format!("model.connect {name}: this recipe binds no AES models");
         async move { Err(refusal) }
     }
+    /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
+    fn connect_audited(
+        &mut self,
+        _connections: &mut Connections,
+        name: &str,
+        _dsn: &str,
+        _pool_size: u32,
+        _source: &Value,
+    ) -> impl Future<Output = Result<Value, String>> {
+        let refusal = format!("model.connect {name}: this recipe binds no audited models");
+        async move { Err(refusal) }
+    }
     /// The model op `op` of `step` on `connection`: its fields, which the expect of the step compares.
     fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> impl Future<Output = Result<Value, String>>;
     /// Drops what the case holds besides its connections, before they close.
@@ -82,6 +94,10 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
 
     fn connect_keyring<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32, keyring: &'a Value) -> ModelFuture<'a> {
         Box::pin(self.models.connect_keyring(&mut self.connections, name, dsn, pool_size, keyring))
+    }
+
+    fn connect_audited<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32, source: &'a Value) -> ModelFuture<'a> {
+        Box::pin(self.models.connect_audited(&mut self.connections, name, dsn, pool_size, source))
     }
 
     fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a> {

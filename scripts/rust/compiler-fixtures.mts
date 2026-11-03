@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
+import { PROCESS, runCase } from '../../tests/testcase.mts';
 import { readJsonFile } from '../json/schema.mts';
 
 type Fixture = {
@@ -74,7 +75,8 @@ for (const id of requestedCases) if (!known.has(id)) throw new Error(`unknown Ru
 const selected = new Set(requestedCases);
 const selectedFixtures = fixtures.filter(fixture => selected.has(fixture.id));
 
-function check(id: string, source: string): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
+// check compiles the consumer of one case with cargo check. It rejects with the deadline's reason when the deadline aborts it, and stops cargo then.
+function check(id: string, source: string, aborted: AbortSignal): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
   return new Promise((resolveRun, rejectRun) => {
     const stdio: ['ignore', 'pipe', 'pipe'] = ['ignore', 'pipe', 'pipe'];
     const child = spawn('cargo', [`+${selectedToolchain}`, 'check', '--locked', '--offline', '--message-format=json', '--manifest-path', manifest,
@@ -86,6 +88,8 @@ function check(id: string, source: string): Promise<{ status: number | null; sig
       }),
       stdio,
     });
+    const stop = (): void => { child.kill(); };
+    aborted.addEventListener('abort', stop, { once: true });
     const messages: CompilerMessage[] = [];
     let output = '';
     const line = (value: string) => {
@@ -111,8 +115,10 @@ function check(id: string, source: string): Promise<{ status: number | null; sig
     child.stderr.on('data', (chunk: Buffer) => process.stdout.write(String(chunk)));
     child.on('error', rejectRun);
     child.on('close', (status, signal) => {
+      aborted.removeEventListener('abort', stop);
       if (output !== '') line(output);
-      resolveRun({ status, signal, messages });
+      if (aborted.aborted) rejectRun(aborted.reason);
+      else resolveRun({ status, signal, messages });
     });
   });
 }
@@ -161,18 +167,25 @@ function assertResult(fixture: Fixture, result: Awaited<ReturnType<typeof check>
 
 // The run holds the exclusive lease of the Rust test runner, so examples is this script's own scratch directory: a
 // leftover of an interrupted run is overwritten, and the directory is removed at the end whether it existed or not.
+// The caller takes the lease before this process starts, so each case's PROCESS deadline covers only its own compile under the lease;
+// the time spent waiting for another run's lease is outside it (tests/cargo-test.mts gives its build no deadline for the same reason).
 try {
   await mkdir(examples, { recursive: true });
+  let failed = 0;
   for (const fixture of selectedFixtures) {
     const source = join(examples, `${fixture.id}.rs`);
-    console.log(`compiler-fixture: running ${fixture.id}`);
-    try {
-      await writeFile(source, fixture.source);
-      assertResult(fixture, await check(fixture.id, source));
-    } finally {
-      await rm(source, { force: true });
-    }
+    const passed = await runCase(fixture.id, PROCESS, async ({ signal, step }) => {
+      step(`compiler-fixture: running ${fixture.id}`);
+      try {
+        await writeFile(source, fixture.source);
+        assertResult(fixture, await check(fixture.id, source, signal));
+      } finally {
+        await rm(source, { force: true });
+      }
+    });
+    if (!passed) failed++;
   }
+  if (failed > 0) process.exitCode = 1;
 } finally {
   await rm(examples, { recursive: true, force: true });
 }

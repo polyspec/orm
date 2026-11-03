@@ -59,6 +59,23 @@ trait RecipeModel
         self::$modelConnections = [];
     }
 
+    /**
+     * The audit source of the audit_source of a model.connect (FCV-4, CFG-8): it returns its values or fails with its
+     * own error.
+     */
+    private static function auditSourceOf(array $s, array $context): ?\Closure
+    {
+        $spec = $s['audit_source'] ?? null;
+        if ($spec === null) {
+            return null;
+        }
+        if ($spec['fail'] ?? false) {
+            return static fn (): array => throw new CallbackFailed('the audit source failed');
+        }
+        $values = self::mapAssignments($spec['values'], $context);
+        return static fn (): array => $values;
+    }
+
     /** Runs one model op of s and returns the fields that its expect compares. */
     private static function modelOp(array $s, array $context): array
     {
@@ -66,13 +83,15 @@ trait RecipeModel
             // The case schema is registered on the connection, as the statement-event ops need it
             // (FCV-4, model.connect).
             // A step with aes_keyring connects with that keyring in place of the bench key (FCV-4, model.connect).
+            $source = self::auditSourceOf($s, $context);
             $config = isset($s['aes_keyring'])
                 ? new Config(
                     blindIndexKey: self::BENCH_BLIND_INDEX_KEY,
                     aesVersion: self::aesKeyring($s['aes_keyring'])->currentVersion,
                     aesKeys: self::aesKeys($s['aes_keyring']),
+                    auditSource: $source,
                 )
-                : new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY);
+                : new Config(aesKey: self::BENCH_AES_KEY, blindIndexKey: self::BENCH_BLIND_INDEX_KEY, auditSource: $source);
             $dsn = self::connectDsn($s['dsn'] ?? null, $context['database'], $context['dsn']);
             $db = Orm::connectSchema($dsn, $context['schema'], $config);
             self::$modelConnections[] = $db;

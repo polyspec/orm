@@ -752,7 +752,30 @@ fn inline_text(step: &Value) -> (String, BTreeMap<String, String>) {
             set.insert(name.clone(), joined_lines(&lines_of(lines), crlf, mixed));
         }
     }
-    (joined_lines(&lines_of(&step["text"]), crlf, mixed), set)
+    let lines = expanded_lines(&step["text"]);
+    (joined_lines(&lines.iter().map(String::as_str).collect::<Vec<_>>(), crlf, mixed), set)
+}
+
+/// The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+fn expanded_lines(items: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    for item in items.as_array().into_iter().flatten() {
+        if let Some(line) = item.as_str() {
+            out.push(line.to_owned());
+        } else if let Some(fill) = item.get("fill") {
+            out.push(fill["text"].as_str().unwrap_or_default().repeat(fill["count"].as_u64().unwrap_or(0) as usize));
+        } else {
+            let repeat = &item["repeat"];
+            let inner = expanded_lines(&repeat["lines"]);
+            let mark = format!("{{{}}}", repeat["var"].as_str().unwrap_or_default());
+            let from = repeat["from"].as_i64().unwrap_or(0);
+            for i in from..from + repeat["count"].as_i64().unwrap_or(0) {
+                let text = i.to_string();
+                out.extend(inner.iter().map(|line| line.replace(&mark, &text)));
+            }
+        }
+    }
+    out
 }
 
 /// The text and the set of a dbspec step: inline when the step has text, else the document file of the step.
@@ -804,14 +827,15 @@ fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> 
 /// The dbspec.format op: the text of the step formats to the expect's text, and the emission of the text is that text too,
 /// and the formatted text formats to itself; or the text is refused with the expect's diagnostics.
 fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
-    if lines_of(&step["text"]).is_empty() {
+    if expanded_lines(&step["text"]).is_empty() {
         return Err("dbspec.format has no text".to_owned());
     }
     let (text, set) = inline_text(step);
     if let Some(want_diagnostics) = want["diagnostics"].as_array() {
         return check_refusal(&text, &set, want_diagnostics);
     }
-    let expected = joined_lines(&lines_of(&want["text"]), false, false);
+    let want_lines = expanded_lines(&want["text"]);
+    let expected = joined_lines(&want_lines.iter().map(String::as_str).collect::<Vec<_>>(), false, false);
     let emitted = emit_stable(&text, &set)?;
     if emitted != expected {
         return Err(format!("emission:\n{emitted}\nwant\n{expected}"));
@@ -1182,6 +1206,8 @@ struct SendStep {
     value: Filter,
     /// The contains condition (the like_contains operator) of the column, which the generated lk method runs (DSL-29).
     contains: bool,
+    /// The operator of the step, which selects the chain method of Eq, Ne or Gt (DSL-50).
+    operator: String,
 }
 
 /// The typed filter value of a statement: the text of a string column, the integer that the text of an integer column
@@ -1194,6 +1220,7 @@ enum Filter {
     I16(i16),
     I32(i32),
     I64(i64),
+    I64List(Vec<i64>),
     F64(f64),
     Bool(bool),
 }
@@ -1206,12 +1233,14 @@ impl SendStep {
                 column: String::new(),
                 value: Filter::Text(String::new()),
                 contains: false,
+                operator: String::new(),
             });
         }
         let operator = step["operator"].as_str().unwrap_or_default();
         let contains = match operator {
             "eq" => false,
             "like_contains" => true,
+            "eq_method" | "ne_method" | "gt_method" => false,
             _ => return Err(format!("operator {operator} has no typed filter in the Rust cases")),
         };
         let column = step["column"].as_str().unwrap_or_default();
@@ -1225,6 +1254,17 @@ impl SendStep {
         let (wrapper, body) = kind(&step["params"][0])?;
         let value = match column {
             _ if wrapper == "nil" => Filter::Nil,
+            "slots.i64_value" if wrapper == "array" => {
+                let items = body.as_array().ok_or_else(|| format!("the parameter {} holds no list", step["params"][0]))?;
+                let list = items
+                    .iter()
+                    .map(|item| {
+                        let text = item["int"].as_str().ok_or_else(|| format!("the list item {item} holds no int"))?;
+                        integer::<i64>(column, text)
+                    })
+                    .collect::<Result<Vec<i64>, String>>()?;
+                Filter::I64List(list)
+            }
             "slots.f64_value" => Filter::F64(float(column, wrapper, body)?),
             "slots.bool_value" => Filter::Bool(boolean(column, wrapper, body)?),
             "slots.bytes_value" => {
@@ -1241,7 +1281,7 @@ impl SendStep {
                 }
             }
         };
-        Ok(Self { begin: None, column: column.to_owned(), value, contains })
+        Ok(Self { begin: None, column: column.to_owned(), value, contains, operator: operator.to_owned() })
     }
 
     /// Runs the call on the connection `db`.
@@ -1256,7 +1296,14 @@ impl SendStep {
                 _ => unreachable!("the Rust cases exclude a contains wrapper of another kind"),
             };
         }
+        match (self.operator.as_str(), &self.value) {
+            ("eq_method", Filter::I64List(v)) => return bind_model::Slots::new().connect(db).eq_i64_value(v.clone()).gets().await.map(drop),
+            ("ne_method", Filter::I64List(v)) => return bind_model::Slots::new().connect(db).ne_i64_value(v.clone()).gets().await.map(drop),
+            ("gt_method", Filter::I64(v)) => return bind_model::Slots::new().connect(db).gt_i64_value(*v).gets().await.map(drop),
+            _ => {}
+        }
         match (self.column.as_str(), &self.value) {
+            ("slots.i64_value", Filter::I64List(v)) => bind_model::Slots::new().connect(db).i64_value(v.clone()).gets().await.map(drop),
             ("slots.time0_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time0_value(v.as_str()).gets().await.map(drop),
             ("slots.time3_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time3_value(v.as_str()).gets().await.map(drop),
             ("slots.time6_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time6_value(v.as_str()).gets().await.map(drop),
@@ -1348,7 +1395,9 @@ fn message_value(message: &Value) -> Result<Value, String> {
         // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
         Some([]) => Ok(Value::Array(Vec::new())),
         Some([only]) => Ok(only.clone()),
-        _ => Err(format!("the statement message {message} holds no one parameter")),
+        // A list of several parameters (a list condition, DSL-50) is compared as the list.
+        Some(several) => Ok(Value::Array(several.to_vec())),
+        None => Err(format!("the statement message {message} holds no parameters")),
     }
 }
 
@@ -1716,6 +1765,11 @@ mod database {
         }
         /// model.connect with aes_keyring: opens the connection with that keyring; a dispatcher without AES models refuses
         /// it by name.
+        /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
+        fn connect_audited<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _source: &'a Value) -> ModelFuture<'a> {
+            let refusal = format!("model.connect {name}: this recipe binds no audited models");
+            Box::pin(async move { Err(refusal) })
+        }
         fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
             Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models")) })
         }
@@ -2033,7 +2087,18 @@ mod database {
         Ok(())
     }
 
-    /// A transaction step with isolation or read_only: its steps run in db.transaction with those options, the form
+    /// The audit values of a transaction step: the column names of the audit record table and their text values (CFG-8).
+    fn audit_values(raw: &Value) -> Result<Vec<(String, String)>, Failure> {
+        let Some(map) = raw.as_object() else { return Err(Failure::Step(format!("audit {raw} is not an object"))) };
+        map.iter()
+            .map(|(column, wrapper)| match wrapper["text"].as_str() {
+                Some(text) => Ok((column.clone(), text.to_owned())),
+                None => Err(Failure::Step(format!("the audit value of {column} is not a text: {wrapper}"))),
+            })
+            .collect()
+    }
+
+    /// A transaction step with isolation, read_only or audit: its steps run in db.transaction with those options, the form
     /// that carries them, and the case state is reached through a lock, since that callback may be called again.
     async fn transaction_with_options(
         db: &Db,
@@ -2067,6 +2132,9 @@ mod database {
         }
         if step["read_only"].as_bool() == Some(true) {
             transaction = transaction.read_only();
+        }
+        if step.get("audit").is_some() {
+            transaction = transaction.audit(audit_values(&step["audit"])?);
         }
         match transaction.await {
             Ok(()) => Ok(Output::fields(ok_value())),
@@ -2364,7 +2432,7 @@ mod database {
                 let fail = step["fail"].as_bool().unwrap_or(false);
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
-                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) {
+                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) || step.get("audit").is_some() {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
                 }
                 db.transaction_once(|| async move {
@@ -2606,9 +2674,13 @@ mod database {
                 std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
-            match step.get("aes_keyring") {
-                Some(keyring) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
-                None => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
+            match (step.get("aes_keyring"), step.get("audit_source")) {
+                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
+                (None, Some(source)) => {
+                    let resolved = resolve_audit_source(source, context).map_err(Failure::Step)?;
+                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::Call)?
+                }
+                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
             };
             return Ok(Output::fields(json!({})));
         }
@@ -2622,6 +2694,15 @@ mod database {
         let resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
         let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
         Ok(Output::fields(fields))
+    }
+
+    /// The audit_source of a model.connect with its values resolved.
+    fn resolve_audit_source(source: &Value, context: &Context<'_>) -> Result<Value, String> {
+        let mut resolved = source.clone();
+        if source.get("values").is_some() {
+            resolved["values"] = resolve_map(&source["values"], context)?;
+        }
+        Ok(resolved)
     }
 
     /// The fields of a model op with its values resolved, as a catalog op resolves its arguments.
@@ -3652,6 +3733,14 @@ mod tables {
         Ok(())
     }
 
+    /// The values of an object, sorted by column name (the audit values of a source).
+    fn pairs(raw: &Value) -> Result<Vec<(String, Param)>, String> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map.iter().map(|(column, wrapper)| Ok((column.clone(), param(wrapper)?))).collect::<Result<Vec<_>, String>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
     /// The JSON value of an object wrapper: [[member, wrapper], ...] with each wrapper its plain value.
     fn object_of(raw: &Value) -> Result<Value, String> {
         let mut out = Map::new();
@@ -3805,7 +3894,11 @@ mod tables {
                 _ => create(&mut row).await,
             }
             .map_err(orm)?;
-            let fields = json!({ "json": row_json(&written, &step["pick"])? });
+            let mut fields = json!({ "json": row_json(&written, &step["pick"])? });
+            // With columns, the rows expect compares the row that the write returns (INT-38).
+            if step.get("columns").is_some() {
+                fields["rows"] = cells_of(std::iter::once(&written), step)?;
+            }
             if let Some(name) = step["as"].as_str() {
                 self.rows.insert(name.to_owned(), written);
             }
@@ -3849,7 +3942,9 @@ mod tables {
                 self.rows.remove(name).ok_or_else(|| format!("no bound row {name}"))?
             } else {
                 let db = db.ok_or_else(|| "model.update names no connection and no row".to_owned())?;
-                self.row(step["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?, db, &step["values"])?
+                let model = step["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?;
+                // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+                self.row(model, db, step.get("key").unwrap_or(&step["values"]))?
             };
             assign_values(&mut row, &step["set"])?;
             if let Some((column, value)) = &revision {
@@ -3934,6 +4029,18 @@ mod tables {
         async fn connect_keyring(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, keyring: &Value) -> Result<Value, String> {
             let (keys, current) = keyring_spec(keyring)?;
             let config = Config { aes_version: current, aes_keys: keys, ..Config::default() };
+            self.bases.remove(name);
+            connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
+        }
+
+        async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, String> {
+            let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
+                Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into() }))
+            } else {
+                let values = pairs(&source["values"])?;
+                Arc::new(move || Ok(values.clone()))
+            };
+            let config = Config { audit_source: Some(source), ..bench_config() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }

@@ -745,7 +745,7 @@ final class Recipe
                     self::checkRefusal($text, $set, $expect['diagnostics']);
                     return;
                 }
-                $expected = implode("\n", $expect['text'] ?? []) . "\n";
+                $expected = implode("\n", self::expandLines($expect['text'] ?? [])) . "\n";
                 $emitted = self::emitStable($text, $set);
                 if ($emitted !== $expected) {
                     Assert::fail("emission {$emitted}, want $expected");
@@ -849,7 +849,35 @@ final class Recipe
         foreach ($step['set'] ?? [] as $name => $lines) {
             $set[$name] = self::joinText($lines, $crlf, $mixed);
         }
-        return [self::joinText($step['text'] ?? [], $crlf, $mixed), $set];
+        return [self::joinText(self::expandLines($step['text'] ?? []), $crlf, $mixed), $set];
+    }
+
+    /**
+     * The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+     *
+     * @param list<mixed> $items
+     * @return list<string>
+     */
+    private static function expandLines(array $items): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if (is_string($item)) {
+                $out[] = $item;
+            } elseif (isset($item['fill'])) {
+                $out[] = str_repeat($item['fill']['text'], $item['fill']['count']);
+            } else {
+                $repeat = $item['repeat'];
+                $inner = self::expandLines($repeat['lines']);
+                $mark = '{' . $repeat['var'] . '}';
+                for ($i = $repeat['from']; $i < $repeat['from'] + $repeat['count']; $i++) {
+                    foreach ($inner as $line) {
+                        $out[] = str_replace($mark, (string) $i, $line);
+                    }
+                }
+            }
+        }
+        return $out;
     }
 
     /** @param list<string> $lines */
@@ -1230,10 +1258,11 @@ final class Recipe
         if (is_array($params) && $params === []) {
             return [];
         }
-        if (!is_array($params) || count($params) !== 1) {
-            Assert::fail("the statement message $text holds no single parameter");
+        if (!is_array($params)) {
+            Assert::fail("the statement message $text holds no parameters");
         }
-        return $params[0];
+        // A list of several parameters (a list condition, DSL-50) is compared as the list.
+        return count($params) === 1 ? $params[0] : $params;
     }
 
     /**
@@ -1246,7 +1275,12 @@ final class Recipe
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
-        if ($step['operator'] === 'like_contains') {
+        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
+        if ($operatorPrefix !== null) {
+            // A chain method of an operator (DSL-50), which __call dispatches.
+            $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]
+                ?? Assert::fail("the column $column has no typed filter in the PHP cases"));
+        } elseif ($step['operator'] === 'like_contains') {
             // The contains condition of the text column is the lk operator of the generated model, which __call
             // dispatches (DSL-29).
             if ($column !== 'slots.text_value') {
@@ -1894,6 +1928,7 @@ final class Recipe
                     isolation: $s['isolation'] ?? '',
                     readOnly: ($s['read_only'] ?? false) === true,
                     retry: 0,
+                    audit: isset($s['audit']) ? self::mapAssignments($s['audit'], $context) : null,
                 );
                 return ['value' => ['bool' => true]];
             case 'catalog.connect':
@@ -2924,7 +2959,12 @@ final class Recipe
             $model->duplication(self::chainAssign($duplicate, $s['duplication'], $context));
         }
         $row = $terminal($model);
-        return ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        $fields = ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        // With columns, the rows expect compares the row that the write returns (INT-38).
+        if (isset($s['columns'])) {
+            $fields['rows'] = self::chainCells([$row], $s);
+        }
+        return $fields;
     }
 
     /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
@@ -2934,7 +2974,8 @@ final class Recipe
             ? self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)
             : self::chainAssign(
                 self::tableModel($s['model'], self::connectionOf($s, $context), $context),
-                $s['values'] ?? [],
+                // The key form sets the key on a new model, with no read before it (FCV-4).
+                $s['key'] ?? $s['values'] ?? [],
                 $context,
             );
         if (isset($s['revision'])) {

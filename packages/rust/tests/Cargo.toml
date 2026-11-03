@@ -354,6 +354,23 @@ name = "dsn_reject_none"
 path = "tests/dsn_reject_none.rs"
 harness = false
 
+# Each case of the audit_triggers recipe, contracts/fixtures/audit_triggers/audit_triggers.json, is the trial
+# audit_triggers_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "audit_triggers_mysql"
+path = "tests/audit_triggers_mysql.rs"
+harness = false
+
+[[test]]
+name = "audit_triggers_postgres"
+path = "tests/audit_triggers_postgres.rs"
+harness = false
+
+[[test]]
+name = "audit_triggers_sqlite"
+path = "tests/audit_triggers_sqlite.rs"
+harness = false
+
 # Each case of the transactions recipe, contracts/fixtures/transactions/transactions.json, is the trial
 # transactions_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -498,4 +515,16 @@ harness = false
 [[test]]
 name = "model_socket_mysql"
 path = "tests/model_socket_mysql.rs"
+harness = false
+
+# Each case of The chain value recipe, contracts/fixtures/dsl/dsl.json, is the trial dsl_none::<case id> (FCV-3).
+[[test]]
+name = "dsl_none"
+path = "tests/dsl_none.rs"
+harness = false
+
+# Each case of The limit and stress recipe, tests/dbspec/limits.json, is the trial dbspec_limits_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_limits_none"
+path = "tests/dbspec_limits_none.rs"
 harness = false

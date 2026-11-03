@@ -47,8 +47,8 @@ function normalize(name, lines, canonical, documents = {}) {
 }
 
 // encoding, header and limit stop parsing
+// Requirements: DBS-144.
 // Requirements: DBS-2, DBS-171.
-invalid('byte order mark', '﻿dbspec 1 shop\n', [['encoding', 1, 1]]);
 invalid('bare CR', 'dbspec 1 shop\n\ntable users {\r  id i64\n}\n', [['encoding', 3, 14]]);
 invalid('unpaired surrogate', "dbspec 1 shop\n# \uD800\ntable Users {\n", [['encoding', 2, 3]]);
 invalid('final bare CR', 'dbspec 1 shop\r', [['encoding', 1, 14]]);
@@ -56,54 +56,6 @@ invalid('version 2', ['dbspec 2 shop', 'table Users {'], [['header', 1, 8]]);
 invalid('header without name', ['dbspec 1'], [['header', 1, 9]]);
 invalid('header extra token', ['dbspec 1 shop extra'], [['header', 1, 14]]);
 invalid('leading blank line', ['', 'dbspec 1 shop'], [['header', 1, 1]]);
-// Requirements: DBS-144, DBS-151, DBS-170.
-rule('invalid 32 MiB document', () => {
-  const big = 'dbspec 1 shop\n' + '#'.repeat(32 * 1024 * 1024 - 14) + '\n';
-  assert.deepEqual(parseDbspec(big, {}).diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1, 1]]);
-  const multibyte = 'dbspec 1 shop\n# ' + 'é'.repeat((32 * 1024 * 1024 - 16) / 2) + '\n';
-  assert.equal(Buffer.byteLength(multibyte), 32 * 1024 * 1024 + 1);
-  assert.deepEqual(parseDbspec(multibyte, {}).diagnostics.map(d => d.rule), ['limit']);
-  assert.deepEqual(parseDbspec(multibyte.slice(0, -2) + '\n', {}).diagnostics, []);
-});
-// Requirements: DBS-136, DBS-144.
-rule('invalid 4097 tables', () => {
-  const lines = ['dbspec 1 shop'];
-  for (let i = 0; i < 4097; i++) lines.push(`table t${i} {`, '  id i64 identity', '  primary key (id)', '}');
-  const result = analyzeDbspec(text(lines), {});
-  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1 + 4096 * 4 + 1, 1]]);
-  assert.deepEqual(result.tokens, [], 'a limit stop yields no tokens');
-  assert.deepEqual(parseDbspec(text(lines.slice(0, -4)), {}).diagnostics, []);
-});
-// Requirements: DBS-144, DBS-151, DBS-170.
-rule('invalid 1001 columns', () => {
-  const lines = ['dbspec 1 shop', 'table t {', '  id i64 identity'];
-  for (let i = 1; i <= 1000; i++) lines.push(`  c${i} i32`);
-  lines.push('  primary key (id)', '}');
-  assert.deepEqual(parseDbspec(text(lines), {}).diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1003, 3]]);
-});
-// Requirements: DBS-144, DBS-170.
-rule('invalid 120001 total columns', () => {
-  const lines = ['dbspec 1 shop'];
-  for (let table = 0; table < 121; table++) {
-    lines.push('', `table t${table} {`);
-    for (let column = 0; column < 1000; column++) lines.push(`  c${column} i32`);
-    lines.push('  primary key (c0)', '}');
-  }
-  const result = parseDbspec(text(lines), {});
-  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 120484, 3]]);
-});
-rule('invalid 20001 foreign keys', () => {
-  const lines = ['dbspec 1 shop'];
-  for (let table = 0; table < 21; table++) {
-    lines.push('', `table t${table} {`, '  id i64 identity', '  primary key (id)');
-    for (let foreignKey = 0; foreignKey < 1000; foreignKey++) {
-      lines.push(`  foreign key fk_${table}_${foreignKey} (id) references t${table} (id)`);
-    }
-    lines.push('}');
-  }
-  const result = parseDbspec(text(lines), {});
-  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 20106, 3]]);
-});
 
 // syntax and order
 invalid('syntax and order', [

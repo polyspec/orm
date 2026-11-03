@@ -377,7 +377,24 @@ def _inline_document(step: dict) -> tuple:
         name: _join_text(lines, crlf, mixed)
         for name, lines in step.get("set", {}).items()
     }
-    return _join_text(step["text"], crlf, mixed), header_set
+    return _join_text(_expand_lines(step["text"]), crlf, mixed), header_set
+
+
+def _expand_lines(items: list) -> list:
+    """The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text."""
+    out = []
+    for item in items:
+        if isinstance(item, str):
+            out.append(item)
+        elif "fill" in item:
+            out.append(item["fill"]["text"] * item["fill"]["count"])
+        else:
+            repeat = item["repeat"]
+            inner = _expand_lines(repeat["lines"])
+            mark = "{" + repeat["var"] + "}"
+            for i in range(repeat["from"], repeat["from"] + repeat["count"]):
+                out.extend(line.replace(mark, str(i)) for line in inner)
+    return out
 
 
 def _emit_stable(text: str, header_set: dict) -> str:
@@ -629,7 +646,7 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 raise AssertionError("the expect names no diagnostics")
             _check_refusal(text, header_set, expect["diagnostics"])
             return
-        expected = "\n".join(expect["text"]) + "\n"
+        expected = "\n".join(_expand_lines(expect["text"])) + "\n"
         _expect_equal(_emit_stable(text, header_set), expected, "emission")
         formatted, diagnostics = format_dbspec(text, header_set)
         if list(diagnostics):
@@ -870,6 +887,22 @@ def _send(step: dict, call=None) -> None:
         )
 
 
+# The chain method prefix of each operator of markdown.send (DSL-50).
+OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
+
+
+def _chain_value(wrapper: dict):
+    """The Python value of a wrapper for a chain method: an int, a nil, or a list of ints."""
+    ((kind, value),) = wrapper.items()
+    if kind == "int":
+        return int(value)
+    if kind == "nil":
+        return None
+    if kind == "array":
+        return [_chain_value(item) for item in value]
+    raise AssertionError(f"the parameter {json.dumps(wrapper)} has no chain value")
+
+
 def _query_slot(models, db, step: dict) -> None:
     """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
     text form of the value (DBS-121); a host-value column's filter (HOST_FILTERS) takes the Python value of its wrapper: an int
@@ -877,6 +910,18 @@ def _query_slot(models, db, step: dict) -> None:
     path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
     itself. A column or operator without a typed filter here is a defect of the recipe."""
     table, _, name = step["column"].partition(".")
+    if (
+        step["operator"] in OPERATOR_METHODS
+        or list(step["params"][0]) == ["array"]
+        or (list(step["params"][0]) == ["nil"] and name in HOST_FILTERS)
+    ):
+        # A chain method of an operator (DSL-50), or a list: the value goes to the dynamic attribute of the generated model, so
+        # the chain refuses what its operator does not take.
+        prefix = OPERATOR_METHODS.get(step["operator"], "")
+        getattr(models.Slots().connect(db), f"{prefix}{name}")(
+            _chain_value(step["params"][0])
+        ).gets()
+        return
     if step["operator"] == "like_contains":
         # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
         # The wrapper's value goes unchanged, and a nil wrapper is the SQL NULL that the contains condition binds.
@@ -968,9 +1013,10 @@ def _message_value(text: str):
     # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
     if params == []:
         return []
-    if not isinstance(params, list) or len(params) != 1:
-        raise AssertionError(f"the statement message {text} holds no single parameter")
-    return params[0]
+    if not isinstance(params, list):
+        raise AssertionError(f"the statement message {text} holds no parameters")
+    # A list of several parameters (a list condition, DSL-50) is compared as the list.
+    return params[0] if len(params) == 1 else params
 
 
 def _validation_model(schema: Path):
@@ -2282,7 +2328,11 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
             )
         )
     row = terminal(model)
-    return {"bind": row, "json": _row_json(row, step.get("pick"))}
+    fields = {"bind": row, "json": _row_json(row, step.get("pick"))}
+    # With columns, the rows expect compares the row that the write returns (INT-38).
+    if "columns" in step:
+        fields["rows"] = _chain_cells([row], step)
+    return fields
 
 
 def _chain_target(step: dict, context: dict) -> Model:
@@ -2291,8 +2341,11 @@ def _chain_target(step: dict, context: dict) -> Model:
         model = _bound_value(step["row"], context)
     else:
         db = _connection_of(step, context)
+        # The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
         model = _chain_assign(
-            _new_row(context, db, step["model"]), step.get("values"), context
+            _new_row(context, db, step["model"]),
+            step.get("key", step.get("values")),
+            context,
         )
     if "revision" in step:
         model.expect_revision(
@@ -3056,11 +3109,29 @@ def _op_transaction(step: dict, context: dict) -> dict:
         options["isolation"] = step["isolation"]
     if step.get("read_only") is True:
         options["readOnly"] = True
+    if "audit" in step:
+        options["audit"] = dict(_assignments(step["audit"], context))
     _connection_of(step, context).transaction(run, options)
     return {"value": {"bool": True}}
 
 
-_MODEL_OPS = model_ops(_native, _database_value, _step_argument)
+def _audit_source_of(step: dict, context: dict) -> dict:
+    """The connect option of the audit_source of a model.connect (FCV-4, CFG-8): the source returns its values or fails
+    with its own error."""
+    spec = step.get("audit_source")
+    if spec is None:
+        return {}
+    if spec.get("fail"):
+
+        def failing() -> dict:
+            raise CallbackError("the audit source failed")
+
+        return {"auditSource": failing}
+    values = dict(_assignments(spec["values"], context))
+    return {"auditSource": lambda: values}
+
+
+_MODEL_OPS = model_ops(_native, _database_value, _step_argument, _audit_source_of)
 _TABLE_OPS = {
     "model.chain": _table_model_chain,
     "model.create": _table_model_create,

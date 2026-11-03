@@ -7,11 +7,8 @@ namespace Polyspec\Orm\Tests;
 // Runtime model behavior on SQLite, MySQL and PostgreSQL (docs/spec/dbspec.md
 // "Runtime model" and "Audit"): installing a dbspec document set, i16, uuid,
 // date and time values, database defaults for omitted columns, the required
-// column rule, the audit record of a transaction, and the restore of
-// soft-deleted rows. The models of contracts/fixtures/audit.dbs with a values
-// document and of contracts/fixtures/restore.dbs are generated into a temporary
-// directory as two document sets, because both fixtures declare the table audit,
-// so the test runs in its own process.
+// column rule. The models of contracts/fixtures/audit.dbs with a values document
+// are generated into a temporary directory, so the test runs in its own process.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
@@ -46,22 +43,10 @@ final class RuntimeDbTest extends TestCase
             . "  wide i64\n  ratio f64\n  active bool\n  note text null\n  payload text null\n"
             . "  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n"
             . "  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n";
-        // audit.dbs and restore.dbs both declare an audit table, so each is generated separately and only one is
-        // installed per case.
         $sets = [
             'Polyspec\\Orm\\Tests\\RuntimeDb' => [
                 'audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"),
                 'values.dbs' => $values
-            ],
-            // The runtime restore is its own manifest: the coverage restore of the same fixture is generated in this
-            // process too, and the registry refuses one manifest under two namespaces, so the header names this
-            // manifest apart.
-            'Polyspec\\Orm\\Tests\\RuntimeRestore' => [
-                'restore.dbs' => str_replace(
-                    "dbspec 1 restore\n",
-                    "dbspec 1 runtime_restore\n",
-                    (string) file_get_contents("$root/contracts/fixtures/restore.dbs")
-                )
             ],
         ];
         loadGeneratedDocumentSets('orm-php-runtime-db-', $sets);
@@ -83,7 +68,7 @@ final class RuntimeDbTest extends TestCase
      */
     private static function database(string $dsn, string $namespace): Db
     {
-        $db = Orm::connect($dsn, auditConfig('default'));
+        $db = Orm::connect($dsn, new Config(auditSource: static fn(): array => ['actor' => 'default']));
         $db->utils()->schema()->install(("$namespace\\schema")());
         return $db;
     }
@@ -211,23 +196,6 @@ final class RuntimeDbTest extends TestCase
         }
     }
 
-    // An audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
-    private static function caseAuditRecordOfATransaction(Db $db, string $dsn): void
-    {
-        auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\RuntimeDb');
-        $assigned = self::errorCode(
-            fn() => $db->transaction(fn() => (new Item())->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0)
-        );
-        self::check($assigned === Code::IR_INVALID, "an assigned audit column = $assigned, want IR_INVALID");
-        self::check((new Item())($db)->getCount() === 0, 'soft delete hides the row');
-    }
-
-    // restore returns a soft-deleted row by its primary key or unique key (restore_case.php).
-    private static function caseRestoreOfSoftDeletedRows(Db $db): void
-    {
-        restoreCase($db, 'Polyspec\\Orm\\Tests\\RuntimeRestore');
-    }
-
     public static function setUpBeforeClass(): void
     {
         self::fixture();
@@ -237,8 +205,6 @@ final class RuntimeDbTest extends TestCase
     {
         $this->assertTrue(class_exists(Item::class));
         $this->assertTrue(class_exists(Sample::class));
-        $this->assertTrue(class_exists('Polyspec\\Orm\\Tests\\RuntimeRestore\\Membership'));
-        $this->assertTrue(class_exists('Polyspec\\Orm\\Tests\\RuntimeRestore\\Label'));
     }
 
     /**
@@ -284,16 +250,6 @@ final class RuntimeDbTest extends TestCase
     }
 
     // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126, INT-44.
-    #[DataProvider('drivers')]
-    public function testAuditRecordOfATransaction(string $driver): void
-    {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseAuditRecordOfATransaction(...));
-    }
 
     // Requirements: DBS-117.
-    #[DataProvider('drivers')]
-    public function testRestoreOfSoftDeletedRows(string $driver): void
-    {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeRestore', self::caseRestoreOfSoftDeletedRows(...));
-    }
 }

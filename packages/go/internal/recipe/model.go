@@ -5,7 +5,6 @@ package recipe
 // recipe passes on a call that the helper does not make.
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -41,13 +40,9 @@ func sortedColumns(values map[string]any) []string {
 // connection that its connection name names.
 func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 	if s.Op == "model.connect" {
-		cfg, err := connectConfig(s)
+		cfg, err := connectConfig(s, c)
 		if err != nil {
 			return outcome{}, err
-		}
-		if c.tablePath {
-			// An audited transaction of the table path takes its values from the option of the transaction.
-			cfg.AuditSource = func(context.Context) (map[string]any, error) { return map[string]any{}, nil }
 		}
 		var named string
 		if s.DSN != nil {

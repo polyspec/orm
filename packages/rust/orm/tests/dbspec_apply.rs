@@ -29,7 +29,7 @@ mod plan_sources;
 
 use dbspec_apply_support::apply_stop::record_steps;
 use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
-use dbspec_probe::{connection_rules, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
+use dbspec_probe::{connection_rules, repository, require_dsn, run_probe, run_probe_within, Conn, Servers, Session, DIALECTS};
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
@@ -712,11 +712,19 @@ async fn apply_chain_on_three_databases() {
     }
 }
 
+/// The time that may pass with no step applied at all (the Go stress test's stressStallLimit). One step is one statement and its commit,
+/// so on a working database one step takes well under a second.
+const STRESS_STALL_LIMIT: Duration = Duration::from_secs(30);
+
 // Requirements: PLN-104.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_stress_plan_on_three_databases() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let plan = stress_plan();
+    // The stress document comes from one node process, so its generation has the PROCESS deadline. Each database is a case of its own with
+    // the deadline of its step count (testcase::step_budget), and the apply of its steps is stopped by the stall guard, as the Go stress test does.
+    let plan = {
+        let _generate = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+        stress_plan()
+    };
     let steps: BTreeMap<&str, usize> = DIALECTS
         .iter()
         .map(|&(db, dialect)| {
@@ -730,8 +738,12 @@ async fn apply_stress_plan_on_three_databases() {
         let session = servers.session(db, index + 1);
         let current = plan.clone();
         let count = steps[db];
-        let result = run_probe(&mut servers, &format!("{db}.apply.stress_plan"), db, index + 1, move |conn| {
+        let deadline = polyspec_orm_testcase::step_budget(count);
+        polyspec_orm_testcase::step(format_args!("{db}: {count} steps, deadline {}", polyspec_orm_testcase::duration(deadline)));
+        let stall = polyspec_orm_testcase::StallGuard::new(STRESS_STALL_LIMIT);
+        let result = run_probe_within(&mut servers, &format!("{db}.apply.stress_plan"), db, index + 1, deadline, move |conn| {
             Box::pin(async move {
+                stall.progressed();
                 conn.exec_all(&connection_rules(db).iter().map(|s| (*s).to_owned()).collect::<Vec<_>>()).await?;
                 let planned = plan_steps(None, &current, dialect).or_panic(|e| format!("{db}: {e:?}"));
                 if planned.len() != count {
@@ -755,6 +767,7 @@ async fn apply_stress_plan_on_three_databases() {
                         return Ok(());
                     }
                     applied += 1;
+                    stall.progressed();
                     if let Some(watch) = watch.as_mut() {
                         let history_query = match db {
                             "mysql" => "SELECT CONCAT(state, ' ', step) FROM `dbspec$plans`",
@@ -781,7 +794,8 @@ async fn apply_stress_plan_on_three_databases() {
                     }
                     Ok(())
                 };
-                apply(conn, dialect, &[current], &fixed_now, &mut progress).await.map_err(|e| format!("apply: {e:?}"))?;
+                let applying = stall.run(apply(conn, dialect, &[current], &fixed_now, &mut progress)).await.map_err(|stalled| format!("{db}: {stalled}"))?;
+                applying.map_err(|e| format!("apply: {e:?}"))?;
                 drop(progress);
                 if applied != count {
                     return Err(format!("{db}: {applied} applied events; want {count}"));

@@ -460,7 +460,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
 }
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
-const MODEL_OPS = modelOps({ native, databaseValue, stepArgument });
+const MODEL_OPS = modelOps({ native, databaseValue, stepArgument, auditSourceOf });
 
 /** The error that a failing transaction callback throws (FCV-4: expect CALLBACK). */
 const callbackError = new Error('the transaction callback failed');
@@ -736,6 +736,19 @@ function resolveRefs(value, context) {
  * The assignments of a step: a list of [name, value] pairs, so that a name may repeat or name no column, or the members of a seed
  * row, an object of column names. Each value is a recipe wrapper or a per-database object.
  */
+/** The audit values of a transaction step or an audit source: an object of column names and values (FCV-4, CFG-8). */
+function auditValues(values, context) {
+  return Object.fromEntries(assignments(values, context).map(a => [a.name, a.value]));
+}
+
+/** The connect option of the audit_source of a model.connect (FCV-4, CFG-8): the source returns its values or fails with its own error. */
+function auditSourceOf(s, context) {
+  if (s.audit_source === undefined) return {};
+  if (s.audit_source.fail) return { auditSource: () => { throw callbackError; } };
+  const values = auditValues(s.audit_source.values, context);
+  return { auditSource: () => values };
+}
+
 function assignments(values, context) {
   const pairs = Array.isArray(values) ? values : Object.entries(values);
   return pairs.map(([name, value]) => ({ name, value: native(databaseValue(stepArgument(value, context), context)) }));
@@ -1151,6 +1164,7 @@ Object.assign(OPS, {
     const options = { retry: 0 };
     if (s.isolation !== undefined) options.isolation = s.isolation;
     if (s.read_only === true) options.readOnly = true;
+    if (s.audit !== undefined) options.audit = auditValues(s.audit, context);
     await connectionOf(s, context).transaction(async () => {
       await runNested(s.steps, context);
       if (s.fail) throw callbackError;
@@ -1429,12 +1443,14 @@ async function chainWrite(s, context, terminal) {
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
-  return { bind: row, json: rowJson(row, s.pick) };
+  // With columns, the rows expect compares the row that the write returns (INT-38).
+  return { bind: row, json: rowJson(row, s.pick), ...(s.columns === undefined ? {} : { rows: chainCells([row], s) }) };
 }
 
 /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
 function chainTarget(s, context) {
-  const m = s.row !== undefined ? refOf(s.row, context) : chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+  const m = s.row !== undefined ? refOf(s.row, context) : chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.key ?? s.values, context);
   if (s.revision !== undefined) m.expectRevision(s.revision.column, chainValue(s.revision.value, context));
   return m;
 }
@@ -1700,7 +1716,22 @@ function inlineDocument(step) {
   const mixed = step.mixed === true;
   const set = {};
   for (const [name, lines] of Object.entries(step.set ?? {})) set[name] = joinText(lines, crlf, mixed);
-  return { text: joinText(step.text, crlf, mixed), set };
+  return { text: joinText(expandLines(step.text), crlf, mixed), set };
+}
+
+// expandLines is the lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+function expandLines(items) {
+  const out = [];
+  for (const item of items) {
+    if (typeof item === 'string') out.push(item);
+    else if (item.fill !== undefined) out.push(item.fill.text.repeat(item.fill.count));
+    else {
+      const { var: name, from, count, lines } = item.repeat;
+      const inner = expandLines(lines);
+      for (let i = from; i < from + count; i++) for (const line of inner) out.push(line.replaceAll(`{${name}}`, String(i)));
+    }
+  }
+  return out;
 }
 
 // emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.
@@ -1868,12 +1899,12 @@ async function checkDbspecFiles(step, dir, database) {
         checkRefusal(text, set, expect.diagnostics);
         break;
       }
-      const expected = `${expect.text.join('\n')}\n`;
-      assert.equal(emitStable(text, set), expected, 'emission');
+      const expected = `${expandLines(expect.text).join('\n')}\n`;
+      assert.ok(emitStable(text, set) === expected, 'emission');
       const formatted = formatDbspec(text, set);
       assert.deepEqual(formatted.diagnostics, [], 'the text formats');
-      assert.equal(formatted.text, expected, 'formatted text');
-      assert.equal(formatDbspec(formatted.text, set).text, formatted.text, 'a formatted text is its own format');
+      assert.ok(formatted.text === expected, 'formatted text');
+      assert.ok(formatDbspec(formatted.text, set).text === formatted.text, 'a formatted text is its own format');
       break;
     }
     case 'dbspec.parse_set': {
@@ -2007,8 +2038,9 @@ function messageValue(text) {
   const params = member(message, 'params');
   // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
   if (params?.array?.length === 0) return params;
-  if (params?.array?.length !== 1) throw new Error(`the statement message ${text} holds no single parameter`);
-  return params.array[0];
+  if (params?.array === undefined) throw new Error(`the statement message ${text} holds no parameters`);
+  // A list of several parameters (a list condition, DSL-50) is compared as the list.
+  return params.array.length === 1 ? params.array[0] : params;
 }
 
 // queryColumn runs the generated typed filter of the slot column of step with the value of its wrapper. The time, datetime and date
@@ -2017,6 +2049,14 @@ function messageValue(text) {
 // here is a defect of the recipe.
 async function queryColumn(step, db) {
   const slots = new Slots().connect(db);
+  // A chain method of an operator (DSL-50). Each is written out, so the scan declares it, and the mjs call has no type check, so the
+  // refusal of the chain itself runs.
+  const operator = {
+    eq_method: { 'slots.i64_value': v => slots.andEqI64Value(v) },
+    ne_method: { 'slots.i64_value': v => slots.andNeI64Value(v) },
+    gt_method: { 'slots.i64_value': v => slots.andGtI64Value(v), 'slots.varchar_null_value': v => slots.andGtVarcharNullValue(v) },
+  }[step.operator];
+  if (operator !== undefined) return operator[step.column](hostValue(step.params[0])).gets();
   if (step.operator === 'like_contains') {
     if (step.column !== 'slots.text_value') throw new Error(`the column ${step.column} has no contains filter in the TypeScript cases`);
     return slots.lkTextValue(hostValue(step.params[0])).gets();

@@ -12,7 +12,6 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mts';
 import { createCaseDatabase } from './case-database.mjs';
-import { auditCase, auditSource, restoreCase, restoreSchema } from './restore_case.mjs';
 import { CORE, Db, OrmError, StyledValue } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { models } from './registered_models.mjs';
@@ -219,24 +218,6 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     }
   });
 
-  // Checks the writes of a transaction that received the audit record (tests/restore_case.mjs). audit.dbs was installed by the earlier case.
-  caseTest(`${dialect}: an audited write takes the audit record of its transaction`, 60_000, async () => {
-    await auditCase(db, dialect, database.dsn);
-  });
-
-  // Restores a soft-deleted row by its unique key or primary key (tests/restore_case.mjs). restore.dbs has the same
-  // name for its audit table as audit.dbs, so it is installed in its own case database.
-  caseTest(`${dialect}: restore brings back a soft-deleted row by its primary key or a unique key`, 60_000, async ({ step }) => {
-    const own = await createCaseDatabase(dialect, step);
-    let restoreDb;
-    try {
-      restoreDb = await Db.connect(own.dsn, { auditSource: auditSource('default') });
-      await restoreDb.utils().schema().install(restoreSchema());
-      await restoreCase(restoreDb);
-    } finally {
-      try { await restoreDb?.close(); } finally { await own.drop(step); }
-    }
-  });
 
   caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {
     const left = database;

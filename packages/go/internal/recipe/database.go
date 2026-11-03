@@ -113,6 +113,8 @@ type databaseStep struct {
 	Hooks      []json.RawMessage `json:"hooks"`
 	AESKeyring *aesKeyringSpec   `json:"aes_keyring"`
 	Keyring    *aesKeyringSpec   `json:"keyring"`
+	// The audit source of a model.connect (FCV-4).
+	AuditSource *auditSourceSpec `json:"audit_source"`
 	// The chain fields of a transaction, of utils.lock, utils.set_local and utils.local, and of events.captured (FCV-4):
 	// the audit values, the name and value of a utility, and the binds that an expect does not compare by value.
 	Audit json.RawMessage        `json:"audit"`
@@ -834,18 +836,18 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
 		options := []orm.TransactionOption{orm.Retry(0)}
-		if len(s.Audit) > 0 {
-			var audit map[string]any
-			if err := json.Unmarshal(s.Audit, &audit); err != nil {
-				return outcome{}, err
-			}
-			options = append(options, orm.Audit(audit))
-		}
 		if s.Isolation != "" {
 			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
 		}
 		if s.ReadOnly {
 			options = append(options, orm.ReadOnly())
+		}
+		if s.Audit != nil {
+			values, err := auditValues(s.Audit, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			options = append(options, orm.Audit(values))
 		}
 		err = db.Transaction(func() error {
 			if err := runNested(s.Steps, c); err != nil {
