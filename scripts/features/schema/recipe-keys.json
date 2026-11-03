@@ -433,6 +433,7 @@
       "expect",
       "from",
       "joins",
+      "json_output",
       "key",
       "limit",
       "lock",
@@ -680,7 +681,16 @@
     ],
     "catalog.reconnect": [
       "op",
+      "refused_code",
+      "refused_message",
       "user_from_database"
+    ],
+    "sql.hold_connection": [
+      "op",
+      "user_from_database"
+    ],
+    "sql.release_connection": [
+      "op"
     ],
     "catalog.revision": [
       "as",

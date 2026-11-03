@@ -2614,6 +2614,8 @@ mod database {
     }
 
     struct Context<'a> {
+        /// The connection that sql.hold_connection holds.
+        held: Option<sqlx::MySqlConnection>,
         namespace: String,
         database: &'a str,
         dsn: String,
@@ -2873,7 +2875,7 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3551,15 +3553,18 @@ mod database {
             }
             "catalog.reconnect" => {
                 let dsn = match step.get("user_from_database").and_then(Value::as_str) {
-                    Some(prefix) => {
-                        let path = context.dsn.split('?').next().unwrap_or(&context.dsn);
-                        let database = path.rsplit('/').next().unwrap_or(path);
-                        let name = &database[database.len().saturating_sub(28)..];
-                        let host = context.dsn.split_once('@').map_or(context.dsn.as_str(), |(_, host)| host);
-                        format!("mysql://{prefix}{name}@{host}")
-                    }
+                    Some(prefix) => user_from_database_dsn(&context.dsn, prefix),
                     None => context.dsn.clone(),
                 };
+                if let Some(text) = step.get("refused_message").and_then(Value::as_str) {
+                    return match CatalogConnection::connect(&dsn).await {
+                        Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
+                        Err(error) if error.to_lowercase().contains(text) && error.starts_with(step["refused_code"].as_str().unwrap_or_default()) => {
+                            Ok(Output::fields(json!({})))
+                        }
+                        Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
+                    };
+                }
                 let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::Call)?;
                 context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
                 *catalog = Some(fresh);
@@ -3732,6 +3737,22 @@ mod database {
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "session.end" => {
                 end_session(step["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
+            "sql.hold_connection" => {
+                let dsn = user_from_database_dsn(&context.dsn, step["user_from_database"].as_str().unwrap_or_default());
+                let ConnectOptions::MySql(options) = parse_dsn(&dsn).map_err(|e| fault(e.to_string()))?.options else {
+                    return Err(fault(format!("{dsn} is not a mysql DSN")));
+                };
+                use sqlx::ConnectOptions as _;
+                context.held = Some(options.connect().await.map_err(|e| fault(e.to_string()))?);
+                Output::fields(json!({}))
+            }
+            "sql.release_connection" => {
+                use sqlx::Connection as _;
+                if let Some(held) = context.held.take() {
+                    held.close().await.map_err(|e| fault(e.to_string()))?;
+                }
                 Output::fields(json!({}))
             }
             "sql.exec" => {
@@ -4375,6 +4396,16 @@ mod database {
         };
         admin.close().await;
         ended.map_err(|e| format!("the transaction session holds a lock on {table}: {e}"))
+    }
+
+    /// The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the case
+    /// database, without a password.
+    fn user_from_database_dsn(dsn: &str, prefix: &str) -> String {
+        let path = dsn.split('?').next().unwrap_or(dsn);
+        let database = path.rsplit('/').next().unwrap_or(path);
+        let name = &database[database.len().saturating_sub(28)..];
+        let host = dsn.split_once('@').map_or(dsn, |(_, host)| host);
+        format!("mysql://{prefix}{name}@{host}")
     }
 
     async fn native_exec(dsn: &str, sql: &str) -> Result<(), String> {
@@ -5661,6 +5692,9 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    if step["json_output"] == json!(true) {
+                        return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
+                    }
                     if let Some(column) = step["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
