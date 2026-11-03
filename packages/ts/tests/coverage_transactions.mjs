@@ -2,7 +2,7 @@
 // query is cancelled. The written rows are only in composite_account, and the case deletes all of them when it ends.
 import assert from 'node:assert/strict';
 import { CompositeAccount, OrmError, connect } from '../dist/index.js';
-import { runCases, withCleanup } from './coverage_case.mjs';
+import { runCasesOn, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
 
@@ -20,7 +20,7 @@ async function withTenant({ driver, dsn }, body) {
 
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
-await runCases('coverage_transactions.mjs', {
+const cases = {
   // Requirements: INT-67.
   async transaction_rollback(item) {
     await withTenant(item, async db => {
@@ -80,4 +80,11 @@ await runCases('coverage_transactions.mjs', {
       assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
     });
   },
-}, 300_000);
+};
+
+// The cases write composite_account of the bench database of each server, which a recipe case database does not hold.
+for (const [database, name] of [['sqlite', 'BENCH_SQLITE_DSN'], ['mysql', 'BENCH_MYSQL_DSN'], ['postgres', 'BENCH_POSTGRES_DSN']]) {
+  const dsn = process.env[name];
+  if (!dsn) throw new Error(`${name} is required; run this test through make run-databases, which creates the bench databases`);
+  await runCasesOn(database, 'coverage_transactions.mjs', cases, 300_000, dsn);
+}

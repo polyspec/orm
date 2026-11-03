@@ -2785,6 +2785,15 @@
             "Makefile",
             "packages/python/tests/connection_pool.py"
           ]
+        },
+        {
+          "id": "cancellation-handle-typescript",
+          "command": "node packages/ts/tests/coverage_transactions.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/coverage_transactions.mjs",
+            "packages/ts/tests/coverage_case.mjs"
+          ]
         }
       ],
       "public_constraints": [
@@ -2904,8 +2913,7 @@
             "tests": [
               "packages/ts/tests/transactions-mysql.test.mjs",
               "packages/ts/tests/transactions-postgres.test.mjs",
-              "packages/ts/tests/transactions-sqlite.test.mjs",
-              "packages/ts/tests/coverage_transactions.mjs"
+              "packages/ts/tests/transactions-sqlite.test.mjs"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
@@ -2916,11 +2924,6 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-mysql.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_transactions.mjs",
-                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "postgres": [
@@ -2928,22 +2931,12 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-postgres.test.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_transactions.mjs",
-                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-sqlite.test.mjs",
-                  "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_transactions.mjs",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ]

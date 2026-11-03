@@ -25,8 +25,8 @@ export async function runCases(file, cases, timeoutMs, suite = cases) {
 }
 
 /** Runs the cases of a test file on the one database that the file names, with no selection of the manifest. */
-export async function runCasesOn(database, file, cases, timeoutMs) {
-  return runItems([{ database, driver: database, dsn: null }], file, cases, timeoutMs, cases);
+export async function runCasesOn(database, file, cases, timeoutMs, dsn = null) {
+  return runItems([{ database, driver: database, dsn }], file, cases, timeoutMs, cases);
 }
 
 async function runItems(items, file, cases, timeoutMs, suite) {
