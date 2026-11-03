@@ -1,23 +1,20 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b50a70986c8c05b4fa7c058fb140a5d06b2c7ffd28ad1cf7942c2b13c57f85ab -->
+<!-- source-sha256: ac24bb7d983167cacc27ad074c0681d376443fed4d429103d7dff1a48fe58acd -->
 # 변경 이력
 
 ## Unreleased
 
+- 분할된 root `in` 목록의 merge를 primary key 없는 표에 대한 public query로 recipe `parameter_chunking`에서 시험합니다.
+- collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.
 - immutable table의 거부는 recipe `immutable_write`이다(DBS-84). update와 delete는 `DRIVER`로 실패하고, 메시지는 `table refused_row is immutable`을 담으며, driver 원인이 남고, 이후 읽기는 저장된 값을 돌려준다. op의 outcome은 `message_holds`와 `driver_cause`를 받는다. delete는 이전에 어느 runtime에서도 검사하지 않았다. (#T334-3-4-16)
 - 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - recipe `schema_install`은 install이 밝히는 차이를 담는다. 모든 op의 outcome이 `message_suffix`를 받고, `install_external_drift`는 메시지가 `column user.coverage_missing does not exist`로 끝나기를 기대한다. `coverageItemsOf`를 읽던 `CoverageSchemaInstallNativeTest`의 세 시험은 지웠고, 그 recipe와 `SchemaSetTest`가 담는다. (#T334-3-4-15)
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
-- markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
 - INT-74와 INT-130의 keyring version과 INT-88, INT-89의 첫 builder 오류는 recipe `public-interface`와 `public-interface-signed`의 case이며, 모든 runtime이 새 op `keyring.versions`와 `markdown.builder`로 실행한다. PHP와 PHP extension은 이제 Go, TypeScript, Python, Rust처럼 condition 값의 거부를 chain 호출에서 기록하므로, 종단은 첫 오류를 반환한다(T334-3-24).
 - recipe `performance_gate`는 기본 키 읽기와 내림차순 100행 읽기의 계획된 statement(순서대로 27개 column의 projection, database별 limit bind)를 `pk_statement`와 `list_statement`로, AES key 버전과 복호화된 cell을 `aes_cells`로 검증하므로, TypeScript 시간 측정 파일은 정확성을 검증하지 않는다. 이 파일은 seed된 database를 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` 또는 `BENCH_SQLITE_DSN`에서 읽으며, 더는 feature 환경에서 읽지 않는다.
 - `getPagePlanSteps(page, perPage)`는 여섯 런타임 모두의 공개 종단 작업이다(DSL-159). `getsPage`가 실행하는 plan의 각 step의 role, tables, 문장을 실행 없이 돌려준다. request와 plan 호출을 `getsPage`와 공유한다.
-- 컬렉션의 group row 단위는 recipe `tests/collection/collection.json`의 case이며 여섯 runtime 모두 `ir.answer`로 실행한다. chain `group_count_views`는 group 결과의 길이, 순서, 값과 `COLUMN_UNSELECTED`를 읽는다. driver cell만 담는 count 형태는 `group-row-driver-cell-forms`로 native에 남는다.
-- PHP extension은 타입이 맞지 않는 markdown 값에 다른 runtime처럼 `INTERNAL`이 아니라 `CODEC_DECODE`로 답한다.
-- Rust는 nullable이 아닌 선택 group 열의 SQL NULL을 다른 runtime처럼 `CODEC_DECODE`로 거부한다.
-- text인 group row count는 정규 십진수여야 한다. Go와 Rust는 `00`과 `+1`을 받았고, PHP와 PHP extension은 INT-90대로 정수값 float count를 받는다.
 - recipe op `dsn.connect`는 여섯 runtime 모두에서 자기가 연 연결에 `utils().run`으로 `SELECT 1`을 실행하므로, DSN이 답하는 database에 연결함을 확인한다. PHP `CoverageDsnTest`는 native로 남는 SQLite 최소 버전 검사(DSL-150)만 두고 feature 환경을 읽지 않는다.
 - vector 17(`errors`)의 거부마다 각 runtime에 요청 전 시험이 생겼다. `make conformance-refusal-check`: 여섯 runtime 모두 표가 없는 SQLite 파일과 statement subscriber로 실행하고, Go, TypeScript, Rust는 각 chain을 오류와 함께 받아들이고 오류를 버리는 사용을 거부하는 형 검사를 한다. Go에서 prepare가 실패한 statement는 INT-91과 다른 runtime대로 오류를 담은 statement event를 발행한다. 전에는 발행하지 않았다.
 - 여섯 runtime에 남은 catalog_connection coverage 테스트를 없앴다: recipe case temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice, deferred_foreign_key_at_commit이 그 검증을 세 database에서 맡는다. 잘못된 열 이름을 가진 descriptor는 이제 Python과 PHP 확장에서도 ROW_SNAPSHOT_INVALID로 실패하고 메시지에 원인을 담으며, TypeScript catalog의 두 번째 close는 아무것도 하지 않는다.
@@ -28,6 +25,11 @@
 - 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
+- markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
+- 컬렉션의 group row 단위는 recipe `tests/collection/collection.json`의 case이며 여섯 runtime 모두 `ir.answer`로 실행한다. chain `group_count_views`는 group 결과의 길이, 순서, 값과 `COLUMN_UNSELECTED`를 읽는다. driver cell만 담는 count 형태는 `group-row-driver-cell-forms`로 native에 남는다.
+- PHP extension은 타입이 맞지 않는 markdown 값에 다른 runtime처럼 `INTERNAL`이 아니라 `CODEC_DECODE`로 답한다.
+- Rust는 nullable이 아닌 선택 group 열의 SQL NULL을 다른 runtime처럼 `CODEC_DECODE`로 거부한다.
+- text인 group row count는 정규 십진수여야 한다. Go와 Rust는 `00`과 `+1`을 받았고, PHP와 PHP extension은 INT-90대로 정수값 float count를 받는다.
 - audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
