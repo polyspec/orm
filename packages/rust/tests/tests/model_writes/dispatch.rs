@@ -24,7 +24,7 @@ impl BenchModels for ModelWrites {
 
     async fn run_unconnected(&self, op: &str, step: &Value) -> Result<Value, String> {
         match op {
-            "model.create" => assign_account(CompositeAccount::new(), &step["values"])?.create().await.map(|_| json!({})).map_err(fail),
+            "model.create" => assign_account(CompositeAccount::new(), &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.create().await.map(|_| json!({})).map_err(fail),
             "model.count" => {
                 let count = CompositeAccount::new().get_count().await.map_err(fail)?;
                 Ok(json!({ "value": { "int": count.to_string() } }))
@@ -50,11 +50,11 @@ async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_or
 /// Two flows write two rows in opposite order (PLN-24), each on its own thread and connection: each holds its first row until
 /// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
 async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
-    if step["column"] != "name" {
-        return Err(format!("CompositeAccount column {} has no recipe deadlock", step["column"]));
+    if polyspec_orm_tests::recipe_reads::read(step, "column")["column"] != "name" {
+        return Err(format!("CompositeAccount column {} has no recipe deadlock", polyspec_orm_tests::recipe_reads::read(step, "column")["column"]));
     }
-    let dsn = step["dsn"].as_str().ok_or_else(|| "transaction.deadlock has no dsn".to_owned())?.to_owned();
-    let keys = [account_key(&step["rows"][0])?, account_key(&step["rows"][1])?];
+    let dsn = polyspec_orm_tests::recipe_reads::read(step, "dsn")["dsn"].as_str().ok_or_else(|| "transaction.deadlock has no dsn".to_owned())?.to_owned();
+    let keys = [account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][0])?, account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][1])?];
     let held = std::sync::Arc::new(std::sync::Barrier::new(2));
     let flows: Vec<_> = [0, 1]
         .into_iter()
@@ -111,32 +111,32 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
 async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
         "transaction.deadlock" => transaction_deadlock(db, step).await,
-        "model.create" => set_account(db, &step["values"])?.create().await.map(|_| json!({})).map_err(fail),
-        "model.creates" if step["model"] == "CompositeMembership" => {
-            let rows = step["rows"].as_array().into_iter().flatten().map(|row| set_membership(db, row)).collect::<Result<Vec<_>, _>>()?;
+        "model.create" => set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.create().await.map(|_| json!({})).map_err(fail),
+        "model.creates" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "CompositeMembership" => {
+            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"].as_array().into_iter().flatten().map(|row| set_membership(db, row)).collect::<Result<Vec<_>, _>>()?;
             let count = membership(db).creates(rows, batch(step)?).await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         "model.creates" => {
-            let rows = step["rows"].as_array().into_iter().flatten().map(|row| set_account(db, row)).collect::<Result<Vec<_>, _>>()?;
+            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"].as_array().into_iter().flatten().map(|row| set_account(db, row)).collect::<Result<Vec<_>, _>>()?;
             let count = account(db).creates(rows, batch(step)?).await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         // A set of the key and the named columns, with no read before it, then one save.
-        "model.save" if step["model"] == "Author" => {
-            let values = &step["values"];
+        "model.save" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" => {
+            let values = &polyspec_orm_tests::recipe_reads::read(step, "values")["values"];
             Author::new().connect(db).set_seq(int(&values["seq"])?).set_name(text(&values["name"])?).save().await.map(|_| json!({})).map_err(fail)
         }
-        "model.save" => set_account(db, &step["values"])?.save().await.map(|_| json!({})).map_err(fail),
+        "model.save" => set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.save().await.map(|_| json!({})).map_err(fail),
         "model.duplicate_create" => {
-            let mut row = set_account(db, &step["values"])?.duplication(set_account(db, &step["duplication"])?);
+            let mut row = set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.duplication(set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "duplication")["duplication"])?);
             row.create().await.map(|_| json!({})).map_err(fail)
         }
         "model.update" => {
-            let Some(mut row) = find_account(db, &step["key"]).await? else {
+            let Some(mut row) = find_account(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"]).await? else {
                 return Err("model.update: the key names no row".to_owned());
             };
-            for (column, value) in columns(&step["set"])? {
+            for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "set")["set"])? {
                 if column != "name" {
                     return Err(format!("CompositeAccount column {column} has no recipe update"));
                 }
@@ -146,54 +146,54 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             Ok(affected(db))
         }
         "model.delete" => {
-            let rows = filter_account(db, &step["where"])?.gets().await.map_err(fail)?;
+            let rows = filter_account(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.gets().await.map_err(fail)?;
             rows.delete(false).await.map_err(fail)?;
             Ok(affected(db))
         }
-        "model.count" if step["model"] == "Author" => {
-            let count = author_chain(db, &step["where"], &[])?.get_count().await.map_err(fail)?;
+        "model.count" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" => {
+            let count = author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &[])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
-        "model.count" if step["model"] == "CompositeMembership" => {
-            let count = filter_membership(db, &step["where"])?.get_count().await.map_err(fail)?;
+        "model.count" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "CompositeMembership" => {
+            let count = filter_membership(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         "model.count" => {
-            let count = filter_account(db, &step["where"])?.get_count().await.map_err(fail)?;
+            let count = filter_account(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
-        "model.get_by" if step["model"] == "Author" && step.get("where").is_some() => {
-            let wanted = names(&step["columns"]);
-            let rows = match author_chain(db, &step["where"], &wanted)?.get().await.map_err(fail)? {
+        "model.get_by" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" && polyspec_orm_tests::recipe_reads::read(step, "where").get("where").is_some() => {
+            let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
+            let rows = match author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &wanted)?.get().await.map_err(fail)? {
                 None => Vec::new(),
                 Some(row) => vec![cells(&wanted, |column| author_field(&row, column))?],
             };
             Ok(json!({ "rows": rows }))
         }
         "model.get_by" => {
-            let wanted = names(&step["columns"]);
-            let rows = if step["model"] == "Author" {
-                match Author::new().connect(db).get_by_seq(int(&step["key"]["seq"])?).await.map_err(fail)? {
+            let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
+            let rows = if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" {
+                match Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? {
                     None => Vec::new(),
                     Some(row) => vec![cells(&wanted, |column| author_field(&row, column))?],
                 }
             } else {
-                match find_account(db, &step["key"]).await? {
+                match find_account(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"]).await? {
                     None => Vec::new(),
                     Some(row) => vec![cells(&wanted, |column| composite_cell(&row, column))?],
                 }
             };
             Ok(json!({ "rows": rows }))
         }
-        "model.query" if step["model"] == "Author" => author_query(db, step).await,
+        "model.query" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" => author_query(db, step).await,
         "model.query" => {
             // A query with tuples and no where starts from the whole model; the tuples follow the equalities by and.
-            let has_where = !step["where"].is_null();
-            let mut query = if has_where { filter_account(db, &step["where"])? } else { account(db) };
-            if !step["tuples"].is_null() {
-                query = tuple_account(query, &step["tuples"], has_where)?;
+            let has_where = !polyspec_orm_tests::recipe_reads::read(step, "where")["where"].is_null();
+            let mut query = if has_where { filter_account(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])? } else { account(db) };
+            if !polyspec_orm_tests::recipe_reads::read(step, "tuples")["tuples"].is_null() {
+                query = tuple_account(query, &polyspec_orm_tests::recipe_reads::read(step, "tuples")["tuples"], has_where)?;
             }
-            for column in step["order"].as_array().into_iter().flatten() {
+            for column in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {
                 query = match column.as_str() {
                     Some("tenant_id") => query.order_by_tenant_id_asc(),
                     Some("account_id") => query.order_by_account_id_asc(),
@@ -201,7 +201,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 };
             }
             // The relation of a model.query (INT-87): each child row gives one output row, its columns after the parent's.
-            let relation = &step["relation"];
+            let relation = &polyspec_orm_tests::recipe_reads::read(step, "relation")["relation"];
             let mut child_columns = None;
             if !relation.is_null() {
                 let child = membership_relation(relation, db)?;
@@ -209,7 +209,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 child_columns = Some(names(&relation["columns"]));
             }
             // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
-            if let Some(lock) = step["lock"].as_str() {
+            if let Some(lock) = polyspec_orm_tests::recipe_reads::read(step, "lock")["lock"].as_str() {
                 query = match lock {
                     "update" => query.for_update(),
                     "share" => query.for_share(),
@@ -219,7 +219,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
                 };
             }
             let collection = query.gets().await.map_err(fail)?;
-            let wanted = names(&step["columns"]);
+            let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
             let mut rows = Vec::new();
             for (_, row) in collection.iter() {
                 let out = wanted.iter().map(|column| composite_cell(row, column)).collect::<Result<Vec<_>, _>>()?;
@@ -239,15 +239,15 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             Ok(json!({ "rows": rows }))
         }
         "model.arithmetic" => {
-            let column = step["column"].as_str().unwrap_or_default();
+            let column = polyspec_orm_tests::recipe_reads::read(step, "column")["column"].as_str().unwrap_or_default();
             if column != "read_count" {
                 return Err(format!("Author column {column} has no recipe arithmetic"));
             }
-            let Some(mut row) = Author::new().connect(db).get_by_seq(int(&step["key"]["seq"])?).await.map_err(fail)? else {
+            let Some(mut row) = Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? else {
                 return Err("model.arithmetic: the key names no row".to_owned());
             };
-            let amount = i32::try_from(int(&step["amount"])?).map_err(|e| e.to_string())?;
-            row = match step["operation"].as_str() {
+            let amount = i32::try_from(int(&polyspec_orm_tests::recipe_reads::read(step, "amount")["amount"])?).map_err(|e| e.to_string())?;
+            row = match polyspec_orm_tests::recipe_reads::read(step, "operation")["operation"].as_str() {
                 Some("plus") => row.plus_read_count(amount),
                 Some("minus") => row.minus_read_count(amount),
                 other => return Err(format!("the operation {other:?} is neither plus nor minus")),
@@ -442,9 +442,9 @@ fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, S
 /// model.query on the Author model: the chain of `where`, the orders (a leading "-" is descending), the window when limit or
 /// offset is greater than 0, and the projection of `columns`, each cell a recipe wrapper.
 async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
-    let wanted = names(&step["columns"]);
-    let mut author = author_chain(db, &step["where"], &wanted)?;
-    for order in step["order"].as_array().into_iter().flatten() {
+    let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
+    let mut author = author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &wanted)?;
+    for order in polyspec_orm_tests::recipe_reads::read(step, "order")["order"].as_array().into_iter().flatten() {
         author = match order.as_str().unwrap_or_default() {
             "seq" => author.order_by_seq_asc(),
             "name" => author.order_by_name_asc(),
@@ -453,7 +453,7 @@ async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
             other => return Err(format!("Author column {other} has no recipe order")),
         };
     }
-    let window = |key: &str| match &step[key] {
+    let window = |key: &str| match &polyspec_orm_tests::recipe_reads::read(step, key)[key] {
         Value::Null => Ok(0),
         value => match value.as_u64().map(u32::try_from) {
             Some(Ok(n)) => Ok(n),
@@ -516,6 +516,6 @@ fn columns_of(object: &Value) -> Result<Vec<(&String, &Value)>, String> {
 }
 
 fn batch(step: &Value) -> Result<usize, String> {
-    let count = step["batch"].as_u64().ok_or_else(|| "batch is not a count".to_owned())?;
+    let count = polyspec_orm_tests::recipe_reads::read(step, "batch")["batch"].as_u64().ok_or_else(|| "batch is not a count".to_owned())?;
     usize::try_from(count).map_err(|e| e.to_string())
 }
