@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 537fb90c2ed56457bfaf9e4ebfff54a16a0528e930ceef30179eb9ad054697ae -->
+<!-- source-sha256: 0d682b6faff8fcf58bcc7f9b25ec5d1419aac6e22e959eac4316d9d3dc54d8e0 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR32에 tool call을 끝내는 harness를 제외하는 시각을 적음.
 - parameter_chunking의 owner가 model_parameter_after_schema_change를 선언함.
 - catalog_read_budgets는 recipe의 sql 규칙대로 대기 문을 세 database 모두에 적음.
 - CR32에 PHP 확장 catalog_read_budgets의 exit 137 원인에서 제외한 것을 적음. 보낸 쪽은 아직 모르며 수정은 없음.
