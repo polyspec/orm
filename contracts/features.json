@@ -13953,7 +13953,7 @@
         "packages/php/tests/Cpx5DuplicateRelationTest.php",
         "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
         "packages/ts/tests/cpx5_duplicate_relation.mjs",
-        "packages/python/tests/test_cpx5_duplicate_relation.py",
+        "packages/python/tests/test_complex_query_sqlite.py",
         "packages/rust/tests/tests/integration/coverage_model_queries.rs"
       ],
       "docs": [
@@ -14055,16 +14055,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/test_cpx5_duplicate_relation.py"
+              "packages/python/tests/test_complex_query_sqlite.py"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/test_cpx5_duplicate_relation.py",
+                  "test": "packages/python/tests/test_complex_query_sqlite.py",
                   "cases": [
+                    "product_search_page",
                     "duplicate_relation_name"
-                  ]
+                  ],
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "database": "sqlite"
                 }
               ]
             }

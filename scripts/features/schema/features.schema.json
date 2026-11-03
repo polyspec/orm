@@ -122,7 +122,8 @@
             "symbols": { "type": "object", "additionalProperties": { "type": "string" } },
             "dsn_env": { "type": "string" },
             "recipe": { "$ref": "#/$defs/text" },
-            "symbol": { "$ref": "#/$defs/text" }
+            "symbol": { "$ref": "#/$defs/text" },
+            "database": { "enum": ["mysql", "postgres", "sqlite"] }
           }
         }
       }

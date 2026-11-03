@@ -9289,6 +9289,8 @@
       "id": "complex_query-mysql",
       "kind": "suite",
       "requirements": [
+        "CPX-5",
+        "DSL-128",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9333,6 +9335,8 @@
       "id": "complex_query-postgres",
       "kind": "suite",
       "requirements": [
+        "CPX-5",
+        "DSL-128",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9377,6 +9381,8 @@
       "id": "complex_query-sqlite",
       "kind": "suite",
       "requirements": [
+        "CPX-5",
+        "DSL-128",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -27785,8 +27791,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_cpx5_duplicate_relation.py",
-          "id": "test_duplicate_relation_name"
+          "test": "packages/python/tests/test_complex_query_sqlite.py",
+          "id": "duplicate_relation_name"
         },
         {
           "implementation": "rust",
