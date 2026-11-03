@@ -113,9 +113,9 @@ for (const feature of manifest.features) {
   }
   if (feature.vector_contract) {
     const contract = feature.vector_contract;
-    // The source and every database expectation are read against the schema of the conformance vectors; their vector
-    // names are unique and at least the declared minimum.
-    for (const relative of [contract.source, ...contract.database_expectations]) {
+    // The source is read against the schema of the conformance vectors; its vector names are unique and at least the
+    // declared minimum.
+    for (const relative of [contract.source]) {
       try {
         const names = readJsonFile<{ vectors: { name: string }[] }>(resolve(root, relative), VECTORS_SCHEMA).vectors.map(vector => vector.name);
         if (names.length < contract.minimum_vectors) errors.push(`${feature.id}: ${relative} has ${names.length} vectors, below ${contract.minimum_vectors}`);

@@ -1,8 +1,7 @@
 // Interface check: compares each language's native declarations with the reviewed symbol manifest (contracts/interfaces.json and contracts/symbols/*.json),
 // and enforces the common method contract regardless of generated source. It checks the five client languages and the extension (PHP extension) in turn,
-// and when --results is given, it also compares the state trace of the conformance run against the common state contract.
 //
-// Usage: node tests/interfaces/check/main.mts [-root dir] [-record] [-self-test] [-generate] [-language name] [-results dir]...
+// Usage: node tests/interfaces/check/main.mts [-root dir] [-record] [-self-test] [-generate] [-language name]
 //
 // Options accept both single-dash (-record) and double-dash (--record), and values are given as `-language php` or `-language=php`. Bool options
 // also accept `-record=false`.
@@ -22,7 +21,6 @@ import { buildGo, buildRust, checkCallsInRoots, extract, type Tools } from './ex
 import { byteOrder, goJson } from './json.mts';
 import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateManifest, type Extension, type Manifest, type Owner, type Rule, type Symbols } from './manifest.mts';
 import { parserMutations } from './mutations.mts';
-import { checkResults } from './sequences.mts';
 import { apiProblems, readParity } from './api.mts';
 
 const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/interface-symbols.schema.json');
@@ -32,12 +30,10 @@ const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/inte
 const MANIFEST = COMPUTE;
 // LANGUAGE: reads one language's native declarations with the extractor process, and with --self-test re-runs the extractor for each source mutation.
 const LANGUAGE = PROCESS;
-// RESULTS: reads the conformance output file and compares its state trace.
-const RESULTS = COMPUTE;
 
 const LANGUAGES = ['go', 'php', 'rust', 'typescript', 'python'];
 const BOOLEANS = new Set(['record', 'self-test', 'generate']);
-const VALUES = new Set(['root', 'language', 'results', 'vector']);
+const VALUES = new Set(['root', 'language']);
 const USAGE = `Usage of tests/interfaces/check/main.mts:
   -generate
     \tregenerate the component diagram from the manifest
@@ -45,10 +41,6 @@ const USAGE = `Usage of tests/interfaces/check/main.mts:
     \tcheck one language or extension; empty checks all five languages and every extension
   -record
     \twrite candidate native symbol inventories after common-contract checks
-  -results value
-    \talso check the state traces of a conformance output directory of this run, repeatable
-  -vector value
-    \twith -results, check the state contracts of the named vectors only, repeatable
   -root string
     \trepository root (default ".")
   -self-test
@@ -199,7 +191,7 @@ async function main(argv: string[]): Promise<number> {
       args: goFlags(argv),
       options: {
         root: { type: 'string', default: '.' }, record: { type: 'boolean', default: false }, 'self-test': { type: 'boolean', default: false },
-        generate: { type: 'boolean', default: false }, results: { type: 'string', multiple: true, default: [] }, vector: { type: 'string', multiple: true, default: [] }, language: { type: 'string', default: '' },
+        generate: { type: 'boolean', default: false }, language: { type: 'string', default: '' },
       },
     }));
   } catch (error) {
@@ -207,7 +199,7 @@ async function main(argv: string[]): Promise<number> {
     console.error(USAGE);
     return 2;
   }
-  const record = values.record, selfTest = values['self-test'], generate = values.generate, results = values.results, vectors = values.vector, language = values.language;
+  const record = values.record, selfTest = values['self-test'], generate = values.generate, language = values.language;
   let languages = [...LANGUAGES];
   // If extensions is undefined, checks all extensions in the manifest.
   let extensions: string[] | undefined;
@@ -277,13 +269,6 @@ async function main(argv: string[]): Promise<number> {
       if (!(await runCase(`interfaces/${name}`, LANGUAGE, ({ signal, step }) => checkExtension(root, name, e, m, order, record, signal, step)))) failed = true;
     }
     if (record && recordedHashes.size > 0) writeManifestHashes(join(root, 'contracts/interfaces.json'), recordedHashes);
-    if (results.length > 0) {
-      const passed = await runCase('interfaces/results', RESULTS, () => {
-        const problems = results.flatMap(dir => checkResults(dir, languages, m.sequences ?? [], vectors));
-        if (problems.length > 0) throw new Error(problems.join('\n'));
-      });
-      if (!passed) failed = true;
-    }
     return failed ? 1 : 0;
   } finally {
     if (directory !== undefined) rmSync(directory, { recursive: true, force: true });

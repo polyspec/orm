@@ -279,7 +279,7 @@ fn every_vector_of_the_vector_files_is_declared() {
         assert!(seen.insert(*name), "vector {name} is declared twice");
     }
     let dir = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance");
-    for file in ["vectors.json", "vectors.postgres.json", "vectors.sqlite.json"] {
+    for file in ["vectors.json"] {
         let path = dir.join(file);
         let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
         let recorded: Value = serde_json::from_str(&text).or_panic(|e| format!("{}: {e}", path.display()));

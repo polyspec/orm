@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: bb1adbf2abb3c53bd712987f00c6b983930645915370faeee54a1b3d7b05e289 -->
+<!-- source-sha256: 7353c91fe47b994c1d0c3d6db4e35b71330bd4695ba38922c93bfb94fe00ca78 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -258,7 +258,7 @@ generated code는 document set의 manifest text와 `manifestHash`를 가진다. 
 
 한 프로세스는 여러 document set의 generated code를 읽을 수 있고, 연결 하나가 그중 여러 set을 처리할 수 있다. 연결은 자기에게 등록된 set으로만 요청을 계획한다. 요청이 실행될 수 있는 대상은 프로세스가 읽은 code가 아니라 연결이 쓰는 데이터베이스가 정하기 때문이다. set은 세 방법으로 연결에 등록된다. `utils().schema().register(schema)`는 set을 연결에 등록한다. generated code의 connect helper(Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript generated module의 `connect(dsn, options)`, Python generated module의 `connect(dsn, **options)`)는 연결을 열고 `connectSchema`(Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`)로 같은 방법으로 자기 set을 등록한다. `utils().schema().install(schema)`는 set의 테이블을 만들고 데이터베이스를 확인한 뒤 같은 연결에 그 set을 등록한다. 셋 다 generated schema 값, 곧 manifest text와 선언한 `manifestHash`(Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`, Python `SCHEMA`)를 받고, text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`로 실패한다. 등록은 외부 문서를 쓰는 set도 데이터베이스를 읽거나 쓰지 않는다. 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때(`install`, `addTablesAndColumns`) 확인하므로, 요청마다 연 연결은 statement 없이 set을 등록한다([schema](schema.ko.md#_6-schema-registration)). raw 연결(클라이언트의 `connect(dsn, …)`)은 set을 등록하지 않고, generated code를 읽는 것도 연결에 아무것도 등록하지 않는다. 연결에 등록되지 않은 manifest의 요청은 같은 형태의 plan이 캐시되어 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, manifest text가 선언한 `manifestHash`로 hash되지 않는 generated code의 요청도 그렇다. 다른 등록 호출은 없다. 모든 클라이언트가 이 규칙을 따른다.
 
-공통 계획 contract는 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)이 같은 요청에서 같은 SQL과 bind slot을 만들도록 요구한다. `tests/conformance`는 선언된 벡터의 실행 결과를 비교한다. PHP extension의 실행 또는 데이터베이스 증거가 없으면 구현 contract는 미완료다.
+공통 계획 contract는 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)이 같은 요청에서 같은 SQL과 bind slot을 만들도록 요구한다. recipe `conformance_verification`은 각 구현에서 같은 expect로 실행한다. PHP extension의 실행 또는 데이터베이스 증거가 없으면 구현 contract는 미완료다.
 
 ## 5. IR executors
 

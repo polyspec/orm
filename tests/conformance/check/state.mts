@@ -1,9 +1,12 @@
 // The state digest of a bench database: every table's name, columns and rows, independent of row order, and every counter.
-// A conformance run compares the digest before and after each runner, so a runner that leaves a row or a counter behind
-// fails.
+// The checks that a test leaves its database as it was read this digest (scripts/physical.mts, scripts/case-database-check.mts
+// and the feature coverage), so a test that leaves a row or a counter behind fails.
+//
+//   node tests/conformance/check/state.mts --driver mysql|postgres|sqlite --dsn <DSN>   # prints `<driver> state <digest>`
 import { createHash } from 'node:crypto';
+import { parseArgs } from 'node:util';
 import { readCounters } from './counters.mts';
-import type { StateDatabase } from './database.mts';
+import { openStateDatabase, type StateDatabase } from './database.mts';
 
 // byteOrder sorts as Go sorts strings and byte slices: by bytes.
 const byteOrder = (a: Uint8Array, b: Uint8Array): number => Buffer.compare(a, b);
@@ -80,4 +83,17 @@ export async function snapshotDatabase(db: StateDatabase, driver: string): Promi
     if (value !== undefined) hash.update(`counter:${key}:${value.value}:${value.called}\n`);
   }
   return hash.digest('hex');
+}
+
+if (import.meta.main) {
+  const { values } = parseArgs({ options: { driver: { type: 'string' }, dsn: { type: 'string' } }, allowPositionals: false });
+  if (values.driver === undefined || !['mysql', 'postgres', 'sqlite'].includes(values.driver) || !values.dsn) {
+    throw new Error('usage: state.mts --driver mysql|postgres|sqlite --dsn <DSN>');
+  }
+  const db = await openStateDatabase(values.driver, values.dsn);
+  try {
+    console.log(`${values.driver} state ${await snapshotDatabase(db, values.driver)}`);
+  } finally {
+    await db.close();
+  }
 }

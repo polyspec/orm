@@ -566,8 +566,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # configured implementations, identical results on MySQL
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
+make conformance-check                                   # the native conformance bodies
 ```
 
 Examples: [`examples/thin-slice`](../../examples/thin-slice) (Go · PHP · Rust, the same JSON) and [`examples/complex`](../../examples/complex) (joins, groups, two-level relations, and aggregates).
