@@ -270,7 +270,9 @@ func (v *validator) history(t *tableNode, s *settingNode, state *columnNode, req
 	}
 	h := v.table(name.text)
 	if h == nil {
-		v.add(RuleSetting, name, "history table %q is not a table of this document or a used table", name.text)
+		if !v.failedUse[name.text] {
+			v.add(RuleSetting, name, "history table %q is not a table of this document or a used table", name.text)
+		}
 		return
 	}
 	if state == nil || !state.typ.valid {
@@ -556,7 +558,9 @@ func (v *validator) audit(t *tableNode, s *settingNode) {
 	history := v.table(historyRef.text)
 	switch {
 	case history == nil:
-		v.add(RuleSetting, historyRef, "history table %q is not a table of this document or a used table", historyRef.text)
+		if !v.failedUse[historyRef.text] {
+			v.add(RuleSetting, historyRef, "history table %q is not a table of this document or a used table", historyRef.text)
+		}
 		return
 	case history.failed:
 		return
@@ -655,7 +659,9 @@ func (v *validator) auditTables(t *tableNode, tablesRef, recordRef, nameRef, ref
 	tables := v.table(tablesRef.text)
 	switch {
 	case tables == nil:
-		v.add(RuleSetting, tablesRef, "tables table %q is not a table of this document or a used table", tablesRef.text)
+		if !v.failedUse[tablesRef.text] {
+			v.add(RuleSetting, tablesRef, "tables table %q is not a table of this document or a used table", tablesRef.text)
+		}
 		return
 	case tables.failed:
 		return
@@ -719,7 +725,9 @@ func (v *validator) auditRecord(t *tableNode, column *columnNode, columnRef, ref
 	record := v.table(referencesRef.text)
 	switch {
 	case record == nil:
-		v.add(RuleSetting, referencesRef, "audit record table %q is not a table of this document or a used table", referencesRef.text)
+		if !v.failedUse[referencesRef.text] {
+			v.add(RuleSetting, referencesRef, "audit record table %q is not a table of this document or a used table", referencesRef.text)
+		}
 		return
 	case record.failed:
 		return

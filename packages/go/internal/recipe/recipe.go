@@ -62,8 +62,8 @@ type step struct {
 	Target  json.RawMessage            `json:"target"`
 	Dialect string                     `json:"dialect"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
-	Documents []string `json:"documents"`
-	Document  string   `json:"document"`
+	Documents []string  `json:"documents"`
+	Document  string    `json:"document"`
 	Text      textLines `json:"text"`
 	// Set holds the other documents of an inline dbspec op, CRLF and Mixed its line endings, Owned and External the texts of
 	// dbspec.parse_set, and Path the file of dbspec.read_file and dbspec.read_bytes.
