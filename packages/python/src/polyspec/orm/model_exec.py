@@ -104,10 +104,9 @@ class _Assembler:
                     column_type(declared), cell, self.db.zone, declared
                 )
             else:
-                extra = row[col["index"]]
-                if col["type"] in ("date", "datetime"):
-                    extra = convert(col["type"], extra, self.db.zone)
-                row_state.extra[col["name"]] = extra
+                row_state.extra[col["name"]] = _added_column_value(
+                    col["type"], row[col["index"]], self.db.zone
+                )
         for key in asm["key"]:
             name = next(
                 col["name"] for col in asm["columns"] if col["index"] == key["index"]
@@ -939,6 +938,20 @@ def gets_count(c: Core):
             )
         rows.append(GroupRow(entries))
     return GroupRows(rows)
+
+
+def _added_column_value(type_: str, raw, zone: str):
+    """An added column by the type its plan column states (INT-160); other types keep the driver value."""
+    if type_ in ("i16", "i32", "i64") and isinstance(raw, str):
+        # A text is an integer only exactly.
+        if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", raw) is None:
+            raise OrmError(
+                codes.CODEC_DECODE, f"{type_} cell is not an exact integer in its range"
+            )
+        raw = int(raw)
+    if type_ in ("i16", "i32", "i64", "f64", "bool", "date", "datetime"):
+        return convert(type_, raw, zone)
+    return raw
 
 
 def _group_value(db, column: dict, raw, schema: Entity):

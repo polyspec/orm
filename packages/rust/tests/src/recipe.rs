@@ -3874,17 +3874,6 @@ mod tables {
         Ok(Value::Object(out))
     }
 
-    /// The row with the named fields read as a derived integer (COD-45): the text of an integer is its number.
-    fn derived_integers(row: &mut Value, fields: &Value) -> Result<(), String> {
-        for name in names(fields) {
-            if let Some(text) = row[&name].as_str() {
-                let number = text.parse::<i64>().map_err(|error| format!("{name} is an invalid derived integer: {error}"))?;
-                row[&name] = Value::from(number);
-            }
-        }
-        Ok(())
-    }
-
     /// Whether the expect of a step compares rows of wrappers.
     fn wants_rows(step: &Value) -> bool {
         step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
@@ -4098,9 +4087,7 @@ mod tables {
             let rows = gets(&root).await.map_err(orm)?;
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
-                let mut value = row_json(row, &step["pick"])?;
-                derived_integers(&mut value, &step["derived_integers"])?;
-                list.push(value);
+                list.push(row_json(row, &step["pick"])?);
             }
             let mut fields = json!({ "json": list });
             if wants_rows(step) {

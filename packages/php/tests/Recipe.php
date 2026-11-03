@@ -3186,18 +3186,6 @@ final class Recipe
         return $out;
     }
 
-    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
-    private static function derivedIntegers(array $row, array $names): array
-    {
-        foreach ($names as $name) {
-            if (is_string($row[$name])) {
-                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
-                $row[$name] = (int) $row[$name];
-            }
-        }
-        return $row;
-    }
-
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(array $s, array $context): bool
     {
@@ -3449,7 +3437,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
+            $list[] = self::chainRow($row, $s['pick'] ?? null);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {
