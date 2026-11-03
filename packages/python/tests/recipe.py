@@ -61,6 +61,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -1232,6 +1233,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1271,6 +1273,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -2410,6 +2424,14 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
+def _derived_integers(row: dict, step: dict) -> dict:
+    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
+    for name in step.get("derived_integers", []):
+        if isinstance(row[name], str):
+            row[name] = int(row[name])
+    return row
+
+
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2459,8 +2481,9 @@ def _chain_built(step: dict, context: dict) -> Model:
     if relation is not None:
         # The columns of this relation are read of each child row; they do not narrow its statement.
         child = build.relation({k: v for k, v in relation.items() if k != "columns"})
-        # This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-        child.connect(db)
+        # Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+        if relation.get("connect") is True:
+            child.connect(db)
         model.core.relation(relation.get("many") is True, child)
     return _by_key(model, step, context)
 
@@ -2594,7 +2617,10 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+        "json": [
+            _derived_integers(_row_json(row, step.get("pick")), step)
+            for row in rows.values()
+        ],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2919,23 +2945,49 @@ def _install_hook(step: dict, context: dict) -> None:
                 query.setdefault("set", []).append({"column": a["column"], "p": p})
                 for row in query.get("rows") or []:
                     row.append(add_param(a["value"]))
+            elif action == "assign_first":
+                query["set"] = [
+                    {"column": a["column"], "p": add_param(a["value"])},
+                    *(query.get("set") or []),
+                ]
+            elif action == "rewrite":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        assignment["p"] = add_param(a["value"])
+            elif action == "invalid_param":
+                and_where(
+                    query,
+                    {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
             elif action == "record":
                 context["records"].append(
                     {"kind": query["kind"], "entity": query["entity"]}
                 )
+            elif action == "record_param":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        context["records"].append(
+                            {
+                                "kind": query["kind"],
+                                "entity": query["entity"],
+                                "param": _plain(params[assignment["p"]], None),
+                            }
+                        )
             elif action == "fail":
                 raise OrmError(a["code"], f"request hook refused {query['kind']}")
             else:
                 raise AssertionError(f"hook action {action} is unknown")
         return query
 
-    context["hook_bases"][name] = base
-    context["bound"][name] = base.with_request_hook(hook)
+    # With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+    target = step.get("as", name)
+    context["hook_bases"][target] = base
+    context["bound"][target] = base.with_request_hook(hook)
 
 
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
-    return {}
+    return {"bind": context["bound"][step["as"]]} if "as" in step else {}
 
 
 def _op_hook_records(_step: dict, context: dict) -> dict:
@@ -2948,6 +3000,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
             "object": [
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
+                *([["param", record["param"]]] if "param" in record else []),
             ]
         }
         for record in records
@@ -3313,12 +3366,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 

@@ -13,7 +13,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
-import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
+import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
@@ -665,13 +665,13 @@ const OPS = {
     return { value: { int: String(rotated) } };
   },
   'hook.install'(s, context) {
-    installHook(s, context);
-    return {};
+    const hooked = installHook(s, context);
+    return s.as === undefined ? {} : { bind: hooked };
   },
   'hook.records'(_, context) {
     const counts = {};
     for (const record of context.records) counts[record.entity] = (counts[record.entity] ?? 0) + 1;
-    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }]] }));
+    const list = context.records.map(record => ({ object: [['kind', { text: record.kind }], ['entity', { text: record.entity }], ...(record.param === undefined ? [] : [['param', record.param]])] }));
     return { value: { array: list }, counts };
   },
 };
@@ -969,7 +969,7 @@ function checkPlanner(step, recipeDir, database) {
 }
 
 // dbspecOps are the ops of the schema and plan calls (FCV-4), which checkDbspec runs without a database.
-const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain', 'dbspec.compare'];
+const dbspecOps = ['dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain', 'dbspec.compare'];
 
 // checkDbspec runs one dbspec op through the public call that FCV-4 names, binds the result of its as for a later ref, and checks
 // what the call returned, as JSON, with the expect of database. A null source is the empty schema of diffPlan.
@@ -991,6 +991,9 @@ function checkDbspec(step, bound, database) {
       break;
     case 'dbspec.plan_steps':
       got = dbspecPlanSteps(step, bound);
+      break;
+    case 'dbspec.add_tables_steps':
+      got = dbspecAddTablesSteps(step, bound);
       break;
     case 'dbspec.chain':
       got = dbspecChain(step, bound);
@@ -1053,6 +1056,12 @@ function dbspecChain(step, bound) {
   const result = chainPlans(step.plans.map(raw => dbspecPlan(raw, bound)));
   if (result.diagnostics.length > 0) return { messages: messagesOf(result.diagnostics, 'chain') };
   return { order: (result.plans ?? []).map(p => p.name) };
+}
+
+// dbspecAddTablesSteps runs addTablesAndColumnsSteps with no unsupported items for one dialect, and returns {added, statements, differences}.
+function dbspecAddTablesSteps(step, bound) {
+  const result = addTablesAndColumnsSteps(dbspecDocument(step.source, bound), [], dbspecDocument(step.target, bound), step.dialect);
+  return { added: result.added, statements: result.steps.map(s => s.statement), differences: result.differences };
 }
 
 // dbspecCompare runs compareSchemas and returns {differences, diagnostics}, whose diagnostics carry their message for every rule.
@@ -1217,7 +1226,10 @@ Object.assign(OPS, {
     return okValue;
   },
   async 'schema.add_tables_and_columns'(s, context) {
-    const added = await context.db.utils().schema().addTablesAndColumns(await schemaArgument(s.schema, context));
+    const added = await context.db.utils().schema().addTablesAndColumns(await schemaArgument(s.schema, context)).catch(error => {
+      if (s.message_contains !== undefined && !String(error?.message).includes(s.message_contains)) throw new Error(`the message ${error?.message} holds no ${s.message_contains}`);
+      throw error;
+    });
     return { value: { array: added.map(text => ({ text })) } };
   },
   async 'statements.count'(s, context) {
@@ -1447,15 +1459,27 @@ function plainJson(value) {
   return value;
 }
 
-/** The toArray of a row, narrowed to pick when it is named; a missing row is null. */
+/** The JSON output of a row (COD-26), narrowed to pick when it is named; a missing row is null. An integer past the safe range is its text. */
 function rowJson(row, pick) {
   if (row === null || row === undefined) return null;
-  const values = plainJson(row.toJSON());
+  const text = row.toJSONText();
+  assert.equal(JSON.stringify(row), text);
+  const values = JSON.parse(text, (_, value, { source }) => typeof value === 'number' && !Number.isSafeInteger(value) && Number.isInteger(value) ? source : value);
   if (pick === undefined || pick.length === 0) return values;
   return Object.fromEntries(pick.map(name => {
     if (!(name in values)) throw new Error(`the row has no field ${name}`);
     return [name, values[name]];
   }));
+}
+
+/** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+function derivedIntegers(row, names = []) {
+  for (const name of names) {
+    if (typeof row[name] !== 'string') continue;
+    assert.match(row[name], /^-?(?:0|[1-9][0-9]*)$/, `${name} is an invalid derived integer`);
+    row[name] = Number(row[name]);
+  }
+  return row;
 }
 
 /** The expect of the database of the case compares rows of wrappers. */
@@ -1493,8 +1517,8 @@ function chainBuilt(s, context) {
     // The columns of this relation are read of each child row; they do not narrow its statement.
     const { columns: _read, ...relation } = s.relation;
     const child = build.relation(relation);
-    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-    child.connect(connectionOf(s, context));
+    // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+    if (s.relation.connect === true) child.connect(connectionOf(s, context));
     m[CORE].relation(s.relation.many === true, child);
   }
   return byKey(m);
@@ -1554,7 +1578,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
-    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
+    const fields = { bind: rows, json: rows.values().map(row => derivedIntegers(rowJson(row, s.pick), s.derived_integers)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
   },
@@ -1655,7 +1679,7 @@ function installHook(s, context) {
     code: a.error,
   }));
   context.records = [];
-  const hooked = base.withRequestHook((query, addParam) => {
+  const hooked = base.withRequestHook((query, addParam, params) => {
     for (const a of actions) {
       if (!kindMatches(a.kinds, query.kind)) continue;
       switch (a.action) {
@@ -1669,8 +1693,22 @@ function installHook(s, context) {
           for (const row of query.rows ?? []) row.push(addParam(a.value));
           break;
         }
+        case 'assign_first':
+          query.set = [{ column: a.column, p: addParam(a.value) }, ...(query.set ?? [])];
+          break;
+        case 'rewrite':
+          for (const assignment of query.set ?? []) if (assignment.column === a.column) assignment.p = addParam(a.value);
+          break;
+        case 'invalid_param':
+          andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
+          break;
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
+          break;
+        case 'record_param':
+          for (const assignment of query.set ?? []) {
+            if (assignment.column === a.column) context.records.push({ kind: query.kind, entity: query.entity, param: bindWrapper(params[assignment.p]) });
+          }
           break;
         case 'fail':
           throw new OrmError(a.code, `request hook refused ${query.kind}`);
@@ -1680,8 +1718,11 @@ function installHook(s, context) {
     }
     return query;
   });
-  context.hookBases.set(s.connection, base);
-  context.bound.set(s.connection, hooked);
+  // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+  const target = s.as ?? s.connection;
+  context.hookBases.set(target, base);
+  context.bound.set(target, hooked);
+  return hooked;
 }
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);

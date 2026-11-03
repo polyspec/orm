@@ -77,7 +77,7 @@ final class Recipe
 
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
-        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.chain',
+        'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
         'dbspec.compare',
     ];
 
@@ -344,6 +344,18 @@ final class Recipe
             ];
         } elseif ($op === 'dbspec.emit_plan') {
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
+        } elseif ($op === 'dbspec.add_tables_steps') {
+            $result = Dbspec::addTablesAndColumnsSteps(
+                self::dbspecBound($step['source'], $bound),
+                [],
+                self::dbspecBound($step['target'], $bound),
+                $step['dialect']
+            );
+            $got = [
+                'added' => $result[0],
+                'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
+                'differences' => $result[2],
+            ];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -2005,9 +2017,13 @@ final class Recipe
         }
     }
 
-    /** The value with the members of every object sorted by name. */
+    /** The value with the members of every object sorted by name and each integral number as an integer. */
     private static function sortedMembers(mixed $value): mixed
     {
+        if (is_float($value) && floor($value) === $value && abs($value) < 2 ** 53) {
+            // JSON has one number form, and getSum returns a binary64 (DSL-66) where the recipe writes 17540.
+            return (int) $value;
+        }
         if (!is_array($value)) {
             return $value;
         }
@@ -2044,9 +2060,14 @@ final class Recipe
                 )->close();
                 return ['value' => ['bool' => true]];
             case 'schema.add_tables_and_columns':
-                $added = $context['db']->utils()->schema()->addTablesAndColumns(
-                    self::schemaArgument($s['schema'], $context),
-                );
+                try {
+                    $added = $context['db']->utils()->schema()->addTablesAndColumns(
+                        self::schemaArgument($s['schema'], $context),
+                    );
+                } catch (\Throwable $error) {
+                    Assert::assertStringContainsString($s['message_contains'] ?? '', $error->getMessage());
+                    throw $error;
+                }
                 return ['value' => ['array' => array_map(static fn(string $name): array => ['text' => $name], $added)]];
             case 'statements.count':
                 $count = 0;
@@ -2311,8 +2332,14 @@ final class Recipe
                 // hook.install on the same connection replaces the hook.
                 $base = $context['hookBases'][$s['connection']] ?? self::connectionOf($s, $context);
                 $context['records'] = [];
+                $hooked = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                if (isset($s['as'])) {
+                    $context['hookBases'][$s['as']] = $base;
+                    return ['bind' => $hooked];
+                }
                 $context['hookBases'][$s['connection']] = $base;
-                $context['bound'][$s['connection']] = $base->withRequestHook(self::hookFor($s['hooks'], $context));
+                $context['bound'][$s['connection']] = $hooked;
                 return [];
             case 'hook.records':
                 $counts = [];
@@ -2322,6 +2349,7 @@ final class Recipe
                     $list[] = ['object' => [
                         ['kind', ['text' => $record['kind']]],
                         ['entity', ['text' => $record['entity']]],
+                        ...(isset($record['param']) ? [['param', $record['param']]] : []),
                     ]];
                 }
                 return ['value' => ['array' => $list], 'counts' => $counts];
@@ -2562,11 +2590,35 @@ final class Recipe
                             $r->ir['rows'][$i][] = $r->param($a['value']);
                         }
                         break;
+                    case 'assign_first':
+                        array_unshift($r->ir['set'], ['column' => $a['column'], 'p' => $r->param($a['value'])]);
+                        break;
+                    case 'rewrite':
+                        foreach (array_keys($r->ir['set'] ?? []) as $i) {
+                            if ($r->ir['set'][$i]['column'] === $a['column']) {
+                                $r->ir['set'][$i]['p'] = $r->param($a['value']);
+                            }
+                        }
+                        break;
+                    case 'invalid_param':
+                        self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
+                        break;
                     case 'record':
                         $context['records'][] = [
                             'kind' => $r->ir['kind'],
                             'entity' => $r->ir['entity'] ?? '',
                         ];
+                        break;
+                    case 'record_param':
+                        foreach ($r->ir['set'] ?? [] as $assignment) {
+                            if ($assignment['column'] === $a['column']) {
+                                $context['records'][] = [
+                                    'kind' => $r->ir['kind'],
+                                    'entity' => $r->ir['entity'] ?? '',
+                                    'param' => self::plainWrapper($r->params[$assignment['p']], null),
+                                ];
+                            }
+                        }
                         break;
                     case 'fail':
                         throw new OrmException($a['code'], "request hook refused {$r->ir['kind']}");
@@ -3089,8 +3141,10 @@ final class Recipe
             $relation = $s['relation'];
             unset($relation['columns']);
             $child = self::chainRelation($relation, $build, $context);
-            // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-            $child->connect($db);
+            // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+            if (($relation['connect'] ?? false) === true) {
+                $child->connect($db);
+            }
             ($relation['many'] ?? false) === true ? $model->relations($child) : $model->relation($child);
         }
         return $model;
@@ -3126,6 +3180,18 @@ final class Recipe
             $out[$name] = $values[$name];
         }
         return $out;
+    }
+
+    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+    private static function derivedIntegers(array $row, array $names): array
+    {
+        foreach ($names as $name) {
+            if (is_string($row[$name])) {
+                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
+                $row[$name] = (int) $row[$name];
+            }
+        }
+        return $row;
     }
 
     /** The expect of the database of the case compares rows of wrappers. */
@@ -3379,7 +3445,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

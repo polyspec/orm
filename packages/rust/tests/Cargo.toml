@@ -506,6 +506,11 @@ name = "dbspec_plan_comparisons_none"
 path = "tests/dbspec_plan_comparisons_none.rs"
 harness = false
 
+[[test]]
+name = "dbspec_add_tables_steps_none"
+path = "tests/dbspec_add_tables_steps_none.rs"
+harness = false
+
 # Each case of the fulltext_search recipe, contracts/fixtures/fulltext_search/fulltext_search.json, is the trial
 # fulltext_search_recipe_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]

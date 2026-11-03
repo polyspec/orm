@@ -85,7 +85,9 @@ type databaseStep struct {
 	Schema    json.RawMessage            `json:"schema"`
 	Steps     []json.RawMessage          `json:"steps"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
-	Statements []frameStatement `json:"statements"`
+	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
+	MessageContains string           `json:"message_contains"`
+	Statements      []frameStatement `json:"statements"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`
@@ -822,6 +824,9 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		added, err := c.db.Utils().Schema().AddTablesAndColumns(schema)
 		if err != nil {
+			if !strings.Contains(err.Error(), s.MessageContains) {
+				return outcome{}, fmt.Errorf("the message %q holds no %q", err.Error(), s.MessageContains)
+			}
 			return outcome{}, err
 		}
 		names := make([]any, len(added))

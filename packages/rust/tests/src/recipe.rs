@@ -216,7 +216,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.compile" => return planner_compile(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
-        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
+        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
         }
         "dbspec.parse_emit"
@@ -498,7 +498,7 @@ fn plan_dialect(name: &str) -> Result<Dialect, String> {
     }
 }
 
-/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps,
+/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps, add_tables_steps,
 /// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
 /// of the step is compared, as JSON, with the expect of `database`.
 fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
@@ -533,6 +533,17 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
                 Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
+        }
+        "dbspec.add_tables_steps" => {
+            let source = bound_document(&step["source"], bound)?;
+            let target = bound_document(&step["target"], bound)?;
+            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let result = dbspec::add_tables_and_columns_steps(&source, &[], &target, dialect);
+            serde_json::json!({
+                "added": result.added,
+                "statements": result.steps.iter().map(|s| s.statement.as_str()).collect::<Vec<&str>>(),
+                "differences": result.differences,
+            })
         }
         "dbspec.diff" => {
             let source = optional_document(step, "source", bound)?;
@@ -2527,7 +2538,12 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                    match step["message_contains"].as_str() {
+                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                        _ => orm(error),
+                    }
+                })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }
@@ -3217,7 +3233,7 @@ mod statement {
     }
 
     /// The wrapper of one bind of an event: a byte bind (a value a codec encoded) compares as its text.
-    fn bind_wrapper(p: &Param) -> Value {
+    pub(super) fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
@@ -3285,8 +3301,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
-    type Record = (String, String);
+    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
+    /// record_param action (hook.records).
+    type Record = (String, String, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -3857,6 +3874,17 @@ mod tables {
         Ok(Value::Object(out))
     }
 
+    /// The row with the named fields read as a derived integer (COD-45): the text of an integer is its number.
+    fn derived_integers(row: &mut Value, fields: &Value) -> Result<(), String> {
+        for name in names(fields) {
+            if let Some(text) = row[&name].as_str() {
+                let number = text.parse::<i64>().map_err(|error| format!("{name} is an invalid derived integer: {error}"))?;
+                row[&name] = Value::from(number);
+            }
+        }
+        Ok(())
+    }
+
     /// Whether the expect of a step compares rows of wrappers.
     fn wants_rows(step: &Value) -> bool {
         step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
@@ -3981,8 +4009,12 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity) in &records {
-                list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+            for (kind, entity, param) in &records {
+                let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
+                if let Some(param) = param {
+                    members.push(json!(["param", param]));
+                }
+                list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
                 counts.insert(entity.clone(), json!(n));
             }
@@ -4012,8 +4044,10 @@ mod tables {
                     let mut relation = step["relation"].clone();
                     relation["columns"] = Value::Null;
                     let mut child = build.relation(&relation)?;
-                    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-                    child.connect(db);
+                    // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+                    if relation["connect"].as_bool() == Some(true) {
+                        child.connect(db);
+                    }
                     core.relation(relation["many"].as_bool() == Some(true), child);
                 }
                 core
@@ -4064,7 +4098,9 @@ mod tables {
             let rows = gets(&root).await.map_err(orm)?;
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
-                list.push(row_json(row, &step["pick"])?);
+                let mut value = row_json(row, &step["pick"])?;
+                derived_integers(&mut value, &step["derived_integers"])?;
+                list.push(value);
             }
             let mut fields = json!({ "json": list });
             if wants_rows(step) {
@@ -4304,8 +4340,10 @@ mod tables {
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
                     let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
-                    self.bases.insert(connection.to_owned(), base);
-                    connections.insert(connection, hooked);
+                    // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                    let target = step["as"].as_str().unwrap_or(connection);
+                    self.bases.insert(target.to_owned(), base);
+                    connections.insert(target, hooked);
                     Ok(json!({}))
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
@@ -4444,7 +4482,7 @@ mod tables {
                 Value::Null => None,
                 wrapper => Some(param(wrapper)?),
             };
-            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+            if matches!(action.as_str(), "scope" | "assign" | "assign_first" | "rewrite") && (value.is_none() || hook["column"].as_str().is_none()) {
                 return Err(format!("hook action {action} needs a column and a value"));
             }
             out.push(HookAction {
@@ -4517,7 +4555,26 @@ mod tables {
                         row.push(q);
                     }
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                ("assign_first", Some(value)) => {
+                    let p = params.add(value.clone());
+                    request.set.insert(0, Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                }
+                ("rewrite", Some(value)) => {
+                    for assignment in request.set.iter_mut().filter(|assignment| assignment.column == action.column) {
+                        assignment.p = Some(params.add(value.clone()));
+                    }
+                }
+                ("invalid_param", _) => {
+                    let p = request.n_params + 5;
+                    and_where(&mut request.query, equal_pred(&action.column, p));
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("record_param", _) => {
+                    for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
+                        let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                    }
+                }
                 ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
                 (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
             }
