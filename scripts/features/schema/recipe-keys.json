@@ -102,7 +102,8 @@
       "dsn",
       "op",
       "pool_idle_size",
-      "pool_size"
+      "pool_size",
+      "statement_timeout_ms"
     ],
     "codec.decode": [
       "as",
@@ -140,16 +141,16 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "collection.connect": [
       "connection",
       "expect",
       "op",
       "row"
-    ],
-    "collection.key": [
-      "expect",
-      "keys",
-      "op"
     ],
     "sql.exec": [
       "only",
@@ -158,6 +159,19 @@
       "refused",
       "refused_message",
       "sql"
+    ],
+    "transaction.writers": [
+      "expect",
+      "op",
+      "writers",
+      "writes"
+    ],
+    "wait.start": [
+      "op"
+    ],
+    "wait.at_least": [
+      "ms",
+      "op"
     ],
     "session.end": [
       "op",
@@ -278,6 +292,7 @@
     "catalog.insert_row": [
       "expect",
       "metadata",
+      "only",
       "op",
       "values"
     ],
@@ -314,6 +329,7 @@
     ],
     "schema.installed": [
       "expect",
+      "only",
       "op",
       "schema",
       "table"
@@ -516,6 +532,7 @@
       "conflict",
       "connection",
       "expect",
+      "only",
       "op",
       "statements"
     ],
@@ -765,6 +782,11 @@
       "expect",
       "op"
     ],
+    "clock.read": [
+      "as",
+      "edge",
+      "op"
+    ],
     "transaction.attempts": [
       "expect",
       "op"
@@ -840,6 +862,15 @@
       "sequence",
       "table"
     ],
+    "utils.privilege": [
+      "call",
+      "connection",
+      "expect",
+      "op",
+      "privilege",
+      "role",
+      "table"
+    ],
     "utils.backend_waiting_for_lock": [
       "connection",
       "expect",
@@ -850,17 +881,17 @@
       "expect",
       "op"
     ],
+    "utils.stats": [
+      "connection",
+      "expect",
+      "op"
+    ],
     "pool.transactions": [
       "connection",
       "expect",
       "hold",
       "op",
       "transactions"
-    ],
-    "utils.stats": [
-      "connection",
-      "expect",
-      "op"
     ],
     "dbspec.plan": [
       "as",

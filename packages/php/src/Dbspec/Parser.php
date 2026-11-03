@@ -1342,8 +1342,8 @@ final class Parser
         }
         if (!isset(ColumnType::PARAMETERIZED[$name]) || !$parenthesis) {
             $this->error('type', $this->line, $column, match (true) {
-                in_array($name, ColumnType::SIMPLE, true) => "type `$name` has no parameters",
-                isset(ColumnType::PARAMETERIZED[$name]) => "type `$name` needs its parameters",
+                in_array($name, ColumnType::SIMPLE, true) => "$name takes no parameters",
+                isset(ColumnType::PARAMETERIZED[$name]) => self::parametersMessage($name),
                 default => "type \"$name\" is not a dbspec type",
             });
             return [null, $parenthesis ? $this->skipParentheses($i + 1) : $i + 1];
@@ -1383,7 +1383,7 @@ final class Parser
             return [null, $this->skipParentheses($j)];
         }
         if ($malformed) {
-            $this->error('type', $this->line, $column, "type `$name` has malformed parameters");
+            $this->error('type', $this->line, $column, self::parametersMessage($name));
             return [null, $j];
         }
         $valid = count($parameters) === ColumnType::PARAMETERIZED[$name] && match ($name) {
@@ -1392,15 +1392,20 @@ final class Parser
             'time', 'datetime' => $parameters[0] <= 6,
         };
         if (!$valid) {
-            $this->error('type', $this->line, $column, match ($name) {
-                'decimal' => 'decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p',
-                'varchar' => 'varchar(n) needs 1 <= n <= 16383',
-                default => "$name(p) needs 0 <= p <= 6",
-            });
+            $this->error('type', $this->line, $column, self::parametersMessage($name));
             return [null, $j];
         }
         $text = $name . '(' . implode(',', $parameters) . ')';
         return [$this->types[$text] ??= new ColumnType($name, $parameters), $j];
+    }
+
+    private static function parametersMessage(string $name): string
+    {
+        return match ($name) {
+            'decimal' => 'decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p',
+            'varchar' => 'varchar(n) needs 1 <= n <= 16383',
+            default => "$name(p) needs 0 <= p <= 6",
+        };
     }
 
     private function skipParentheses(int $i): int

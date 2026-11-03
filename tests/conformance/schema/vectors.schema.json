@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "tests/conformance/vectors.json and its database expectations",
-  "description": "The conformance vectors of one database: each vector names a chain and holds the output every client must give for it, the statements it sends (kind, SQL, binds, error, and the tables and transaction where the database reports them) and the result it reads. tests/conformance/check records and compares the expectations; their result is the chain's own data.",
+  "title": "tests/conformance/vectors.json",
+  "description": "The names of the conformance vectors and the requirements they test. What a vector does and gives on each database is the case of the same name of the recipe conformance_verification.",
   "type": "object",
   "additionalProperties": false,
   "required": ["vectors"],
@@ -18,36 +18,9 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "chain", "calls", "expect"],
+        "required": ["name"],
         "properties": {
-          "name": { "type": "string", "minLength": 1 },
-          "chain": { "type": "string", "minLength": 1 },
-          "calls": { "description": "The public methods of the client API that the vector verifies, in camelCase; each runner calls each of them in its body of the vector, in its own naming (tests/conformance/check/chain-methods.test.mts).", "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" } },
-          "expect": {
-            "description": "The recorded expectation, or null for a vector that is declared and not recorded yet.",
-            "type": ["object", "null"],
-            "additionalProperties": false,
-            "required": ["statements", "result"],
-            "properties": {
-              "statements": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["kind", "sql", "binds", "error"],
-                  "properties": {
-                    "kind": { "enum": ["select", "insert", "update", "delete", "begin", "commit", "rollback", "savepoint", "release", "rollback_to", "utility"] },
-                    "sql": { "type": "string" },
-                    "binds": { "type": "array" },
-                    "error": true,
-                    "tables": { "type": "array", "items": { "type": "string" } },
-                    "transaction": { "type": ["integer", "null"] }
-                  }
-                }
-              },
-              "result": true
-            }
-          }
+          "name": { "type": "string", "minLength": 1 }
         }
       }
     }

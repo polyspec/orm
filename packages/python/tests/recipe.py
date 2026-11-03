@@ -1850,9 +1850,15 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         "pool_lifetime_ms": "poolLifetimeMs",
         "statement_timeout_ms": "statementTimeoutMs",
     }
-    db = Db.connect(
-        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
-    )
+    options = {names[key]: value for key, value in (config or {}).items() if key in names}
+    if "aes_keys" in (config or {}):
+        options["aesKeyring"] = AesKeyring(
+            {int(version): key for version, key in config["aes_keys"].items()},
+            config["aes_version"],
+        )
+        options["aesVersion"] = config["aes_version"]
+        options["aesKey"] = config["aes_key"]
+    db = Db.connect(dsn, options)
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
@@ -2671,6 +2677,54 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+def _op_transaction_writers(step: dict, context: dict) -> dict:
+    """The writers run at the same time, each on its own connection, and the rows they committed are read (CFG-12)."""
+    from .models import models
+
+    errors: list[BaseException] = []
+
+    def write(index: int) -> None:
+        db = models.connect(context["dsn"])
+        try:
+
+            for number in range(step["writes"]):
+
+                def body(number=number) -> None:
+                    models.Service().connect(db).get_count()
+                    models.Service().connect(db).set_name(f"w{index}-{number}").create()
+
+                db.transaction(body, {"retry": 0})
+        except BaseException as error:  # noqa: BLE001 - the step reports the error of a writer after the join
+            errors.append(error)
+        finally:
+            db.close()
+
+    threads = [threading.Thread(target=write, args=(index,)) for index in range(step["writers"])]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+    db = models.connect(context["dsn"])
+    try:
+        return {"value": {"int": str(models.Service().connect(db).get_count())}}
+    finally:
+        db.close()
+
+
+def _op_wait_start(step: dict, context: dict) -> dict:
+    context["wait_start"] = time.monotonic()
+    return {}
+
+
+def _op_wait_at_least(step: dict, context: dict) -> dict:
+    waited = (time.monotonic() - context["wait_start"]) * 1000
+    if waited < step["ms"]:
+        raise AssertionError(f"wait.at_least: {waited} ms passed since wait.start, want {step['ms']}")
+    return {}
+
+
 def _op_session_end(step: dict, context: dict) -> dict:
     """Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
     handle KILL on its own."""
@@ -3451,6 +3505,7 @@ def _collection_connect(step: dict, context: dict) -> dict:
 def _table_model_delete(step: dict, context: dict) -> dict:
     recursive = step.get("recursive") is True
     if "row" in step and isinstance(_bound_value(step["row"], context), Collection):
+        _connection_of(step, context)
         _bound_value(step["row"], context).delete(recursive)
         return {}
     if "where" in step:
@@ -3478,6 +3533,16 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_clock_read(step: dict, _context: dict) -> dict:
+    """A client write takes wall_micros, which stays within 999 microseconds above the wall clock it reads, so
+    the reading bounds it below and the reading plus 999 above (FCV-4)."""
+    if step["edge"] not in ("lower", "upper"):
+        raise AssertionError(f"clock.read has no edge {step['edge']}")
+    micros = time.time_ns() // 1000 + (999 if step["edge"] == "upper" else 0)
+    seconds, fraction = divmod(micros, 1_000_000)
+    return {"value": {"text": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(seconds))}.{fraction:06d}"}}
+
+
 def _db_last_affected(step: dict, context: dict) -> dict:
     return {"value": {"int": str(last_affected(_connection_of(step, context)))}}
 
@@ -3496,6 +3561,29 @@ def _utils_set_local(step: dict, context: dict) -> dict:
 
 def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
+
+
+def _utils_privilege(step: dict, context: dict) -> dict:
+    """One call of the table privileges of utils() (INT-59): a call that returns nothing gives true."""
+    privileges = _connection_of(step, context).utils().privileges()
+    if step["call"] == "inspect":
+        got = privileges.inspect_table(step["table"])
+        return {
+            "json": {
+                "insert": got.insert,
+                "select": got.select,
+                "update": got.update,
+                "delete": got.delete,
+                "truncate": got.truncate,
+            }
+        }
+    if step["call"] == "grant":
+        privileges.grant_table(step["table"], step["role"])
+    elif step["call"] == "revoke":
+        privileges.revoke_table(step["table"], step["privilege"], step["role"])
+    else:
+        raise AssertionError(f"utils.privilege has no call {step['call']}")
+    return {"value": {"bool": True}}
 
 
 def _utils_was_inserted(step: dict, context: dict) -> dict:
@@ -3935,6 +4023,7 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
+    "clock.read": lambda step, context: _op_clock_read(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
     "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
     "dsn.connect": _op_dsn_connect,
@@ -3956,6 +4045,9 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
+    "wait.start": _op_wait_start,
+    "transaction.writers": _op_transaction_writers,
+    "wait.at_least": _op_wait_at_least,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
@@ -4517,6 +4609,7 @@ _TABLE_OPS = {
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
     "utils.was_inserted": _utils_was_inserted,
+    "utils.privilege": _utils_privilege,
     "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
     "utils.groups": _utils_groups,
     "utils.stats": _utils_stats,

@@ -22,7 +22,7 @@ import (
 var chainOps = map[string]bool{
 	"model.query": true, "model.count": true, "model.get_by": true, "model.create": true, "model.creates": true,
 	"model.save": true, "model.duplicate_create": true, "model.update": true, "model.delete": true, "model.restore": true,
-	"model.chain": true,
+	"model.chain":        true,
 	"collection.connect": true,
 }
 
@@ -767,7 +767,7 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 			return err
 		}
 	}
-	for _, o := range q.Order {
+	for _, o := range q.k("order").Order {
 		if o.Random {
 			core.OrderByRandom()
 			continue
@@ -1635,6 +1635,24 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.k("name").Name, text)
+	case "utils.privilege":
+		// One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+		privileges := db.Utils().Privileges()
+		switch s.k("call").Call {
+		case "grant":
+			return boolOutcome(true), privileges.GrantTable(s.k("table").Table, s.k("role").Role)
+		case "revoke":
+			return boolOutcome(true), privileges.RevokeTable(s.k("table").Table, s.k("privilege").Privilege, s.k("role").Role)
+		case "inspect":
+			got, err := privileges.InspectTable(s.k("table").Table)
+			if err != nil {
+				return outcome{}, err
+			}
+			return outcome{fields: map[string]any{"json": map[string]any{
+				"insert": got.Insert, "select": got.Select, "update": got.Update, "delete": got.Delete, "truncate": got.Truncate,
+			}}}, nil
+		}
+		return outcome{}, fmt.Errorf("utils.privilege has no call %q", s.k("call").Call)
 	case "utils.was_inserted":
 		inserted, err := db.Utils().WasInserted(s.k("table").Table, s.k("sequence").Sequence)
 		if err != nil {

@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 314473ac8f3ba571d61496900e3dfa8a4976f80d178407b2f752ef1141372216 -->
+<!-- source-sha256: 9439bed46fda27072f4a910513e9d0cad6fa0faa823815ee77a784f4b48404ae -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
@@ -158,7 +158,7 @@ savepoint는 message `transaction failed (<cause>) and rollback failed (<rollbac
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DsnTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php
     vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
-    node tests/conformance/check/main.mts run --out <new dir> --driver mysql|postgres|sqlite --dsn <bench DSN>
+    make conformance-check
 
 `ModelTest.php`는 SQLite, MySQL, PostgreSQL에서 실행되고 MySQL이나 PostgreSQL DSN이 없으면 실패한다. schema를 설치하거나
 `utils()->schema()->empty()`를 검사하는 case는 DSN의 server에 자기 database(또는 새 SQLite file)를 만들고 끝나면, 실패 뒤에도,

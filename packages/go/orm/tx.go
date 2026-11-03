@@ -669,7 +669,12 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 			}
 			t.finished.Store(true)
 			cancel()
-			return nil, errors.Join(err, t.closeSession(), conn.Close())
+			closeErr := conn.Close()
+			if errors.Is(closeErr, sql.ErrConnDone) {
+				// closeSession has closed the connection of a failed BEGIN, which is not a failure of this close.
+				closeErr = nil
+			}
+			return nil, errors.Join(err, t.closeSession(), closeErr)
 		}
 		if step.kind == KindBegin {
 			began = true
@@ -792,7 +797,8 @@ func (t *txConn) commit() error {
 		err = errors.Join(err, t.closeSession())
 	}
 	err = errors.Join(stmtErr, err, t.rollbacks.stop(t.conn))
-	if closeErr := t.conn.Close(); closeErr != nil {
+	if closeErr := t.conn.Close(); closeErr != nil && !errors.Is(closeErr, sql.ErrConnDone) {
+		// closeSession has closed the connection of a failed COMMIT, which is not a failure of this close.
 		err = errors.Join(err, closeErr)
 	}
 	t.finished.Store(true)

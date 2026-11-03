@@ -1,13 +1,9 @@
-//! SQLite locking: several connections and several processes commit
-//! read-then-write transactions on one file without transaction retries, a
-//! second connection reads while a write transaction is open, and a write that
-//! waits longer than busy_timeout returns CANCELED.
+//! SQLite locking across processes: several processes commit read-then-write transactions on one file without
+//! transaction retries (CFG-42). A recipe case runs on the connections of one test process in Rust.
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
-
-use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;
 use polyspec_orm::{Db, Model, Param};
@@ -32,23 +28,6 @@ use service_model::service;
 const WRITER_DSN: &str = "ORM_SQLITE_WRITER_DSN";
 /// The name of that writer process.
 const WRITER_NAME: &str = "ORM_SQLITE_WRITER_NAME";
-
-/// Holds a write transaction on `holder` that creates one service, and times the write of `waiter` that waits behind it.
-/// Returns the code of the waiter's error, if it failed, and how long the write waited.
-async fn hold_lock_while_writing(holder: &Db, waiter: &Db) -> (Option<String>, Duration) {
-    holder
-        .transaction(async || {
-            let mut row = service(None);
-            row.core_mut().set("name", Param::Str("holder".into()));
-            polyspec_orm::model::create(&mut row).await?;
-            let started = Instant::now();
-            let result = write_service(waiter, "waiter").await;
-            Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
-        })
-        .retry(0)
-        .await
-        .unwrap()
-}
 
 /// Runs one transaction that reads the service count and then inserts the service `label`.
 async fn write_service(db: &Db, label: &str) -> polyspec_orm::Result<()> {
@@ -92,17 +71,7 @@ async fn count(db: &Db) -> i64 {
 }
 
 #[tokio::test]
-async fn writers_on_several_connections() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
-    let file = database("connections").await;
-    let dsn = file.dsn.clone();
-    let dbs = open(&dsn, 8).await;
-    let failures = run_writers(&dbs, "c", 10).await;
-    assert!(failures.is_empty(), "failed writes: {failures:?}");
-    assert_eq!(count(&dbs[0]).await, 80, "services");
-}
-
-#[tokio::test]
+// Requirements: CFG-42.
 async fn writers_in_several_processes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     if let Ok(dsn) = std::env::var(WRITER_DSN) {
@@ -131,61 +100,4 @@ async fn writers_in_several_processes() {
         assert!(out.status.success(), "writer process {i}: {}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
     }
     assert_eq!(count(&open(&dsn, 1).await[0]).await, 240, "services");
-}
-
-#[tokio::test]
-// Requirements: CFG-13.
-async fn reads_during_write() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
-    let file = database("reads").await;
-    let dsn = file.dsn.clone();
-    let dbs = open(&dsn, 2).await;
-    let (writer, reader) = (&dbs[0], &dbs[1]);
-    writer
-        .transaction(async || {
-            let mut row = service(None);
-            row.core_mut().set("name", Param::Str("pending".into()));
-            polyspec_orm::model::create(&mut row).await?;
-            assert_eq!(count(reader).await, 0, "read during the write");
-            let read_only = reader.transaction(async || polyspec_orm::model::get_count(service(None).core()).await).read_only().retry(0).await?;
-            assert_eq!(read_only, 0, "read-only transaction during the write");
-            Ok(())
-        })
-        .retry(0)
-        .await
-        .unwrap();
-    assert_eq!(count(reader).await, 1, "read after the write");
-}
-
-#[tokio::test]
-// Requirements: CFG-12.
-async fn lock_wait_expires() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
-    let file = database("expiry").await;
-    let dsn = file.dsn.clone();
-    let holder = &open(&dsn, 1).await[0];
-    let waiter = &open(&format!("{dsn}?_pragma=busy_timeout(200)"), 1).await[0];
-    let (code, waited) = hold_lock_while_writing(holder, waiter).await;
-    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "write past the lock wait");
-    assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms lock wait");
-}
-
-/// SQLite has no session timeout, so the bound of a SQLite statement is the DSN busy_timeout and statementTimeoutMs
-/// leaves it as it is (docs/spec/config.md CFG-6): a write that waits for a lock with busy_timeout(1000) and a
-/// statement timeout of 200 milliseconds waits the whole second before it is canceled.
-#[tokio::test]
-async fn statement_timeout_keeps_the_sqlite_busy_timeout() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
-    let file = database("config-expiry").await;
-    let dsn = file.dsn.clone();
-    let holder = open(&dsn, 1).await.remove(0);
-    let waiter =
-        Db::connect_schema(&format!("{dsn}?_pragma=busy_timeout(1000)"), &SCHEMA, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..Default::default() })
-            .await
-            .unwrap();
-    let (code, waited) = hold_lock_while_writing(&holder, &waiter).await;
-    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "the busy_timeout of the DSN cancels the lock wait");
-    assert!(waited >= Duration::from_millis(1000), "write returned after {waited:?}, before the 1000ms busy_timeout of the DSN");
-    waiter.close().await;
-    holder.close().await;
 }

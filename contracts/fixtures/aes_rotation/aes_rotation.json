@@ -4330,6 +4330,39 @@
           }
         }
       ]
+    },
+    {
+      "id": "an_aes_key_that_differs_from_the_current_version_is_refused",
+      "requirements": [
+        "COD-8"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "config": {
+            "aes_key": "different-key",
+            "aes_version": 1,
+            "aes_keys": {
+              "1": "current-key"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "differs from"
+            },
+            "postgres": {
+              "error": "CONFIG",
+              "message_holds": "differs from"
+            },
+            "sqlite": {
+              "error": "CONFIG",
+              "message_holds": "differs from"
+            }
+          }
+        }
+      ]
     }
   ]
 }

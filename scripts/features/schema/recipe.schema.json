@@ -817,6 +817,9 @@
             "collection.connect",
             "sql.exec",
             "session.end",
+            "transaction.writers",
+            "wait.start",
+            "wait.at_least",
             "fault.next_rollback",
             "query.search",
             "query.search_chain",
@@ -901,6 +904,7 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
             "utils.aes_rotate",
@@ -911,6 +915,7 @@
             "utils.local",
             "db.notify",
             "utils.was_inserted",
+            "utils.privilege",
             "utils.backend_waiting_for_lock",
             "utils.groups",
             "utils.stats",
@@ -996,6 +1001,15 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.writers"
+        },
+        {
+          "$ref": "#/$defs/ops/wait.start"
+        },
+        {
+          "$ref": "#/$defs/ops/wait.at_least"
         },
         {
           "$ref": "#/$defs/ops/fault.next_rollback"
@@ -1244,6 +1258,9 @@
           "$ref": "#/$defs/ops/hook.records"
         },
         {
+          "$ref": "#/$defs/ops/clock.read"
+        },
+        {
           "$ref": "#/$defs/ops/transaction.attempts"
         },
         {
@@ -1272,6 +1289,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.was_inserted"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.privilege"
         },
         {
           "$ref": "#/$defs/ops/utils.backend_waiting_for_lock"
@@ -1499,6 +1519,9 @@
         "properties": {
           "op": {
             "const": "schema.installed"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "schema": {
             "description": "The schema name, or one for each database. The text $database is the name of the case database.",
@@ -1830,6 +1853,9 @@
               "pool_idle_size": { "type": "integer" },
               "pool_lifetime_ms": { "type": "integer" },
               "statement_timeout_ms": { "type": "integer" },
+              "aes_key": { "type": "string" },
+              "aes_version": { "type": "integer" },
+              "aes_keys": { "type": "object", "additionalProperties": { "type": "string" } },
               "session_read": {
                 "description": "The connection also runs this statement, whose only row must read as these texts, cell by cell (CFG-3).",
                 "type": "object",
@@ -2320,10 +2346,15 @@
             "type": "integer",
             "minimum": 1
           },
+          "statement_timeout_ms": {
+            "description": "The statement bound of the connection (CFG-6).",
+            "type": "integer",
+            "minimum": 1
+          },
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-pooler\" the case database through ORM_TEST_PGBOUNCER_DSN (CFG-27), \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
@@ -3587,6 +3618,32 @@
           }
         }
       },
+      "transaction.writers": {
+        "description": "writers writers at the same time, each on its own connection or process, each committing writes transactions that read the Service count and insert one Service without retries; its value is the Service count (CFG-12).",
+        "type": "object",
+        "required": ["op", "writers", "writes", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "transaction.writers" },
+          "writers": { "type": "integer", "minimum": 2 },
+          "writes": { "type": "integer", "minimum": 1 },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "wait.start": {
+        "description": "Records the time for the next wait.at_least.",
+        "type": "object",
+        "required": ["op"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "wait.start" } }
+      },
+      "wait.at_least": {
+        "description": "Fails the step when fewer than ms milliseconds passed since wait.start.",
+        "type": "object",
+        "required": ["op", "ms"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "wait.at_least" }, "ms": { "type": "integer", "minimum": 1 } }
+      },
       "session.end": {
         "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",
         "type": "object",
@@ -3941,6 +3998,9 @@
           },
           "values": {
             "$ref": "#/$defs/assignments"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "expect": {
             "type": "object",
@@ -5325,7 +5385,6 @@
         "type": "object",
         "required": [
           "op",
-          "connection",
           "as"
         ],
         "additionalProperties": false,
@@ -5480,6 +5539,9 @@
         "properties": {
           "op": {
             "const": "utils.run"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -7375,6 +7437,31 @@
           }
         }
       },
+      "clock.read": {
+        "type": "object",
+        "required": [
+          "op",
+          "edge",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "clock.read"
+          },
+          "edge": {
+            "description": "Which side of a write this read bounds: lower gives the reading of the wall clock, upper the latest value the client can write from that reading.",
+            "enum": [
+              "lower",
+              "upper"
+            ]
+          },
+          "as": {
+            "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
       "hook.records": {
         "type": "object",
         "required": [
@@ -7646,6 +7733,48 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.privilege": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "call",
+          "table",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.privilege"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "call": {
+            "description": "grantTable, inspectTable or revokeTable of utils().privileges() (INT-59).",
+            "enum": [
+              "grant",
+              "inspect",
+              "revoke"
+            ]
+          },
+          "table": {
+            "description": "The table argument of the call, passed as it is.",
+            "type": "string"
+          },
+          "role": {
+            "description": "The role argument of grant and revoke, passed as it is.",
+            "type": "string"
+          },
+          "privilege": {
+            "description": "The privilege argument of revoke, passed as it is.",
+            "type": "string"
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -8596,6 +8725,26 @@
       "page": {
         "oneOf": [
           {
+            "description": "A page whose cell is too large to state in the recipe: its columns and has_more.",
+            "type": "object",
+            "required": [
+              "columns",
+              "has_more"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "has_more": {
+                "type": "boolean"
+              }
+            }
+          },
+          {
             "type": "object",
             "required": [
               "columns",
@@ -8641,6 +8790,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
               }
             }
           }
@@ -8736,6 +8890,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
               }
             }
           }

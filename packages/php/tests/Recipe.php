@@ -48,6 +48,9 @@ use RuntimeException;
 
 final class Recipe
 {
+    /** The time of the last wait.start (FCV-4), in nanoseconds. */
+    private static int $waitStart = 0;
+
     use RecipeModel;
 
     /** The ops that RecipeModel runs, by their full names (FCV-15). */
@@ -74,6 +77,7 @@ final class Recipe
         'utils.set_local',
         'utils.local',
         'utils.was_inserted',
+        'utils.privilege',
         'utils.backend_waiting_for_lock',
         'utils.groups',
         'utils.stats',
@@ -774,6 +778,9 @@ final class Recipe
             poolIdleSize: $config['pool_idle_size'] ?? 0,
             poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
             statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+            aesKey: $config['aes_key'] ?? '',
+            aesVersion: $config['aes_version'] ?? 1,
+            aesKeys: $config['aes_keys'] ?? [],
         ));
         try {
             $rows = $db->utils()->run(
@@ -2730,6 +2737,14 @@ final class Recipe
                 return ['value' => ['bool' => true]];
             case 'transaction.attempts':
                 return ['value' => ['int' => (string) $context['attempts']]];
+            case 'clock.read':
+                // The client writes the reading of this clock, cut to the microsecond, so both edges are the
+                // reading itself: a value written between two readings lies between their texts (FCV-4).
+                if (!in_array($s['edge'], ['lower', 'upper'], true)) {
+                    Assert::fail('clock.read has no edge ' . json_encode($s['edge']));
+                }
+                return ['value' => ['text' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+                    ->format('Y-m-d H:i:s.u')]];
             case 'transaction.deadlock':
                 return self::transactionDeadlock($s, $context);
             case 'events.server_transactions':
@@ -2819,7 +2834,10 @@ final class Recipe
             case 'catalog.read_only_query':
                 $result = $catalog->readOnlyQuery(
                     self::sqlField($s['sql'], $context),
-                    array_map(self::nativeValue(...), $s['binds'] ?? []),
+                    array_map(
+                        static fn (mixed $bind): mixed => self::nativeValue(self::stepArgument($bind, $context)),
+                        $s['binds'] ?? []
+                    ),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
@@ -3090,6 +3108,39 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'transaction.writers':
+                // PHP runs one thread, so each writer is a process (CFG-12).
+                $extension = getenv('POLYSPEC_ORM_EXTENSION');
+                $php = is_string($extension) && $extension !== '' && extension_loaded('polyspec_orm')
+                    ? [PHP_BINARY, '-d', 'extension=' . $extension]
+                    : [PHP_BINARY];
+                $writers = [];
+                for ($i = 0; $i < $s['writers']; $i++) {
+                    $process = proc_open(
+                        [...$php, __DIR__ . '/sqlite_concurrency_writer.php', $context['dsn'], "w$i", (string) $s['writes']],
+                        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                        $pipes
+                    );
+                    $writers[] = [$process, $pipes];
+                }
+                foreach ($writers as [$process, $pipes]) {
+                    $output = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+                    $status = proc_close($process);
+                    Assert::assertSame(0, $status, "a writer process: $output");
+                }
+                $writersDb = \Polyspec\Orm\Tests\Model\connect($context['dsn'], new Config());
+                try {
+                    return ['value' => ['int' => (string) (new \Polyspec\Orm\Tests\Model\Service())($writersDb)->getCount()]];
+                } finally {
+                    $writersDb->close();
+                }
+            case 'wait.start':
+                self::$waitStart = hrtime(true);
+                return [];
+            case 'wait.at_least':
+                $waited = (hrtime(true) - self::$waitStart) / 1e6;
+                Assert::assertGreaterThanOrEqual($s['ms'], $waited, 'the time since wait.start');
+                return [];
             case 'session.end':
                 // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
                 $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
@@ -4020,7 +4071,7 @@ final class Recipe
     {
         $child = self::chainModel($relation['model'], $context);
         if (isset($relation['connection'])) {
-            $child->connect(self::connectionOf(['connection' => $relation['connection']], $context));
+            $child->connect(self::connectionOf(new RecipeStep(['connection' => $relation['connection']]), $context));
         }
         foreach ($relation['match'] ?? [] as [$left, $right]) {
             $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
@@ -4052,6 +4103,9 @@ final class Recipe
     {
         // A bound chain is read again: a terminal leaves it as it was (DSL-98).
         if (isset($s['from'])) {
+            // The bound chain keeps its model; the connection that the step names must be bound still.
+            self::connectionOf($s, $context);
+            $s->has('model');
             return self::boundValue($s['from'], $context);
         }
         $db = self::connectionOf($s, $context);
@@ -4184,6 +4238,7 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(RecipeStep $s, array $context, \Closure $terminal): array
     {
+        $pick = $s['pick'] ?? null;
         $table = ($s['unconnected'] ?? false) === true
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
@@ -4196,7 +4251,7 @@ final class Recipe
             $model->duplication(self::chainAssign($duplicate, $s['duplication'], $context));
         }
         $row = $terminal($model);
-        $fields = ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        $fields = ['bind' => $row, 'json' => self::chainRow($row, $pick)];
         // With columns, the rows expect compares the row that the write returns (INT-38).
         if (isset($s['columns'])) {
             $fields['rows'] = self::chainCells([$row], $s);
@@ -4207,10 +4262,12 @@ final class Recipe
     /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
     private static function chainTarget(RecipeStep $s, array $context): Model
     {
+        // A bound row keeps its own connection; the step's connection is still read, so a name that binds none fails.
+        $db = self::connectionOf($s, $context);
         $model = isset($s['row'])
             ? self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)
             : self::chainAssign(
-                self::tableModel($s['model'], self::connectionOf($s, $context), $context),
+                self::tableModel($s['model'], $db, $context),
                 // The key form sets the key on a new model, with no read before it (FCV-4).
                 $s['key'] ?? $s['values'] ?? [],
                 $context,
@@ -4300,6 +4357,7 @@ final class Recipe
                 if (isset($s['row'])) {
                     $bound = self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context);
                     if ($bound instanceof Collection) {
+                        self::connectionOf($s, $context);
                         $bound->delete($recursive);
                         return [];
                     }
@@ -4328,6 +4386,20 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.privilege':
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                $privileges = self::connectionOf($s, $context)->utils()->privileges();
+                switch ($s['call']) {
+                    case 'inspect':
+                        return ['json' => $privileges->inspectTable($s['table'])];
+                    case 'grant':
+                        $privileges->grantTable($s['table'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                    case 'revoke':
+                        $privileges->revokeTable($s['table'], $s['privilege'], $s['role']);
+                        return ['value' => ['bool' => true]];
+                }
+                Assert::fail("utils.privilege has no call {$s['call']}");
             case 'utils.was_inserted':
                 $utils = self::connectionOf($s, $context)->utils();
                 return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
@@ -4365,6 +4437,7 @@ final class Recipe
     /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
     private static function chainGets(RecipeStep $s, array $context): array
     {
+        $pick = $s['pick'] ?? null;
         $model = self::chainBuilt($s, $context);
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
@@ -4417,7 +4490,7 @@ final class Recipe
             if (($s['items'] ?? false) === true) {
                 $fields['json']['items'] = [];
                 foreach ($page->items as $row) {
-                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                    $fields['json']['items'][] = self::chainRow($row, $pick);
                 }
             }
             if (self::chainWantsRows($s, $context)) {
@@ -4433,7 +4506,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::chainRow($row, $pick);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

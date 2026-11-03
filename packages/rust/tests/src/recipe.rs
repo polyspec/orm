@@ -117,6 +117,9 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .collect()
 }
 
+/// The time of the last wait.start (FCV-4).
+static WAIT_START: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+
 /// The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step.
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
@@ -124,6 +127,13 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
         Some(dsn) if dsn.starts_with("case?") => {
             let separator = if case_dsn.contains('?') { '&' } else { '?' };
             Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
+        }
+        Some("case-pooler") => {
+            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|_| "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip".to_owned())?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = pooler.split_once('?').unwrap_or((&pooler, ""));
+            let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
+            Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
         }
         Some("case-socket") => {
             if database != "mysql" {
@@ -149,6 +159,9 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         pool_idle_size: field("pool_idle_size"),
         pool_lifetime_ms: field("pool_lifetime_ms"),
         statement_timeout_ms: field("statement_timeout_ms"),
+        aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
+        aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
+        aes_keys: config["aes_keys"].as_object().map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect()).unwrap_or_default(),
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
@@ -2533,6 +2546,40 @@ mod database {
 
     polyspec_orm::models!();
 
+    /// Runs `writers` writers at the same time, each on its own connection, each committing `writes` transactions that read
+    /// the Service count and insert one Service with no retry, and returns the Service count (CFG-12).
+    async fn transaction_writers(dsn: &str, writers: u64, writes: u64) -> Result<i64, String> {
+        let mut running = Vec::new();
+        for index in 0..writers {
+            let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+            running.push(tokio::spawn(async move {
+                let mut result = Ok(());
+                for write in 0..writes {
+                    result = db
+                        .transaction(async || {
+                            model::Service::new().connect(&db).get_count().await?;
+                            model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
+                            Ok(())
+                        })
+                        .retry(0)
+                        .await;
+                    if result.is_err() {
+                        break;
+                    }
+                }
+                db.close().await;
+                result
+            }));
+        }
+        for writer in running {
+            writer.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
+        }
+        let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+        let count = model::Service::new().connect(&db).get_count().await.map_err(|e| e.to_string());
+        db.close().await;
+        count
+    }
+
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
     /// The message of the error that a transaction callback returns when its op has fail: true.
@@ -2610,6 +2657,11 @@ mod database {
         /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
         fn connect_audited<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _source: &'a Value) -> ModelFuture<'a> {
             let refusal = format!("model.connect {name}: this recipe binds no audited models");
+            Box::pin(async move { Err(refusal) })
+        }
+        /// model.connect with statement_timeout_ms (FCV-4, CFG-6); a dispatcher on generated models refuses it by name.
+        fn connect_bounded<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _ms: u32) -> ModelFuture<'a> {
+            let refusal = format!("model.connect {name}: this recipe binds no bounded connection");
             Box::pin(async move { Err(refusal) })
         }
         fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
@@ -3131,6 +3183,7 @@ mod database {
         "utils.set_local",
         "utils.local",
         "utils.was_inserted",
+        "utils.privilege",
         "collection.connect",
         "utils.backend_waiting_for_lock",
         "utils.groups",
@@ -3416,6 +3469,14 @@ mod database {
                 Output::fields(ok_value())
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
+            // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
+            // itself: a value written between two readings lies between their texts (FCV-4).
+            "clock.read" => match step["edge"].as_str() {
+                Some("lower" | "upper") => Output::fields(json!({ "value": {
+                    "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } })),
+                other => return Err(format!("clock.read has no edge {other:?}")),
+            },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
                 let name = bound_name(step).map_err(fault)?;
@@ -3767,6 +3828,25 @@ mod database {
                 Output::fields(json!({}))
             }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
+            "transaction.writers" => {
+                let writers = crate::recipe_reads::read(step, "writers")["writers"].as_u64().unwrap_or_default();
+                let writes = crate::recipe_reads::read(step, "writes")["writes"].as_u64().unwrap_or_default();
+                let count = transaction_writers(&context.dsn, writers, writes).await.map_err(fault)?;
+                Output::fields(json!({ "value": { "int": count.to_string() } }))
+            }
+            "wait.start" => {
+                *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
+                Output::fields(json!({}))
+            }
+            "wait.at_least" => {
+                let started = (*WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+                    .ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
+                let (waited, want) = (started.elapsed().as_millis(), u128::from(crate::recipe_reads::read(step, "ms")["ms"].as_u64().unwrap_or_default()));
+                if waited < want {
+                    return Err(fault(format!("wait.at_least: {waited} ms passed since wait.start, want {want}")));
+                }
+                Output::fields(json!({}))
+            }
             "session.end" => {
                 end_session(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
                 Output::fields(json!({}))
@@ -3849,6 +3929,11 @@ mod database {
                 std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
+            if let Some(ms) = crate::recipe_reads::read(step, "statement_timeout_ms")["statement_timeout_ms"].as_u64() {
+                let ms = u32::try_from(ms).map_err(|_| Failure::Step(format!("statement_timeout_ms {ms} is out of range")))?;
+                context.models.connect_bounded(name, &dsn, pool_size, ms).await.map_err(Failure::Call)?;
+                return Ok(Output::fields(json!({})));
+            }
             if let Some(idle) = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64() {
                 // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
                 let options = polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
@@ -5638,6 +5723,12 @@ mod tables {
             connections.open(name, dsn, self.schema, pool_size, bench_config()).await.map_err(orm)
         }
 
+        async fn connect_bounded(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, ms: u32) -> Result<Value, String> {
+            let config = Config { statement_timeout_ms: ms, ..bench_config() };
+            self.bases.remove(name);
+            connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
+        }
+
         async fn connect_keyring(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, keyring: &Value) -> Result<Value, String> {
             let (keys, current) = keyring_spec(keyring)?;
             let config = Config { aes_version: current, aes_keys: keys, ..Config::default() };
@@ -5727,6 +5818,30 @@ mod tables {
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;
                     self.collections.insert(name, rows.connect(&db));
                     Ok(json!({ "value": { "bool": true } }))
+                }
+                // One call of the table privileges of utils() (INT-59): a call that returns nothing gives true.
+                "utils.privilege" => {
+                    let utils = db.utils();
+                    let privileges = utils.privileges();
+                    let table = step["table"].as_str().unwrap_or_default();
+                    let role = step["role"].as_str().unwrap_or_default();
+                    match step["call"].as_str().unwrap_or_default() {
+                        "inspect" => {
+                            let got = privileges.inspect_table(table).await.map_err(orm)?;
+                            Ok(json!({ "json": {
+                                "insert": got.insert, "select": got.select, "update": got.update, "delete": got.delete, "truncate": got.truncate,
+                            } }))
+                        }
+                        "grant" => {
+                            privileges.grant_table(table, role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        "revoke" => {
+                            privileges.revoke_table(table, step["privilege"].as_str().unwrap_or_default(), role).await.map_err(orm)?;
+                            Ok(json!({ "value": { "bool": true } }))
+                        }
+                        other => Err(format!("utils.privilege has no call {other}")),
+                    }
                 }
                 "utils.was_inserted" => {
                     let sequence = crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;

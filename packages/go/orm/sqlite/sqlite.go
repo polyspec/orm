@@ -48,7 +48,9 @@ func mapErr(err error) error {
 	if code == "" {
 		code = orm.CodeDriver
 	}
-	return &ir.Error{Code: code, Msg: se.Error() + resultCodeSuffix(se.Code())}
+	// The driver ends some messages with the name already, as in "database is locked (5) (SQLITE_BUSY)".
+	suffix := resultCodeSuffix(se.Code())
+	return &ir.Error{Code: code, Msg: strings.TrimSuffix(se.Error(), suffix) + suffix}
 }
 
 // sqliteCode is the ORM code of a SQLite extended result code n, or "" when the executor reports the error as DRIVER.
