@@ -3019,38 +3019,32 @@
               "text": "keep"
             }
           },
-          "columns": [
-            "name"
-          ],
           "expect": {
             "mysql": {
-              "rows": [
-                [
-                  {
-                    "text": "keep"
-                  }
-                ]
+              "json": [
+                {
+                  "name": "keep"
+                }
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "text": "keep"
-                  }
-                ]
+              "json": [
+                {
+                  "name": "keep"
+                }
               ]
             },
             "sqlite": {
-              "rows": [
-                [
-                  {
-                    "text": "keep"
-                  }
-                ]
+              "json": [
+                {
+                  "name": "keep"
+                }
               ]
             }
-          }
+          },
+          "pick": [
+            "name"
+          ]
         },
         {
           "op": "model.query",
@@ -3061,20 +3055,20 @@
               "text": "gone"
             }
           },
-          "columns": [
-            "name"
-          ],
           "expect": {
             "mysql": {
-              "rows": []
+              "json": []
             },
             "postgres": {
-              "rows": []
+              "json": []
             },
             "sqlite": {
-              "rows": []
+              "json": []
             }
-          }
+          },
+          "pick": [
+            "name"
+          ]
         },
         {
           "op": "events.captured",
