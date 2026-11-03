@@ -60,8 +60,12 @@ type databaseCase struct {
 type databaseStep struct {
 	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
-	Vectors        string          `json:"vectors"`
-	Case           string          `json:"case"`
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
+	// Paths is the document files of dbspec.introspect, relative to the recipe.
+	Paths []string `json:"paths"`
+	// CatalogOf is the other dialect whose catalog queries dbspec.introspect sends, which fail.
+	CatalogOf      string          `json:"catalog_of"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -1085,6 +1089,18 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "dbspec.introspect":
+		if s.CatalogOf != "" {
+			if err := introspectFailureStep(s, c); err != nil {
+				return outcome{}, err
+			}
+			return outcome{fields: map[string]any{"failed": true}}, nil
+		}
+		queries, err := introspectStep(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"queries": queries}}, nil
 	case "events.server_transactions":
 		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":

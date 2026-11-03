@@ -28,6 +28,7 @@ import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
+import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -848,6 +849,9 @@ const OPS = {
       }
     } finally { await session.close(); }
     return {};
+  },
+  async 'dbspec.introspect'(s, context) {
+    return introspectStep(s, context);
   },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
@@ -2361,7 +2365,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.introspect_refusal', 'dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2381,6 +2385,16 @@ async function checkDbspecFiles(step, dir, database) {
       assert.deepEqual(diagnostics, [], 'the document set has a manifest');
       assert.ok(expect.manifest_hash, 'the expect names a manifest hash');
       assert.equal(manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.introspect_refusal': {
+      const connection = new DatabaseSync(':memory:');
+      try {
+        await assert.rejects(introspectDbspec(connection, step.dialect, 'introspected'), { name: 'TypeError', message: new RegExp(step.dialect) });
+      } finally {
+        connection.close();
+      }
+      assert.deepEqual({ refused: step.dialect }, expect, 'refused dialect');
       break;
     }
     case 'dbspec.render': {

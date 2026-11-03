@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+- Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
+- CR15-F: 공유되는 행 변경 결과(충돌, unique, 강제 변환, 생성 열, 스키마 변경, 외래 키, insert 형태)는 recipe case `row_mutation_lifecycle`이 맡고, Rust 시험은 INT-106a의 phase, 취소, 버려진 커밋만 남긴다.
+- 어떤 시간 형식으로도 읽히지 않는 text를 모델에 쓰면 PHP와 PHP extension은 PRT-67대로 `CODEC_ENCODE`를 돌려준다. 예전에는 `CODEC_DECODE`였다. temporal column의 저장 형식과 그 거부는 recipe `conformance_verification`에서 돌고, PRT-67a는 Go에만 있는 setter 형식을 정한다.
+- introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
+- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
+- Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
+- 수정 시각과 soft delete의 microsecond, now 조건을 모든 runtime에서 recipe `conformance_verification`의 `clock_cell`과 `soft_record`로 돌린다. native 시험은 없앴고 recipe 함수 `seconds_later`를 더했다. TypeScript는 자기 clock source인 `wallMicros`의 시험을 지킨다.
 - 문서: FCV-2가 `ts-dbspec-plan`과 `ts-dbspec-render-dialect`의 Rust compile fixture를 native binding 규칙이 읽는 형식으로 적고, 한국어 twin에 plan cache 항목을 둔다.
 - rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
 - 시험: chain의 finalize는 모든 runtime에서 `dbspec_apply` recipe가 맡고, 아무것도 숨기지 않는 plan의 새 case를 둔다: finalize event는 행이 `applied`일 때 오고, 문장은 실행되지 않으며, 행은 `done`이 된다. Go의 `TestFinalizeMarksPlanDone`은 삭제했다.

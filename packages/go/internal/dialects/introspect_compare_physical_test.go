@@ -291,3 +291,13 @@ func firstDifferentLine(a, b string) int {
 	}
 	return 0
 }
+
+// expectedSchemaText is the schema text of the document set. The schema text is independent
+// of how the documents are split, so it can be compared with the schema text of one introspected document.
+func expectedSchemaText(t *testing.T, documents []*dbspec.Document) string {
+	manifest, diagnostics := dbspec.ManifestOf(documents)
+	if len(diagnostics) > 0 {
+		t.Fatal(diagnostics)
+	}
+	return manifest.SchemaText
+}
