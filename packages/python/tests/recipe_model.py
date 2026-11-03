@@ -305,6 +305,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             options["aesVersion"] = keyring.current_version
         if "pool_size" in step:
             options["poolSize"] = step["pool_size"]
+        if "pool_idle_size" in step:
+            options["poolIdleSize"] = step["pool_idle_size"]
         options.update(audit_source_of(step, context))
         dsn = connect_dsn(step.get("dsn"), context["database"], context["dsn"])
         db = Db.connect_schema(dsn, context["schema"], options)

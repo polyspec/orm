@@ -120,19 +120,22 @@ type databaseStep struct {
 	// Conflict is the message of the retryable error that the function of utils.run returns after its statements (INT-48).
 	Conflict string `json:"conflict"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
-	Connection  string          `json:"connection"`
-	Model       string          `json:"model"`
-	PoolSize    int             `json:"pool_size"`
-	Key         json.RawMessage `json:"key"`
-	Where       json.RawMessage `json:"where"`
-	Duplication json.RawMessage `json:"duplication"`
-	Rows        json.RawMessage `json:"rows"`
-	Batch       int             `json:"batch"`
-	Order       []string        `json:"order"`
-	Tuples      json.RawMessage `json:"tuples"`
-	Relation    json.RawMessage `json:"relation"`
-	Column      string          `json:"column"`
-	Operation   string          `json:"operation"`
+	Connection   string          `json:"connection"`
+	Model        string          `json:"model"`
+	PoolSize     int             `json:"pool_size"`
+	PoolIdle     int             `json:"pool_idle_size"`
+	Transactions int             `json:"transactions"`
+	Hold         int             `json:"hold"`
+	Key          json.RawMessage `json:"key"`
+	Where        json.RawMessage `json:"where"`
+	Duplication  json.RawMessage `json:"duplication"`
+	Rows         json.RawMessage `json:"rows"`
+	Batch        int             `json:"batch"`
+	Order        []string        `json:"order"`
+	Tuples       json.RawMessage `json:"tuples"`
+	Relation     json.RawMessage `json:"relation"`
+	Column       string          `json:"column"`
+	Operation    string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
 	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
