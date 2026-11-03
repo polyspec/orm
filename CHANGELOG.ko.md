@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 879a8c3512cedd73bbf99ccee5dc6fd1087016a7822388d51474a75ab1050e49 -->
+<!-- source-sha256: 9f2493eaac7891fb2d31bc81aea0a2a827368ba4d8e4be9489e3a157ae8e3831 -->
 # 변경 이력
 
 ## Unreleased
 
-- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 commit된 모델을 맡는다.
+- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
 - `conformance-generated-methods-check`는 본문 `now_defaults`, `delete_recursive`, `affected_counts`도 그 recipe case의 expect와 비교한다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)

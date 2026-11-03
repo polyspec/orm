@@ -3,7 +3,7 @@
 
 ## Unreleased
 
-- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the committed models.
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.
 - `conformance-generated-methods-check` also compares the bodies `now_defaults`, `delete_recursive` and `affected_counts` with the expects of their recipe cases.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
