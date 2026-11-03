@@ -99,7 +99,7 @@ pub const TABLE_KIND_UNSUPPORTED: &str = "TABLE_KIND_UNSUPPORTED";
 pub const TOOL_BIND_INVALID: &str = "TOOL_BIND_INVALID";
 /// executor: a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing
 pub const TOOL_BIND_LIMIT: &str = "TOOL_BIND_LIMIT";
-/// executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB)
+/// executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB plus the length of the statement, whose text a server may return as a column name)
 pub const TOOL_QUERY_COLUMNS: &str = "TOOL_QUERY_COLUMNS";
 /// executor: a bounded query of the Rust catalog tool does not split into exactly one statement
 pub const TOOL_QUERY_STATEMENT: &str = "TOOL_QUERY_STATEMENT";
@@ -161,5 +161,5 @@ pub const CONSTRAINT: &str = "CONSTRAINT";
 pub const READ_ONLY: &str = "READ_ONLY";
 /// driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
 pub const CONNECTION_LOST: &str = "CONNECTION_LOST";
-/// driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
+/// driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
 pub const DRIVER: &str = "DRIVER";

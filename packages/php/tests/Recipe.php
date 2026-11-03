@@ -2583,7 +2583,7 @@ final class Recipe
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
-            $step->checkOutcome($expected, 'error', 'file_created', 'message_suffix', 'message', 'cause', 'message_holds', 'rollback', 'driver_cause');
+            $step->checkOutcome($expected, 'error', 'file_created', 'message_suffix', 'message', 'cause', 'message_holds', 'keeps_callback', 'rollback', 'driver_cause');
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
@@ -3759,6 +3759,7 @@ final class Recipe
      */
     private static function transactionDeadlock(RecipeStep $s, array $context): array
     {
+        Assert::assertSame('CompositeAccount', $s['model'], 'the model of the child flows');
         $key = static fn(array $row): array => [
             (string) self::chainValue($row['tenant_id'], $context),
             (string) self::chainValue($row['account_id'], $context),

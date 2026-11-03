@@ -4686,6 +4686,8 @@ def _audit_source_of(step: dict, context: dict) -> dict:
 
 
 _MODEL_OPS = model_ops(_native, _database_value, _step_argument, _audit_source_of)
+# The count of the last write belongs to the connection, so both paths read it the same way.
+_MODEL_OPS["db.last_affected"] = _db_last_affected
 _TABLE_OPS = {
     "model.chain": _table_model_chain,
     "model.create": _table_model_create,

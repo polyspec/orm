@@ -2304,7 +2304,8 @@ function scopeTree(query, column, value, addParam) {
 // A model op takes TABLE_OPS on a fixture that generates no models, and MODEL_OPS on the fixture that does (FCV-4).
 for (const op of Object.keys(TABLE_OPS)) {
   OPS[op] = async (s, context) => {
-    if (context.tablePath) return TABLE_OPS[op](s, context);
+    // The count of the last write belongs to the connection, so both paths read it the same way.
+    if (context.tablePath || op === 'db.last_affected') return TABLE_OPS[op](s, context);
     if (s.row !== undefined) throw new Error(`${op} with row: the generated path has no row form`);
     if (MODEL_OPS[op] === undefined) throw new Error(`OP_UNKNOWN ${op}`);
     return MODEL_OPS[op](s, context);

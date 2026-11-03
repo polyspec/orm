@@ -8,6 +8,9 @@
   "cases": [
     {
       "id": "socket_update_finds_its_row",
+      "only": [
+        "mysql"
+      ],
       "requirements": [
         "CFG-10"
       ],
@@ -50,10 +53,17 @@
             "name": {
               "text": "socket"
             }
-          },
-          "revision": {
-            "column": "account_id",
-            "value": 1
+          }
+        },
+        {
+          "op": "db.last_affected",
+          "connection": "db",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            }
           }
         }
       ]

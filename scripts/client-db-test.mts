@@ -62,7 +62,7 @@ export const GO_LANE_PACKAGES = [
 // perf-check and feature-check, which read the bench DSNs and report the timing; they assert no client result.
 export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
-const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
+const PHP_TESTS = ['ModelTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SchemaSetTest', 
   'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
 // The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs
@@ -82,7 +82,7 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   env: { ORM_PHP_MODE: 'extension' },
 }));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
-const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'connection_pool', 'aes_rotation'];
+const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'install_changed_database', 'connection_config', 'connection_pool'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
 // The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
 // behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit

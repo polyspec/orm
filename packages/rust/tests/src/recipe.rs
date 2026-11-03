@@ -4157,6 +4157,12 @@ mod database {
             };
             return Ok(Output::fields(json!({})));
         }
+        // The count of the last write belongs to the connection, so the generated path reads it as the table path does.
+        if op == "db.last_affected" && !context.models.table_path() {
+            let db = connection_db(step, context).map_err(Failure::Step)?;
+            let affected = polyspec_orm::testing::last_affected(&db).unwrap_or_default();
+            return Ok(Output::fields(json!({ "value": { "int": affected.to_string() } })));
+        }
         // A step with `row` and no connection is routed by its bound row, which records the connection it was bound on;
         // hook.records reads the records of the case, on no connection.
         let connection = match crate::recipe_reads::read(step, "connection")["connection"].as_str() {

@@ -53,7 +53,7 @@ const (
 	CodeTableKindUnsupported      = "TABLE_KIND_UNSUPPORTED"       // executor
 	CodeToolBindInvalid           = "TOOL_BIND_INVALID"            // executor: a native bind of the Rust catalog tool is unsupported or invalid (a malformed decimal, a nonfinite MySQL float, a SQLite NaN, PostgreSQL text with NUL) and is refused before execution
 	CodeToolBindLimit             = "TOOL_BIND_LIMIT"              // executor: a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing
-	CodeToolQueryColumns          = "TOOL_QUERY_COLUMNS"           // executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB)
+	CodeToolQueryColumns          = "TOOL_QUERY_COLUMNS"           // executor: a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB plus the length of the statement, whose text a server may return as a column name)
 	CodeToolQueryStatement        = "TOOL_QUERY_STATEMENT"         // executor: a bounded query of the Rust catalog tool does not split into exactly one statement
 	CodeTableNamespaceUnsupported = "TABLE_NAMESPACE_UNSUPPORTED"  // executor
 	CodeTableNamespaceUnavailable = "TABLE_NAMESPACE_UNAVAILABLE"  // executor
@@ -84,5 +84,5 @@ const (
 	CodeConstraint                = "CONSTRAINT"                   // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
 	CodeReadOnly                  = "READ_ONLY"                    // driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
 	CodeConnectionLost            = "CONNECTION_LOST"              // driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
-	CodeDriver                    = "DRIVER"                       // driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
+	CodeDriver                    = "DRIVER"                       // driver: any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
 )

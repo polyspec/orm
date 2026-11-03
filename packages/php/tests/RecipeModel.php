@@ -117,6 +117,10 @@ trait RecipeModel
         if (!$db instanceof Db) {
             Assert::fail("model op {$s['op']}: connection {$s['connection']} is not bound by model.connect");
         }
+        // The count of the last write belongs to the connection, so both paths read it the same way.
+        if ($s['op'] === 'db.last_affected') {
+            return self::affected($db);
+        }
         return match ($s['model']) {
             'CompositeAccount' => self::compositeAccountOp($s, $context, $db),
             'CompositeMembership' => self::compositeMembershipOp($s, $context, $db),
@@ -130,6 +134,7 @@ trait RecipeModel
     /** model.create and model.count of a CompositeAccount built with no connection (PLN-16). */
     private static function unconnectedAccountOp(RecipeStep $s, array $context): array
     {
+        Assert::assertSame('CompositeAccount', $s['model'], 'the model that has an unconnected form');
         return match ($s['op']) {
             'model.create' => (static function () use ($s, $context): array {
                 self::compositeAccountSet(null, self::modelValues($s['values'], $context))->create();
@@ -331,8 +336,9 @@ trait RecipeModel
                 return ['value' => ['int' => (string) $count]];
             case 'model.get_by':
                 $key = self::modelValues($s['key'], $context);
+                $columns = $s['columns'];
                 $row = (new $CA())($db)->getByTenantIdAndAccountId($key['tenant_id'], $key['account_id']);
-                return ['rows' => $row === null ? [] : [self::compositeAccountCells($row, $s['columns'])]];
+                return ['rows' => $row === null ? [] : [self::compositeAccountCells($row, $columns)]];
             case 'model.query':
                 $where = self::modelValues($s['where'] ?? null, $context);
                 $model = self::compositeAccountFilter($db, $where);
@@ -359,8 +365,9 @@ trait RecipeModel
                     $model = $model->$lock();
                 }
                 $rows = [];
+                $columns = $s['columns'];
                 foreach ($model->gets() as $row) {
-                    $cells = self::compositeAccountCells($row, $s['columns']);
+                    $cells = self::compositeAccountCells($row, $columns);
                     if (!isset($s['relation'])) {
                         $rows[] = $cells;
                         continue;

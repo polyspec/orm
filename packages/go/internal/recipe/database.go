@@ -667,7 +667,7 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
 			return fmt.Errorf("error %q has no driver cause", err.Error())
 		}
-		return s.reads.checkOutcome(expected, s.k("op").Op, "error", "message_suffix", "message", "cause", "message_holds", "rollback", "driver_cause")
+		return s.reads.checkOutcome(expected, s.k("op").Op, "error", "message_suffix", "message", "cause", "message_holds", "rollback", "driver_cause", "keeps_callback")
 	}
 	if s.k("as").As != "" {
 		c.bound[s.k("as").As] = bound{api: result.api, fields: result.fields, value: result.fields["value"]}

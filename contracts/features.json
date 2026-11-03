@@ -935,7 +935,6 @@
         "packages/php/tests/autoload.php",
         "contracts/fixtures/aggregate_numeric.json",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/bench/bench.dbs",
@@ -1820,7 +1819,6 @@
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/bench/bench.dbs",
@@ -2461,7 +2459,6 @@
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/utils/utils.json"
@@ -2941,11 +2938,7 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
-                  "cases": [
-                    "transaction_rollback",
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "postgres": [
@@ -2957,11 +2950,7 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
-                  "cases": [
-                    "transaction_rollback",
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "sqlite": [
@@ -2973,11 +2962,7 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
-                  "cases": [
-                    "transaction_rollback",
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ]
             }
@@ -4289,15 +4274,6 @@
       ],
       "coverage": {
         "kind": "independent",
-        "cases": [
-          "dbspec_emit_round_trip",
-          "dbspec_manifest_hash",
-          "dbspec_render_ddl",
-          "dbspec_analyze_tokens",
-          "dbspec_format",
-          "dbspec_format_refusal",
-          "dbspec_parse_positions"
-        ],
         "owners": {
           "go": {
             "part": "packages/go",
@@ -4313,24 +4289,8 @@
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_schema_definition_test.go",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ],
-                  "symbols": {
-                    "dbspec_emit_round_trip": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_manifest_hash": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_render_ddl": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_analyze_tokens": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_format": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_format_refusal": "TestRecipeSchemaDefinitionNone",
-                    "dbspec_parse_positions": "TestRecipeSchemaDefinitionNone"
-                  }
+                  "recipe": "tests/dbspec/schema-definition.json",
+                  "symbol": "TestRecipeSchemaDefinitionNone"
                 }
               ]
             }
@@ -4349,24 +4309,8 @@
                 {
                   "runner": "php",
                   "test": "packages/php/tests/SchemaDefinitionRecipeTest.php",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ],
-                  "symbols": {
-                    "dbspec_emit_round_trip": "testNone",
-                    "dbspec_manifest_hash": "testNone",
-                    "dbspec_render_ddl": "testNone",
-                    "dbspec_analyze_tokens": "testNone",
-                    "dbspec_format": "testNone",
-                    "dbspec_format_refusal": "testNone",
-                    "dbspec_parse_positions": "testNone"
-                  }
+                  "recipe": "tests/dbspec/schema-definition.json",
+                  "symbol": "testNone"
                 }
               ]
             }
@@ -4385,24 +4329,8 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ],
-                  "symbols": {
-                    "dbspec_emit_round_trip": "testNone",
-                    "dbspec_manifest_hash": "testNone",
-                    "dbspec_render_ddl": "testNone",
-                    "dbspec_analyze_tokens": "testNone",
-                    "dbspec_format": "testNone",
-                    "dbspec_format_refusal": "testNone",
-                    "dbspec_parse_positions": "testNone"
-                  }
+                  "recipe": "tests/dbspec/schema-definition.json",
+                  "symbol": "testNone"
                 }
               ]
             }
@@ -4420,24 +4348,7 @@
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/schema_definition_none.rs",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ],
-                  "symbols": {
-                    "dbspec_emit_round_trip": "schema_definition_none::dbspec_emit_round_trip",
-                    "dbspec_manifest_hash": "schema_definition_none::dbspec_manifest_hash",
-                    "dbspec_render_ddl": "schema_definition_none::dbspec_render_ddl",
-                    "dbspec_analyze_tokens": "schema_definition_none::dbspec_analyze_tokens",
-                    "dbspec_format": "schema_definition_none::dbspec_format",
-                    "dbspec_format_refusal": "schema_definition_none::dbspec_format_refusal",
-                    "dbspec_parse_positions": "schema_definition_none::dbspec_parse_positions"
-                  }
+                  "recipe": "tests/dbspec/schema-definition.json"
                 }
               ]
             }
@@ -4455,15 +4366,7 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/recipe_schema_definition.mjs",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ]
+                  "recipe": "tests/dbspec/schema-definition.json"
                 }
               ]
             }
@@ -4482,15 +4385,7 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/recipe_schema_definition.py",
-                  "cases": [
-                    "dbspec_emit_round_trip",
-                    "dbspec_manifest_hash",
-                    "dbspec_render_ddl",
-                    "dbspec_analyze_tokens",
-                    "dbspec_format",
-                    "dbspec_format_refusal",
-                    "dbspec_parse_positions"
-                  ]
+                  "recipe": "tests/dbspec/schema-definition.json"
                 }
               ]
             }
@@ -4559,7 +4454,6 @@
       ],
       "fixtures": [
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "contracts/fixtures/add_tables_and_columns/changed.dbs",
         "contracts/fixtures/add_tables_and_columns/default.dbs",
@@ -5478,9 +5372,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "composite_key_rows"
-        ],
         "owners": {
           "go": {
             "part": "packages/go/orm",
@@ -5492,39 +5383,24 @@
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestRecipeCompositeKeysMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "TestRecipeCompositeKeysMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestRecipeCompositeKeysPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "TestRecipeCompositeKeysPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestRecipeCompositeKeysSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "TestRecipeCompositeKeysSqlite"
                 }
               ]
             }
@@ -5539,39 +5415,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CompositeKeysRecipeTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CompositeKeysRecipeTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CompositeKeysRecipeTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -5588,39 +5449,21 @@
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/composite_keys_mysql.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "composite_keys_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/composite_keys_postgres.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "composite_keys_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/composite_keys_sqlite.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "composite_keys_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ]
             }
@@ -5637,30 +5480,21 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/composite_keys-mysql.test.mjs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/composite_keys-postgres.test.mjs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/composite_keys-sqlite.test.mjs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ]
             }
@@ -5677,30 +5511,21 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_composite_keys_mysql.py",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_composite_keys_postgres.py",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_composite_keys_sqlite.py",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json"
                 }
               ]
             }
@@ -5715,39 +5540,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/composite_keys/composite_keys.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -6133,7 +5943,6 @@
       "fixtures": [
         "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/bench/bench.dbs"
@@ -6507,7 +6316,6 @@
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/refusal.dbs",
         "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
@@ -9452,9 +9260,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "product_search_page"
-        ],
         "owners": {
           "rust": {
             "part": "packages/rust/tests",
@@ -9468,39 +9273,21 @@
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/complex_query_mysql.rs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "complex_query_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/complex_query_postgres.rs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "complex_query_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "complex_query_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ]
             }
@@ -9519,39 +9306,24 @@
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_complex_query_test.go",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "TestRecipeComplexQueryMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "TestRecipeComplexQueryMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_complex_query_test.go",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "TestRecipeComplexQueryPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "TestRecipeComplexQueryPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
                   "test": "packages/go/orm/recipe_complex_query_test.go",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "TestRecipeComplexQuerySqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "TestRecipeComplexQuerySqlite"
                 }
               ]
             }
@@ -9572,30 +9344,21 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/complex_query-mysql.test.mjs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/complex_query-postgres.test.mjs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/complex_query-sqlite.test.mjs",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ]
             }
@@ -9616,30 +9379,21 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_complex_query_mysql.py",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_complex_query_postgres.py",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
                   "test": "packages/python/tests/test_complex_query_sqlite.py",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json"
                 }
               ]
             }
@@ -9660,39 +9414,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -9713,39 +9452,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
-                  "cases": [
-                    "product_search_page"
-                  ],
-                  "symbols": {
-                    "product_search_page": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/complex_query/complex_query.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -9878,9 +9602,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "statement_runner"
-        ],
         "dependents": [],
         "owners": {
           "go": {
@@ -9925,39 +9646,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementRunnerRecipeTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testSqlite"
                 }
               ],
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementRunnerRecipeTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/StatementRunnerRecipeTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testPostgres"
                 }
               ]
             }
@@ -9972,39 +9678,24 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testSqlite"
                 }
               ],
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
+                  "symbol": "testPostgres"
                 }
               ]
             }
@@ -10021,39 +9712,21 @@
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "statement_runner_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "mysql": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/statement_runner_mysql.rs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "statement_runner_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/statement_runner_postgres.rs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "symbols": {
-                    "statement_runner": "statement_runner_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ]
             }
@@ -10070,30 +9743,21 @@
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_runner-sqlite.test.mjs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "mysql": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_runner-mysql.test.mjs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/statement_runner-postgres.test.mjs",
-                  "cases": [
-                    "statement_runner"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
               ]
             }
@@ -10527,7 +10191,6 @@
     {
       "id": "rust-test-helpers",
       "paths": [
-        "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/rust/build/tests/common/*.rs",
         "packages/rust/testcase/src/*.rs",

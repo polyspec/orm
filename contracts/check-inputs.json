@@ -3619,16 +3619,12 @@
         "packages/**"
       ]
     },
-    "conformance-generated-methods-check": {
+    "conformance-generated-methods-check/go": {
       "scope": "owner",
       "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
         "node-modules",
-        "php-extension-tools"
+        "go",
+        "databases"
       ],
       "inputs": [
         "tests/conformance/check/recipe_vectors.mts",
@@ -3636,25 +3632,15 @@
         "tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
-        "packages/go/internal/conformance/**",
-        "packages/ts/testing/conformance/runner_typescript.mts",
-        "packages/ts/tests/recipe.mjs",
-        "packages/python/testing/conformance/runner_python.py",
-        "packages/php/testing/conformance/runner.php",
-        "packages/rust/tests/src/conformance.rs",
-        "Makefile"
+        "Makefile",
+        "packages/go/internal/conformance/**"
       ]
     },
-    "conformance-fixed-clock-check": {
+    "conformance-generated-methods-check/typescript": {
       "scope": "owner",
       "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
         "node-modules",
-        "php-extension-tools"
+        "databases"
       ],
       "inputs": [
         "tests/conformance/check/recipe_vectors.mts",
@@ -3662,13 +3648,185 @@
         "tests/conformance/check/fixed_clock.json",
         "contracts/fixtures/conformance_verification/**",
         "tests/conformance/vectors.json",
-        "packages/go/internal/conformance/**",
+        "Makefile",
         "packages/ts/testing/conformance/runner_typescript.mts",
-        "packages/ts/tests/recipe.mjs",
-        "packages/python/testing/conformance/runner_python.py",
-        "packages/php/testing/conformance/runner.php",
-        "packages/rust/tests/src/conformance.rs",
-        "Makefile"
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "conformance-generated-methods-check/python": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/python/testing/conformance/runner_python.py"
+      ]
+    },
+    "conformance-generated-methods-check/php": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/php/testing/conformance/runner.php"
+      ]
+    },
+    "conformance-generated-methods-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/php/testing/conformance/runner.php"
+      ]
+    },
+    "conformance-generated-methods-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/rust/tests/src/conformance.rs"
+      ]
+    },
+    "conformance-fixed-clock-check/go": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/go/internal/conformance/**"
+      ]
+    },
+    "conformance-fixed-clock-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/ts/testing/conformance/runner_typescript.mts",
+        "packages/ts/tests/recipe.mjs"
+      ]
+    },
+    "conformance-fixed-clock-check/python": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/python/testing/conformance/runner_python.py"
+      ]
+    },
+    "conformance-fixed-clock-check/php": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/php/testing/conformance/runner.php"
+      ]
+    },
+    "conformance-fixed-clock-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/php/testing/conformance/runner.php"
+      ]
+    },
+    "conformance-fixed-clock-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "Makefile",
+        "packages/rust/tests/src/conformance.rs"
       ]
     },
     "conformance-refusal-check": {
