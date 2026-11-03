@@ -3594,7 +3594,7 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_rollback_fault.py",
-                "packages/python/tests/test_utils_statements.py",
+            "packages/python/tests/test_utils_statements.py",
             "packages/python/tests/test_row_lock_event.py",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/utils.py"
@@ -14017,10 +14017,8 @@
         }
       ],
       "parity": [
-        "statement-runner-database",
         "statement-runner-frame-after-its-transaction-ended",
         "statement-runner-non-text-statement",
-        "coverage-statement-runner-statement-runner",
         "statement_runner-mysql",
         "statement_runner-postgres",
         "statement_runner-sqlite"
@@ -14046,12 +14044,8 @@
         "packages/php/tests/StatementRunnerTest.php",
         "packages/php/tests/StatementRunnerCases.php",
         "packages/python/tests/test_statement_runner.py",
-        "packages/rust/orm/tests/statement_runner.rs",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
-        "packages/ts/tests/statement-runner-run.mjs",
-        "packages/php/tests/CoverageStatementRunnerTest.php",
-        "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
-        "packages/ts/tests/coverage_statement_runner.mjs"
+        "packages/ts/tests/statement-runner-run.mjs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -14094,16 +14088,6 @@
             "packages/python/src/polyspec/orm/utils.py",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/tests/test_statement_runner.py"
-          ]
-        },
-        {
-          "id": "statement-runner-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-runner-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_runner",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/src/utils.rs",
-            "packages/rust/orm/src/tx.rs",
-            "packages/rust/orm/tests/statement_runner.rs"
           ]
         },
         {
@@ -14174,18 +14158,18 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageStatementRunnerTest.php"
+              "packages/php/tests/StatementRunnerRecipeTest.php"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementRunnerTest.php",
+                  "test": "packages/php/tests/StatementRunnerRecipeTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14193,12 +14177,12 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementRunnerTest.php",
+                  "test": "packages/php/tests/StatementRunnerRecipeTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -14206,12 +14190,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementRunnerTest.php",
+                  "test": "packages/php/tests/StatementRunnerRecipeTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -14221,18 +14205,18 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php"
+              "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
+                  "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14240,12 +14224,12 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
+                  "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -14253,12 +14237,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
+                  "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "testStatementRunner"
+                    "statement_runner": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -14266,20 +14250,22 @@
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/orm/tests/statement_runner.rs"
+              "packages/rust/tests/tests/statement_runner_sqlite.rs",
+              "packages/rust/tests/tests/statement_runner_mysql.rs",
+              "packages/rust/tests/tests/statement_runner_postgres.rs"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_runner.rs",
+                  "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "coverage_statement_runner"
+                    "statement_runner": "statement_runner_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14287,12 +14273,12 @@
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_runner.rs",
+                  "test": "packages/rust/tests/tests/statement_runner_mysql.rs",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "coverage_statement_runner"
+                    "statement_runner": "statement_runner_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -14300,12 +14286,12 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/orm/tests/statement_runner.rs",
+                  "test": "packages/rust/tests/tests/statement_runner_postgres.rs",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "coverage_statement_runner"
+                    "statement_runner": "statement_runner_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -14315,13 +14301,15 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_statement_runner.mjs"
+              "packages/ts/tests/statement_runner-sqlite.test.mjs",
+              "packages/ts/tests/statement_runner-mysql.test.mjs",
+              "packages/ts/tests/statement_runner-postgres.test.mjs"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_runner.mjs",
+                  "test": "packages/ts/tests/statement_runner-sqlite.test.mjs",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14331,7 +14319,7 @@
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_runner.mjs",
+                  "test": "packages/ts/tests/statement_runner-mysql.test.mjs",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14341,7 +14329,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_runner.mjs",
+                  "test": "packages/ts/tests/statement_runner-postgres.test.mjs",
                   "cases": [
                     "statement_runner"
                   ],
