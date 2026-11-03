@@ -922,6 +922,7 @@ async function runStep(s, context) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
       assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
     }
+    if (expected.keeps_callback === true) assert.equal(error.cause, callbackError, `the error ${JSON.stringify(error.message)} keeps the error of the callback`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
