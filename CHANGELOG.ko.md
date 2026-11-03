@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3279c8009a2441fbc2a5ed8112c1cc568d7f451a83239b0b09bb64ae4cceb007 -->
+<!-- source-sha256: c09a6a414d8a16eabccf5e5d10884dedde160eb4ee24b5e3485810197bfbdbf9 -->
 # 변경 이력
 
 ## Unreleased
 
+- PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - schema 값 읽기(SCH-12)는 모든 runtime에서 모든 diagnostic을 한 형식 `<line>:<column> <rule>: <message>`로 `; `로 이어 보고하고, 줄은 문서부터 세며, `dbspec.load_set` recipe가 그것을 비교한다 (#T334-3-18).
 - recipe `statement_events`가 INT-96이 정한 subscriber의 실패를 여섯 runtime, 세 database에서 담는다: 정확한 메시지와, 원인인 subscriber의 오류이며, 결과 `{"error": <code>}`에 이제 `message`와 `cause`로 적을 수 있다.
 - row의 JSON 형식은 array 형식처럼 `time`과 `datetime` column을 모든 클라이언트에서 소수 여섯 자리로 쓴다. 지금까지 TypeScript, Python, Rust는 column precision으로, Go와 PHP는 여섯 자리로 썼다.
@@ -16,6 +17,14 @@
 - `contracts/features.json`의 recipe owner는 사례 목록을 두지 않는다. manifest를 읽을 때 recipe에서 가져오므로 recipe에 사례를 더해도 owner 목록이 낡지 않는다.
 - `gen --check`(DBS-175)는 모든 runtime에서 새 op `generator.check`로 실행하는 recipe `generator`의 case `check_reports_differences_without_writing`이다. 그 Python coverage 파일을 없앴다.
 - `make perf-check`는 PERF-1의 Go 측정을 MySQL, PostgreSQL, SQLite에서 실행하고, `client-db-check`의 Go lane은 클라이언트 결과를 검증하지 않는 그 시험을 건너뛴다.
+- PRT-82에 문장이 컬럼을 쓰는 순서를, DBS-67에 soft delete 테이블의 `update`와 삭제가 그 컬럼이 null인 row에만 맞는다는 것을 적었고, `tests/planner/runtime-model.json`이 모든 dialect에서 이를 담는다.
+- `contracts/features.json`의 recipe owner는 사례 목록을 두지 않는다. manifest를 읽을 때 recipe에서 가져오므로 recipe에 사례를 더해도 owner 목록이 낡지 않는다.
+- `gen --check`(DBS-175)는 모든 runtime에서 새 op `generator.check`로 실행하는 recipe `generator`의 case `check_reports_differences_without_writing`이다. 그 Python coverage 파일을 없앴다.
+- `contracts/features.json`의 recipe owner는 사례 목록을 두지 않는다. manifest를 읽을 때 recipe에서 가져오므로 recipe에 사례를 더해도 owner 목록이 낡지 않는다.
+- `gen --check`(DBS-175)는 모든 runtime에서 새 op `generator.check`로 실행하는 recipe `generator`의 case `check_reports_differences_without_writing`이다. 그 Python coverage 파일을 없앴다.
+- AES envelope와 blind index case, param_uses case는 여섯 런타임 모두에서 recipe로 실행한다. suite authenticated-encryption과 planner-params, 그 fixture를 삭제했고, authenticated_encryption과 planner의 owner는 tests/codec/codec.json과 tests/planner/compile.json을 가리킨다. 자기 case database를 쓰는 native test는 bench DSN 대신 `case_database`를 적는다.
+- `gen --check`(DBS-175)는 모든 runtime에서 새 op `generator.check`로 실행하는 recipe `generator`의 case `check_reports_differences_without_writing`이다. 그 Python coverage 파일을 없앴다.
+- 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - ordered-json AES 열의 왕복과 회전(COD-7)을 저장된 셀까지 읽는 aes_rotation recipe 사례로 여섯 runtime에 옮겼고 native 시험을 지웠다.
 - 프로세스 기한은 끝난 프로세스를 보고하고, 그 case는 pid가 없음을 확인한다 (#T334-3-4-22)
 - 생성 메서드 conformance 본문과 고정 시계 본문을 recipe conformance_verification과 fixed_clock.json으로 비교한다. 고정 시계 본문은 이제 정확한 시계를 적는다.
@@ -66,6 +75,9 @@
 - ordered-json, codec 컬럼, 일괄 create 쓰기는 모든 runtime의 builder에서 recipe `model_writes_chain`의 case다. 멤버 순서와 숫자 텍스트, 반복 멤버 이름, 저장 텍스트의 codec 컬럼, 공백이 있는 IP, 오래된 낙관적 갱신, `creates`(어떤 문장보다 먼저 거부, SQLite bind 한도 초과, batch를 넘는 행 순서, 모든 batch의 rollback)를 다룬다. 이 기능의 coverage 시험은 사라졌다. `contracts/features.json`은 schema가 요구하는 `model_writes`와 `model_queries` coverage의 빈 `dependents`를 선언한다.
 - 생성 모델 쿼리의 chain은 모든 runtime의 builder에서 recipe `model_queries_chain`의 case다: page와 total, sum, 함수 column, 제거한 column, index와 subquery가 있는 join, relation, NULL collection key, group row이며, 이 기능의 coverage 시험은 제거됐고, PRT-35는 NULL key의 메시지가 아니라 code를 정한다
 - `gen --check`(DBS-175)는 모든 runtime에서 새 op `generator.check`로 실행하는 recipe `generator`의 case `check_reports_differences_without_writing`이다. 그 Python coverage 파일을 없앴다.
+- 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
+- parameter 쓰임, plan의 출력 열, blind index source, 복합 upsert key, 열 타입별 연산자, 다른 manifest의 요청을 새 op `ir.param_uses`, `planner.columns`로 여섯 runtime의 recipe 사례로 옮겼고, TypeScript와 Python도 다른 runtime처럼 `uuid` 순서 비교를 거부한다.
+- AES envelope, 변조, 잘못된 키, blind index vector를 여섯 runtime의 codec recipe case로 옮겼고 envelope 형식을 expect로 확인한다. Go, PHP, PHP 확장의 hostcodec 테스트는 없앴다.
 - alias 없는 두 relation이 같은 결과 이름을 가지면 거부하는 동작(CPX-5)은 모든 runtime에서 recipe `complex_query`의 case `duplicate_relation_name`이다. 그 Python 시험을 없앴고, Python interface_contract coverage는 feature 환경을 읽지 않고 native로 남는다.
 - feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
 - 문 실행기는 여섯 런타임에서 recipe `statement_runner`로만 실행되며, FCV-2의 거부를 뺀 native 시험과 coverage 시험은 사라졌다.
