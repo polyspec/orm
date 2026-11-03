@@ -6,8 +6,32 @@ use sqlparser::{
 /// The keywords that a read query never uses as a statement or clause, as the other runtimes hold them. A query is read by
 /// its tokens and no tree is built, so its length and its nesting are no reason to refuse it.
 const WRITE_WORDS: [&str; 26] = [
-    "INSERT", "UPDATE", "DELETE", "MERGE", "UPSERT", "CREATE", "DROP", "ALTER", "TRUNCATE", "RENAME", "GRANT", "REVOKE", "CALL", "DO", "INTO",
-    "LOCK", "SHARE", "PROCEDURE", "LOAD", "COPY", "ATTACH", "DETACH", "PRAGMA", "VACUUM", "REINDEX", "ANALYZE",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "MERGE",
+    "UPSERT",
+    "CREATE",
+    "DROP",
+    "ALTER",
+    "TRUNCATE",
+    "RENAME",
+    "GRANT",
+    "REVOKE",
+    "CALL",
+    "DO",
+    "INTO",
+    "LOCK",
+    "SHARE",
+    "PROCEDURE",
+    "LOAD",
+    "COPY",
+    "ATTACH",
+    "DETACH",
+    "PRAGMA",
+    "VACUUM",
+    "REINDEX",
+    "ANALYZE",
 ];
 
 #[derive(Debug)]

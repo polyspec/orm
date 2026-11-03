@@ -129,7 +129,8 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
         }
         Some("case-pooler") => {
-            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|_| "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip".to_owned())?;
+            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN")
+                .map_err(|_| "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip".to_owned())?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = pooler.split_once('?').unwrap_or((&pooler, ""));
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
@@ -177,7 +178,10 @@ async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, St
         statement_timeout_ms: field("statement_timeout_ms"),
         aes_key: config["aes_key"].as_str().unwrap_or_default().to_owned(),
         aes_version: config["aes_version"].as_i64().map_or(polyspec_orm::Config::default().aes_version, |version| version as i32),
-        aes_keys: config["aes_keys"].as_object().map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect()).unwrap_or_default(),
+        aes_keys: config["aes_keys"]
+            .as_object()
+            .map(|keys| keys.iter().map(|(version, key)| (version.parse().unwrap_or(0), key.as_str().unwrap_or_default().to_owned())).collect())
+            .unwrap_or_default(),
         ..polyspec_orm::Config::default()
     };
     match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
@@ -298,7 +302,10 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
 fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
     use std::io::{BufRead as _, Write as _};
     let lines = |name: &str| -> Vec<String> {
-        crate::recipe_reads::read(step, name)[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+        crate::recipe_reads::read(step, name)[name]
+            .as_array()
+            .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect())
+            .unwrap_or_default()
     };
     let (replies, messages) = (lines("replies"), lines("messages"));
     let text = |name: &str| crate::recipe_reads::read(step, name)[name].as_str().unwrap_or_default().to_owned();
@@ -351,7 +358,11 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     match (outcome, expect["error"].as_str()) {
         (Err((got, message)), Some(code)) if got == code => {
             let holds = expect["message_holds"].as_str().unwrap_or_default();
-            if message.contains(holds) { Ok(()) } else { Err(format!("message {message}, want one that holds {holds}")) }
+            if message.contains(holds) {
+                Ok(())
+            } else {
+                Err(format!("message {message}, want one that holds {holds}"))
+            }
         }
         (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
         (Ok(_), Some(code)) => Err(format!("error none, want {code}")),
@@ -378,7 +389,19 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
         let columns = catalog["columns"].as_array().ok_or("the catalog has no columns")?;
         columns
             .iter()
-            .map(|c| vec![t(), text(&c["name"]), text(&c["type"]), text(&c["nullable"]), CatalogValue::Null, s(""), text(&c["charset"]), text(&c["collation"]), s("")])
+            .map(|c| {
+                vec![
+                    t(),
+                    text(&c["name"]),
+                    text(&c["type"]),
+                    text(&c["nullable"]),
+                    CatalogValue::Null,
+                    s(""),
+                    text(&c["charset"]),
+                    text(&c["collation"]),
+                    s(""),
+                ]
+            })
             .collect()
     } else if query.contains("information_schema.STATISTICS") {
         vec![vec![t(), s("PRIMARY"), CatalogValue::Int(0), text(&catalog["primary_key"]), s("A"), CatalogValue::Int(0), CatalogValue::Int(0), s("BTREE")]]
@@ -402,7 +425,8 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
 /// reason compares by its rule, the text before the first ": ", since its text differs between the clients.
 fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?).map_err(|error| error.to_string())?;
+    let vectors: Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?).map_err(|error| error.to_string())?;
     let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
     let cases = vectors["cases"].as_array().ok_or("the vectors have no cases")?;
     let case = cases.iter().find(|case| case["id"] == id).ok_or_else(|| format!("the vectors have no case {id}"))?;
@@ -427,7 +451,8 @@ fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(
         };
     }
     let introspection = read?;
-    let checks: Vec<String> = dbspec::emit(&introspection.document).lines().map(str::trim).filter(|line| line.starts_with("check ")).map(str::to_owned).collect();
+    let checks: Vec<String> =
+        dbspec::emit(&introspection.document).lines().map(str::trim).filter(|line| line.starts_with("check ")).map(str::to_owned).collect();
     let unsupported: Vec<String> = introspection
         .unsupported
         .iter()
@@ -607,7 +632,8 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
         let error = result.as_ref().err().ok_or("the call succeeded")?;
         let (failure, cleanup) = cleanup_chain(error);
         match (failure, want) {
-            (_, None) | (ApplyError::Drift { .. }, Some("drift")) | (ApplyError::Locked { .. }, Some("locked")) | (ApplyError::Chain { .. }, Some("chain")) => {}
+            (_, None) | (ApplyError::Drift { .. }, Some("drift")) | (ApplyError::Locked { .. }, Some("locked")) | (ApplyError::Chain { .. }, Some("chain")) => {
+            }
             (ApplyError::Verify { source, .. }, Some("verify")) => {
                 if let Some(cause) = &fault.cause {
                     let held = matches!(source, Some(IntrospectError::Query(sqlx::Error::Protocol(message))) if message == cause);
@@ -669,10 +695,7 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
         connection.close().await.map_err(|error| error.to_string())?;
         Ok::<_, String>(introspection.unsupported)
     })?;
-    let got: Vec<Value> = unsupported
-        .iter()
-        .map(|item| json!({ "kind": item.kind, "table": item.table, "name": item.name, "reason": item.reason }))
-        .collect();
+    let got: Vec<Value> = unsupported.iter().map(|item| json!({ "kind": item.kind, "table": item.table, "name": item.name, "reason": item.reason })).collect();
     let want = &crate::recipe_reads::read(step, "expect")["expect"][database]["unsupported"];
     if want.as_array().map(Vec::as_slice) == Some(got.as_slice()) {
         Ok(())
@@ -710,7 +733,12 @@ fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
 /// The markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the listener of markdown.send. The
 /// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
 fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
-    let calls: Vec<String> = crate::recipe_reads::read(step, "calls")["calls"].as_array().ok_or("the step has no calls")?.iter().filter_map(|call| call.as_str().map(str::to_owned)).collect();
+    let calls: Vec<String> = crate::recipe_reads::read(step, "calls")["calls"]
+        .as_array()
+        .ok_or("the step has no calls")?
+        .iter()
+        .filter_map(|call| call.as_str().map(str::to_owned))
+        .collect();
     let listener = markdown::send_listener();
     let result = call_on_connection(listener.dsn.clone(), Call::Builder(calls));
     if let Some(message) = listener.finish() {
@@ -743,9 +771,14 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "generator.check" => return recipe_generator::check_files(step, dir),
         "generator.refused" => return recipe_generator::check_refused(step, dir),
         "ir.validate" => return ir_validate(step, database),
-        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
-            return dbspec_plan_step(step, bound, database)
-        }
+        "dbspec.parse"
+        | "dbspec.parse_plan"
+        | "dbspec.emit_plan"
+        | "dbspec.plan_steps"
+        | "dbspec.add_tables_steps"
+        | "dbspec.diff"
+        | "dbspec.chain"
+        | "dbspec.compare" => return dbspec_plan_step(step, bound, database),
         "dbspec.parse_emit"
         | "dbspec.manifest"
         | "dbspec.render"
@@ -786,16 +819,25 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     if crate::recipe_reads::read(step, "op")["op"] == "model.assign" {
         return model_assign(step);
     }
-    let styles: Vec<String> = crate::recipe_reads::read(step, "styles")["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
+    let styles: Vec<String> = crate::recipe_reads::read(step, "styles")["styles"]
+        .as_array()
+        .map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect())
+        .unwrap_or_default();
     let key = crate::recipe_reads::read(step, "key")["key"].as_str().unwrap_or_default();
     let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
     let failed = |error: polyspec_orm::Error| (error.code().to_owned(), error.to_string());
     let outcome: Outcome = match op {
         "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read).map_err(failed),
         "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written).map_err(failed),
-        "codec.host_encode" => codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed),
-        "codec.host_decode" => codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed),
-        "codec.blind_index" => codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key).map(|text| Produced::Written(Param::Str(text))).map_err(failed),
+        "codec.host_encode" => {
+            codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed)
+        }
+        "codec.host_decode" => {
+            codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed)
+        }
+        "codec.blind_index" => codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key)
+            .map(|text| Produced::Written(Param::Str(text)))
+            .map_err(failed),
         other => return Err(format!("OP_UNKNOWN {other}")),
     };
     if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
@@ -934,7 +976,8 @@ fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String>
 fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let manifest = ir_request::schema(&dir.join(crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default()).to_string_lossy());
     let input = ir_request::request(&crate::recipe_reads::read(step, "input")["input"], &manifest.manifest_hash);
-    let names: Vec<&str> = crate::recipe_reads::read(step, "names")["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
+    let names: Vec<&str> =
+        crate::recipe_reads::read(step, "names")["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
     for (name, dialect) in PLAN_DIALECTS {
         let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
         let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
@@ -1197,7 +1240,10 @@ fn read_documents(dir: &Path, paths: &[String]) -> Result<(Vec<String>, Vec<Docu
 
 /// The documents named by a dbspec step.
 fn step_documents(step: &Value) -> Vec<String> {
-    crate::recipe_reads::read(step, "documents")["documents"].as_array().map(|d| d.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+    crate::recipe_reads::read(step, "documents")["documents"]
+        .as_array()
+        .map(|d| d.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect())
+        .unwrap_or_default()
 }
 
 /// Runs a dbspec.export_mermaid or dbspec.import_mermaid op (FCV-4) on the public Mermaid calls (DBS-169), binds its plain JSON
@@ -1559,7 +1605,11 @@ fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), St
 fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     let text = |value: &Value| {
         let lines = lines_of(value);
-        if lines.is_empty() { String::new() } else { format!("{}\n", lines.join("\n")) }
+        if lines.is_empty() {
+            String::new()
+        } else {
+            format!("{}\n", lines.join("\n"))
+        }
     };
     let (owned, external) = (text(&crate::recipe_reads::read(step, "owned")["owned"]), text(&crate::recipe_reads::read(step, "external")["external"]));
     let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
@@ -1586,7 +1636,11 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     let schema = polyspec_orm::Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash));
     let documents = schema.documents().map_err(|error| error.to_string())?;
     let got: Vec<Value> = documents.iter().map(|d| json!({"name": d.name.text, "external": d.external})).collect();
-    if want["documents"].as_array() == Some(&got) { Ok(()) } else { Err(format!("documents {got:?}, want {want}")) }
+    if want["documents"].as_array() == Some(&got) {
+        Ok(())
+    } else {
+        Err(format!("documents {got:?}, want {want}"))
+    }
 }
 
 /// The dbspec.runtime_model op (FCV-4): the entity names of the runtime model of the documents, and the values that the expect
@@ -2971,8 +3025,22 @@ mod database {
         let namespace = open.current_namespace().await.map_err(|e| format!("database {database}: current namespace: {e}"))?;
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
-        let mut context =
-            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), listeners: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+        let mut context = Context {
+            held: None,
+            namespace,
+            database,
+            dsn,
+            bound,
+            db,
+            dir,
+            models: models(),
+            schemas,
+            apply: crate::recipe_apply::ApplyOps::default(),
+            subscriptions: HashMap::new(),
+            listeners: HashMap::new(),
+            recordings: HashMap::new(),
+            attempts: 0,
+        };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3057,7 +3125,8 @@ mod database {
         let mut transaction = db.transaction(callback);
         // An absent retry passes 0 unless default_retry leaves it out (INT-43).
         if crate::recipe_reads::read(step, "default_retry")["default_retry"].as_bool() != Some(true) {
-            let retry = u32::try_from(crate::recipe_reads::read(step, "retry")["retry"].as_u64().unwrap_or(0)).map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
+            let retry = u32::try_from(crate::recipe_reads::read(step, "retry")["retry"].as_u64().unwrap_or(0))
+                .map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
             transaction = transaction.retry(retry);
         }
         if let Some(timeout) = crate::recipe_reads::read(step, "timeout_ms")["timeout_ms"].as_u64() {
@@ -3094,7 +3163,10 @@ mod database {
 
     /// The name that the `as` of a step binds.
     fn bound_name(step: &Value) -> Result<String, String> {
-        crate::recipe_reads::read(step, "as")["as"].as_str().map(str::to_owned).ok_or_else(|| format!("{} binds no as", crate::recipe_reads::read(step, "op")["op"]))
+        crate::recipe_reads::read(step, "as")["as"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| format!("{} binds no as", crate::recipe_reads::read(step, "op")["op"]))
     }
 
     /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
@@ -3107,11 +3179,17 @@ mod database {
     async fn probe_value(db: &Db, text: &str) -> Result<i64, String> {
         let rows = frame_rows(db, text).await.map_err(|e| format!("{text}: {e}"))?;
         let cell = rows.first().and_then(|row| row.first()).map(super::statement::cell_wrapper).ok_or_else(|| format!("{text}: no cell"))?;
-        cell["int"].as_str().or_else(|| cell["text"].as_str()).and_then(|digits| digits.parse().ok()).ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
+        cell["int"]
+            .as_str()
+            .or_else(|| cell["text"].as_str())
+            .and_then(|digits| digits.parse().ok())
+            .ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
     }
 
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
-        let name = crate::recipe_reads::read(step, "connection")["connection"].as_str().ok_or_else(|| format!("{} names no connection", crate::recipe_reads::read(step, "op")["op"]))?;
+        let name = crate::recipe_reads::read(step, "connection")["connection"]
+            .as_str()
+            .ok_or_else(|| format!("{} names no connection", crate::recipe_reads::read(step, "op")["op"]))?;
         context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
     }
 
@@ -3177,7 +3255,7 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 31] = [
+    const MODEL_OPS: [&str; 32] = [
         "model.connect",
         "transaction.deadlock",
         "model.restore",
@@ -3222,7 +3300,10 @@ mod database {
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
         // query.search runs on the generated models of the dispatcher too, as the model ops do (FCV-4).
-        let dispatched = if crate::recipe_reads::read(step, "op")["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search" || op == "query.search_chain") {
+        let dispatched = if crate::recipe_reads::read(step, "op")["op"]
+            .as_str()
+            .is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search" || op == "query.search_chain")
+        {
             model_call(step, context).await
         } else {
             call(catalog, step, context).await
@@ -3454,7 +3535,9 @@ mod database {
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
                 let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
-                if optioned.iter().any(|option| step.get(*option).is_some()) || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true) {
+                if optioned.iter().any(|option| step.get(*option).is_some())
+                    || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true)
+                {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
                 }
                 let ran = std::sync::atomic::AtomicU64::new(0);
@@ -3522,7 +3605,8 @@ mod database {
             "events.fail_subscriber" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
-                let kind = crate::recipe_reads::read(step, "kind")["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
+                let kind =
+                    crate::recipe_reads::read(step, "kind")["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
                 let refusal = crate::recipe_reads::read(step, "refusal")["refusal"].is_object().then(|| {
                     (
                         crate::recipe_reads::read(step, "refusal")["refusal"]["code"].as_str().unwrap_or_default().to_owned(),
@@ -3544,8 +3628,13 @@ mod database {
                 Output::fields(json!({}))
             }
             "events.stop_failing" | "events.unsubscribe" => {
-                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().ok_or_else(|| fault(format!("{} names no ref", crate::recipe_reads::read(step, "op")["op"])))?;
-                let subscription = context.subscriptions.remove(name).ok_or_else(|| fault(format!("{}: no subscription {name}", crate::recipe_reads::read(step, "op")["op"])))?;
+                let name = crate::recipe_reads::read(step, "ref")["ref"]
+                    .as_str()
+                    .ok_or_else(|| fault(format!("{} names no ref", crate::recipe_reads::read(step, "op")["op"])))?;
+                let subscription = context
+                    .subscriptions
+                    .remove(name)
+                    .ok_or_else(|| fault(format!("{}: no subscription {name}", crate::recipe_reads::read(step, "op")["op"])))?;
                 subscription.unsubscribe();
                 Output::fields(json!({}))
             }
@@ -3554,7 +3643,9 @@ mod database {
             "utils.run" => {
                 let db = connection_db(step, context).map_err(fault)?;
                 let mut statements = Vec::new();
-                for statement in crate::recipe_reads::read(step, "statements")["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
+                for statement in
+                    crate::recipe_reads::read(step, "statements")["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))?
+                {
                     let kind = statement["kind"].as_str().ok_or_else(|| fault("a statement of utils.run names no kind".into()))?;
                     let tables: Vec<&str> = statement["tables"].as_array().map(|names| names.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
                     let sql = sql_field(&statement["sql"], context).map_err(fault)?;
@@ -3578,14 +3669,18 @@ mod database {
                     })
                     .await
                     .map_err(orm)?;
-                let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
+                let rows: Vec<Value> =
+                    rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
                 Output::fields(json!({ "value": { "array": rows } }))
             }
             // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts
             // the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
             "events.server_transactions" => {
                 let db = connection_db(step, context).map_err(fault)?;
-                let probe_text = crate::recipe_reads::read(step, "probe")["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
+                let probe_text = crate::recipe_reads::read(step, "probe")["probe"]
+                    .as_str()
+                    .ok_or_else(|| fault("events.server_transactions names no probe".into()))?
+                    .to_owned();
                 let mut fields = serde_json::Map::new();
                 if context.database == "postgres" {
                     let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
@@ -3598,7 +3693,9 @@ mod database {
                 let first = probe_value(&db, &probe_text).await.map_err(fault)?;
                 let mut before = probe_value(&db, &probe_text).await.map_err(fault)?;
                 let cost = before - first;
-                let prepares = crate::recipe_reads::read(step, "first_run_prepare_clients")["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
+                let prepares = crate::recipe_reads::read(step, "first_run_prepare_clients")["first_run_prepare_clients"]
+                    .as_array()
+                    .is_some_and(|clients| clients.iter().any(|client| client == "rust"));
                 for run in ["first", "second"] {
                     let texts = Arc::new(Mutex::new(Vec::<String>::new()));
                     let sink = Arc::clone(&texts);
@@ -3655,7 +3752,11 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&crate::recipe_reads::read(step, "dsn")["dsn"], crate::recipe_reads::read(step, "expect")["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
+                connect_check(
+                    &crate::recipe_reads::read(step, "dsn")["dsn"],
+                    crate::recipe_reads::read(step, "expect")["expect"][context.database]["file_created"].as_bool().unwrap_or(false),
+                )
+                .await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {
@@ -3673,7 +3774,10 @@ mod database {
                 if let Some(text) = crate::recipe_reads::read(step, "refused_message").get("refused_message").and_then(Value::as_str) {
                     return match CatalogConnection::connect(&dsn).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
-                        Err(error) if error.to_lowercase().contains(text) && error.starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) => {
+                        Err(error)
+                            if error.to_lowercase().contains(text)
+                                && error.starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) =>
+                        {
                             Ok(Output::fields(json!({})))
                         }
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
@@ -3882,7 +3986,11 @@ mod database {
                 let listener = context.listeners.get_mut(name).ok_or_else(|| fault(format!("no listener {name}")))?;
                 let within = crate::recipe_reads::read(step, "within_ms")["within_ms"].as_u64().unwrap_or(10000);
                 let notification = listener.receive_within(std::time::Duration::from_millis(within)).await.map_err(orm)?;
-                let payload = if crate::recipe_reads::read(step, "payload_bytes")["payload_bytes"].as_bool() == Some(true) { json!(notification.payload.len()) } else { json!(notification.payload) };
+                let payload = if crate::recipe_reads::read(step, "payload_bytes")["payload_bytes"].as_bool() == Some(true) {
+                    json!(notification.payload.len())
+                } else {
+                    json!(notification.payload)
+                };
                 Output::fields(json!({ "json": [notification.channel, payload] }))
             }
             "subscription.unlisten" => {
@@ -3919,7 +4027,10 @@ mod database {
                 Output::fields(json!({}))
             }
             "sql.hold_connection" => {
-                let dsn = user_from_database_dsn(&context.dsn, crate::recipe_reads::read(step, "user_from_database")["user_from_database"].as_str().unwrap_or_default());
+                let dsn = user_from_database_dsn(
+                    &context.dsn,
+                    crate::recipe_reads::read(step, "user_from_database")["user_from_database"].as_str().unwrap_or_default(),
+                );
                 let ConnectOptions::MySql(options) = parse_dsn(&dsn).map_err(|e| fault(e.to_string()))?.options else {
                     return Err(fault(format!("{dsn} is not a mysql DSN")));
                 };
@@ -3955,7 +4066,10 @@ mod database {
             }
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             "dsn.connect" => {
-                let dsn = match (crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default(), crate::recipe_reads::read(step, "query")["query"].as_str()) {
+                let dsn = match (
+                    crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default(),
+                    crate::recipe_reads::read(step, "query")["query"].as_str(),
+                ) {
                     ("case", Some(query)) => {
                         let separator = if context.dsn.contains('?') { '&' } else { '?' };
                         format!("{}{separator}{query}", context.dsn)
@@ -3966,7 +4080,9 @@ mod database {
                         None => text.to_owned(),
                     },
                 };
-                let driver = crate::recipe::connect_driver(&dsn, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
+                let driver = crate::recipe::connect_driver(&dsn, &crate::recipe_reads::read(step, "config")["config"])
+                    .await
+                    .map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
             }
             "dsn.sqlite_file" => {
@@ -4003,7 +4119,8 @@ mod database {
             }
             if let Some(idle) = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64() {
                 // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
-                let options = polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
+                let options =
+                    polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));
@@ -4022,8 +4139,15 @@ mod database {
         // hook.records reads the records of the case, on no connection.
         let connection = match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
             Some(name) => name,
-            None if op == "transaction.deadlock" => crate::recipe_reads::read(step, "connections")["connections"][0].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connections")))?,
-            None if crate::recipe_reads::read(step, "row").get("row").is_some() || op == "hook.records" || crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) => "",
+            None if op == "transaction.deadlock" => {
+                crate::recipe_reads::read(step, "connections")["connections"][0].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connections")))?
+            }
+            None if crate::recipe_reads::read(step, "row").get("row").is_some()
+                || op == "hook.records"
+                || crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) =>
+            {
+                ""
+            }
             // A model op of the table path with no connection runs on the case connection, as in the other runtimes.
             None if context.models.table_path() => {
                 context.models.adopt(CASE_CONNECTION, context.db.clone());
@@ -4204,7 +4328,12 @@ mod database {
 
     /// The bound parameters of a read, as native values.
     fn binds(step: &Value, context: &Context<'_>) -> Result<Vec<P>, String> {
-        crate::recipe_reads::read(step, "binds")["binds"].as_array().into_iter().flatten().map(|value| native(&database_value(argument(value, context)?, context))).collect()
+        crate::recipe_reads::read(step, "binds")["binds"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|value| native(&database_value(argument(value, context)?, context)))
+            .collect()
     }
 
     /// The names of a list of strings.
@@ -4333,9 +4462,11 @@ mod database {
     async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _, Row as _};
         let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
-        let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
+        let vectors: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
         let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
-        let vector = vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
+        let vector =
+            vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
         let rule = match database {
             "mysql" => "SET time_zone = '+00:00'",
             "postgres" => "SET TimeZone = 'UTC'",
@@ -4365,8 +4496,15 @@ mod database {
                             continue;
                         }
                         let query = entry["query"].as_str().unwrap_or_default();
-                        let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_optional(&mut connection).await.map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: no row"))?;
-                        let got = row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: NULL value"))?;
+                        let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned()))
+                            .fetch_optional(&mut connection)
+                            .await
+                            .map_err(|e| format!("{query}: {e}"))?
+                            .ok_or_else(|| format!("{query}: no row"))?;
+                        let got = row
+                            .try_get_unchecked::<Option<String>, usize>(0)
+                            .map_err(|e| format!("{query}: {e}"))?
+                            .ok_or_else(|| format!("{query}: NULL value"))?;
                         let want = entry["want"].as_str().unwrap_or_default();
                         if got != want {
                             return Err(format!("{query}: got {got}, want {want}"));
@@ -4412,9 +4550,11 @@ mod database {
             return Ok((texts, Value::Null));
         }
         let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
-        let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
+        let vectors: Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
         let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
-        let vector = vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
+        let vector =
+            vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
         for (name, lines) in vector["documents"].as_object().ok_or_else(|| format!("the case {id} has no documents"))? {
             let lines: Vec<&str> = lines.as_array().map(|list| list.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
             texts.insert(name.clone(), format!("{}\n", lines.join("\n")));
@@ -4484,13 +4624,18 @@ mod database {
         let (texts, vector) = introspect_source(step, dir)?;
         let mut documents = Vec::new();
         for (name, text) in &texts {
-            let others: std::collections::BTreeMap<String, String> = texts.iter().filter(|(other, _)| *other != name).map(|(other, value)| (other.clone(), value.clone())).collect();
+            let others: std::collections::BTreeMap<String, String> =
+                texts.iter().filter(|(other, _)| *other != name).map(|(other, value)| (other.clone(), value.clone())).collect();
             documents.push(dbspec::parse(text, &others).map(|parsed| parsed.document).map_err(|e| format!("{name}: {e:?}"))?);
         }
         let refs: Vec<&dbspec::Document> = documents.iter().collect();
         let (dialect, rules, schema): (Dialect, &[&str], String) = match database {
             "mysql" => {
-                let name = dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path)).ok_or_else(|| format!("the DSN {dsn} names no database"))?;
+                let name = dsn
+                    .split_once("://")
+                    .and_then(|(_, rest)| rest.split_once('/'))
+                    .map(|(_, path)| path.split('?').next().unwrap_or(path))
+                    .ok_or_else(|| format!("the DSN {dsn} names no database"))?;
                 (Dialect::MySql, &["SET time_zone = '+00:00'"], name.to_owned())
             }
             "postgres" => (Dialect::Postgres, &["SET client_min_messages = warning", "SET TimeZone = 'UTC'"], "public".to_owned()),
@@ -4498,7 +4643,8 @@ mod database {
         };
         let rendered = dbspec::render(&refs, dialect).map_err(|e| format!("render: {e:?}"))?;
         // tests/dbspec/ddl.json holds the rendered statements of each dialect as an object; only a list runs.
-        let extra: Vec<String> = vector["statements"].as_array().map(|list| list.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
+        let extra: Vec<String> =
+            vector["statements"].as_array().map(|list| list.iter().filter_map(Value::as_str).map(str::to_owned).collect()).unwrap_or_default();
         // The driver of each database has its own connection type, so the steps are written once as a macro.
         macro_rules! run {
             ($options:expr) => {{
@@ -4568,10 +4714,11 @@ mod database {
     async fn end_listener(channel: &str, context: &Context<'_>) -> Result<(), String> {
         let session = super::connect_dsn(Some("case-server"), context.database, &context.dsn, None)?;
         let pool = sqlx::PgPool::connect(&session).await.map_err(|e| e.to_string())?;
-        let pid: Result<i32, _> = sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1")
-            .bind(format!("LISTEN \"{channel}\""))
-            .fetch_one(&pool)
-            .await;
+        let pid: Result<i32, _> =
+            sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1")
+                .bind(format!("LISTEN \"{channel}\""))
+                .fetch_one(&pool)
+                .await;
         let ended = match pid {
             Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
             Err(error) => Err(format!("the listener session of {channel}: {error}")),
@@ -4605,10 +4752,11 @@ mod database {
     async fn postgres_barrier(pool: &sqlx::PgPool) -> Result<(), String> {
         let mut tx = pool.begin().await.map_err(|e| format!("barrier begin: {e}"))?;
         sqlx::raw_sql("SET LOCAL synchronous_commit = remote_apply").execute(&mut *tx).await.map_err(|e| format!("barrier mode: {e}"))?;
-        let mode: String = sqlx::query_scalar("SELECT current_setting('synchronous_commit') FROM (SELECT pg_logical_emit_message(true, 'orm-test-barrier', '')) AS barrier")
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(|e| format!("barrier message: {e}"))?;
+        let mode: String =
+            sqlx::query_scalar("SELECT current_setting('synchronous_commit') FROM (SELECT pg_logical_emit_message(true, 'orm-test-barrier', '')) AS barrier")
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| format!("barrier message: {e}"))?;
         if mode != "remote_apply" {
             return Err(format!("synchronous_commit of the barrier transaction is {mode}"));
         }
@@ -4617,7 +4765,8 @@ mod database {
 
     /// The wait of `await_replica` on MySQL.
     async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
-        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|_| "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip".to_owned())?;
+        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN")
+            .map_err(|_| "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip".to_owned())?;
         let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
         let file: String = sqlx::Row::get(&row, 0);
         let position: u64 = sqlx::Row::get(&row, 1);
@@ -4780,8 +4929,8 @@ mod tables {
     use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
     use polyspec_orm::model::{
-        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
-        update,
+        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore,
+        restore_or_create, save, to_array, update,
     };
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
@@ -5558,7 +5707,11 @@ mod tables {
                 // A bound chain is read again: a terminal leaves it as it was (DSL-98).
                 self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
             } else {
-                let mut core = core_of(crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{} names no model", crate::recipe_reads::read(step, "op")["op"]))?)?;
+                let mut core = core_of(
+                    crate::recipe_reads::read(step, "model")["model"]
+                        .as_str()
+                        .ok_or_else(|| format!("{} names no model", crate::recipe_reads::read(step, "op")["op"]))?,
+                )?;
                 if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
@@ -5619,7 +5772,9 @@ mod tables {
                     }
                     (offset / count + 1, count)
                 } else {
-                    let number = |key: &str| u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                    let number = |key: &str| {
+                        u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string())
+                    };
                     (number("page")?, number("per_page")?)
                 };
                 let steps = get_page_plan_steps(&core, page, per_page).await.map_err(orm)?;
@@ -5627,8 +5782,10 @@ mod tables {
                     .iter()
                     .map(|plan_step| {
                         let sql = plan_step.sql.to_uppercase();
-                        let count: serde_json::Map<String, Value> =
-                            names(&crate::recipe_reads::read(step, "plan_count")["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
+                        let count: serde_json::Map<String, Value> = names(&crate::recipe_reads::read(step, "plan_count")["plan_count"])
+                            .iter()
+                            .map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count())))
+                            .collect();
                         let mut shown = json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count });
                         if crate::recipe_reads::read(step, "plan_sql")["plan_sql"].as_bool() == Some(true) {
                             shown["sql"] = json!(plan_step.sql);
@@ -5680,7 +5837,8 @@ mod tables {
                 }
                 (offset / count + 1, count)
             } else {
-                let number = |key: &str| u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                let number =
+                    |key: &str| u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
                 (number("page")?, number("per_page")?)
             };
             let page = gets_page(root, number, size).await.map_err(orm)?;
@@ -5824,7 +5982,11 @@ mod tables {
                 }
                 return Ok(json!({}));
             }
-            let mut row = self.row(crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.delete names no model".to_owned())?, db, &crate::recipe_reads::read(step, "values")["values"])?;
+            let mut row = self.row(
+                crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.delete names no model".to_owned())?,
+                db,
+                &crate::recipe_reads::read(step, "values")["values"],
+            )?;
             if let Some((column, value)) = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])? {
                 row.core.expect_revision(&column, value);
             }
@@ -5939,14 +6101,14 @@ mod tables {
                         ["versions", { "object": versions }],
                     ] } }))
                 }
-                "db.last_affected" => {
-                    Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
-                }
+                "db.last_affected" => Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } })),
                 "db.notify" => {
                     let channel_repeat = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
                     let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64().unwrap_or(1);
-                    let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(channel_repeat).unwrap_or(1));
-                    let payload = crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default().repeat(usize::try_from(payload_repeat).unwrap_or(1));
+                    let channel =
+                        crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(channel_repeat).unwrap_or(1));
+                    let payload =
+                        crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default().repeat(usize::try_from(payload_repeat).unwrap_or(1));
                     db.notify(&channel, &payload).await.map_err(orm)?;
                     Ok(json!({}))
                 }
@@ -5955,11 +6117,15 @@ mod tables {
                     Ok(json!({}))
                 }
                 "utils.set_local" => {
-                    let Param::Str(value) = param(&crate::recipe_reads::read(step, "value")["value"])? else { return Err("utils.set_local holds no text".into()) };
+                    let Param::Str(value) = param(&crate::recipe_reads::read(step, "value")["value"])? else {
+                        return Err("utils.set_local holds no text".into());
+                    };
                     db.utils().set_local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
                     Ok(json!({}))
                 }
-                "utils.local" => Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                "utils.local" => {
+                    Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? }))
+                }
                 // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
                 "row.connect" => {
                     // connect of a bound row (CFG-21): a later write of the row runs on that connection.
@@ -5998,8 +6164,10 @@ mod tables {
                     }
                 }
                 "utils.was_inserted" => {
-                    let sequence = crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
-                    let inserted = db.utils().was_inserted(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
+                    let sequence =
+                        crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
+                    let inserted =
+                        db.utils().was_inserted(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
                     Ok(json!({ "value": { "bool": inserted } }))
                 }
                 "utils.backend_waiting_for_lock" => {
@@ -6015,7 +6183,8 @@ mod tables {
                     use std::sync::Arc;
                     let count = crate::recipe_reads::read(step, "transactions")["transactions"].as_u64().unwrap_or(0);
                     let hold = u32::try_from(crate::recipe_reads::read(step, "hold")["hold"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-                    let (active, peak, open, begun) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
+                    let (active, peak, open, begun) =
+                        (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
                     let gate = Arc::new(tokio::sync::watch::channel(false).0);
                     let local = tokio::task::LocalSet::new();
                     let mut tasks = Vec::new();
@@ -6055,7 +6224,9 @@ mod tables {
                 "utils.stats" => {
                     // The pool counts of the connection (INT-79).
                     let stats = db.utils().stats();
-                    Ok(json!({ "json": { "max_open_connections": stats.max_open_connections, "open_connections": stats.open_connections, "in_use": stats.in_use, "idle": stats.idle } }))
+                    Ok(
+                        json!({ "json": { "max_open_connections": stats.max_open_connections, "open_connections": stats.open_connections, "in_use": stats.in_use, "idle": stats.idle } }),
+                    )
                 }
                 "utils.groups" => {
                     let utils = db.utils();

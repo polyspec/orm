@@ -11,9 +11,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
-use polyspec_orm::dbspec::{
-    self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan,
-};
+use polyspec_orm::dbspec::{self, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, CatalogQuerier, CatalogValue, Dialect, Plan};
 use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
@@ -160,10 +158,7 @@ impl ApplyOps {
         let state = &mut self.state;
         // The case runs on a runtime of its own, and a runtime starts no other inside it, so the op has a thread.
         std::thread::scope(|scope| {
-            scope
-                .spawn(|| runtime.block_on(run_op(state, step, database, dsn)))
-                .join()
-                .unwrap_or_else(|_| Err("an apply op panicked".to_owned()))
+            scope.spawn(|| runtime.block_on(run_op(state, step, database, dsn))).join().unwrap_or_else(|_| Err("an apply op panicked".to_owned()))
         })
     }
 
@@ -254,10 +249,7 @@ async fn through_pooler(dsn: &str) -> Result<Conn, String> {
     let ConnectOptions::Postgres(options) = parse_dsn(&pooler).map_err(|e| e.to_string())?.options else {
         return Err("ORM_TEST_PGBOUNCER_DSN is not postgres://".to_owned());
     };
-    PgConnection::connect_with(&options.database(name_of(dsn)).statement_cache_capacity(0))
-        .await
-        .map(Conn::Postgres)
-        .map_err(|e| e.to_string())
+    PgConnection::connect_with(&options.database(name_of(dsn)).statement_cache_capacity(0)).await.map(Conn::Postgres).map_err(|e| e.to_string())
 }
 
 /// The text of a step field that holds SQL: the string itself, or the entry of the database.
@@ -283,9 +275,7 @@ fn skipped(step: &Value, database: &str) -> bool {
 /// Compares the value of a nested step with its expect; the steps of a case are compared by the helper.
 fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
     match crate::recipe_reads::read(step, "expect").get("expect") {
-        Some(expect) if expect[database]["value"] != got["value"] => {
-            Err(format!("got {}, want {}", got["value"], expect[database]["value"]))
-        }
+        Some(expect) if expect[database]["value"] != got["value"] => Err(format!("got {}, want {}", got["value"], expect[database]["value"])),
         _ => Ok(()),
     }
 }
@@ -317,7 +307,8 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             Ok(json!({}))
         }
         "dbspec.connect" => {
-            let session = if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            let session =
+                if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
             state.sessions.insert(name.to_owned(), session);
             Ok(json!({}))
         }

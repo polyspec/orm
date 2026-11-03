@@ -236,7 +236,12 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
     for (chunks, is_external) in [(&owned, false), (&externals, true)] {
         for (_, name, chunk) in chunks {
             if !seen.insert(name.clone()) {
-                errors.push(Diagnostic { rule: "name.duplicate".into(), line: 1, column: 10, message: format!("document {name}: document {name} appears twice in the document set") });
+                errors.push(Diagnostic {
+                    rule: "name.duplicate".into(),
+                    line: 1,
+                    column: 10,
+                    message: format!("document {name}: document {name} appears twice in the document set"),
+                });
                 continue;
             }
             let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -246,9 +251,7 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
                     document.external = is_external;
                     documents.push(document);
                 }
-                Err(diagnostics) => {
-                    errors.extend(diagnostics.into_iter().map(|d| Diagnostic { message: format!("document {name}: {}", d.message), ..d }))
-                }
+                Err(diagnostics) => errors.extend(diagnostics.into_iter().map(|d| Diagnostic { message: format!("document {name}: {}", d.message), ..d })),
             }
         }
     }

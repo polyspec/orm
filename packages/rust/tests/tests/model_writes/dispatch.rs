@@ -24,7 +24,11 @@ impl BenchModels for ModelWrites {
 
     async fn run_unconnected(&self, op: &str, step: &Value) -> Result<Value, String> {
         match op {
-            "model.create" => assign_account(CompositeAccount::new(), &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.create().await.map(|_| json!({})).map_err(fail),
+            "model.create" => assign_account(CompositeAccount::new(), &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?
+                .create()
+                .await
+                .map(|_| json!({}))
+                .map_err(fail),
             "model.count" => {
                 let count = CompositeAccount::new().get_count().await.map_err(fail)?;
                 Ok(json!({ "value": { "int": count.to_string() } }))
@@ -54,7 +58,10 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
         return Err(format!("CompositeAccount column {} has no recipe deadlock", polyspec_orm_tests::recipe_reads::read(step, "column")["column"]));
     }
     let dsn = polyspec_orm_tests::recipe_reads::read(step, "dsn")["dsn"].as_str().ok_or_else(|| "transaction.deadlock has no dsn".to_owned())?.to_owned();
-    let keys = [account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][0])?, account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][1])?];
+    let keys = [
+        account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][0])?,
+        account_key(&polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"][1])?,
+    ];
     let held = std::sync::Arc::new(std::sync::Barrier::new(2));
     let flows: Vec<_> = [0, 1]
         .into_iter()
@@ -114,12 +121,22 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         "transaction.deadlock" => transaction_deadlock(db, step).await,
         "model.create" => set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.create().await.map(|_| json!({})).map_err(fail),
         "model.creates" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "CompositeMembership" => {
-            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"].as_array().into_iter().flatten().map(|row| set_membership(db, row)).collect::<Result<Vec<_>, _>>()?;
+            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|row| set_membership(db, row))
+                .collect::<Result<Vec<_>, _>>()?;
             let count = membership(db).creates(rows, batch(step)?).await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
         "model.creates" => {
-            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"].as_array().into_iter().flatten().map(|row| set_account(db, row)).collect::<Result<Vec<_>, _>>()?;
+            let rows = polyspec_orm_tests::recipe_reads::read(step, "rows")["rows"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|row| set_account(db, row))
+                .collect::<Result<Vec<_>, _>>()?;
             let count = account(db).creates(rows, batch(step)?).await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
@@ -130,7 +147,8 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.save" => set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.save().await.map(|_| json!({})).map_err(fail),
         "model.duplicate_create" => {
-            let mut row = set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?.duplication(set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "duplication")["duplication"])?);
+            let mut row = set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "values")["values"])?
+                .duplication(set_account(db, &polyspec_orm_tests::recipe_reads::read(step, "duplication")["duplication"])?);
             row.create().await.map(|_| json!({})).map_err(fail)
         }
         "model.update" => {
@@ -163,7 +181,10 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             let count = filter_account(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"])?.get_count().await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
-        "model.get_by" if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author" && polyspec_orm_tests::recipe_reads::read(step, "where").get("where").is_some() => {
+        "model.get_by"
+            if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] == "Author"
+                && polyspec_orm_tests::recipe_reads::read(step, "where").get("where").is_some() =>
+        {
             let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
             let rows = match author_chain(db, &polyspec_orm_tests::recipe_reads::read(step, "where")["where"], &wanted)?.get().await.map_err(fail)? {
                 None => Vec::new(),
@@ -249,7 +270,9 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             if column != "read_count" {
                 return Err(format!("Author column {column} has no recipe arithmetic"));
             }
-            let Some(mut row) = Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? else {
+            let Some(mut row) =
+                Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)?
+            else {
                 return Err("model.arithmetic: the key names no row".to_owned());
             };
             let amount = i32::try_from(int(&polyspec_orm_tests::recipe_reads::read(step, "amount")["amount"])?).map_err(|e| e.to_string())?;

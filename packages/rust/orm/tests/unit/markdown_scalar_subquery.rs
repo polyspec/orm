@@ -56,4 +56,3 @@ fn markdown_subquery_missing_post_validation_column_is_internal() {
     assert_eq!(error.code(), crate::codes::INTERNAL);
     assert!(error.to_string().contains("child.missing_column"), "{error}");
 }
-

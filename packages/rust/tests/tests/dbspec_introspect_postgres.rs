@@ -8,5 +8,9 @@
 use polyspec_orm_tests::recipe;
 
 fn main() {
-    polyspec_orm_testcase::run(recipe::database_trials("dbspec_introspect_postgres", "contracts/fixtures/dbspec_introspect/dbspec_introspect.json", "postgres"));
+    polyspec_orm_testcase::run(recipe::database_trials(
+        "dbspec_introspect_postgres",
+        "contracts/fixtures/dbspec_introspect/dbspec_introspect.json",
+        "postgres",
+    ));
 }

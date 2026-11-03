@@ -13,7 +13,8 @@ pub async fn search_chain(db: &Db, step: &Value) -> Result<Value, String> {
     if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] != "Author" {
         return Err(format!("model {} has no query.search_chain entry", polyspec_orm_tests::recipe_reads::read(step, "model")["model"]));
     }
-    let text = polyspec_orm_tests::recipe_reads::read(step, "text")["text"].as_str().ok_or_else(|| "query.search_chain: text is not a string".to_owned())?.to_owned();
+    let text =
+        polyspec_orm_tests::recipe_reads::read(step, "text")["text"].as_str().ok_or_else(|| "query.search_chain: text is not a string".to_owned())?.to_owned();
     let author = Author::new().connect(db);
     let chain = match polyspec_orm_tests::recipe_reads::read(step, "mode")["mode"].as_str() {
         Some("fulltext_boolean") => author.fulltext_boolean_name_with_description(text),

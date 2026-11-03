@@ -738,10 +738,7 @@ where
         live.document.tables.iter().map(|t| t.name.text.as_str()).chain(live.unsupported.iter().map(|u| u.table.as_str())).collect();
     let present: Vec<&str> = target.tables.iter().map(|t| t.name.text.as_str()).filter(|t| found.contains(t)).collect();
     if !present.is_empty() && present.len() < target.tables.len() {
-        return Err(Error::Config(format!(
-            "install found only some tables of the document set: {}",
-            present.join(", ")
-        )));
+        return Err(Error::Config(format!("install found only some tables of the document set: {}", present.join(", "))));
     }
     if present.is_empty() {
         for statement in statements {

@@ -39,13 +39,8 @@ pub fn forget_copy(copy: &Value) {
 /// Fails by name on a key of the step that the run did not read.
 pub fn check(step: &Value) -> Result<(), String> {
     let read = READS.lock().unwrap().remove(&address(step)).unwrap_or_default();
-    let mut unread: Vec<&str> = step
-        .as_object()
-        .into_iter()
-        .flatten()
-        .map(|(key, _)| key.as_str())
-        .filter(|key| !ANNOTATIONS.contains(key) && !read.contains(*key))
-        .collect();
+    let mut unread: Vec<&str> =
+        step.as_object().into_iter().flatten().map(|(key, _)| key.as_str()).filter(|key| !ANNOTATIONS.contains(key) && !read.contains(*key)).collect();
     if unread.is_empty() {
         return Ok(());
     }

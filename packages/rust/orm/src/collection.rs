@@ -373,7 +373,9 @@ fn checked_group_row_count(value: &Val) -> Result<i64> {
     let count = match value {
         Val::I64(count) => *count,
         Val::F64(count) if count.is_finite() && count.fract() == 0.0 && *count >= 0.0 && *count <= MAX_SAFE as f64 => *count as i64,
-        Val::Str(text) if !text.is_empty() && text.bytes().all(|digit| digit.is_ascii_digit()) && (text == "0" || !text.starts_with('0')) => text.parse::<i64>().map_err(|_parse_error| invalid())?,
+        Val::Str(text) if !text.is_empty() && text.bytes().all(|digit| digit.is_ascii_digit()) && (text == "0" || !text.starts_with('0')) => {
+            text.parse::<i64>().map_err(|_parse_error| invalid())?
+        }
         _ => return Err(invalid()),
     };
     if count < 0 {

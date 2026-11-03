@@ -25,4 +25,3 @@ fn generated_model_result_chains_preserve_assigned_values() {
         assert_eq!(value.compact(), tags().compact());
     }
 }
-

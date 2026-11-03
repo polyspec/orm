@@ -18,4 +18,3 @@ fn tls_options_follow_sqlx_parameter_support() {
         }
     }
 }
-

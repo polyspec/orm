@@ -52,7 +52,12 @@ pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
             None => {
                 let name = result.name.as_deref().unwrap_or_default();
                 failures.push(
-                    result.diagnostics.iter().map(|d| format!("{path}: {}:{} {}: document {name}: {}", d.line, d.column, d.rule, d.message)).collect::<Vec<_>>().join("\n"),
+                    result
+                        .diagnostics
+                        .iter()
+                        .map(|d| format!("{path}: {}:{} {}: document {name}: {}", d.line, d.column, d.rule, d.message))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
                 );
             }
         }

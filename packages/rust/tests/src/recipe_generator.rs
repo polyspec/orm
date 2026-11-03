@@ -15,7 +15,11 @@ pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let n = NEXT.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!("orm-recipe-generator-{}-{n}", std::process::id()));
     let result = generate(step, dir, &root);
-    let outcome = if result.is_err() && root.join("model").exists() { Err("a refused generation wrote its output".to_string()) } else { compare(want, result).and_then(|()| compare_text(want, &root)) };
+    let outcome = if result.is_err() && root.join("model").exists() {
+        Err("a refused generation wrote its output".to_string())
+    } else {
+        compare(want, result).and_then(|()| compare_text(want, &root))
+    };
     std::fs::remove_dir_all(&root).map_err(|e| format!("remove {}: {e}", root.display()))?;
     outcome
 }
@@ -34,7 +38,12 @@ pub fn check_files(step: &Value, dir: &Path) -> Result<(), String> {
 
 fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
     let lines = |key: &str, file: &str| -> Vec<String> {
-        crate::recipe_reads::read(step, key)[key].as_array().into_iter().flatten().map(|line| line.as_str().unwrap_or_default().replace("<file>", file)).collect()
+        crate::recipe_reads::read(step, key)[key]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|line| line.as_str().unwrap_or_default().replace("<file>", file))
+            .collect()
     };
     let check = || polyspec_orm_build::Builder::set(set).out_dir(out).check();
     polyspec_orm_build::Builder::set(set).out_dir(out).try_generate()?;

@@ -42,10 +42,11 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.get_by" => {
             let wanted = names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]);
-            let rows = match Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? {
-                None => Vec::new(),
-                Some(row) => vec![cells(&wanted, |column| author_cell(&row, column))?],
-            };
+            let rows =
+                match Author::new().connect(db).get_by_seq(int(&polyspec_orm_tests::recipe_reads::read(step, "key")["key"]["seq"])?).await.map_err(fail)? {
+                    None => Vec::new(),
+                    Some(row) => vec![cells(&wanted, |column| author_cell(&row, column))?],
+                };
             Ok(json!({ "rows": rows }))
         }
         "model.query" => {
@@ -71,7 +72,12 @@ async fn author_op(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         }
         "model.update" => {
             // The row is read with every column, as the update writes the changed columns of the row it read.
-            let mut row = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"])?.add_all_columns().get().await.map_err(fail)?.ok_or("Author update: no row matches")?;
+            let mut row = filter_author(db, &polyspec_orm_tests::recipe_reads::read(step, "key")["key"])?
+                .add_all_columns()
+                .get()
+                .await
+                .map_err(fail)?
+                .ok_or("Author update: no row matches")?;
             for (column, value) in columns(&polyspec_orm_tests::recipe_reads::read(step, "set")["set"])? {
                 row = match column.as_str() {
                     "like_count" => row.set_like_count(i32::try_from(int(value)?).map_err(|e| e.to_string())?),
@@ -115,8 +121,14 @@ async fn note_reader_op(db: &Db, op: &str, step: &Value) -> Result<Value, String
             if relation["model"].as_str() != Some("SharedNote") || names_of_pairs(&relation["match"]) != [["shared_note_seq", "seq"]] {
                 return Err(format!("NoteReader relation {relation} has no recipe entry"));
             }
-            if names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]) != ["seq"] || names(&relation["columns"]) != ["title"] || names(&polyspec_orm_tests::recipe_reads::read(step, "order")["order"]) != ["seq"] {
-                return Err(format!("NoteReader columns {} with relation {relation} have no recipe entry", polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]));
+            if names(&polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]) != ["seq"]
+                || names(&relation["columns"]) != ["title"]
+                || names(&polyspec_orm_tests::recipe_reads::read(step, "order")["order"]) != ["seq"]
+            {
+                return Err(format!(
+                    "NoteReader columns {} with relation {relation} have no recipe entry",
+                    polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"]
+                ));
             }
             let rows =
                 NoteReader::new().connect(db).relation(SharedNote::new().match_shared_note_seq_with_seq()).order_by_seq_asc().gets().await.map_err(fail)?;
