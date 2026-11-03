@@ -44,6 +44,8 @@ type databaseFile struct {
 
 type seed struct {
 	Rows json.RawMessage `json:"rows"`
+	// After is a sql.exec step that runs once the rows of the seed are written (FCV-13).
+	After json.RawMessage `json:"after"`
 }
 
 type databaseCase struct {
@@ -389,6 +391,14 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 		if err := insertSeed(state, s.Rows); err != nil {
 			t.Fatalf("recipe %s case %s on %s: seed: %v", path, c.ID, database, err)
+		}
+	}
+	for _, s := range []*seed{f.Seed, c.Seed} {
+		if s == nil || len(s.After) == 0 {
+			continue
+		}
+		if _, err := runRawStep(s.After, state); err != nil {
+			t.Fatalf("recipe %s case %s on %s: seed after: %v", path, c.ID, database, err)
 		}
 	}
 	step.Step("seed rows inserted")
@@ -785,8 +795,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if connection != nil {
 			closeErr = connection.Close()
 		}
-		if _, statErr := os.Stat(path); statErr == nil {
-			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
+		var want struct {
+			FileCreated bool `json:"file_created"`
+		}
+		if raw, ok := s.Expect[c.database]; ok {
+			if err := json.Unmarshal(raw, &want); err != nil {
+				return outcome{}, closeFirst(err, closeErr)
+			}
+		}
+		_, statErr := os.Stat(path)
+		if created := statErr == nil; created != want.FileCreated {
+			return outcome{}, closeFirst(fmt.Errorf("file_created of %s is %v, want %v", path, created, want.FileCreated), closeErr)
 		}
 		if err == nil {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)

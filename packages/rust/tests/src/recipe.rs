@@ -833,9 +833,15 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     let input = ir_request::request(&step["input"], &manifest.manifest_hash);
     if let Some(code) = want.get("error").and_then(Value::as_str) {
         for (name, dialect) in PLAN_DIALECTS {
-            let got = engine::compile(&manifest, dialect, &input).err().map(|error| error.code().to_owned());
+            let error = engine::compile(&manifest, dialect, &input).err();
+            let got = error.as_ref().map(|error| error.code().to_owned());
             if got.as_deref() != Some(code) {
                 return Err(format!("{name}: error {got:?}, want {code}"));
+            }
+            if let (Some(error), Some(message)) = (&error, want.get("message").and_then(Value::as_str)) {
+                if error.to_string() != message {
+                    return Err(format!("{name}: message {error}, want {message}"));
+                }
             }
         }
         return Ok(());
@@ -2886,6 +2892,12 @@ mod database {
             }
         }
         // The seed rows are written; the steps reach the catalog through the option, so the seed's borrow ends here.
+        for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
+            let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
+            if after.is_object() && named {
+                run_step(catalog, after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
+            }
+        }
         polyspec_orm_testcase::step("seed rows inserted");
         for (index, current) in case["steps"].as_array().into_iter().flatten().enumerate() {
             let op = current["op"].as_str().unwrap_or_default();
@@ -3169,7 +3181,7 @@ mod database {
 
     /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
     /// connect does not create it.
-    async fn connect_check(dsn: &Value) -> Result<(), Failure> {
+    async fn connect_check(dsn: &Value, file_created: bool) -> Result<(), Failure> {
         if let Some(url) = dsn["url"].as_str() {
             let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
             connection.close().await;
@@ -3182,8 +3194,8 @@ mod database {
         let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
         let created = path.exists();
         std::fs::remove_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
-        if created {
-            return Err(Failure::Step("the connect created the SQLite file".into()));
+        if created != file_created {
+            return Err(Failure::Step(format!("file_created is {created}, want {file_created}")));
         }
         match outcome {
             Ok(connection) => {
@@ -3452,7 +3464,7 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&step["dsn"]).await?;
+                connect_check(&step["dsn"], step["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {
@@ -4291,7 +4303,11 @@ mod tables {
                 Val::Str(value.take_string()?)
             } else {
                 match field.ty {
-                    Type::I16 => Val::I64(i64::from(value.as_i16()?)),
+                    // A value past the range reaches the write, whose slot check refuses it (CODEC_ENCODE).
+                    Type::I16 => match value.as_i64() {
+                        Ok(n) if i16::try_from(n).is_err() => Val::I64(n),
+                        _ => Val::I64(i64::from(value.as_i16()?)),
+                    },
                     Type::I32 => Val::I64(i64::from(value.as_i32()?)),
                     Type::I64 => Val::I64(value.as_i64()?),
                     Type::F64 => Val::F64(value.as_f64()?),
@@ -5086,7 +5102,13 @@ mod tables {
         /// The written model is bound with as, and its toArray is the result.
         async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
             let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
-            let mut row = self.row(model, db, &step["values"])?;
+            let mut row = if step["unconnected"].as_bool() == Some(true) {
+                let mut row = TableRow::from_core(core_of(model)?);
+                assign_values(&mut row, &step["values"])?;
+                row
+            } else {
+                self.row(model, db, &step["values"])?
+            };
             for (name, value) in members(&step["attached"]) {
                 let plain = match param(value)? {
                     Param::Null => Value::Null,
@@ -5411,9 +5433,16 @@ mod tables {
 
     /// The cells of the columns of a row, each the recipe wrapper of its value.
     fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, String> {
+        let entity = fields_of(row.core.entity()).map_err(orm)?;
         columns
             .iter()
             .map(|column| {
+                // A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
+                if entity.field(column).is_some_and(|field| matches!(field.ty, Type::Date | Type::Time(_) | Type::DateTime(_))) {
+                    if let Some(text) = to_array(row).map_err(orm)?.get(column).and_then(Value::as_str) {
+                        return Ok(json!({ "text": text }));
+                    }
+                }
                 Ok(match row.value(column).ok_or_else(|| format!("the row has no column {column}"))? {
                     Val::Str(text) => json!({ "text": text }),
                     Val::I64(n) => json!({ "int": n.to_string() }),

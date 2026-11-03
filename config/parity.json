@@ -27,7 +27,6 @@
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
@@ -42,7 +41,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown,featurecoverage"
+        "physical,ormtest,markdown"
       ],
       "symbols": {
         "extractor": "go",
@@ -344,7 +343,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
@@ -10756,8 +10754,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationMysql"
         },
         {
           "implementation": "php",
@@ -10968,8 +10966,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationPostgres"
         },
         {
           "implementation": "php",
@@ -11181,8 +11179,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationSqlite"
         },
         {
           "implementation": "php",
@@ -14422,8 +14420,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14491,8 +14499,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14560,8 +14578,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -16191,50 +16219,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "id": "codec_none::sql_null_is_not_a_value"
-        }
-      ]
-    },
-    {
-      "id": "group-count-boolean-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-36"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnValueChecksDeclaredType"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/boolean_invalid_stored_value"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode"
         }
       ]
     },
@@ -26230,28 +26214,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesCheckConstraint"
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "id": "TestRecipeConstraintsAndRelationsMysql/constraint_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_duplicate_unique_key_is_duplicate_key"
+          "test": "packages/python/tests/test_constraints_and_relations_mysql.py",
+          "id": "constraint_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_postgres"
+          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "id": "constraints_and_relations_mysql::constraint_errors"
         },
         {
           "implementation": "php",
@@ -26278,6 +26252,11 @@
       ],
       "bindings": [
         {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "id": "immutable_write_sqlite::immutable_write"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_immutable_write_test.go",
           "id": "TestRecipeImmutableWriteSqlite/immutable_write"
@@ -26301,21 +26280,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_immutable_write_sqlite.py",
           "id": "immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_postgres"
         }
       ]
     },
@@ -26800,19 +26764,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceVector",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageConformanceVector",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/conditions_values"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/relations"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/functions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/creates_and_save"
         },
         {
           "implementation": "php-extension",
@@ -30544,11 +30512,6 @@
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/orm/conversion_error_test.go",
           "id": "TestTimeTextHasExactlyPrecisionDigits"
         },
@@ -30566,36 +30529,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeI16ValuesAndDefaults"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an omitted column takes the database default and a required column is checked"
         },
         {
           "implementation": "typescript",
@@ -30628,11 +30561,6 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/model/styled_state_test.go",
           "id": "TestStyledStatesAcrossDatabases"
         },
@@ -30655,21 +30583,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: selected styled SQL NULL survives a database read"
         },
         {
           "implementation": "python",
@@ -43422,6 +43335,7 @@
         "INT-84",
         "INT-86",
         "INT-90",
+        "PRT-36",
         "PRT-35",
         "PRT-69"
       ],
