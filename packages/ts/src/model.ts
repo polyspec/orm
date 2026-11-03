@@ -1023,6 +1023,14 @@ function toJson(c: Core): Record<string, unknown> {
   return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
 }
 
+/** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
+function exactIntegers(value: unknown): unknown {
+  if (typeof value === 'bigint') return Reflect.apply(Reflect.get(JSON, 'rawJSON'), JSON, [String(value)]);
+  if (Array.isArray(value)) return value.map(exactIntegers);
+  if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, exactIntegers(item)]));
+}
+
 /** The JSON text of a row value: an ordered-json value as its stored text. */
 function jsonText(value: unknown): string {
   if (value instanceof StyledValue) return value.kind === 'sql-null'
@@ -1030,7 +1038,7 @@ function jsonText(value: unknown): string {
   if (value instanceof OrderedJsonValue) return orderedJsonStringify(value);
   if (isModel(value)) return rowText(value[CORE]);
   if (value instanceof Collection) return value.toJSONText();
-  return JSON.stringify(arrayValue(value) ?? null);
+  return JSON.stringify(exactIntegers(arrayValue(value)) ?? null);
 }
 
 /** The JSON text of a row, members in row order. */
@@ -1044,7 +1052,7 @@ function jsonValue(value: unknown): unknown {
   if (value instanceof OrderedJsonValue) return orderedJsonOutput(value);
   if (isModel(value)) return toJson(value[CORE]);
   if (value instanceof Collection) return value.toJSON();
-  return arrayValue(value);
+  return exactIntegers(arrayValue(value));
 }
 
 /** Resolves a method named by the chain grammar. */

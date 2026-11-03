@@ -1382,10 +1382,12 @@ function plainJson(value) {
   return value;
 }
 
-/** The toArray of a row, narrowed to pick when it is named; a missing row is null. */
+/** The JSON output of a row (COD-26), narrowed to pick when it is named; a missing row is null. An integer past the safe range is its text. */
 function rowJson(row, pick) {
   if (row === null || row === undefined) return null;
-  const values = plainJson(row.toJSON());
+  const text = row.toJSONText();
+  assert.equal(JSON.stringify(row), text);
+  const values = JSON.parse(text, (_, value, { source }) => typeof value === 'number' && !Number.isSafeInteger(value) && Number.isInteger(value) ? source : value);
   if (pick === undefined || pick.length === 0) return values;
   return Object.fromEntries(pick.map(name => {
     if (!(name in values)) throw new Error(`the row has no field ${name}`);
