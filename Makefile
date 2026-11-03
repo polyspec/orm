@@ -404,7 +404,7 @@ get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
 get-page-plan-steps-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
 get-page-plan-steps-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page -- --exact --test-threads=1
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_sqlite -- --exact complex_query_sqlite::page_plan_steps
 
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
 # its results (PASS, FAIL and reason), and the elapsed time, and that it reports a case past its deadline as FAIL,

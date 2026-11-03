@@ -29302,8 +29302,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
+          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+          "id": "complex_query_sqlite::page_plan_steps"
         }
       ]
     },
