@@ -1620,6 +1620,18 @@ async function writeStep(ex: Executor, request: Request, params: readonly unknow
   });
 }
 
+/** One statement of a plan: role is main, count or relation, tables are the tables that it reads. */
+export interface QueryPlanStep { role: string; tables: string[]; sql: string; }
+
+/** Returns the steps of the plan of a page request, from the plan call that paginate runs. */
+export async function pagePlanSteps(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<QueryPlanStep[]> {
+  ex.db.unsupportedOnMarkdown('getPagePlanSteps');
+  const { request } = hooked(ex, given, givenParams);
+  checkLock(ex, request);
+  const cached = await ex.db.plan(request);
+  return cached.plan.steps.map(step => ({ role: step.role, tables: [...step.tables], sql: step.sql }));
+}
+
 /** Returns the statement of a select request without executing it. */
 export async function statement(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
   ex.db.unsupportedOnMarkdown('getQuery');

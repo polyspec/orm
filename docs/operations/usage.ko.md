@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: c333683c69357204abbef08b9b78f86208a5410e850f1b51f763913ef2ce0af9 -->
+<!-- source-sha256: 310bb0de3d7246e54058a452b1c6e587864699ccdbb0a0f54fbc6d393701a4bc -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -452,6 +452,7 @@ $b->getJsonSetting()['a'];
 | key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | handle의 모든 request를 plan 전에 바꾸기 | 연결의 `withRequestHook`([request hook](#request-hook)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](../spec/dsl.md)) |
+| 실행 없이 페이지의 문장 보기 | 연결한 모델의 `getPagePlanSteps(page, perPage)` ([dsl.md](../spec/dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust\|typescript\|python --out …` ([errors.yaml](../spec/errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](../spec/schema.md#_4-schema-installation)) |
 | 설치한 set에 빠진 테이블, 컬럼, index 추가 | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](../spec/schema.md#_5-adding-tables-and-columns)) |

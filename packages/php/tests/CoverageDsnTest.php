@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// dsn feature coverage: an unsupported DSN scheme is refused with the config code, and the DSN of the selected database
-// (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) connects to that database.
-
+// The SQLite minimum version check (DSL-150) stays native in every runtime (docs/spec/feature-coverage.md FCV-2): each
+// runtime reads the version from its own driver, and the comparison has no public call that a recipe op could name. A
+// refused scheme and the DSN of each database are the cases of contracts/fixtures/dsn_connection/dsn_connection.json
+// and contracts/fixtures/dsn_reject/dsn_reject.json.
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
-use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use ReflectionMethod;
@@ -19,12 +19,6 @@ use ReflectionMethod;
 #[Medium]
 class CoverageDsnTest extends TestCase
 {
-    protected static function coverageTestFile(): string
-    {
-        return __FILE__;
-    }
-
-    // Requirements: CFG-1, INT-13.
     // Requirements: DSL-150.
     public function testSqliteMinimumVersionValidation(): void
     {
@@ -39,33 +33,5 @@ class CoverageDsnTest extends TestCase
 
         $method->invoke(null, '3.46.0');
         $method->invoke(null, '3.100.0');
-
-        self::onSqliteFile('orm-sqlite-version-', static function (\Polyspec\Orm\Db $db): void {
-            self::assertSame('sqlite', $db->driver());
-        });
-    }
-
-    /**
-     * Runs $body on a connection to a new SQLite file whose name starts with $prefix; the connection closes, and the
-     * file and its journals are removed afterwards.
-     *
-     * @param \Closure(\Polyspec\Orm\Db): void $body
-     */
-    protected static function onSqliteFile(string $prefix, \Closure $body): void
-    {
-        $path = tempnam(sys_get_temp_dir(), $prefix);
-        self::assertNotFalse($path);
-        $db = null;
-        try {
-            $db = Orm::connect('sqlite://' . $path, new Config());
-            $body($db);
-        } finally {
-            $db?->close();
-            foreach ([$path, $path . '-journal', $path . '-wal', $path . '-shm'] as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
-            }
-        }
     }
 }

@@ -71,6 +71,19 @@ export const conformanceCases = {
   count: async s => new Tasks().connect(s.db).owner('P1').getCount(),
   group_count: async s => (await new Tasks().connect(s.db).groupByOwner().orderByOwnerAsc().getsCount()).toArray(),
   group_count_no_rows: async s => (await new Tasks().connect(s.db).owner('P9').groupByOwner().orderByOwnerAsc().getsCount()).toArray(),
+  group_count_views: async s => {
+    const rows = await new People().connect(s.db).groupByActive().groupByAge().orderByAgeDesc().getsCount();
+    const counts = [];
+    let first = null;
+    for (const row of rows) {
+      counts.push(row.count);
+      if (first === null) {
+        const unselected = await codeOf((async () => row.value('name'))());
+        first = { count: row.count, active: row.value('active'), age: row.value('age'), unselected };
+      }
+    }
+    return { length: rows.length, counts, rows: rows.toArray(), first };
+  },
   sum: async s => new Tasks().connect(s.db).sumPoints().getSum(),
   avg: async s => new People().connect(s.db).avgAge().getAvg(),
   paginate: async s => {

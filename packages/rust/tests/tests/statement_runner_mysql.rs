@@ -5,5 +5,10 @@
 use polyspec_orm_tests::recipe;
 
 fn main() {
-    polyspec_orm_testcase::run(recipe::statement_trials("statement_runner_mysql", "contracts/fixtures/statement_runner/statement_runner.json", "mysql"));
+    polyspec_orm_testcase::run(recipe::table_trials(
+        "statement_runner_mysql",
+        "contracts/fixtures/statement_runner/statement_runner.json",
+        "contracts/fixtures/statement_events/dbspec-set.json",
+        "mysql",
+    ));
 }

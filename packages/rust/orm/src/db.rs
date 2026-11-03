@@ -1102,6 +1102,14 @@ pub struct Statement {
     pub binds: Vec<Param>,
 }
 
+/// One statement of a plan: `role` is main, count or relation, `tables` are the tables that it reads.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QueryPlanStep {
+    pub role: String,
+    pub tables: Vec<String>,
+    pub sql: String,
+}
+
 /// Where the step ran and the source of the event: kind, table (the step's table if none), and transaction number.
 #[derive(Clone, Copy)]
 pub(crate) struct Origin<'a> {

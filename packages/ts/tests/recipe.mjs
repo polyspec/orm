@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -59,6 +59,8 @@ export function runRecipe(path, database) {
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
@@ -73,10 +75,15 @@ export function runRecipe(path, database) {
   }
 }
 
-// connectDriver opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+// connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+// driver: the one implementation of dsn.connect (FCV-4).
 async function connectDriver(dsn) {
   const db = await Db.connect(dsn);
   try {
+    const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
+    if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
+      throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
     return db.driver;
   } finally {
     await db.close();
@@ -435,7 +442,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, rowPaths: new Map(), db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -464,12 +471,6 @@ const MODEL_OPS = modelOps({ native, databaseValue, stepArgument, auditSourceOf 
 
 /** The error that a failing transaction callback throws (FCV-4: expect CALLBACK). */
 const callbackError = new Error('the transaction callback failed');
-
-/** The model of table, connected to db, of the classes that the registered fixture declares. */
-function modelOf(table, db, { classes }) {
-  if (classes[table] === undefined) throw new Error(`the fixture declares no table ${table}`);
-  return new classes[table]().connect(db);
-}
 
 /** Records one statement event as a recipe object (FCV-4): transactions are numbered from 1 in order of appearance. */
 function recordEvent(subscription, event) {
@@ -503,21 +504,12 @@ function bindWrapper(value) {
   if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) return { int: String(value) };
   if (typeof value === 'string') return { text: value };
   if (typeof value === 'boolean') return { bool: value };
+  // A vector writes the bytes of a bind as their text.
+  if (value instanceof Uint8Array) return { text: Buffer.from(value).toString() };
   throw new Error(`no recipe wrapper for the bind ${JSON.stringify(value)}`);
 }
 
 // Each op maps to one call of the public API and returns the fields that its expect compares.
-const TABLE_MODELS = {
-  EventProbe: 'event_probe', HookItem: 'hook_item', HookEntry: 'hook_entry', HookUpsert: 'hook_upsert', RotRow: 'rot_row',
-  ChunkAuthor: 'chunk_author', Item: 'item', Card: 'card', Tag: 'tag', Membership: 'membership', Label: 'label', Audit: 'audit',
-};
-
-/** The table of a table model, or a failure that names the model. */
-function tableOf(model) {
-  if (TABLE_MODELS[model] === undefined) throw new Error(`model ${model} has no table entry`);
-  return TABLE_MODELS[model];
-}
-
 /** The bound value that a field names: a plain name, or the {"ref": name} of an argument (FCV-4). */
 const refOf = (field, { bound: values }) => {
   const name = typeof field === 'string' ? field : field.ref;
@@ -526,17 +518,8 @@ const refOf = (field, { bound: values }) => {
 };
 /** The connection that an op names, or the case connection when the op has none. */
 const connectionOf = (s, context) => (s.connection === undefined ? context.db : refOf(s.connection, context));
-/**
- * The path of a model step, "table" or "generated" (coordinator ruling on row routing). A step with `row` names no model and
- * no connection: it is routed by the bound row, which records the path that made it; a row that no bound row holds fails by
- * name. Any other step is routed by its model.
- */
-const routeOf = (s, context) => {
-  if (s.row === undefined) return TABLE_MODELS[s.model] === undefined ? 'generated' : 'table';
-  const name = typeof s.row === 'string' ? s.row : s.row.ref;
-  if (!context.rowPaths.has(name)) throw new Error(`${s.op} names row ${name}, which no bound row holds`);
-  return context.rowPaths.get(name);
-};
+/** The one recipe fixture that generates models (packages/ts/src/models). A model op of any other fixture names a model of a table of its own (FCV-4). */
+const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
@@ -618,6 +601,10 @@ const OPS = {
   },
   async 'catalog.row_snapshot'(s, context) {
     const page = s.page_with === undefined ? stepArgument(s.page, context) : { ...bound(s.page_with.page.ref, context), orderBy: s.page_with.order_by };
+    if (s.page_with?.column_name !== undefined) {
+      const [first, ...rest] = page.metadata.columns;
+      page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
   },
@@ -655,14 +642,15 @@ const OPS = {
       await nativeQuery(context.database, context.dsn, [statement]);
       return {};
     }
-    // Any driver error of the refused statement passes.
-    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => false, () => true);
-    if (!refused) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    // Any driver error of the refused statement passes, unless the step names its text.
+    const refused = await nativeQuery(context.database, context.dsn, [statement]).then(() => null, error => error);
+    if (refused === null) throw new Error(`the database accepted the statement that the step expects it to refuse: ${statement}`);
+    if (s.refused_message !== undefined && !refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the database refused the statement for another reason: ${refused.message}`);
     return {};
   },
   // The request hook and AES ops of FCV-4 (T334-3-4): each calls the public API of the same name on a bound connection.
   async 'utils.aes_status'(s, context) {
-    const status = await connectionOf(s, context).utils().aes().status(modelOf(tableOf(s.model), connectionOf(s, context), context), aesKeyring(s.keyring));
+    const status = await connectionOf(s, context).utils().aes().status(coreModel(s.model, context).connect(connectionOf(s, context)), aesKeyring(s.keyring));
     const versions = [...status.versions.keys()].sort((a, b) => a - b).map(version => [String(version), { int: String(status.versions.get(version)) }]);
     return { value: { object: [
       ['current', { int: String(status.current) }],
@@ -672,7 +660,7 @@ const OPS = {
     ] } };
   },
   async 'utils.aes_rotate'(s, context) {
-    const rotated = await connectionOf(s, context).utils().aes().rotate(modelOf(tableOf(s.model), connectionOf(s, context), context), aesKeyring(s.keyring));
+    const rotated = await connectionOf(s, context).utils().aes().rotate(coreModel(s.model, context).connect(connectionOf(s, context)), aesKeyring(s.keyring));
     return { value: { int: String(rotated) } };
   },
   'hook.install'(s, context) {
@@ -715,8 +703,6 @@ async function runStep(s, context) {
     context.bound.set(s.as, actual.bind ?? actual.value);
     // A dotted ref reads the fields of the result, as the Go helper does (FCV-4).
     context.fields.set(s.as, actual);
-    // A model op that binds a row records the path that made it, so that a later {row} step routes to it.
-    if (actual.bind !== undefined && Object.hasOwn(MODEL_OPS, s.op)) context.rowPaths.set(s.as, routeOf(s, context));
   }
   if (expected === undefined) return;
   if (expected.error !== undefined && actual.error === undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
@@ -1206,110 +1192,365 @@ Object.assign(OPS, {
   },
 });
 
-/** The table-model ops of the statement-event fixture (FCV-4 model ops on a table model, with no generated model). */
+// The table path of the model ops (FCV-4): a fixture that generates no models names a model of one of its tables, and each
+// query field maps to one call of the public builder on the class of that table. The generated methods of the same chains
+// stay verified by their native tests (FCV-2, T334-3-5-1); this path verifies the builder and no name dispatcher.
+
+/** The table of a model name as the generator spells it: CompositeAccount is composite_account. */
+const snakeOf = model => model.replace(/[A-Z]/g, (letter, at) => (at > 0 ? '_' : '') + letter.toLowerCase());
+/** A new model of a model name, on no connection. */
+function coreModel(model, context) {
+  const table = snakeOf(model);
+  if (context.classes[table] === undefined) throw new Error(`the fixture declares no table ${table}`);
+  return new context.classes[table]();
+}
+/** The chain operator of a predicate operator of FCV-4. */
+const OPERATOR_KEYS = { eq: '', ne: 'ne', gt: 'gt', ge: 'ge', lt: 'lt', le: 'le', in: '', not_in: 'ne', between: 'between', like: 'lk', binary_like: 'lb', is_null: '', not_null: 'ne' };
+const chainKey = (column, op = '', compare = '') => ({ conn: '', op, column, columns: [], compare });
+/** The native argument of a value wrapper: null, the list of an array, the styled value of an object, or one value. */
+function chainValue(raw, context) {
+  return native(databaseValue(stepArgument(raw, context), context));
+}
+/** The value of a column for a wrapper: an object is the styled value of its codec. */
+function columnValue(m, column, raw, context) {
+  if (!('object' in raw)) return chainValue(raw, context);
+  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.codec ?? [], new Map());
+}
+/** The public function of a function call (F5). */
+function chainFunc({ fn, args = [] }) {
+  const n = args.filter(arg => 'int' in arg).map(arg => Number(arg.int)).at(-1) ?? 0;
+  const name = fn.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+  if (orm[name] === undefined) throw new Error(`function ${fn} has no recipe entry`);
+  return orm[name](n);
+}
+/** The column of a function call on a column. */
+function fnColumn({ fn, args = [] }) {
+  const found = args.find(arg => 'column' in arg);
+  if (found === undefined) throw new Error(`function ${fn} names no column`);
+  return found.column;
+}
+
+/** Builds one query: the joined models that its predicates name, and the enclosing model that an outer reference names. */
+class ChainBuild {
+  constructor(context, outer) {
+    this.context = context;
+    this.outer = outer;
+    this.joined = new Map();
+  }
+
+  /** Adds the predicate raw to the model m, joined by conn. */
+  predicate(m, conn, raw) {
+    const members = Object.entries(raw);
+    if (members.length === 1) {
+      const [[name, value]] = members;
+      if (name === 'chain') return this.items(m, conn, value);
+      if (name === 'and' || name === 'or') return this.group(m, conn, name, value);
+      if (name === 'not') return m[CORE].negated(conn, group => this.predicate(group, '', value));
+      if (name === 'placed') {
+        if (!this.joined.has(value)) throw new Error(`placed ${value} names no join`);
+        return m[CORE].connector(conn, [this.joined.get(value)]);
+      }
+      if (name === 'tuple') return this.tuple(m, conn, value);
+    }
+    if ('expr' in raw && 'cmp' in raw) return this.functionLeaf(m, conn, raw.expr, raw.cmp);
+    members.forEach(([column, value], i) => this.leaf(m, i === 0 ? conn : 'and', column, value));
+    return undefined;
+  }
+
+  /** The items of a chain: each is [connector, predicate], or [connector] alone for a connector written as its own call. */
+  items(m, conn, items) {
+    items.forEach((item, i) => {
+      const itemConn = i === 0 && item[0] === '' ? conn : item[0];
+      if (item.length === 1) m[CORE].connector(itemConn, []);
+      else this.nested(m, itemConn, item[1]);
+    });
+  }
+
+  /** The predicates of an and or an or: at the top of a where they join flat; an item that is itself an and, an or or a chain is a group. */
+  group(m, conn, joined, items) {
+    items.forEach((item, i) => this.nested(m, i === 0 ? conn : joined, item));
+  }
+
+  nested(m, conn, raw) {
+    const keys = Object.keys(raw);
+    if (keys.length === 1 && ['and', 'or', 'chain'].includes(keys[0])) return m[CORE].connector(conn, [group => this.predicate(group, '', raw)]);
+    return this.predicate(m, conn, raw);
+  }
+
+  /** One operand of a leaf: its native value, and the column of the other model when the operand is a column. */
+  operand(raw) {
+    if ('column' in raw) {
+      const [ref, column] = raw.column.split('.');
+      if (!this.joined.has(ref)) throw new Error(`column operand ${raw.column} names no join`);
+      return [this.joined.get(ref), column];
+    }
+    if ('outer' in raw) {
+      if (this.outer === undefined) throw new Error(`outer ${raw.outer} has no enclosing query`);
+      return [this.outer, raw.outer];
+    }
+    if ('sub' in raw) {
+      const child = coreModel(raw.sub.model, this.context);
+      new ChainBuild(this.context, this.outer).query(child, raw.sub);
+      return [child, ''];
+    }
+    if ('fn' in raw) return [chainFunc(raw), ''];
+    return [chainValue(raw, this.context), ''];
+  }
+
+  leaf(m, conn, column, raw) {
+    const members = Object.entries(raw);
+    if (members.length === 1 && OPERATOR_KEYS[members[0][0]] !== undefined) {
+      const [[operator, operand]] = members;
+      const op = OPERATOR_KEYS[operator];
+      if (operator === 'is_null' || operator === 'not_null') return m[CORE].whereChain(conn, [chainKey(column, op)], [null]);
+      if (operator === 'between') return m[CORE].whereChain(conn, [chainKey(column, op)], [[chainValue(operand[0], this.context), chainValue(operand[1], this.context)]]);
+      const [value, compare] = this.operand(operand);
+      return m[CORE].whereChain(conn, [chainKey(column, op, compare)], [value]);
+    }
+    return m[CORE].whereChain(conn, [chainKey(column)], [chainValue(raw, this.context)]);
+  }
+
+  functionLeaf(m, conn, expr, cmp) {
+    const [[operator, value]] = Object.entries(cmp);
+    m[CORE].whereChain(conn, [chainKey(fnColumn(expr), OPERATOR_KEYS[operator])], [chainFunc(expr), chainValue(value, this.context)]);
+  }
+
+  tuple(m, conn, [columns, rows]) {
+    m[CORE].whereChain(conn, [{ conn: '', op: 'tuple', column: '', columns, compare: '' }], [rows.map(row => row.map(value => chainValue(value, this.context)))]);
+  }
+
+  /** One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name. */
+  columnEntry(m, entry) {
+    if (typeof entry === 'string') return m[CORE].addColumn(entry);
+    if (entry.expr.sub !== undefined) {
+      return m[CORE].addColumnSub(entry.as, outer => {
+        const child = coreModel(entry.expr.sub.model, this.context);
+        new ChainBuild(this.context, outer).query(child, entry.expr.sub);
+        return child;
+      });
+    }
+    return m[CORE].addColumnFunc(fnColumn(entry.expr), entry.as, chainFunc(entry.expr));
+  }
+
+  /** Applies the fields of q to m, in the order that a chain writes them. */
+  query(m, q, { limit = true } = {}) {
+    if (q.columns === 'all') m.addAllColumns();
+    else if (q.columns !== undefined) {
+      m.removeAllColumns();
+      for (const entry of q.columns) this.columnEntry(m, entry);
+    }
+    for (const entry of q.add_columns ?? []) this.columnEntry(m, entry);
+    for (const column of q.remove_columns ?? []) m[CORE].removeColumn(column);
+    if (q.aggregate !== undefined) {
+      if (q.aggregate.column !== undefined) m[CORE].aggregate(q.aggregate.agg, q.aggregate.column);
+      for (const column of q.aggregate.group_by ?? []) m[CORE].groupBy.push(column);
+    }
+    for (const join of q.joins ?? []) {
+      const child = coreModel(join.model, this.context);
+      const inner = new ChainBuild(this.context, this.outer);
+      if (join.alias !== undefined) child[CORE].alias = snakeOf(join.alias);
+      if (join.on !== undefined) child[CORE].setOn(group => inner.predicate(group, '', join.on));
+      inner.query(child, join);
+      m[CORE].join(join.kind ?? 'inner', join.match[0], join.match[1], child);
+      if (join.as !== undefined) this.joined.set(join.as, child);
+    }
+    for (const relation of q.relations ?? []) m[CORE].relation(relation.many === true, this.relation(relation));
+    if (q.where !== undefined) this.predicate(m, '', q.where);
+    for (const entry of q.order ?? []) {
+      if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
+      else if (entry.fn !== undefined) m[CORE].orderBy(fnColumn(entry.fn), entry.dir === 'desc', [chainFunc(entry.fn)]);
+      else m[CORE].orderBy(entry.column, entry.dir === 'desc', []);
+    }
+    if (limit && q.limit !== undefined) {
+      if (typeof q.limit === 'number') m.limit(0, q.limit);
+      else m.limit(q.limit.offset ?? 0, q.limit.count);
+    }
+    if (q.lock !== undefined) m[CORE].lock = q.lock;
+  }
+
+  /** The child model of a relation. */
+  relation(r) {
+    const child = coreModel(r.model, this.context);
+    for (const [left, right] of r.match ?? []) child[CORE].matches.push({ left, right });
+    if (r.alias !== undefined) child[CORE].alias = snakeOf(r.alias);
+    for (const [column, value] of Object.entries(r.possible ?? {})) child[CORE].possible = { column, value: chainValue(value, this.context) };
+    if (r.parent_node === true) child.parentNode();
+    new ChainBuild(this.context, this.outer).query(child, r);
+    if (r.group_limit > 0) child.groupLimit(r.group_limit);
+    if (r.key_by !== undefined) child[CORE].keyName = r.key_by;
+    if (r.delete_lock === true) child.deleteLock();
+    return child;
+  }
+}
+
+/** A value of toArray as plain JSON: a bigint is its number when it fits, and the text otherwise. */
+function plainJson(value) {
+  if (JSON.isRawJSON(value)) return JSON.parse(value.rawJSON);
+  if (typeof value === 'bigint') return Number.isSafeInteger(Number(value)) ? Number(value) : value.toString();
+  if (Array.isArray(value)) return value.map(plainJson);
+  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Uint8Array) return Buffer.from(value).toString();
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, plainJson(item)]));
+  return value;
+}
+
+/** The toArray of a row, narrowed to pick when it is named; a missing row is null. */
+function rowJson(row, pick) {
+  if (row === null || row === undefined) return null;
+  const values = plainJson(row.toJSON());
+  if (pick === undefined || pick.length === 0) return values;
+  return Object.fromEntries(pick.map(name => {
+    if (!(name in values)) throw new Error(`the row has no field ${name}`);
+    return [name, values[name]];
+  }));
+}
+
+/** The expect of the database of the case compares rows of wrappers. */
+const wantsRows = (s, { database }) => s.expect?.[database]?.rows !== undefined;
+
+/** The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation. */
+function chainCells(parents, s) {
+  const rows = [];
+  for (const parent of parents) {
+    const own = tableCells(parent, s.columns);
+    if (s.relation === undefined) {
+      rows.push(own);
+      continue;
+    }
+    for (const child of relatedTableRows(parent, snakeOf(s.relation.model), s.relation.many)) rows.push([...own, ...tableCells(child, s.relation.columns)]);
+  }
+  return rows;
+}
+
+/** The model of a read: the fields of the step applied, then the key of a terminal by. */
+function chainBuilt(s, context) {
+  const byKey = m => {
+    if (s.key === undefined) return m;
+    const members = Object.entries(s.key);
+    return m[CORE].by(members.map(([column], i) => ({ ...chainKey(column), conn: i === 0 ? '' : 'and' })), members.map(([, value]) => chainValue(value, context))).self;
+  };
+  // A bound chain is read again: a terminal leaves it as it was (DSL-98).
+  if (s.from !== undefined) return byKey(refOf(s.from, context));
+  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const build = new ChainBuild(context);
+  const paged = s.page === true;
+  build.query(m, s, { limit: !paged && s.offset === undefined });
+  if (!paged && s.offset !== undefined && s.limit !== undefined) m.limit(s.offset, typeof s.limit === 'number' ? s.limit : s.limit.count);
+  if (s.relation !== undefined) {
+    // The columns of this relation are read of each child row; they do not narrow its statement.
+    const { columns: _read, ...relation } = s.relation;
+    const child = build.relation(relation);
+    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
+    child.connect(connectionOf(s, context));
+    m[CORE].relation(s.relation.many === true, child);
+  }
+  return byKey(m);
+}
+
+/** Sets the members of an object of values on a model, in the written order: an arith entry is plus or minus. */
+function chainAssign(m, values, context) {
+  for (const [column, value] of Object.entries(values ?? {})) {
+    if ('arith' in value) m[CORE].putSet({ column, value: chainValue(value.arith.amount, context), [value.arith.operation === 'minus' ? 'minus' : 'plus']: true });
+    else m[CORE].setValue(column, columnValue(m, column, value, context));
+  }
+  return m;
+}
+
+/** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
+async function chainWrite(s, context, terminal) {
+  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
+  if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
+  const row = await terminal(m);
+  // With columns, the rows expect compares the row that the write returns (INT-38).
+  return { bind: row, json: rowJson(row, s.pick), ...(s.columns === undefined ? {} : { rows: chainCells([row], s) }) };
+}
+
+/** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
+function chainTarget(s, context) {
+  // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+  const m = s.row !== undefined ? refOf(s.row, context) : chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.key ?? s.values, context);
+  if (s.revision !== undefined) m.expectRevision(s.revision.column, chainValue(s.revision.value, context));
+  return m;
+}
+
+const countFields = n => ({ json: n, value: { int: String(n) } });
+
 const TABLE_OPS = {
-  async 'model.create'(s, context) {
-    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
-    for (const a of assignments(s.values, context)) m[CORE].setValue(a.name, a.value);
-    await m.create();
-    return { bind: m };
+  'model.chain': (s, context) => ({ bind: chainBuilt(s, context) }),
+  async 'model.query'(s, context) {
+    const m = chainBuilt(s, context);
+    if (s.compile === true) return { json: plainJson(await m.getQuery()) };
+    if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
+    if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
+    if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
+    if (s.page === true) {
+      const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
+      if (!(count > 0)) throw new Error('a page needs a limit count above 0');
+      const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
+      const page = await m.getsPage(Math.floor(offset / count) + 1, count);
+      const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage }), total: page.totalCount };
+      if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
+      return fields;
+    }
+    const rows = await m.gets();
+    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
+    if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
+    return fields;
+  },
+  async 'model.count'(s, context) {
+    return countFields(await chainBuilt(s, context).getCount());
   },
   async 'model.get_by'(s, context) {
-    if (s.key !== undefined) throw new Error('model.get_by with key has no table-model path');
-    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
-    whereAll(m, assignments(s.where, context));
-    return { bind: await m.get() };
+    const row = await chainBuilt(s, context).get();
+    return { bind: row ?? undefined, json: rowJson(row, s.pick) };
+  },
+  'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),
+  'model.duplicate_create': (s, context) => chainWrite(s, context, m => m.create()),
+  'model.save': (s, context) => chainWrite(s, context, m => m.save()),
+  'model.restore': (s, context) => chainWrite(s, context, m => m.restore()),
+  async 'model.creates'(s, context) {
+    const db = connectionOf(s, context);
+    const rows = s.rows_sequence === undefined
+      ? s.rows.map(values => chainAssign(coreModel(s.model, context), values, context))
+      : Array.from({ length: s.rows_sequence.count }, (_, i) => {
+        const row = coreModel(s.model, context);
+        row[CORE].setValue(s.rows_sequence.column, s.rows_sequence.from + i);
+        return chainAssign(row, s.rows_sequence.values, context);
+      });
+    return countFields(await coreModel(s.model, context).connect(db).creates(rows, s.batch ?? rows.length));
   },
   async 'model.update'(s, context) {
-    // The key form sets the key and the assignments on a new model, with no read before it, so a key that names no row is
-    // an update that matches none (FCV-4).
-    if (s.key !== undefined) {
-      const m = modelOf(tableOf(s.model), connectionOf(s, context), context);
-      for (const a of [...assignments(s.key, context), ...assignments(s.set, context)]) m[CORE].setValue(a.name, a.value);
-      await m.update();
-      return {};
-    }
-    const row = refOf(s.row, context);
-    for (const a of assignments(s.set, context)) row[CORE].setValue(a.name, a.value);
-    await row.update();
+    const m = chainTarget(s, context);
+    chainAssign(m, s.set, context);
+    await m.update(s.optimistic === true);
     return {};
   },
   async 'model.delete'(s, context) {
-    if (s.row !== undefined) {
-      await refOf(s.row, context).delete();
+    if (s.row !== undefined && refOf(s.row, context) instanceof Collection) {
+      await refOf(s.row, context).delete(s.recursive === true);
       return {};
     }
-    const m = modelOf(tableOf(s.model), connectionOf(s, context), context);
-    whereAll(m, assignments(s.where, context));
-    for (const row of (await m.gets()).values()) await row.delete();
+    if (s.where !== undefined) {
+      // A delete by where loads the rows and deletes each one (FCV-4).
+      for (const row of (await chainBuilt(s, context).gets()).values()) await row.delete();
+      return {};
+    }
+    await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
-  async 'model.creates'(s, context) {
-    const db = connectionOf(s, context);
-    const rows = s.rows.map(values => filled(modelOf(tableOf(s.model), db, context), values, context));
-    return { value: { int: String(await modelOf(tableOf(s.model), db, context).creates(rows, s.batch)) } };
-  },
-  async 'model.duplicate_create'(s, context) {
-    const db = connectionOf(s, context);
-    const row = filled(modelOf(tableOf(s.model), db, context), s.values, context);
-    row.duplication(filled(modelOf(tableOf(s.model), db, context), s.duplication, context));
-    await row.create();
+  async 'utils.lock'(s, context) {
+    await connectionOf(s, context).utils().lock(s.name);
     return {};
   },
-  async 'model.restore'(s, context) {
-    const restored = await filled(modelOf(tableOf(s.model), connectionOf(s, context), context), s.values, context).restore();
-    // With columns, the rows expect compares the row that restore returns (INT-38).
-    return s.columns === undefined ? {} : { rows: [tableCells(restored, s.columns)] };
+  async 'utils.set_local'(s, context) {
+    await connectionOf(s, context).utils().setLocal(s.name, chainValue(s.value, context));
+    return {};
   },
-  async 'model.query'(s, context) {
-    const db = connectionOf(s, context);
-    const parent = modelOf(tableOf(s.model), db, context);
-    whereAll(parent, assignments(s.where, context));
-    for (const column of s.order ?? []) parent[CORE].orderBy(column, false, []);
-    const rel = s.relation;
-    if (rel !== undefined) {
-      const child = modelOf(tableOf(rel.model), db, context);
-      for (const [left, right] of rel.match) child[`match${pascal(left)}With${pascal(right)}`]();
-      if (rel.many) parent.relations(child);
-      else parent.relation(child);
-    }
-    const offset = s.offset ?? 0;
-    const paged = s.page === true;
-    let parents;
-    let total;
-    if (paged) {
-      if (!(s.limit > 0)) throw new Error('a paged model.query needs a limit above 0');
-      const page = await parent.getsPage(Math.floor(offset / s.limit) + 1, s.limit);
-      parents = page.items.values();
-      total = page.totalCount;
-    } else {
-      // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
-      if (s.limit > 0) parent[CORE].setLimit(offset, s.limit);
-      parents = (await parent.gets()).values();
-    }
-    const rows = [];
-    for (const row of parents) {
-      const own = tableCells(row, s.columns);
-      if (rel === undefined) {
-        rows.push(own);
-        continue;
-      }
-      for (const child of relatedTableRows(row, tableOf(rel.model), rel.many)) rows.push([...own, ...tableCells(child, rel.columns)]);
-    }
-    return paged ? { rows, total } : { rows };
-  },
-  async 'model.count'(s, context) {
-    const m = modelOf(TABLE_MODELS[s.model], connectionOf(s, context), context);
-    if (s.where !== undefined) whereAll(m, assignments(s.where, context));
-    return { value: { int: String(await m.getCount()) } };
+  async 'utils.local'(s, context) {
+    return { json: await connectionOf(s, context).utils().local(s.name) };
   },
 };
-
-/** The table model m with the column values of an object of recipe wrappers set. */
-function filled(m, values, context) {
-  for (const a of assignments(values, context)) m[CORE].setValue(a.name, a.value);
-  return m;
-}
 
 /** The cells of the columns of a read table row: text and integer values have a recipe wrapper (FCV-4). */
 function tableCells(model, columns) {
@@ -1330,12 +1571,6 @@ function relatedTableRows(parent, table, many) {
 /** The name of a table or column in the chain grammar: hook_item is HookItem. */
 function pascal(name) {
   return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
-}
-
-/** Narrows a table-model chain by the equalities of where, joined by and in column order. */
-function whereAll(m, where) {
-  if (where.length === 0) return;
-  m[CORE].whereChain('', where.map((a, i) => ({ conn: i === 0 ? '' : 'and', op: '', column: a.name, columns: [], compare: '' })), where.map(a => a.value));
 }
 
 function cell(value) {
@@ -1421,12 +1656,12 @@ function scopeTree(query, column, value, addParam) {
   for (const relation of query.relations ?? []) scopeTree(relation.query, column, value, addParam);
 }
 
-// The shared model op names dispatch on the model: a table model takes TABLE_OPS, every other model MODEL_OPS (FCV-4).
+// A model op takes TABLE_OPS on a fixture that generates no models, and MODEL_OPS on the fixture that does (FCV-4).
 for (const op of Object.keys(TABLE_OPS)) {
   OPS[op] = async (s, context) => {
-    const path = routeOf(s, context);
-    if (path === 'table') return TABLE_OPS[op](s, context);
-    if (s.row !== undefined) throw new Error(`${op} with row: row ${s.row.ref ?? s.row} was bound by the generated path, which has no row form`);
+    if (context.tablePath) return TABLE_OPS[op](s, context);
+    if (s.row !== undefined) throw new Error(`${op} with row: the generated path has no row form`);
+    if (MODEL_OPS[op] === undefined) throw new Error(`OP_UNKNOWN ${op}`);
     return MODEL_OPS[op](s, context);
   };
 }
@@ -1467,6 +1702,12 @@ Object.assign(OPS, {
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
     const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
     const events = records.map(eventObject);
+    // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
+    for (const mask of s.masks?.[context.database] ?? []) {
+      const binds = events[mask.event]?.object[1][1].array;
+      if (binds === undefined || mask.bind >= binds.length) throw new Error(`mask ${JSON.stringify(mask)} names no captured bind`);
+      binds[mask.bind] = { text: mask.value };
+    }
     if (s.compare !== 'statements') return { value: { array: events } };
     // compare "statements" keeps the sql and the kind: the bound clock of a soft delete differs on each run.
     return { value: { array: events.map(event => ({ object: event.object.filter(([name]) => name === 'sql' || name === 'kind') })) } };
@@ -1775,6 +2016,53 @@ async function checkSend(step, wrappedExpect) {
     if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
+}
+
+// checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,
+// INT-130).
+function checkKeyring(step, database) {
+  const expect = step.expect[database];
+  let keyring;
+  try {
+    keyring = aesKeyring(step.keyring);
+  } catch (error) {
+    if (expect.error !== undefined && error instanceof OrmError && error.code === expect.error) return;
+    throw error;
+  }
+  if (expect.error !== undefined) throw new Error(`the keyring was built, want ${expect.error}`);
+  if (keyring.currentVersion !== expect.current) throw new Error(`current version ${keyring.currentVersion}, want ${expect.current}`);
+  if (JSON.stringify(keyring.versions()) !== JSON.stringify(expect.versions)) throw new Error(`versions ${JSON.stringify(keyring.versions())}, want ${JSON.stringify(expect.versions)}`);
+}
+
+// checkBuilder runs a markdown.builder step: the builder calls on the slots model, then getCount, on the markdown.send listener. The
+// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+async function checkBuilder(step, database) {
+  const received = [];
+  const server = await startMarkdownSendListener(received);
+  let db;
+  let callError;
+  try {
+    db = await connectSlots(server.dsn);
+    let model = new Slots().connect(db);
+    for (const call of step.calls) {
+      if (call === 'limit_zero_count') model = model.limit(0, 0);
+      else if (call === 'limit_negative_offset') model = model.limit(-1, 1);
+      else if (call === 'empty_i64_list') model = model.i64Value([]);
+      else if (call === 'empty_varchar_list') model = model.varcharValue([]);
+      else throw new Error(`markdown.builder call ${call} has no builder call in the TypeScript cases`);
+    }
+    await model.getCount();
+  } catch (error) {
+    callError = error;
+  } finally {
+    if (db !== undefined) await db.close();
+    await server.close();
+  }
+  if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
+  const expect = step.expect[database];
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  }
 }
 
 // checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a

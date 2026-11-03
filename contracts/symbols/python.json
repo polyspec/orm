@@ -683,6 +683,10 @@
     "exported": true,
     "signature": "def key_value(value)"
   },
+  "packages/python/src/polyspec/orm/database.py::page_plan_steps": {
+    "exported": true,
+    "signature": "def page_plan_steps(ex: Executor, request: dict, params) -\u003e list[dict]"
+  },
   "packages/python/src/polyspec/orm/database.py::paginate": {
     "exported": true,
     "signature": "def paginate(ex: Executor, request: dict, params)"
@@ -3619,6 +3623,10 @@
     "exported": true,
     "signature": "def get_count(self) -\u003e int"
   },
+  "packages/python/src/polyspec/orm/model.py::Model.get_page_plan_steps": {
+    "exported": true,
+    "signature": "def get_page_plan_steps(self, page: int, per_page: int) -\u003e list[dict]"
+  },
   "packages/python/src/polyspec/orm/model.py::Model.get_query": {
     "exported": true,
     "signature": "def get_query(self) -\u003e dict"
@@ -3770,6 +3778,10 @@
   "packages/python/src/polyspec/orm/model_exec.py::page_of": {
     "exported": true,
     "signature": "def page_of(c: Core, page: int, per_page: int) -\u003e dict"
+  },
+  "packages/python/src/polyspec/orm/model_exec.py::page_plan_steps_of": {
+    "exported": true,
+    "signature": "def page_plan_steps_of(c: Core, page: int, per_page: int) -\u003e list[dict]"
   },
   "packages/python/src/polyspec/orm/model_exec.py::restore": {
     "exported": true,

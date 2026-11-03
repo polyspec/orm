@@ -19,6 +19,16 @@
     "steps"
   ],
   "step": {
+    "keyring.versions": [
+      "expect",
+      "keyring",
+      "op"
+    ],
+    "markdown.builder": [
+      "calls",
+      "expect",
+      "op"
+    ],
     "dsn.connect": [
       "dsn",
       "expect",
@@ -73,6 +83,7 @@
       "op",
       "reason",
       "refused",
+      "refused_message",
       "sql"
     ],
     "query.search": [
@@ -237,7 +248,8 @@
       "expect",
       "model",
       "op",
-      "rows"
+      "rows",
+      "rows_sequence"
     ],
     "model.save": [
       "connection",
@@ -265,7 +277,8 @@
       "restore",
       "revision",
       "row",
-      "set"
+      "set",
+      "values"
     ],
     "model.arithmetic": [
       "amount",
@@ -287,32 +300,50 @@
       "relations",
       "revision",
       "row",
+      "values",
       "where"
     ],
     "model.count": [
       "connection",
       "expect",
+      "from",
       "joins",
+      "key",
       "model",
       "op",
       "where"
     ],
     "model.get_by": [
+      "add_columns",
+      "aggregate",
       "as",
       "columns",
       "connection",
       "expect",
+      "from",
+      "joins",
       "key",
       "limit",
       "lock",
       "model",
       "op",
+      "order",
+      "pick",
+      "relations",
+      "remove_columns",
       "where"
     ],
     "model.query": [
+      "add_columns",
+      "aggregate",
+      "as",
       "columns",
+      "compile",
       "connection",
       "expect",
+      "from",
+      "joins",
+      "key",
       "limit",
       "lock",
       "model",
@@ -320,7 +351,10 @@
       "op",
       "order",
       "page",
+      "pick",
       "relation",
+      "relations",
+      "remove_columns",
       "tuples",
       "where"
     ],
@@ -352,6 +386,7 @@
     "events.captured": [
       "compare",
       "expect",
+      "masks",
       "op",
       "ref"
     ],
@@ -544,6 +579,40 @@
       "model",
       "op",
       "values"
+    ],
+    "model.chain": [
+      "add_columns",
+      "aggregate",
+      "as",
+      "columns",
+      "connection",
+      "joins",
+      "key",
+      "limit",
+      "lock",
+      "model",
+      "op",
+      "order",
+      "relations",
+      "remove_columns",
+      "where"
+    ],
+    "utils.lock": [
+      "connection",
+      "name",
+      "op"
+    ],
+    "utils.set_local": [
+      "connection",
+      "name",
+      "op",
+      "value"
+    ],
+    "utils.local": [
+      "connection",
+      "expect",
+      "name",
+      "op"
     ]
   }
 }
