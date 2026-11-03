@@ -486,10 +486,6 @@ async fn writes_case(t: &Target) {
 
 // Requirements: INT-51, INT-59, INT-61, INT-73, INT-134, INT-57, INT-79.
 async fn transactions_case(t: &Target) {
-    let _aes = t.db.utils().aes();
-    let _schema = t.db.utils().schema();
-    let _privileges = t.db.utils().privileges();
-    let _stats = t.db.utils().stats();
     let db = &t.db;
     if t.driver == "postgres" {
         // The raw SQLx fixture connection sends `extra_float_digits` at startup, which PgBouncer rejects; privilege API calls still use `db` above.
@@ -621,9 +617,6 @@ async fn transactions_case(t: &Target) {
             assert_eq!(User::new().get_count().await?, 1, "savepoint rollback");
             User::new().name("outer").for_update().gets().await?;
             db.utils().lock("users").await?;
-            db.utils().set_local("ormtest.actor", "tester").await?;
-            assert_eq!(db.utils().local("ormtest.actor")?, "tester", "local");
-            assert_eq!(code(db.utils().local("ormtest.missing")), "NO_ROWS", "missing local");
             let spawned = tokio::spawn(async { User::new().get_count().await.map_err(|e| e.code().to_owned()) }).await.unwrap();
             assert_eq!(spawned.err().as_deref(), Some("CONFIG"), "a spawned task inherited the transaction");
             Ok(())
@@ -790,20 +783,6 @@ async fn read_only_sqlite(t: &Target) {
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
 // Requirements: DBS-108, INT-58, SCH-7.
-async fn schema_empty_case(t: &Target) {
-    let db = &t.db;
-    assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
-    if let Pool::Postgres(p) = db.pool() {
-        sqlx::raw_sql("CREATE SCHEMA unowned_empty").execute(p).await.unwrap();
-        let with_schema = db.utils().schema().empty().await;
-        sqlx::raw_sql("DROP SCHEMA unowned_empty").execute(p).await.unwrap();
-        assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
-        assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
-    }
-    bench_set::install(db).await.unwrap();
-    assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
-}
-
 /// Inserts and reads more values than SQLite binds in one statement: the
 /// inserts and the root IN list are split, duplicate IN values are read once,
 /// and a shape that a merge would change is rejected.
@@ -968,18 +947,6 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
     let t = Target::installed(driver).await;
     body(&t).await;
     t.finish().await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn schema_empty() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
-        let t = Target::empty(driver).await;
-        schema_empty_case(&t).await;
-        t.finish().await;
-        drop(case);
-    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -203,6 +203,9 @@ func runFrame(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			rows = result.Rows
 		}
+		if s.Conflict != "" {
+			return orm.TransactionConflict(s.Conflict)
+		}
 		return nil
 	})
 	if err != nil {
@@ -241,6 +244,17 @@ func capturedEvents(events []orm.StatementEvent, compare string, c *databaseCont
 			value = map[string]any{"object": []any{
 				[]any{"sql", map[string]any{"text": e.SQL}},
 				[]any{"kind", map[string]any{"text": e.Kind}},
+			}}
+		}
+		if compare == "shape" {
+			// The binds of a statement of the clock and the text of each dialect are not part of the shape of the plan.
+			tables := make([]any, len(e.Tables))
+			for i, name := range e.Tables {
+				tables[i] = map[string]any{"text": name}
+			}
+			value = map[string]any{"object": []any{
+				[]any{"kind", map[string]any{"text": e.Kind}},
+				[]any{"tables", map[string]any{"array": tables}},
 			}}
 		}
 		out = append(out, value)

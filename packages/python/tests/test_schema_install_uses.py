@@ -84,7 +84,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
     def test_generated_schema_sets_share_only_their_registered_connections(self):
         from polyspec.orm.errors import OrmError
 
-        from .test_schema_install import bench_shared
+        from .test_sqlite import bench_shared
 
         bench = generate(
             f"{self.tmp.name}/bench",

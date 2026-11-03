@@ -674,12 +674,9 @@ export const ORM_ACCOUNTS_SQL = ['127.0.0.1', 'localhost']
   .map(host => `CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'${host}';`)
   .join(' ');
 
-// startProxysql pools the connections of the user orm to the MySQL primary and multiplexes them over at most four server
-// connections. The admin and PostgreSQL interfaces listen on Unix sockets only.
-async function startProxysql(p: Paths, ports: Ports): Promise<void> {
-  mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
-  mkdirSync(p.proxysqlData, { recursive: true });
-  writeFileSync(join(p.dir, 'proxysql.cnf'), `datadir="${p.proxysqlData}"
+// proxysqlConfig declares the two settings a client relies on when it stops reading a result (CFG-34, CFG-35).
+export function proxysqlConfig(p: Paths, ports: Ports): string {
+  return `datadir="${p.proxysqlData}"
 admin_variables=
 {
   admin_credentials="admin:admin"
@@ -694,6 +691,8 @@ mysql_variables=
   threads=2
   monitor_enabled=false
   server_version="8.4.0"
+  threshold_resultset_size=65536
+  kill_backend_connection_when_disconnect=true
 }
 pgsql_variables=
 {
@@ -708,7 +707,15 @@ mysql_users=
 (
   { username="orm", password="orm", default_hostgroup=0 }
 )
-`);
+`;
+}
+
+// startProxysql pools the connections of the user orm to the MySQL primary and multiplexes them over at most four server
+// connections. The admin and PostgreSQL interfaces listen on Unix sockets only.
+async function startProxysql(p: Paths, ports: Ports): Promise<void> {
+  mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
+  mkdirSync(p.proxysqlData, { recursive: true });
+  writeFileSync(join(p.dir, 'proxysql.cnf'), proxysqlConfig(p, ports));
   // ProxySQL logs the consulting notice after its listeners are bound.
   await startLogged(p.dir, 'proxysql', 'For consultancy visit', 'proxysql', ['--foreground', '--initial', '--no-version-check', '-c', join(p.dir, 'proxysql.cnf'), '-D', p.proxysqlData]);
   console.log(`test-servers: ProxySQL on 127.0.0.1:${ports.proxysql}`);

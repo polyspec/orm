@@ -16,14 +16,11 @@ use ReflectionMethod;
 // The native methods of the transaction surface; the transaction behaviours are the recipe `transactions`.
 final class CoverageTransactionsExtensionTest extends TestCase
 {
-    // Requirements: INT-61, INT-73, INT-79, INT-134.
-    public function testNativeUtilsExposeGroups(): void
+    // Requirements: INT-79.
+    public function testNativeUtilsReportThePoolStatistics(): void
     {
         self::withLifecycleRows(static function (Db $db, \Closure $recorded): void {
             $utils = $db->utils();
-            Assert::assertInstanceOf(\Polyspec\Orm\SchemaUtils::class, $utils->schema());
-            Assert::assertInstanceOf(\Polyspec\Orm\PrivilegeUtils::class, $utils->privileges());
-            Assert::assertInstanceOf(\Polyspec\Orm\AesUtils::class, $utils->aes());
             $stats = $utils->stats();
             Assert::assertInstanceOf(\Polyspec\Orm\Stats::class, $stats);
             Assert::assertSame([1, 1, 0, 1], [

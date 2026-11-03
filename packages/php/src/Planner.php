@@ -1284,6 +1284,8 @@ final class Planner
                 "{$entity['entity']}.$columnName is missing from a validated scalar subquery",
             );
         }
-        return $column['type'];
+        // INT-160: a sum leaves the range of its column.
+        $sum = ($sub['agg'] ?? '') === 'sum' && in_array($column['type'], ['i16', 'i32'], true);
+        return $sum ? 'i64' : $column['type'];
     }
 }

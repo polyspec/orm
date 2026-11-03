@@ -56,9 +56,9 @@ func p(i int) *int { return &i }
 
 func TestParamUses(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	m, diagnostics := runtimemodel.Load(paramUsesDocument)
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	m, invalid := runtimemodel.Load(paramUsesDocument)
+	if invalid != nil {
+		t.Fatal(invalid)
 	}
 	read := &Request{IRVersion: Version, ManifestHash: m.ManifestHash, Kind: "all", NParams: 9, Query: Query{
 		Entity: "notes",

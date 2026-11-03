@@ -10,7 +10,7 @@ use std::pin::Pin;
 use polyspec_orm::{Config, Db, Schema};
 use serde_json::{json, Map, Value};
 
-use crate::recipe::{ModelDispatcher, ModelFuture};
+use crate::recipe::{ModelDispatcher, ModelFuture, CASE_CONNECTION};
 
 /// The connections that model.connect opened in one case, by name.
 #[derive(Default)]
@@ -108,11 +108,17 @@ impl<M: CaseModels> ModelDispatcher for Dispatcher<M> {
         self.connections.0.get(name).cloned()
     }
 
+    fn adopt(&mut self, name: &str, db: Db) {
+        self.connections.0.insert(name.to_owned(), db);
+    }
+
     fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
         self.models.clear();
         Box::pin(async move {
-            for (_, db) in self.connections.0.drain() {
-                db.close().await;
+            for (name, db) in self.connections.0.drain() {
+                if name != CASE_CONNECTION {
+                    db.close().await;
+                }
             }
         })
     }

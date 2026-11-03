@@ -2,10 +2,15 @@
 // scripts/features/schema/recipe.schema.json, and the schema refuses each break of the format that a recipe can hold.
 import assert from 'node:assert/strict';
 import { globSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { readParityConfig } from '../json/formats.mts';
 import { checkJson, readJsonFile, refusedPaths } from '../json/schema.mts';
+import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest } from './coverage.mts';
+import { readFeatures } from './manifest.mts';
+import { testDirectoryOf } from './packages.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
 const schema = resolve(root, 'scripts/features/schema/recipe.schema.json');
@@ -116,4 +121,105 @@ caseTest('every recipe of the parity suites names the recipe schema and is valid
     assert.equal(resolve(root, dirname(file), named), schema, `${file} names another recipe schema`);
     assert.deepEqual(refused(value, file), [], file);
   }
+});
+
+// Requirements: FCV-12.
+caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
+  const differences: string[] = [];
+  for (const feature of readFeatures(root).features ?? []) {
+    const owners = Object.entries(feature.coverage?.owners ?? {});
+    const whole = new Set<string>();
+    let every = owners.length > 0;
+    for (const [language, owner] of owners) {
+      const commands = Object.entries(owner.commands ?? {});
+      if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
+      for (const [database, list] of commands) {
+        for (const command of list ?? []) {
+          if (!command.recipe) continue;
+          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), command.database ?? database);
+          ids.forEach(id => whole.add(id));
+          if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
+            differences.push(`${feature.id}/${language}/${database}: ${command.cases.length} declared, ${ids.length} in ${command.recipe}`);
+        }
+      }
+    }
+    if (every && JSON.stringify([...(feature.coverage?.cases ?? [])].sort()) !== JSON.stringify([...whole].sort()))
+      differences.push(`${feature.id}: coverage.cases is not the list of its recipe`);
+  }
+  assert.deepEqual(differences, []);
+});
+
+// sampleOwner is a manifest in which the TypeScript owner runs entry as a recipe owner; the other owners are declared and
+// not selected, since the checker requires an owner for each language that the parity of the feature claims.
+function sampleOwner(entry: string, recipe: string, cases: string[]): Manifest {
+  const owners = Object.fromEntries(languages.map(language => {
+    const part = testDirectoryOf(language);
+    return [language, { part, tests: [`${part}/other`], commands: {} }];
+  }));
+  owners.typescript = { part: 'packages/ts', tests: [entry],
+    commands: { none: [{ runner: 'node', test: entry, cases, recipe }] } } as never;
+  return selectFeatures({ features: [{ id: 'sample', status: 'partial', parity: languages.map(name => `fixture-${name}`),
+    coverage: { kind: 'independent', cases: ['whole'], owners, dependents: [] } }] }, 'sample', ['owner/typescript']);
+}
+const sampleParity = {
+  implementations: languages.map(name => ({ name, runner: 'node', roots: [] })),
+  units: languages.map(name => ({ id: `fixture-${name}`, bindings: [{ implementation: name }] })),
+};
+
+// outcome is what a run of the sample reports, its errors and its TAP lines, which it keeps out of the output of this test.
+async function outcome(manifest: Manifest, root: string): Promise<{ errors: string[]; text: string }> {
+  const lines: string[] = [];
+  const log = console.log;
+  console.log = (...args: unknown[]) => { lines.push(args.join(' ')); };
+  // Inside this test's own node:test process a child `node --test` would report to this process and run no file.
+  const context = process.env.NODE_TEST_CONTEXT;
+  delete process.env.NODE_TEST_CONTEXT;
+  try {
+    const errors = await executeCoverage(manifest, root, 5000, sampleParity);
+    return { errors, text: [...errors, ...lines].join('\n') };
+  } finally {
+    console.log = log;
+    if (context !== undefined) process.env.NODE_TEST_CONTEXT = context;
+  }
+}
+
+// Requirements: FCV-12.
+caseTest('a recipe owner runs once and is read from the results its runner writes', 20000, async () => {
+  const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-owner-')));
+  const entry = 'packages/ts/tests/entry.mjs';
+  const recipe = 'contracts/fixtures/sample/sample.json';
+  const script = (lines: string[], after = '') => [
+    "import { appendFileSync } from 'node:fs';",
+    `appendFileSync(${JSON.stringify(join(directory, 'runs'))}, 'run\\n');`,
+    ...lines.map(line => `appendFileSync(process.env.ORM_RECIPE_RESULTS, ${JSON.stringify(`${line}\n`)});`),
+    after, ''].join('\n');
+  try {
+    await mkdir(join(directory, 'packages/ts/tests'), { recursive: true });
+    await mkdir(join(directory, 'contracts/fixtures/sample'), { recursive: true });
+    await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }, { id: 'second', steps: [] }] }));
+    const both = sampleOwner(entry, recipe, ['first', 'second']);
+
+    await writeFile(join(directory, entry), script(['CASE first PASS', 'CASE second PASS']));
+    assert.deepEqual((await outcome(both, directory)).errors, []);
+    assert.equal(await readFile(join(directory, 'runs'), 'utf8'), 'run\n');
+
+    // A case that wrote no line did not pass, whatever the exit status says.
+    await writeFile(join(directory, entry), script(['CASE first PASS']));
+    assert.match((await outcome(both, directory)).text, /observed cases first differ from first,second/);
+    // A failed exit is a failure, whatever lines were written.
+    await writeFile(join(directory, entry), script(['CASE first PASS', 'CASE second PASS'], 'process.exit(3);'));
+    assert.match((await outcome(both, directory)).text, /exit 1/);
+    // The recipe is the list: a command that names other cases is refused before anything runs.
+    assert.match((await outcome(sampleOwner(entry, recipe, ['first']), directory)).text,
+      /cases differ from recipe contracts\/fixtures\/sample\/sample\.json: declared first; recipe first,second/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// Requirements: FCV-3, FCV-12.
+caseTest('the cases of a recipe on a database leave out a case that names only other databases', COMPUTE, () => {
+  const text = JSON.stringify({ cases: [{ id: 'all' }, { id: 'lite', only: ['sqlite'] }] });
+  assert.deepEqual(recipeCaseIds(text, 'sqlite'), ['all', 'lite']);
+  assert.deepEqual(recipeCaseIds(text, 'mysql'), ['all']);
 });

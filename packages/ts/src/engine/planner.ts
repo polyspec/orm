@@ -794,7 +794,8 @@ export class Planner {
     if (!entity) fail(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
     const column = columnOf(entity, sub.column ?? '');
     if (!column) fail(codes.INTERNAL, `${entity.name}.${sub.column ?? ''} is missing from a validated scalar subquery`);
-    return column.type;
+    // INT-160: a sum leaves the range of its column.
+    return sub.agg === 'sum' && (column.type === 'i16' || column.type === 'i32') ? 'i64' : column.type;
   }
 
   private renderAssign(b: Builder, ent: Entity, col: Column, a: Assignment): string {

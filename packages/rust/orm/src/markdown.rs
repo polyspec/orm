@@ -539,7 +539,9 @@ impl<'m> MdNode<'m> {
                 let field = entity
                     .field(&sub.column)
                     .ok_or_else(|| engine::err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))?;
-                Ok(field.ty.name().to_owned())
+                // INT-160: a sum leaves the range of its column.
+                let name = field.ty.name();
+                Ok(if sub.agg == "sum" && (name == "i16" || name == "i32") { "i64".to_owned() } else { name.to_owned() })
             }
         }
     }

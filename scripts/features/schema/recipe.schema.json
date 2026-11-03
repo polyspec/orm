@@ -652,6 +652,23 @@
     "outcome": {
       "oneOf": [
         {
+          "description": "The form of an envelope with a random nonce: bytes of that length that start with that lowercase hex.",
+          "type": "object",
+          "required": [
+            "bytes_prefix_hex",
+            "bytes_length"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes_prefix_hex": {
+              "type": "string"
+            },
+            "bytes_length": {
+              "type": "integer"
+            }
+          }
+        },
+        {
           "type": "object",
           "required": [
             "value"
@@ -785,6 +802,8 @@
             "query.search",
             "query.search_chain",
             "ir.validate",
+            "ir.param_uses",
+            "planner.columns",
             "ir.answer",
             "markdown.send",
             "model.assign",
@@ -799,6 +818,9 @@
             "catalog.delete_row",
             "schema.install",
             "schema.register",
+            "schema.empty",
+            "schema.exists",
+            "schema.installed",
             "schema.connect",
             "schema.add_tables_and_columns",
             "statements.count",
@@ -837,6 +859,7 @@
             "dbspec.format",
             "dbspec.parse_set",
             "dbspec.set",
+            "dbspec.load_set",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -857,7 +880,11 @@
             "model.chain",
             "utils.lock",
             "utils.set_local",
-            "utils.local"
+            "utils.local",
+            "db.notify",
+            "utils.was_inserted",
+            "utils.backend_waiting_for_lock",
+            "utils.groups"
           ]
         }
       },
@@ -912,6 +939,12 @@
         },
         {
           "$ref": "#/$defs/ops/ir.validate"
+        },
+        {
+          "$ref": "#/$defs/ops/ir.param_uses"
+        },
+        {
+          "$ref": "#/$defs/ops/planner.columns"
         },
         {
           "$ref": "#/$defs/ops/ir.answer"
@@ -981,6 +1014,15 @@
         },
         {
           "$ref": "#/$defs/ops/schema.register"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.empty"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.exists"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.installed"
         },
         {
           "$ref": "#/$defs/ops/schema.connect"
@@ -1061,6 +1103,9 @@
           "$ref": "#/$defs/ops/dbspec.set"
         },
         {
+          "$ref": "#/$defs/ops/dbspec.load_set"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.read_file"
         },
         {
@@ -1121,7 +1166,19 @@
           "$ref": "#/$defs/ops/utils.set_local"
         },
         {
+          "$ref": "#/$defs/ops/db.notify"
+        },
+        {
           "$ref": "#/$defs/ops/utils.local"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.was_inserted"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.backend_waiting_for_lock"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.groups"
         }
       ]
     },
@@ -1228,6 +1285,116 @@
           },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.empty": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.empty"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.exists": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.exists"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.installed": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "table",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.installed"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "table": {
+            "type": "string"
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -1847,10 +2014,16 @@
                   ]
                 },
                 "value": {
-                  "type": [
-                    "string",
-                    "boolean",
-                    "integer"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "integer"
+                    }
                   ]
                 },
                 "hex": {
@@ -2423,6 +2596,68 @@
           }
         }
       },
+      "ir.param_uses": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "ir.param_uses"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "planner.columns": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "names",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "planner.columns"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The output names of the first statement whose columns the expect states."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "ir.validate": {
         "type": "object",
         "required": [
@@ -2434,6 +2669,10 @@
         "properties": {
           "op": {
             "const": "ir.validate"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "description": "The hash the request holds in place of the hash of the schema of the recipe: a request of another manifest."
           },
           "request": {
             "type": "object",
@@ -3836,7 +4075,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3879,7 +4122,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3921,7 +4168,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -4119,6 +4370,13 @@
                   "$ref": "#/$defs/outcomes/rows"
                 }
               },
+              "expect_unnamed": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
+              },
               "lock": {
                 "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
                 "enum": [
@@ -4227,6 +4485,14 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "key_by": {
+                "description": "The column that keys the collection of the result (PRT-35).",
+                "$ref": "#/$defs/name"
+              },
+              "group_value": {
+                "description": "The result is Value of this name on the first group row of the count aggregate (INT-31).",
+                "$ref": "#/$defs/name"
+              },
               "order": {
                 "$ref": "#/$defs/orderList"
               },
@@ -4274,24 +4540,35 @@
                   "$ref": "#/$defs/name"
                 }
               },
-              "derived_integers": {
-                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/name"
-                }
-              },
               "as": {
                 "$ref": "#/$defs/name"
               },
               "page": {
                 "type": "boolean"
               },
+              "plan": {
+                "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
+                "const": true
+              },
+              "plan_count": {
+                "description": "The texts counted in the upper-cased statement of each step of plan.",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "items": {
+                "description": "The json of a page also holds items, the rows of the page narrowed to pick.",
+                "const": true
+              },
               "compile": {
                 "description": "The query is read by getQuery: its text and binds, not its rows.",
                 "const": true
               },
               "expect": {
+                "$ref": "#/$defs/expect"
+              },
+              "expect_unnamed": {
                 "$ref": "#/$defs/expect"
               }
             }
@@ -4401,6 +4678,11 @@
           "connection": {
             "$ref": "#/$defs/name"
           },
+          "conflict": {
+            "description": "After its statements the function fails with the retryable DEADLOCK error of this message (INT-48).",
+            "type": "string",
+            "minLength": 1
+          },
           "statements": {
             "type": "array",
             "minItems": 1,
@@ -4459,7 +4741,8 @@
             "enum": [
               "all",
               "tables",
-              "statements"
+              "statements",
+              "shape"
             ]
           },
           "expect": {
@@ -4950,6 +5233,70 @@
             }
           }
         ]
+      },
+      "dbspec.load_set": {
+        "type": "object",
+        "required": [
+          "op",
+          "owned",
+          "external",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.load_set"
+          },
+          "owned": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "external"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "external": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "dbspec.parse_set": {
         "type": "object",
@@ -6171,6 +6518,31 @@
           }
         }
       },
+      "db.notify": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "channel",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.notify"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload": {
+            "type": "string"
+          }
+        }
+      },
       "utils.set_local": {
         "type": "object",
         "required": [
@@ -6193,6 +6565,76 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          }
+        }
+      },
+      "utils.was_inserted": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "table",
+          "sequence",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.was_inserted"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "table": {
+            "description": "The entity name of wasInserted (INT-52).",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "The generated key of wasInserted (INT-52).",
+            "type": "integer"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.backend_waiting_for_lock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.backend_waiting_for_lock"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.groups": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.groups"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },
@@ -6767,6 +7209,19 @@
       "additionalProperties": {
         "oneOf": [
           {
+            "description": "The styled value of its value (a column with a codec of a styled value).",
+            "type": "object",
+            "required": [
+              "styled"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "styled": {
+                "$ref": "#/$defs/value"
+              }
+            }
+          },
+          {
             "$ref": "#/$defs/argument"
           },
           {
@@ -7202,6 +7657,36 @@
           }
         },
         {
+          "description": "The boolean full-text search of a text in the columns of the model (DSL-32).",
+          "type": "object",
+          "required": [
+            "fulltext_boolean"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "fulltext_boolean": {
+              "type": "object",
+              "required": [
+                "columns",
+                "text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
           "description": "The rows whose columns equal one tuple: [columns, tuples] (DSL-82).",
           "type": "object",
           "required": [
@@ -7480,6 +7965,19 @@
         },
         "where": {
           "$ref": "#/$defs/predicate"
+        },
+        "columns": {
+          "$ref": "#/$defs/columnChoice"
+        },
+        "add_columns": {
+          "$ref": "#/$defs/columnList"
+        },
+        "order": {
+          "$ref": "#/$defs/orderList"
+        },
+        "force_index": {
+          "description": "The index that the joined table is read through (DSL-90).",
+          "$ref": "#/$defs/name"
         }
       }
     },
