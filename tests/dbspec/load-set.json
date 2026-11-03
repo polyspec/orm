@@ -1,0 +1,191 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "SCH-12",
+    "DBS-156"
+  ],
+  "cases": [
+    {
+      "id": "external-documents-marked",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 shop",
+            "",
+            "use core { account }",
+            "",
+            "table item {",
+            "  seq i64",
+            "  account_seq i64",
+            "  primary key (seq)",
+            "  index ix_item_account (account_seq)",
+            "  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict",
+            "}"
+          ],
+          "external": [
+            "dbspec 1 core",
+            "",
+            "table account {",
+            "  seq i64",
+            "  primary key (seq)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "documents": [
+                {
+                  "name": "shop",
+                  "external": false
+                },
+                {
+                  "name": "core",
+                  "external": true
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-external-text",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 core",
+            "",
+            "table account {",
+            "  seq i64",
+            "  primary key (seq)",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "documents": [
+                {
+                  "name": "core",
+                  "external": false
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-without-header",
+      "requirements": [
+        "SCH-12",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "table item {}"
+          ],
+          "external": [
+            "dbspec 1 core",
+            "",
+            "table account {",
+            "  seq i64",
+            "  primary key (seq)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "only-text-without-header",
+      "requirements": [
+        "SCH-12",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "table item {}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "external-text-without-header",
+      "requirements": [
+        "SCH-12",
+        "DBS-156"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 shop",
+            "",
+            "use core { account }",
+            "",
+            "table item {",
+            "  seq i64",
+            "  account_seq i64",
+            "  primary key (seq)",
+            "  index ix_item_account (account_seq)",
+            "  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict",
+            "}"
+          ],
+          "external": [
+            "table account {}"
+          ],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "document-with-a-diagnostic",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 shop",
+            "",
+            "table item {",
+            "  seq i64",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1321,8 +1321,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 $v = stream_get_contents($v);
             }
             $st['extra'][$name] = $v === null ? null : match ($kind) {
-                'i16', 'i32', 'i64' => is_numeric($v) ? (int) $v : $v,
-                'f64' => is_numeric($v) ? (float) $v : $v,
+                // INT-160: an added column is decoded by the type of its plan column.
+                'i16', 'i32', 'i64', 'f64', 'bool' => $m->groupValue(
+                    $a->db,
+                    ['name' => $name, 'column' => '', 'type' => $kind],
+                    $v,
+                ),
                 'date', 'datetime' => self::timeValue($v, $zone),
                 default => $v,
             };

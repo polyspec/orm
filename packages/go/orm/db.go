@@ -71,10 +71,10 @@ type Schema struct {
 // SCHEMA_INVALID, and if the text's hash differs from Hash, SCHEMA_HASH_MISMATCH.
 func (s *Schema) Model() (*runtimemodel.Model, error) {
 	s.once.Do(func() {
-		m, diagnostics := runtimemodel.LoadSet(s.Text, s.External)
+		m, invalid := runtimemodel.LoadSet(s.Text, s.External)
 		switch {
-		case len(diagnostics) > 0:
-			s.err = &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+		case invalid != nil:
+			s.err = &ir.Error{Code: invalid.Code(), Msg: invalid.Message()}
 		case m.ManifestHash != s.Hash:
 			s.err = &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated code declares manifest %s, its manifest text hashes to %s: generate the models again", s.Hash, m.ManifestHash)}
 		default:
@@ -466,9 +466,10 @@ func (d *DB) Driver() string { return d.driver }
 // does not link PostgreSQL and SQLite; import the driver package for its side
 // effect.
 var (
-	driverMu   sync.RWMutex
-	sqlDrivers = map[string]string{"mysql": "mysql"}
-	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
+	driverMu     sync.RWMutex
+	sqlDrivers   = map[string]string{"mysql": "mysql"}
+	errMappers   = map[string]func(error) error{"mysql": mapMySQLErr}
+	deallocators = map[string]func(ctx context.Context, driverConn any) error{}
 	// sqliteVersion is the library version that the SQLite driver package registered.
 	sqliteVersion string
 	// sqliteRollbackHook is the function that the SQLite driver package registered to set or clear the rollback hook of a
@@ -505,6 +506,14 @@ func RegisterDriver(name, sqlDriver string, mapErr func(error) error) {
 	defer driverMu.Unlock()
 	sqlDrivers[name] = sqlDriver
 	errMappers[name] = mapErr
+}
+
+// RegisterDeallocator registers how a driver of the named database releases the named statements of a connection, on the server
+// and in the driver's statement cache together (CFG-28). Driver packages that name statements call it from init.
+func RegisterDeallocator(name string, deallocate func(ctx context.Context, driverConn any) error) {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	deallocators[name] = deallocate
 }
 
 // openSQL opens the database/sql pool. The MySQL driver reads datetime cells

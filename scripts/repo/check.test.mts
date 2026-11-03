@@ -525,16 +525,16 @@ caseTest('the PHP extension suite and its profiled native cases use their owning
   assert.doesNotMatch(markdownRecipe, /--filter/, 'the dedicated target runs the complete native markdown test file');
 });
 
-caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
+caseTest('the Rust test recipe gives Kit one libtest thread option', PROCESS, async () => {
   const root = repository.pathname;
-  const recipe = /^schema-exists-sqlite-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];
-  assert.ok(recipe, 'the SQLite Rust test recipe exists');
+  const recipe = /^dbspec-verify-errors-rust-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(text('Makefile'))?.[1];
+  assert.ok(recipe, 'the Rust test recipe exists');
   const command = recipe.split('\n').find(line => line.includes('$(RUN_TESTS) cargo --cwd packages/rust -- '));
   assert.ok(command, 'the recipe uses Kit run-tests for cargo');
   const prefix = '$(RUN_TESTS) cargo --cwd packages/rust -- ';
   const cargoArgs = command.slice(command.indexOf(prefix) + prefix.length).trim().split(/\s+/);
 
-  const directory = mkdtempSync(join(tmpdir(), 'schema-exists-cargo-runner-'));
+  const directory = mkdtempSync(join(tmpdir(), 'dbspec-verify-cargo-runner-'));
   try {
     const stubDirectory = join(directory, 'bin');
     mkdirSync(stubDirectory);
@@ -544,8 +544,8 @@ caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROC
       '#!/usr/bin/env node',
       "const fs = require('node:fs');",
       "fs.writeFileSync(process.env.CARGO_STUB_ARGUMENTS, JSON.stringify(process.argv.slice(2)));",
-      "process.stderr.write('Running tests/schema_exists_underscore.rs (target/debug/deps/schema_exists_underscore-stub)\\n');",
-      "process.stdout.write('running 1 test\\ntest schema_exists_escapes_underscore_sqlite ... ok\\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out\\n');",
+      "process.stderr.write('Running tests/dbspec_apply_cleanup.rs (target/debug/deps/dbspec_apply_cleanup-stub)\\n');",
+      "process.stdout.write('running 1 test\\ntest apply_reports_verify_errors_separately_from_drift ... ok\\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out\\n');",
       '',
     ].join('\n'));
     chmodSync(stub, 0o755);
@@ -580,7 +580,7 @@ caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROC
     if (!isStringArray(parsed)) throw new Error('cargo test arguments fixture is not a string array');
     const actual = parsed;
     const harness = actual.slice(actual.indexOf('--') + 1);
-    assert.deepEqual(harness, ['--test-threads=1', '--exact']);
+    assert.deepEqual(harness, ['--test-threads=1', '--nocapture']);
     assert.equal(actual.filter(argument => argument === '--test-threads=1').length, 1);
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -632,11 +632,11 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   }
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'group-rows-db-go', 'dialect-facts-check'],
-    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-php-db-check'],
-    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-php-extension-db-check'],
-    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-typescript-check'],
-    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-python-sqlite-check'],
-    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-rust-check'],
+    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-check/php'],
+    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-check/php-extension'],
+    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-check/typescript'],
+    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-check/python'],
+    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-check/rust'],
     dbspec_go: ['dbspec-introspect-check', 'dbspec-apply-check'],
     dbspec_php: ['dbspec-introspect-php-check', 'dbspec-apply-php-check'],
     dbspec_php_extension: ['dbspec-introspect-php-extension-check', 'dbspec-apply-php-extension-check'],
@@ -866,7 +866,7 @@ caseTest('every CI group runs the setup steps of its needs and of the setup step
 
 caseTest('feature helper checks provision the databases and PHP extension their owners execute', COMPUTE, () => {
   const needs = declaredNeeds(repository.pathname)['feature-helper-check'] ?? [];
-  assert.ok(needs.includes('complex-query'), 'Go complex-query helper requires its run-owned owner databases');
+  assert.ok(needs.includes('databases'), 'the helper target reads the run-owned databases');
   assert.ok(needs.includes('php-extension-tools'), 'the helper target builds the PHP extension');
   const recipe = makeRecipes(text('Makefile')).find(unit => unit.name === 'Makefile feature-helper-check')?.commands.join('\n') ?? '';
   assert.match(recipe, /\$\(call php_ext_build,/);

@@ -399,7 +399,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 		switch {
 		case len(missing) == 0:
 		case len(present) > 0:
-			return configErr("the manifest is partly installed: tables %s exist and %s do not", strings.Join(present, ", "), strings.Join(missing, ", "))
+			return configErr("install found only some tables of the document set: %s", strings.Join(present, ", "))
 		default:
 			for _, statement := range statements {
 				if _, err := r.exec(ctx, KindSchema, []string{statement.Table}, statement.SQL); err != nil {

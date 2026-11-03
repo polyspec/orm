@@ -11,6 +11,39 @@ use crate::Error;
 
 pub mod ir_request;
 
+/// The uses of each parameter of a validated request as the JSON of the ir.param_uses op (docs/spec/feature-coverage.md FCV-4).
+pub fn param_uses(manifest: &crate::schema::Manifest, request: &crate::ir::Request) -> crate::Result<serde_json::Value> {
+    use polyspec_orm_schema::dbspec::Type;
+    let uses = crate::engine::param_uses(manifest, request)?;
+    Ok(serde_json::Value::Array(
+        uses.iter()
+            .map(|parameter| {
+                serde_json::Value::Array(
+                    parameter
+                        .iter()
+                        .map(|use_| match use_.column {
+                            None => serde_json::json!({"type": use_.ty}),
+                            Some(field) => {
+                                let (length, precision, scale): (u32, u32, u32) = match field.ty {
+                                    Type::Varchar(n) => (n.into(), 0, 0),
+                                    Type::Decimal(p, s) => (0, p.into(), s.into()),
+                                    Type::Time(p) | Type::DateTime(p) => (0, p.into(), 0),
+                                    _ => (0, 0, 0),
+                                };
+                                let mut out = serde_json::json!({"type": use_.ty, "column": field.name, "length": length, "null": field.nullable, "precision": precision, "scale": scale});
+                                if use_.assign {
+                                    out["assign"] = serde_json::json!(true);
+                                }
+                                out
+                            }
+                        })
+                        .collect(),
+                )
+            })
+            .collect(),
+    ))
+}
+
 /// Compiles a request built from a generated model without opening a database connection.
 /// This is available only with `test-faults`, for database-independent planner tests.
 pub fn compile_core_request(core: &crate::Core, kind: &str, dialect: crate::Dialect) -> crate::Result<crate::plan::Plan> {
