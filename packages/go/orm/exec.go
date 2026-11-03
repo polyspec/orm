@@ -424,7 +424,7 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	result, err := stmt.ExecContext(ctx, args...)
-	_, err = d.execAgain(ctx, ex, st.SQL, args, result, err)
+	_, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, result, err)
 	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErrContext(err, ctx))
 }
 
@@ -883,7 +883,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
 	rows, err := stmt.QueryContext(ctx, args...)
-	rows, endAgain, err := d.queryAgain(ctx, ex, sqlText, args, rows, err)
+	rows, endAgain, err := d.queryAgain(ctx, ex.transaction() == nil, sqlText, args, rows, err)
 	err = mapDriverErrContext(err, ctx)
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
@@ -1184,7 +1184,7 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
-	err = mapDriverErrContext(d.scanAgain(ctx, ex, st.SQL, args, err, &v), ctx)
+	err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &v), ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
@@ -1316,14 +1316,14 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
 		err = stmt.QueryRowContext(ctx, args...).Scan(&lastID)
-		err = mapDriverErrContext(d.scanAgain(ctx, ex, st.SQL, args, err, &lastID), ctx)
+		err = mapDriverErrContext(d.scanAgain(ctx, ex.transaction() == nil, st.SQL, args, err, &lastID), ctx)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
 		return lastID, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
-	res, err = d.execAgain(ctx, ex, st.SQL, args, res, err)
+	res, err = d.execAgain(ctx, ex.transaction() == nil, st.SQL, args, res, err)
 	err = mapDriverErrContext(err, ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, 0, err

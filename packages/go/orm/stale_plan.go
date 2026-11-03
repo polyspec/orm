@@ -73,10 +73,10 @@ func (s *stalePlanSession) discard(err error) error {
 	return err
 }
 
-// execAgain runs a statement that failed with err once more when err is stalePlan and ex is outside a transaction. Inside a
-// transaction the server has aborted it, so err reaches the caller (CFG-28).
-func (d *DB) execAgain(ctx context.Context, ex executor, sqlText string, args []any, result sql.Result, err error) (sql.Result, error) {
-	if !stalePlan(err) || ex.transaction() != nil {
+// execAgain runs a statement that failed with err once more when err is stalePlan and outside says that the statement ran outside a
+// transaction. Inside a transaction the server has aborted it, so err reaches the caller (CFG-28).
+func (d *DB) execAgain(ctx context.Context, outside bool, sqlText string, args []any, result sql.Result, err error) (sql.Result, error) {
+	if !outside || !stalePlan(err) {
 		return result, err
 	}
 	s, err := d.openStalePlanSession(ctx)
@@ -88,8 +88,8 @@ func (d *DB) execAgain(ctx context.Context, ex executor, sqlText string, args []
 }
 
 // scanAgain is execAgain for a statement that reads one row into dest.
-func (d *DB) scanAgain(ctx context.Context, ex executor, sqlText string, args []any, err error, dest ...any) error {
-	if !stalePlan(err) || ex.transaction() != nil {
+func (d *DB) scanAgain(ctx context.Context, outside bool, sqlText string, args []any, err error, dest ...any) error {
+	if !outside || !stalePlan(err) {
 		return err
 	}
 	s, err := d.openStalePlanSession(ctx)
@@ -101,8 +101,8 @@ func (d *DB) scanAgain(ctx context.Context, ex executor, sqlText string, args []
 
 // queryAgain is execAgain for a statement that returns rows. The returned end closes the rows and the session, so the caller
 // reads the rows before calling it; end is nil when the statement did not run again.
-func (d *DB) queryAgain(ctx context.Context, ex executor, sqlText string, args []any, rows *sql.Rows, err error) (*sql.Rows, func(error) error, error) {
-	if !stalePlan(err) || ex.transaction() != nil {
+func (d *DB) queryAgain(ctx context.Context, outside bool, sqlText string, args []any, rows *sql.Rows, err error) (*sql.Rows, func(error) error, error) {
+	if !outside || !stalePlan(err) {
 		return rows, nil, err
 	}
 	s, err := d.openStalePlanSession(ctx)
