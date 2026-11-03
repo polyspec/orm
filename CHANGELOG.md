@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Tests: the exact bytes of a driver cell (PRT-69, INT-5) are the case `driver_bytes_cells_are_exact` of the `conformance_verification` recipe in every runtime, through the new `model.query` key `bytes_hex_of`; the natives that built the cell are gone, and Rust keeps its private row decoding test under INT-142.
 - Collection views and connect on every model now come from the recipes in every client; the native extension surface has its own unit under INT-62a.
 - The generated full-text method of the Python package has its own unit under DSL-33a.
 - Schema inspection reads inside a transaction and its statement event now come from the recipe schema_install; the Python files that repeated it are gone.

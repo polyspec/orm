@@ -938,7 +938,6 @@
         "go-model-chain-argument-types",
         "chain-null-on-a-non-null-column",
         "model-ordered-json-output-text",
-        "native-row-cell-bytes",
         "page-cache-root-limit-values",
         "plan-cache-in-list-shapes-share-ten-bucketed-keys",
         "group-rows-database-query-preserves-values",
@@ -10833,7 +10832,7 @@
         "packages/php-ext/tests/ModelReadNativeTest.php",
         "packages/php-ext/tests/ModelStreamReadTest.php"
       ],
-      "command": "make --no-print-directory model-native-php-extension-check MODEL_NATIVE_TEST_FILTER='testNativeRowStreamReadFailurePreservesThrowableAndDoesNotMutateBuilder|testSuccessfulNormalAndExtraRowsPreserveStreamText|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder'"
+      "command": "make --no-print-directory model-native-php-extension-check MODEL_NATIVE_TEST_FILTER='testNativeRowStreamReadFailurePreservesThrowableAndDoesNotMutateBuilder|testSuccessfulNormalAndExtraRowsPreserveStreamText|testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder'"
     },
     {
       "id": "go-dialect-runner-environment",

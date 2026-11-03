@@ -8,11 +8,10 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
-	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// A server of this repository gives 3819 only; 4025 of errors.yaml reaches the map only here (FCV-2).
+// A server of this repository gives 3819 only; 4025 of errors.yaml reaches the map only here.
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{3819, 4025} {
@@ -52,27 +51,6 @@ func TestMapDriverErrorContextKeepsCanceledCode(t *testing.T) {
 	_, mapped := mapCanceledDriverError()
 	if ErrorCode(mapped) != CodeCanceled {
 		t.Fatalf("mapped code = %q, want %s: %v", ErrorCode(mapped), CodeCanceled, mapped)
-	}
-}
-
-// Requirements: INT-5, PRT-69.
-func TestCellScanCopiesLosslessNativeBytes(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	source := []byte{0x00, 0x7f, 0x80, 0xff, 0x41}
-	want := string(source)
-	var cell cell
-	if err := cell.Scan(source); err != nil {
-		t.Fatal(err)
-	}
-	source[0] = 0x7f
-	values := []any{cell.v}
-	assemble := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Type: "bytes"}}}
-	if err := restoreByteColumns(values, assemble); err != nil {
-		t.Fatalf("restore scanned byte cell: %v", err)
-	}
-	got, ok := values[0].([]byte)
-	if !ok || string(got) != want {
-		t.Fatalf("restored byte cell = %T %v, want original bytes %v", values[0], got, []byte(want))
 	}
 }
 
