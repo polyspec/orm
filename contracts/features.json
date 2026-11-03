@@ -1942,7 +1942,6 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/DslDynamicRecipeTest.php",
               "packages/php/tests/CoverageModelQueriesTest.php"
             ],
             "inputs": [
@@ -2110,7 +2109,6 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/dsl_dynamic-none.test.mjs",
               "packages/ts/tests/coverage_model_queries.mjs"
             ],
             "inputs": [
@@ -2162,7 +2160,6 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/test_dsl_dynamic_none.py",
               "packages/python/tests/coverage_model_queries.py"
             ],
             "inputs": [
@@ -2214,7 +2211,6 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/DslDynamicRecipeTestExtensionTest.php",
               "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php"
             ],
             "inputs": [
@@ -2857,8 +2853,6 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/BindMessagesDynamicRecipeTest.php",
-              "packages/php/tests/BindMessagesUntypedNullRecipeTest.php",
               "packages/php/tests/CoverageModelWritesTest.php"
             ],
             "inputs": [
@@ -2983,7 +2977,6 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/bind_messages_dynamic.mjs",
               "packages/ts/tests/coverage_model_writes.mjs"
             ],
             "inputs": [
@@ -3031,9 +3024,6 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/test_bind_messages_dynamic_none.py",
-              "packages/python/tests/test_bind_messages_untyped_null_none.py",
-              "packages/python/tests/test_bind_messages_python_null_none.py",
               "packages/python/tests/coverage_model_writes.py"
             ],
             "inputs": [
@@ -3081,8 +3071,6 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/BindMessagesDynamicRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/BindMessagesUntypedNullRecipeTestExtensionTest.php",
               "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
             ],
             "inputs": [
@@ -4906,7 +4894,6 @@
         "packages/go/engine/dbspec/apply_test.go",
         "packages/go/engine/dbspec/harness_test.go",
         "packages/go/engine/dbspec/literal_test.go",
-        "packages/go/engine/dbspec/mermaid_test.go",
         "packages/go/engine/dbspec/plan_test.go",
         "packages/go/engine/dbspec/render_test.go",
         "packages/go/engine/dbspec/rules_test.go",
@@ -5037,7 +5024,6 @@
             "packages/go/engine/dbspec/apply_test.go",
             "packages/go/engine/dbspec/harness_test.go",
             "packages/go/engine/dbspec/literal_test.go",
-            "packages/go/engine/dbspec/mermaid_test.go",
             "packages/go/engine/dbspec/plan_test.go",
             "packages/go/engine/dbspec/render_test.go",
             "packages/go/engine/dbspec/rules_test.go",
@@ -6503,7 +6489,6 @@
         "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
         "packages/rust/orm/src/testing/ir_request.rs",
         "packages/go/orm/plan_cache_test.go",
-        "packages/go/orm/plan_cache_internal_test.go",
         "packages/php/tests/PlanCacheBoundTest.php",
         "packages/ts/tests/plan-cache-in.mjs",
         "packages/python/tests/test_plan_cache_bound.py",
@@ -6662,8 +6647,7 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestPlanCacheBoundedByInListShape|TestCanonicalizePadsInListAndRejectsOutOfRangeParam)$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/plan_cache_test.go",
-            "packages/go/orm/plan_cache_internal_test.go"
+            "packages/go/orm/plan_cache_test.go"
           ]
         },
         {
@@ -7208,7 +7192,7 @@
             }
           },
           "rust": {
-            "part": "packages/rust/orm",
+            "part": "packages/rust",
             "tests": [
               "packages/rust/orm/tests/unit/coverage_planner.rs",
               "packages/rust/tests/tests/planner_compile_none.rs"
