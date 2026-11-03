@@ -26469,8 +26469,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_model_generation.py",
-          "id": "test_model_generation_check"
+          "test": "packages/python/tests/test_generator_none.py",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "rust",

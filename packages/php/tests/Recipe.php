@@ -150,6 +150,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.check') {
+                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'generator.generate') {
                     RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
                     continue;

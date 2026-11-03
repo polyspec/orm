@@ -44,6 +44,9 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	GenSet  string                     `json:"document_set"`
+	Same    []string                   `json:"unchanged"`
+	Diff    []string                   `json:"changed"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -231,6 +234,8 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlanner(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
+	case "generator.check":
+		return checkGeneratedFiles(o.dir, s)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",

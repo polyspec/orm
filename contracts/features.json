@@ -4481,7 +4481,6 @@
         "packages/python/tests/test_query_methods.py",
         "packages/python/tests/test_packaging.py",
         "packages/python/tests/test_requires_python.py",
-        "packages/python/tests/coverage_model_generation.py",
         "packages/php-ext/tests/ModelDslNativeTest.php",
         "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/php-ext/tests/RuntimeModelTest.php",
@@ -4494,7 +4493,8 @@
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php"
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
+        "packages/python/tests/test_generator_none.py"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -4729,16 +4729,44 @@
             "part": "packages/python/tests",
             "tests": [
               "packages/python/tests/test_new_values.py",
-              "packages/python/tests/coverage_model_generation.py"
+              "packages/python/tests/test_generator_none.py"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_model_generation.py",
+                  "test": "packages/python/tests/test_generator_none.py",
                   "cases": [
-                    "model_generation_check"
-                  ]
+                    "column-named-create",
+                    "column-named-delete",
+                    "column-named-restore",
+                    "column-named-random",
+                    "column-prefix-order_by",
+                    "column-prefix-get",
+                    "column-restored-at-is-accepted",
+                    "column-segment-gt",
+                    "column-segment-with",
+                    "column-segment-fulltext",
+                    "column-min-price-is-accepted",
+                    "column-collides-with-a-generated-method",
+                    "unknown-column",
+                    "unknown-operator",
+                    "operator-not-for-the-column",
+                    "unknown-finder-column",
+                    "order-without-direction",
+                    "too-many-arguments",
+                    "too-few-arguments",
+                    "new-of-a-stored-column",
+                    "stored-column-has-a-setter",
+                    "key-prefix-methods-come-from-the-schema",
+                    "scanned-chain-methods-are-generated",
+                    "used-external-table-that-no-source-calls-has-a-model",
+                    "owned-and-used-tables-have-models",
+                    "generated-code-suppresses-no-finding",
+                    "generated-code-carries-the-manifest-hash",
+                    "check_reports_differences_without_writing"
+                  ],
+                  "recipe": "contracts/fixtures/generator/generator.json"
                 }
               ]
             }
