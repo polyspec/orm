@@ -1197,7 +1197,6 @@
         "page-cache-root-limit-values",
         "plan-cache-in-list-shapes-share-ten-bucketed-keys",
         "group-rows-database-query-preserves-values",
-        "dsl-50-operator-value-shapes",
         "remove-columns-keeps-primary-foreign-and-added",
         "go-model-constructor-api",
         "php-internal-model-conditions",
@@ -1205,7 +1204,8 @@
         "php-extension-model-date-read-decode-error",
         "model_queries-mysql",
         "model_queries-postgres",
-        "model_queries-sqlite"
+        "model_queries-sqlite",
+        "dsl-dynamic"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1220,6 +1220,10 @@
         "contracts/fixtures/model_queries/model_queries.json"
       ],
       "tests": [
+        "packages/python/tests/test_dsl_dynamic_none.py",
+        "packages/ts/tests/dsl_dynamic-none.test.mjs",
+        "packages/php-ext/tests/DslDynamicRecipeTestExtensionTest.php",
+        "packages/php/tests/DslDynamicRecipeTest.php",
         "packages/go/model/model_test.go",
         "packages/go/model/chain_types_test.go",
         "packages/go/model/time_text_test.go",
@@ -1322,7 +1326,6 @@
         "packages/ts/tests/chain-types.mjs",
         "packages/ts/tests/driver-cell-bytes.mjs",
         "packages/ts/tests/styled-value-checks.mjs",
-        "packages/python/tests/test_chain_values.py",
         "packages/rust/orm/tests/val_text.rs",
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
         "packages/ts/tests/model_json_output.test.mts",
@@ -1930,6 +1933,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
+              "packages/php/tests/DslDynamicRecipeTest.php",
               "packages/php/tests/CoverageModelQueriesTest.php"
             ],
             "inputs": [
@@ -2097,6 +2101,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/dsl_dynamic-none.test.mjs",
               "packages/ts/tests/coverage_model_queries.mjs"
             ],
             "inputs": [
@@ -2148,6 +2153,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
+              "packages/python/tests/test_dsl_dynamic_none.py",
               "packages/python/tests/coverage_model_queries.py"
             ],
             "inputs": [
@@ -2199,6 +2205,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/DslDynamicRecipeTestExtensionTest.php",
               "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php"
             ],
             "inputs": [
@@ -4447,7 +4454,9 @@
         "model-connection-and-join-methods",
         "mechanically-derived-chain-method-names",
         "static-model-chain-generation",
-        "dynamic-model-chain-resolution"
+        "dynamic-model-chain-resolution",
+        "dsl-50-operator-value-shapes",
+        "chain-null-on-a-non-null-column"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -4458,6 +4467,9 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/ts/tests/chain-types.mjs",
+        "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
         "packages/go/generator/gen_go_key_prefix_test.go",
         "packages/go/generator/gen_go_output_test.go",
@@ -4625,6 +4637,7 @@
           "go": {
             "part": "packages/go",
             "tests": [
+              "packages/go/model/chain_types_test.go",
               "packages/go/model/coverage_model_generation_test.go"
             ],
             "commands": {
@@ -4688,6 +4701,7 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
+              "packages/rust/orm/tests/compiler_fixtures.rs",
               "packages/rust/tests/tests/coverage_model_generation.rs"
             ],
             "commands": {
@@ -4708,6 +4722,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/chain-types.mjs",
               "packages/ts/tests/coverage_model_generation.mjs"
             ],
             "commands": {

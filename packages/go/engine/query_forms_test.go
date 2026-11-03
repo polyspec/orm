@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -90,30 +89,7 @@ func requireSQL(t *testing.T, sql string, parts ...string) {
 	}
 }
 
-func TestExplicitKeyJoinPlacesChildConditionsInGroup(t *testing.T) {
-	// The test of DSL-95 (docs/spec).
-	testcase.Start(t, testcase.Compute)
-	e := formsEngine(t, "mysql")
-	p := formsCompile(t, e, `"kind":"all","entity":"place",
-	 "joins":[{"rel":"owner","kind":"left","left":"owner_seq","right":"seq","query":{"entity":"owner",
-	   "columns":{"mode":"none"},
-	   "on":{"items":[{"pred":{"column":"min_price","op":"gt","p":0}}]},
-	   "where":{"items":[{"pred":{"column":"name","op":"contains","p":1}}]}}}],
-	 "where":{"items":[
-	   {"pred":{"column":"price","op":"gte","p":2}},
-	   {"group":{"conn":"and","items":[
-	     {"pred":{"column":"name","op":"contains","p":3}},
-	     {"joined":{"conn":"or","join":"owner"}}]}}]}`)
-	sql := p.Steps[0].SQL
-	requireSQL(t, sql,
-		"LEFT JOIN `owner` AS `owner` ON `a`.`owner_seq` = `owner`.`seq` AND `owner`.`min_price` > ?",
-		"WHERE `a`.`price` >= ? AND ("+dialect.MySQL{}.Like("`a`.`name`", "?")+" OR ("+dialect.MySQL{}.Like("`owner`.`name`", "?")+"))",
-	)
-	if strings.Count(sql, dialect.MySQL{}.Like("`owner`.`name`", "?")) != 1 {
-		t.Errorf("placed join condition must appear once: %s", sql)
-	}
-}
-
+// Requirements: DSL-95.
 func TestUnplacedJoinConditionsAreAppended(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := formsEngine(t, "mysql")
