@@ -620,7 +620,7 @@ func mapDriverErr(err error) error {
 		}
 	}
 	// An error the driver reports as unable to use the connection any further is a lost-connection error.
-	if errors.Is(err, driver.ErrBadConn) {
+	if errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
 	}
 	// A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).

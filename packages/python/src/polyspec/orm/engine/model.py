@@ -124,7 +124,8 @@ def split_documents(text: str) -> list:
     """Splits the documents from the manifest text at the header lines."""
     if not text.startswith(_HEADER):
         raise OrmError(
-            codes.SCHEMA_INVALID, "manifest text does not start with a dbspec header"
+            codes.SCHEMA_INVALID,
+            "1:1 header: manifest text does not start with a dbspec header",
         )
     out = []
     start = 0
@@ -235,10 +236,9 @@ def model_of_documents(documents) -> RuntimeModel:
 
     manifest, diagnostics = dbspec_manifest(documents)
     if manifest is None:
-        d = diagnostics[0]
         raise OrmError(
             codes.SCHEMA_INVALID,
-            f"document set: {d.rule} at {d.line}:{d.column}: {d.message}",
+            "; ".join(f"{d.line}:{d.column} {d.rule}: {d.message}" for d in diagnostics),
         )
     entities = {}
     ordered = sorted(documents, key=lambda d: d.name)
@@ -274,19 +274,19 @@ def model_of_documents(documents) -> RuntimeModel:
 def parse_document_set(texts, external_texts=()) -> list:
     """Parses the dbspec texts of one document set: the documents the set owns, and the external documents the set uses.
     parse_dbspec_set parses each text together with all other documents, and marks external documents as
-    external. The first diagnostic of a document is SCHEMA_INVALID."""
+    external. A document with a diagnostic is SCHEMA_INVALID with every diagnostic in the form of SCH-12."""
     for text in list(texts) + list(external_texts):
         if not isinstance(text, str):
             raise OrmError(codes.SCHEMA_INVALID, "a dbspec text is not a string")
-    documents = []
-    for entry in parse_dbspec_set(texts, external_texts):
-        if entry.document is None:
-            d = entry.diagnostics[0]
-            raise OrmError(
-                codes.SCHEMA_INVALID,
-                f"document {entry.name}: {d.rule} at {d.line}:{d.column}: {d.message}",
-            )
-        documents.append(entry.document)
+    entries = parse_dbspec_set(texts, external_texts)
+    problems = [
+        f"{d.line}:{d.column} {d.rule}: document {entry.name}: {d.message}"
+        for entry in entries
+        for d in entry.diagnostics
+    ]
+    if problems:
+        raise OrmError(codes.SCHEMA_INVALID, "; ".join(problems))
+    documents = [entry.document for entry in entries]
     return documents
 
 

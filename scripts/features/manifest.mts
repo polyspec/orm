@@ -1,5 +1,6 @@
 // contracts/features.json, the feature manifest, read against its schema (schema/features.schema.json). The rules the
 // schema cannot state (VERSION, the paths on disk, the unique ids, the shards, the fixtures) are in scripts/features/check.mts.
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseJson, readJsonFile } from '../json/schema.mts';
 
@@ -44,5 +45,35 @@ export function parseFeatures(text: string, source: string): FeatureManifest {
 
 /** readFeatures reads contracts/features.json of root against its schema; it throws a JsonError or a SchemaError. */
 export function readFeatures(root: string): FeatureManifest {
-  return readJsonFile<FeatureManifest>(resolve(root, 'contracts/features.json'), FEATURES_SCHEMA);
+  return withRecipeCases(readJsonFile<FeatureManifest>(resolve(root, 'contracts/features.json'), FEATURES_SCHEMA), root);
+}
+
+/** The part of a recipe (contracts/fixtures) that names the cases of its owners. */
+type RecipeCases = { cases: { id: string; only?: string[] }[] };
+
+// withRecipeCases fills the cases of each recipe owner from its recipe, the list of the owner (FCV-12), which the manifest
+// does not copy; a feature all of whose owners are recipe owners has the cases of those recipes as its coverage cases.
+function withRecipeCases(manifest: FeatureManifest, root: string): FeatureManifest {
+  const recipes = new Map<string, RecipeCases>();
+  for (const feature of manifest.features) {
+    const owners = Object.values(feature.coverage?.owners ?? {});
+    const whole = new Set<string>();
+    let every = owners.length > 0;
+    for (const owner of owners) {
+      const commands = Object.entries(owner.commands ?? {});
+      if (!commands.length || commands.some(([, list]) => !(list ?? []).some(command => command.recipe))) every = false;
+      for (const [database, list] of commands) {
+        for (const command of list ?? []) {
+          if (!command.recipe) continue;
+          const recipe = recipes.get(command.recipe) ?? JSON.parse(readFileSync(resolve(root, command.recipe), 'utf8')) as RecipeCases;
+          recipes.set(command.recipe, recipe);
+          const on = command.database ?? database;
+          command.cases = recipe.cases.filter(item => item.only === undefined || item.only.includes(on)).map(item => item.id);
+          command.cases.forEach(id => whole.add(id));
+        }
+      }
+    }
+    if (every && feature.coverage) feature.coverage.cases = [...whole];
+  }
+  return manifest;
 }

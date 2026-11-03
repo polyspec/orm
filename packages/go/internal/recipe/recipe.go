@@ -49,6 +49,9 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	GenSet  string                     `json:"document_set"`
+	Same    []string                   `json:"unchanged"`
+	Diff    []string                   `json:"changed"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -60,7 +63,7 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	DSN     string                     `json:"dsn"`
-	Config  dsnConfig              `json:"config"`
+	Config  dsnConfig                  `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
 	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
@@ -260,6 +263,8 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlannerColumns(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
+	case "generator.check":
+		return checkGeneratedFiles(o.dir, s)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
@@ -366,10 +371,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 
 // dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
 type dsnConfig struct {
-	PoolSize           int `json:"pool_size"`
-	PoolIdleSize       int `json:"pool_idle_size"`
-	PoolLifetimeMs     int `json:"pool_lifetime_ms"`
-	StatementTimeoutMs int `json:"statement_timeout_ms"`
+	PoolSize           int  `json:"pool_size"`
+	PoolIdleSize       int  `json:"pool_idle_size"`
+	PoolLifetimeMs     int  `json:"pool_lifetime_ms"`
+	StatementTimeoutMs int  `json:"statement_timeout_ms"`
 	TLSVersion         bool `json:"tls_version"`
 }
 
@@ -1833,7 +1838,7 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 		return fmt.Errorf("markdown.builder needs WithMarkdownBuilder")
 	}
 	var want struct {
-		Error           string `json:"error"`
+		Error   string `json:"error"`
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(s.Expect[database], &want); err != nil {

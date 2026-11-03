@@ -133,6 +133,10 @@
       "refused_message",
       "sql"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -300,14 +304,17 @@
     ],
     "transaction": [
       "audit",
+      "conflicts",
       "connection",
+      "default_retry",
       "expect",
       "fail",
       "isolation",
       "op",
       "read_only",
       "retry",
-      "steps"
+      "steps",
+      "timeout_ms"
     ],
     "model.create": [
       "as",
@@ -317,6 +324,7 @@
       "model",
       "op",
       "restore_or_create",
+      "unconnected",
       "values"
     ],
     "model.creates": [
@@ -388,6 +396,7 @@
       "key",
       "model",
       "op",
+      "unconnected",
       "where"
     ],
     "model.get_by": [
@@ -436,10 +445,13 @@
       "pick",
       "plan",
       "plan_count",
+      "plan_page",
+      "plan_sql",
       "relation",
       "relations",
       "remove_columns",
       "tuples",
+      "unconnected",
       "where"
     ],
     "events.subscribe": [
@@ -601,6 +613,7 @@
     "dbspec.runtime_model": [
       "documents",
       "expect",
+      "external",
       "op"
     ],
     "dbspec.read_file": [
@@ -646,6 +659,12 @@
       "options",
       "schema"
     ],
+    "generator.check": [
+      "changed",
+      "document_set",
+      "op",
+      "unchanged"
+    ],
     "dbspec.export_mermaid": [
       "as",
       "document",
@@ -670,6 +689,18 @@
     "hook.records": [
       "expect",
       "op"
+    ],
+    "transaction.attempts": [
+      "expect",
+      "op"
+    ],
+    "transaction.deadlock": [
+      "column",
+      "connections",
+      "expect",
+      "model",
+      "op",
+      "rows"
     ],
     "utils.aes_rotate": [
       "connection",

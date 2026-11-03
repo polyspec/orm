@@ -1015,7 +1015,7 @@ function toArray(c: Core): Record<string, unknown> {
 }
 
 /**
- * A time or datetime text of the array form has six fraction digits, zeros past the column precision: the
+ * A time or datetime text of the array and JSON forms has six fraction digits, zeros past the column precision: the
  * text the database gives has the column precision (docs/spec/protocol.md section 5, Read).
  */
 function temporalOutput(columnType: string, value: unknown): unknown {
@@ -1031,7 +1031,7 @@ function temporalOutput(columnType: string, value: unknown): unknown {
  * returns the same text.
  */
 function toJson(c: Core): Record<string, unknown> {
-  return Object.fromEntries(pairs(c).map(([k, v]) => [k, jsonValue(v)]));
+  return Object.fromEntries(pairs(c).map(([k, v]) => [k, temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', jsonValue(v))]));
 }
 
 /** A value for JSON.stringify with each bigint, at any depth, as a raw JSON number of its exact digits (COD-26). */
@@ -1069,7 +1069,7 @@ function jsonText(value: unknown): string {
 
 /** The JSON text of a row, members in row order. */
 function rowText(c: Core): string {
-  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(v)}`).join(',')}}`;
+  return `{${pairs(c).map(([k, v]) => `${JSON.stringify(k)}:${jsonText(temporalOutput(fieldOf(c.ent.entity, k)?.type ?? '', v))}`).join(',')}}`;
 }
 
 function jsonValue(value: unknown): unknown {

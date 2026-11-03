@@ -16,6 +16,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -125,6 +127,15 @@ type databaseStep struct {
 	Sequence int64 `json:"sequence"`
 	Isolation string          `json:"isolation"`
 	ReadOnly  bool            `json:"read_only"`
+	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
+	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
+	TimeoutMs    int  `json:"timeout_ms"`
+	Retry        *int `json:"retry"`
+	DefaultRetry bool `json:"default_retry"`
+	Conflicts    int  `json:"conflicts"`
+	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
+	Connections []string `json:"connections"`
+	Unconnected bool     `json:"unconnected"`
 	Amount    json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
@@ -182,6 +193,8 @@ type outcome struct {
 }
 
 type databaseContext struct {
+	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
+	attempts int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -479,8 +492,31 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if suffix, ok := expected["message_suffix"].(string); ok && !strings.HasSuffix(err.Error(), suffix) {
 			return fmt.Errorf("error message %q does not end with %q", err.Error(), suffix)
 		}
+		if message, ok := expected["message"].(string); ok && err.Error() != message {
+			return fmt.Errorf("error message %q, want %q", err.Error(), message)
+		}
+		if want, ok := expected["cause"].(string); ok {
+			cause := errors.Unwrap(err)
+			if cause == nil || cause.Error() != want {
+				return fmt.Errorf("error cause %v, want %q", cause, want)
+			}
+		}
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		}
+		if want, ok := expected["rollback"]; ok {
+			var coded *orm.Error
+			if !errors.As(err, &coded) {
+				return fmt.Errorf("error %q is not coded", err.Error())
+			}
+			joined, ok := coded.Cause.(interface{ Unwrap() []error })
+			if !ok || len(joined.Unwrap()) != 2 {
+				return fmt.Errorf("error %q does not keep the callback and rollback errors", err.Error())
+			}
+			rollback := joined.Unwrap()[1]
+			if orm.ErrorCode(rollback) != want || !strings.Contains(err.Error(), rollback.Error()) {
+				return fmt.Errorf("error %q keeps the rollback error %q, want code %v", err.Error(), rollback.Error(), want)
+			}
 		}
 		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
 			return fmt.Errorf("error %q has no driver cause", err.Error())
@@ -906,12 +942,22 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-		options := []orm.TransactionOption{orm.Retry(0)}
+		var options []orm.TransactionOption
+		switch {
+		case s.DefaultRetry:
+		case s.Retry != nil:
+			options = append(options, orm.Retry(*s.Retry))
+		default:
+			options = append(options, orm.Retry(0))
+		}
 		if s.Isolation != "" {
 			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
 		}
 		if s.ReadOnly {
 			options = append(options, orm.ReadOnly())
+		}
+		if s.TimeoutMs > 0 {
+			options = append(options, orm.TimeoutMs(s.TimeoutMs))
 		}
 		if s.Audit != nil {
 			values, err := auditValues(s.Audit, c)
@@ -920,19 +966,34 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			options = append(options, orm.Audit(values))
 		}
+		attempts := 0
 		err = db.Transaction(func() error {
+			attempts++
 			if err := runNested(s.Steps, c); err != nil {
 				return err
 			}
 			if s.Fail {
 				return errCallback
 			}
+			if attempts <= s.Conflicts {
+				return orm.TransactionConflict("the recipe conflict")
+			}
 			return nil
 		}, options...)
+		c.attempts = attempts
 		if err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "session.end":
+		if err := endSession(s.Table, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "transaction.attempts":
+		return countOutcome(int64(c.attempts)), nil
+	case "transaction.deadlock":
+		return transactionDeadlock(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err
@@ -1022,6 +1083,89 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	return requestOp(s, c)
 }
 
+// transactionDeadlock runs two flows that write two rows in opposite order (PLN-24): each flow holds its first row until
+// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
+func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
+	var keys [2]json.RawMessage
+	if err := json.Unmarshal(s.Rows, &keys); err != nil {
+		return outcome{}, err
+	}
+	// flowWrite writes the name of a flow to one row through the model.update of this helper.
+	flowWrite := func(connection string, key json.RawMessage, name string) error {
+		set, err := json.Marshal(map[string]any{s.Column: map[string]any{"text": name}})
+		if err != nil {
+			return err
+		}
+		_, err = modelOp(databaseStep{Op: "model.update", Connection: connection, Model: s.Model, Key: key, Set: set}, c)
+		return err
+	}
+	var held sync.WaitGroup
+	held.Add(2)
+	var attempts, deadlocks atomic.Int64
+	errs := make([]error, 2)
+	var flows sync.WaitGroup
+	for i, connection := range s.Connections {
+		flows.Add(1)
+		go func() {
+			defer flows.Done()
+			db, err := connectionOf(databaseStep{Connection: connection}, c)
+			if err != nil {
+				held.Done()
+				errs[i] = err
+				return
+			}
+			name := fmt.Sprintf("flow-%d", i)
+			run := 0
+			errs[i] = db.Transaction(func() error {
+				run++
+				attempts.Add(1)
+				first := flowWrite(connection, keys[i], name)
+				if run == 1 {
+					held.Done()
+					held.Wait()
+				}
+				if first != nil {
+					return first
+				}
+				second := flowWrite(connection, keys[1-i], name)
+				if run == 1 && orm.ErrorCode(second) == orm.CodeDeadlock {
+					deadlocks.Add(1)
+				}
+				return second
+			}, orm.Isolation(orm.ReadCommitted), orm.Retry(3))
+		}()
+	}
+	flows.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return outcome{}, err
+		}
+	}
+	db, err := connectionOf(databaseStep{Connection: s.Connections[0]}, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	var names [2]string
+	for i, raw := range keys {
+		key, err := modelValues(raw, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := compositeAccountRows(db, key)
+		if err != nil {
+			return outcome{}, err
+		}
+		if names[i], err = rows[0].GetName(); err != nil {
+			return outcome{}, err
+		}
+	}
+	return outcome{fields: map[string]any{
+		"attempts":  attempts.Load(),
+		"deadlocks": deadlocks.Load(),
+		"same_flow": names[0] == names[1] && (names[0] == "flow-0" || names[0] == "flow-1"),
+	}}, nil
+}
+
 // connectionOf is the connection that an op names with its connection field, or the case connection when the field is
 // empty (FCV-4).
 func connectionOf(s databaseStep, c *databaseContext) (*orm.DB, error) {
@@ -1045,10 +1189,40 @@ func okOutcome() outcome {
 }
 
 // runNested runs the nested steps of a statements.count or transaction op, each with its own expect (FCV-4).
+// endSession ends the server session that holds a lock on table in the case database (session.end, CFG-15). It connects
+// to that database through the server DSN, not a pooler, which may handle KILL on its own.
+func endSession(table string, c *databaseContext) error {
+	variable := "ORM_TEST_" + strings.ToUpper(c.database) + "_SERVER_DSN"
+	server := os.Getenv(variable)
+	if server == "" {
+		return fmt.Errorf("%s is required; database tests never skip", variable)
+	}
+	raw := testdb.Open(c.t, c.database, testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, c.dsn)))
+	defer testcase.Close(c.t, raw)
+	var id int64
+	if c.database == "postgres" {
+		if err := raw.QueryRow(fmt.Sprintf(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '%s' AND l.pid <> pg_backend_pid() LIMIT 1`, table)).Scan(&id); err != nil {
+			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+		}
+		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		return err
+	}
+	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
+		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+	}
+	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
+	return err
+}
+
 func runNested(raw []json.RawMessage, c *databaseContext) error {
 	for index, nested := range raw {
 		op, err := runRawStep(nested, c)
 		if err != nil {
+			// The error of a public call reaches the enclosing callback as the call returned it, so that a ROLLBACK
+			// message names it (CFG-15).
+			if orm.ErrorCode(err) != "" {
+				return err
+			}
 			return fmt.Errorf("nested step %d (%s): %w", index, op, err)
 		}
 	}

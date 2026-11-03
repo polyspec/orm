@@ -41,6 +41,7 @@ from polyspec.orm import (
     connect_catalog,
     orm,
     register_model,
+    codes,
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
@@ -83,7 +84,8 @@ from . import chain_answer, testcase
 from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
-from .recipe_generator import check_generator
+from .recipe_generator import check_generated_files, check_generator
+from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
@@ -180,6 +182,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "generator.generate":
                     check_generator(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "generator.check":
+                    check_generated_files(step, ROOT / Path(path).parent)
                     continue
                 if step["op"] in _DBSPEC_OPS:
                     _dbspec(step, bound, database)
@@ -763,6 +768,16 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
+            # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+            if "diagnostics" in expect:
+                prefix = f"{expect['error']}: "
+                if not str(error).startswith(prefix):
+                    raise AssertionError(f"the error {error} does not start with its code")
+                problems = str(error)[len(prefix):].split("; ")
+                _expect_equal(len(problems), len(expect["diagnostics"]), str(error))
+                for problem, want in zip(problems, expect["diagnostics"]):
+                    if not problem.startswith(f"{want}: "):
+                        raise AssertionError(f"the error {error} does not hold the diagnostic {want}")
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],
@@ -773,9 +788,15 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 built, _ = dbspec_manifest(documents)
                 _expect_equal(built.manifest_hash, expect["manifest_hash"], "manifest hash")
     elif op == "dbspec.runtime_model":
-        texts = [(directory / path).read_bytes().decode("utf-8") for path in step["documents"]]
-        model = model_of_documents(parse_document_set(texts))
+        def read(paths):
+            return [(directory / path).read_bytes().decode("utf-8") for path in paths]
+
+        model = model_of_documents(parse_document_set(read(step["documents"]), read(step.get("external", []))))
         _expect_equal(list(model.entities), expect["entities"], "entities")
+        if "manifest_text" in expect:
+            _expect_equal(model.manifest_text, "\n".join(expect["manifest_text"]) + "\n", "manifest text")
+        if "manifest_hash" in expect:
+            _expect_equal(model.manifest_hash, expect["manifest_hash"], "manifest hash")
         for name, values in expect.get("models", {}).items():
             entity = model.entities[name]
             got = {
@@ -794,6 +815,7 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                         "nullable": f.nullable,
                         "default": f.has_default,
                         "default_now": f.default_now,
+                        "select_explicit": not f.selected,
                         "codec": list(f.stages),
                         "blind_index": f.blind_index,
                         "primary_key": f.primary,
@@ -2447,6 +2469,36 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+def _op_session_end(step: dict, context: dict) -> dict:
+    """Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+    handle KILL on its own."""
+    database, table = context["database"], step["table"]
+    variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
+    server = os.environ.get(variable)
+    if not server:
+        raise AssertionError(f"{variable} is required; database tests never skip")
+    session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
+    query = (
+        f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"
+        if database == "postgres"
+        else f"SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1"
+    )
+    rows = native_query(database, session, [query])[0]
+    if len(rows) != 1:
+        raise AssertionError(f"the transaction session holds a lock on {table}: {rows}")
+    session_id = int(next(iter(rows[0].values())))
+    native_query(
+        database,
+        session,
+        [
+            f"SELECT pg_terminate_backend({session_id}, 5000)"
+            if database == "postgres"
+            else f"KILL {session_id}"
+        ],
+    )
+    return {}
+
+
 # The statement that every client runs on a new connection (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
 _DDL_CONNECTION_RULES = {
     "mysql": "SET time_zone = '+00:00'",
@@ -2927,7 +2979,11 @@ def _chain_built(step: dict, context: dict) -> Model:
     if "from" in step:
         return _by_key(_bound_value(step["from"], context), step, context)
     db = _connection_of(step, context)
-    model = _new_row(context, db, step["model"])
+    model = (
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"])
+    )
     build = _ChainBuild(context)
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
@@ -3013,10 +3069,15 @@ def _table_model_query(step: dict, context: dict) -> dict:
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
     if step.get("plan") is True:
-        limit = step["limit"]
-        steps = model.get_page_plan_steps(
-            limit["offset"] // limit["count"] + 1, limit["count"]
-        )
+        if "plan_page" in step:
+            steps = model.get_page_plan_steps(
+                step["plan_page"]["page"], step["plan_page"]["per_page"]
+            )
+        else:
+            limit = step["limit"]
+            steps = model.get_page_plan_steps(
+                limit["offset"] // limit["count"] + 1, limit["count"]
+            )
         return {
             "json": [
                 {
@@ -3026,6 +3087,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
+                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
                 }
                 for plan_step in steps
             ]
@@ -3564,6 +3626,8 @@ _DATABASE_OPS = {
     ),
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
+    "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
+    "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
@@ -3581,6 +3645,7 @@ _DATABASE_OPS = {
     "catalog.insert_row": _op_insert_row,
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
+    "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
@@ -3624,11 +3689,27 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
             ) from error
+        message = expected.get("message")
+        if message is not None and str(error) != message:
+            raise AssertionError(
+                f"error message {str(error)!r}, want {message!r}"
+            ) from error
+        cause = expected.get("cause")
+        if cause is not None and str(error.cause) != cause:
+            raise AssertionError(
+                f"error cause {error.cause!r}, want {cause!r}"
+            ) from error
         holds = expected.get("message_holds")
         if holds is not None and holds not in str(error):
             raise AssertionError(
                 f"error message {str(error)!r} does not hold {holds!r}"
             ) from error
+        if "rollback" in expected:
+            rollback = error.rollback
+            if rollback.code != expected["rollback"] or str(rollback) not in str(error):
+                raise AssertionError(
+                    f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
+                ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"
@@ -3920,22 +4001,115 @@ def _op_statements_count(step: dict, context: dict) -> dict:
 
 
 def _op_transaction(step: dict, context: dict) -> dict:
+    attempts = [0]
+
     def run() -> None:
+        attempts[0] += 1
         for nested in step["steps"]:
             _run_database_step(nested, context)
         if step.get("fail"):
             raise CallbackError("the transaction callback failed")
+        if attempts[0] <= step.get("conflicts", 0):
+            raise transaction_conflict("the recipe conflict")
 
-    # The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-    options = {"retry": 0}
+    # The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG. An absent
+    # retry passes 0 unless default_retry leaves it out (INT-43).
+    options = {} if step.get("default_retry") else {"retry": step.get("retry", 0)}
     if "isolation" in step:
         options["isolation"] = step["isolation"]
     if step.get("read_only") is True:
         options["readOnly"] = True
+    if "timeout_ms" in step:
+        options["timeoutMs"] = step["timeout_ms"]
     if "audit" in step:
         options["audit"] = dict(_assignments(step["audit"], context))
-    _connection_of(step, context).transaction(run, options)
+    try:
+        _connection_of(step, context).transaction(run, options)
+    finally:
+        context["attempts"] = attempts[0]
     return {"value": {"bool": True}}
+
+
+def _op_transaction_attempts(_: dict, context: dict) -> dict:
+    return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_transaction_deadlock(step: dict, context: dict) -> dict:
+    """Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so
+    the database ends one flow with its deadlock error, the client retries it, and both commit."""
+    held = threading.Barrier(2)
+    counted = {"attempts": 0, "deadlocks": 0}
+    guard = threading.Lock()
+    errors: list[BaseException] = []
+
+    def write(connection: str, key: dict, name: str) -> None:
+        _MODEL_OPS["model.update"](
+            {
+                "op": "model.update",
+                "connection": connection,
+                "model": step["model"],
+                "key": key,
+                "set": {step["column"]: {"text": name}},
+            },
+            context,
+        )
+
+    def flow(index: int, connection: str) -> None:
+        name = f"flow-{index}"
+        runs = [0]
+
+        def callback() -> None:
+            runs[0] += 1
+            first = runs[0] == 1
+            with guard:
+                counted["attempts"] += 1
+            try:
+                write(connection, step["rows"][index], name)
+            finally:
+                if first:
+                    held.wait()
+            try:
+                write(connection, step["rows"][1 - index], name)
+            except OrmError as error:
+                if first and error.code == codes.DEADLOCK:
+                    with guard:
+                        counted["deadlocks"] += 1
+                raise
+
+        try:
+            _bound_value(connection, context).transaction(
+                callback, {"isolation": "read_committed", "retry": 3}
+            )
+        except BaseException as error:  # noqa: BLE001 - the step reports the error of a flow after both end
+            errors.append(error)
+
+    threads = [
+        threading.Thread(target=flow, args=(index, connection))
+        for index, connection in enumerate(step["connections"])
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+    names = [
+        _MODEL_OPS["model.get_by"](
+            {
+                "op": "model.get_by",
+                "connection": step["connections"][0],
+                "model": step["model"],
+                "key": key,
+                "columns": [step["column"]],
+            },
+            context,
+        )["rows"][0][0]["text"]
+        for key in step["rows"]
+    ]
+    return {
+        **counted,
+        "same_flow": names[0] == names[1] and names[0] in ("flow-0", "flow-1"),
+    }
 
 
 def _audit_source_of(step: dict, context: dict) -> dict:

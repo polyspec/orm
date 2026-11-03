@@ -18,7 +18,8 @@
     "PLN-44",
     "INT-60",
     "INT-75",
-    "INT-131"
+    "INT-131",
+    "COD-7"
   ],
   "fixture": "contracts/fixtures/aes_rotation/dbspec-set.json",
   "cases": [
@@ -3632,6 +3633,495 @@
             },
             "sqlite": {
               "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ordered_json_column_round_trip_and_rotation",
+      "requirements": [
+        "COD-7"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "first",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "first",
+          "model": "SecretConfig",
+          "values": {
+            "config": {
+              "object": [
+                [
+                  "z",
+                  {
+                    "object": []
+                  }
+                ],
+                [
+                  "a",
+                  {
+                    "array": []
+                  }
+                ],
+                [
+                  "token",
+                  {
+                    "text": "s3cret-token"
+                  }
+                ],
+                [
+                  "nested",
+                  {
+                    "object": [
+                      [
+                        "second",
+                        {
+                          "int": "2"
+                        }
+                      ],
+                      [
+                        "first",
+                        {
+                          "float": "1.50"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "first",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "first",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "both",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "both",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "utils.aes_rotate",
+          "connection": "both",
+          "model": "SecretConfig",
+          "keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 2
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "both",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "2"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "second",
+          "aes_keyring": {
+            "versions": {
+              "2": "config-key-two"
+            },
+            "current": 2
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "second",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "postgres": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            },
+            "sqlite": {
+              "json": "{\"z\":{},\"a\":[],\"token\":\"s3cret-token\",\"nested\":{\"second\":2,\"first\":1.50}}"
+            }
+          }
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "back",
+          "aes_keyring": {
+            "versions": {
+              "1": "config-key-one",
+              "2": "config-key-two"
+            },
+            "current": 1
+          }
+        },
+        {
+          "op": "model.update",
+          "connection": "back",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "set": {
+            "config": {
+              "object": [
+                [
+                  "token",
+                  {
+                    "text": "next-token"
+                  }
+                ],
+                [
+                  "list",
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "two"
+                      },
+                      {
+                        "nil": true
+                      }
+                    ]
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "back",
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [
+                "secret_config"
+              ],
+              "sql": {
+                "mysql": "SELECT aes_key_version, HEX(LEFT(config, 9)), LOCATE('s3cret-token', config) FROM secret_config WHERE seq = 1",
+                "postgres": "SELECT aes_key_version, upper(encode(substring(config from 1 for 9), 'hex')), position('s3cret-token'::bytea in config) FROM secret_config WHERE seq = 1",
+                "sqlite": "SELECT aes_key_version, hex(substr(config, 1, 9)), instr(config, CAST('s3cret-token' AS BLOB)) FROM secret_config WHERE seq = 1"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "text": "4F524D2D4145533200"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "first",
+          "model": "SecretConfig",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": "all",
+          "ordered_text": "config",
+          "expect": {
+            "mysql": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
+            },
+            "postgres": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
+            },
+            "sqlite": {
+              "json": "{\"token\":\"next-token\",\"list\":[1,\"two\",null]}"
             }
           }
         }

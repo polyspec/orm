@@ -7,6 +7,7 @@
     "DBS-108",
     "DBS-119",
     "DBS-120",
+    "INT-96",
     "SCH-7",
     "SCH-11"
   ],
@@ -4577,7 +4578,8 @@
       "requirements": [
         "INT-55",
         "INT-77",
-        "INT-91"
+        "INT-91",
+        "INT-96"
       ],
       "install": false,
       "steps": [
@@ -4612,13 +4614,19 @@
           },
           "expect": {
             "mysql": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             },
             "postgres": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             },
             "sqlite": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             }
           }
         },
@@ -5761,24 +5769,7 @@
         },
         {
           "op": "schema.install",
-          "connection": "owner",
-          "expect": {
-            "mysql": {
-              "value": {
-                "bool": true
-              }
-            },
-            "postgres": {
-              "value": {
-                "bool": true
-              }
-            },
-            "sqlite": {
-              "value": {
-                "bool": true
-              }
-            }
-          }
+          "connection": "owner"
         },
         {
           "op": "model.create",
