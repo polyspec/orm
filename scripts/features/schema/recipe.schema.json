@@ -3877,6 +3877,14 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "key_by": {
+                "description": "The column that keys the collection of the result (PRT-35).",
+                "$ref": "#/$defs/name"
+              },
+              "group_value": {
+                "description": "The result is Value of this name on the first group row of the count aggregate (INT-31).",
+                "$ref": "#/$defs/name"
+              },
               "order": {
                 "$ref": "#/$defs/orderList"
               },
@@ -7052,6 +7060,19 @@
         },
         "where": {
           "$ref": "#/$defs/predicate"
+        },
+        "columns": {
+          "$ref": "#/$defs/columnChoice"
+        },
+        "add_columns": {
+          "$ref": "#/$defs/columnList"
+        },
+        "order": {
+          "$ref": "#/$defs/orderList"
+        },
+        "force_index": {
+          "description": "The index that the joined table is read through (DSL-90).",
+          "$ref": "#/$defs/name"
         }
       }
     },

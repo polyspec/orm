@@ -1373,6 +1373,8 @@ class ChainBuild {
       else m.limit(q.limit.offset ?? 0, q.limit.count);
     }
     if (q.lock !== undefined) m[CORE].lock = q.lock;
+    if (q.force_index !== undefined) m[CORE].index = q.force_index;
+    if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
   }
 
   /** The child model of a relation. */
@@ -1490,6 +1492,11 @@ const TABLE_OPS = {
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
+    if (s.group_value !== undefined) {
+      const [row] = await m.getsCount();
+      if (row === undefined) throw new Error(`group_value ${s.group_value}: the aggregate has no group row`);
+      return { json: plainJson(row.value(s.group_value)) };
+    }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
     if (s.page === true) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;

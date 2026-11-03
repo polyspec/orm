@@ -2302,6 +2302,10 @@ class _ChainBuild:
                 model.limit(limit.get("offset", 0), limit["count"])
         if "lock" in q:
             model.core.lock = q["lock"]
+        if "force_index" in q:
+            model.core.index = q["force_index"]
+        if "key_by" in q:
+            model.core.key_name = q["key_by"]
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -2468,6 +2472,13 @@ def _table_model_query(step: dict, context: dict) -> dict:
             return {"json": model.get_sum()}
         if aggregate["agg"] == "avg":
             return {"json": model.get_avg()}
+        if "group_value" in step:
+            rows = list(model.gets_count())
+            if not rows:
+                raise AssertionError(
+                    f"group_value {step['group_value']}: the aggregate has no group row"
+                )
+            return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
     if step.get("page") is True:
         limit = step.get("limit")

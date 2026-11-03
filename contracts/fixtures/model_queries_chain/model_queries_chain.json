@@ -1,0 +1,1076 @@
+{
+ "$schema": "../../../scripts/features/schema/recipe.schema.json",
+ "requirements": [
+  "DSL-62",
+  "DSL-73",
+  "DSL-74",
+  "DSL-76",
+  "DSL-80",
+  "DSL-90",
+  "DSL-99",
+  "INT-31",
+  "INT-33",
+  "INT-36",
+  "INT-87",
+  "PRT-35"
+ ],
+ "fixture": "contracts/fixtures/model_chain/dbspec-set.json",
+ "seed": {
+  "rows": {
+   "user": [
+    {
+     "name": {
+      "text": "user-1"
+     }
+    },
+    {
+     "name": {
+      "text": "user-2"
+     }
+    }
+   ],
+   "service_member": [
+    {
+     "service_seq": {
+      "int": "7"
+     },
+     "user_seq": {
+      "int": "1"
+     }
+    },
+    {
+     "service_seq": {
+      "int": "7"
+     },
+     "user_seq": {
+      "int": "2"
+     }
+    },
+    {
+     "service_seq": {
+      "int": "8"
+     },
+     "user_seq": {
+      "int": "2"
+     }
+    }
+   ],
+   "author": [
+    {
+     "name": {
+      "text": "author-1"
+     },
+     "user_seq": {
+      "int": "1"
+     },
+     "service_member_seq": {
+      "int": "1"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "10"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     }
+    },
+    {
+     "name": {
+      "text": "author-2"
+     },
+     "user_seq": {
+      "int": "1"
+     },
+     "service_member_seq": {
+      "int": "1"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "20"
+     },
+     "is_close": {
+      "bool": true
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     },
+     "price": {
+      "mysql": {
+       "decimal": "1.500"
+      },
+      "postgres": {
+       "decimal": "1.500"
+      },
+      "sqlite": {
+       "int": "1500"
+      }
+     }
+    },
+    {
+     "name": {
+      "text": "author-3"
+     },
+     "user_seq": {
+      "int": "2"
+     },
+     "service_member_seq": {
+      "int": "2"
+     },
+     "service_seq": {
+      "int": "7"
+     },
+     "read_count": {
+      "int": "30"
+     },
+     "is_close": {
+      "bool": false
+     },
+     "is_display": {
+      "bool": false
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     },
+     "price": {
+      "mysql": {
+       "decimal": "1.500"
+      },
+      "postgres": {
+       "decimal": "1.500"
+      },
+      "sqlite": {
+       "int": "1500"
+      }
+     }
+    },
+    {
+     "name": {
+      "text": "author-4"
+     },
+     "user_seq": {
+      "int": "2"
+     },
+     "service_member_seq": {
+      "int": "3"
+     },
+     "service_seq": {
+      "int": "8"
+     },
+     "read_count": {
+      "int": "40"
+     },
+     "is_close": {
+      "bool": true
+     },
+     "is_display": {
+      "bool": true
+     },
+     "start_dt": {
+      "datetime": "2026-06-01 00:00:00.000000"
+     }
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "id": "page_holds_the_first_rows_and_the_total",
+   "requirements": [
+    "INT-36",
+    "DSL-99"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "order": [
+      "-seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "page": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [
+         3,
+         2
+        ],
+        "total": 3,
+        "pages": 2,
+        "page": 1,
+        "per_page": 2
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "sum_of_a_column",
+   "requirements": [
+    "DSL-62"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "aggregate": {
+      "agg": "sum",
+      "column": "read_count"
+     },
+     "expect": {
+      "mysql": {
+       "json": 60
+      },
+      "postgres": {
+       "json": 60
+      },
+      "sqlite": {
+       "json": 60
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "function_column_is_keyed_by_its_alias",
+   "requirements": [
+    "DSL-73"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      {
+       "expr": {
+        "fn": "year",
+        "args": [
+         {
+          "column": "start_dt"
+         }
+        ]
+       },
+       "as": "start_year"
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "remove_all_columns_keeps_the_keys_and_the_added_column",
+   "requirements": [
+    "DSL-76"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "name": "author-1",
+        "user_seq": 1,
+        "service_member_seq": 1
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "removing_an_added_column_keeps_the_function_column",
+   "requirements": [
+    "DSL-76",
+    "DSL-73"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "name",
+      {
+       "expr": {
+        "fn": "year",
+        "args": [
+         {
+          "column": "start_dt"
+         }
+        ]
+       },
+       "as": "start_year"
+      }
+     ],
+     "remove_columns": [
+      "name"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "postgres": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      },
+      "sqlite": {
+       "json": {
+        "seq": 1,
+        "user_seq": 1,
+        "service_member_seq": 1,
+        "start_year": 2026
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "joined_child_keeps_its_scalar_subquery_order_and_index",
+   "requirements": [
+    "DSL-74",
+    "DSL-90",
+    "INT-33"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "joins": [
+      {
+       "model": "ServiceMember",
+       "match": [
+        "service_member_seq",
+        "seq"
+       ],
+       "force_index": "ix_service_member_service"
+      },
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "add_columns": [
+        {
+         "expr": {
+          "sub": {
+           "model": "Author",
+           "aggregate": {
+            "agg": "sum",
+            "column": "read_count"
+           },
+           "where": {
+            "user_seq": {
+             "eq": {
+              "outer": "seq"
+             }
+            }
+           }
+          }
+         },
+         "as": "read_total"
+        }
+       ],
+       "order": [
+        "-seq"
+       ]
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "json": {
+        "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`read_count` AS `a__read_count`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`price` AS `a__price`, `service_member_model`.`seq` AS `service_member_model__seq`, `service_member_model`.`service_seq` AS `service_member_model__service_seq`, `service_member_model`.`user_seq` AS `service_member_model__user_seq`, `user_model`.`seq` AS `user_model__seq`, `user_model`.`name` AS `user_model__name`, (SELECT COALESCE(SUM(`s1`.`read_count`), 0) FROM `author` AS `s1` WHERE `s1`.`user_seq` = `user_model`.`seq`) AS `user_model__read_total` FROM `author` AS `a` INNER JOIN `service_member` AS `service_member_model` FORCE INDEX (`ix_service_member_service`) ON `a`.`service_member_seq` = `service_member_model`.`seq` INNER JOIN `user` AS `user_model` ON `a`.`user_seq` = `user_model`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `user_model`.`seq` DESC",
+        "binds": [
+         7
+        ]
+       }
+      },
+      "postgres": {
+       "json": {
+        "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"price\" AS \"a__price\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\", \"user_model\".\"seq\" AS \"user_model__seq\", \"user_model\".\"name\" AS \"user_model__name\", (SELECT COALESCE(SUM(\"s1\".\"read_count\"), 0) FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total\" FROM \"author\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" ON \"a\".\"service_member_seq\" = \"service_member_model\".\"seq\" INNER JOIN \"user\" AS \"user_model\" ON \"a\".\"user_seq\" = \"user_model\".\"seq\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"user_model\".\"seq\" DESC",
+        "binds": [
+         7
+        ]
+       }
+      },
+      "sqlite": {
+       "json": {
+        "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"price\" AS \"a__price\", \"service_member_model\".\"seq\" AS \"service_member_model__seq\", \"service_member_model\".\"service_seq\" AS \"service_member_model__service_seq\", \"service_member_model\".\"user_seq\" AS \"service_member_model__user_seq\", \"user_model\".\"seq\" AS \"user_model__seq\", \"user_model\".\"name\" AS \"user_model__name\", (SELECT COALESCE(SUM(\"s1\".\"read_count\"), 0) FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"user_model\".\"seq\") AS \"user_model__read_total\" FROM \"author\" AS \"a\" INNER JOIN \"service_member\" AS \"service_member_model\" INDEXED BY \"ix_service_member_service\" ON \"a\".\"service_member_seq\" = \"service_member_model\".\"seq\" INNER JOIN \"user\" AS \"user_model\" ON \"a\".\"user_seq\" = \"user_model\".\"seq\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"user_model\".\"seq\" DESC",
+        "binds": [
+         7
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "joins": [
+      {
+       "model": "User",
+       "match": [
+        "user_seq",
+        "seq"
+       ],
+       "add_columns": [
+        {
+         "expr": {
+          "sub": {
+           "model": "Author",
+           "columns": [
+            "read_count"
+           ],
+           "where": {
+            "user_seq": {
+             "eq": {
+              "outer": "seq"
+             }
+            }
+           },
+           "order": [
+            "seq"
+           ],
+           "limit": {
+            "offset": 0,
+            "count": 1
+           }
+          }
+         },
+         "as": "first_read"
+        }
+       ],
+       "order": [
+        "-seq"
+       ]
+      }
+     ],
+     "pick": [
+      "user_model"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "first_read": 30,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "first_read": 30,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "user_model": {
+          "name": "user-2",
+          "first_read": 30,
+          "seq": 2
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        },
+        {
+         "user_model": {
+          "name": "user-1",
+          "first_read": 10,
+          "seq": 1
+         }
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "null_collection_key_is_refused_after_one_select",
+   "requirements": [
+    "PRT-35"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "columns": [
+      "price"
+     ],
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "key_by": "price",
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "statements",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`price` AS `a__price` FROM `author` AS `a` WHERE `a`.`seq` = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"price\" AS \"a__price\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"price\" AS \"a__price\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "group_rows_keep_their_types_and_their_null",
+   "requirements": [
+    "INT-31"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq"
+      ]
+     },
+     "order": [
+      "service_seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "price"
+      ]
+     },
+     "order": [
+      "price"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "group_value": "name",
+     "expect": {
+      "mysql": {
+       "error": "COLUMN_UNSELECTED"
+      },
+      "postgres": {
+       "error": "COLUMN_UNSELECTED"
+      },
+      "sqlite": {
+       "error": "COLUMN_UNSELECTED"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "relation_loads_the_child_of_a_row",
+   "requirements": [
+    "DSL-80",
+    "INT-87"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "relations": [
+      {
+       "model": "User",
+       "match": [
+        [
+         "user_seq",
+         "seq"
+        ]
+       ]
+      }
+     ],
+     "pick": [
+      "user_model"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "user_model": {
+         "seq": 1,
+         "name": "user-1"
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

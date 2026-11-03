@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The chains of the generated-model queries are the cases of the recipe `model_queries_chain` on the builder of every runtime: page and total, sum, function column, removed columns, join with its index and subquery, relation, a NULL collection key and group rows; the coverage tests of the feature are removed, and PRT-35 fixes the code of a NULL key, not its message
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)
 - The recipe schema names `query.search_chain` in its step union, declares `message_suffix` on the catalog errors, and every recipe of the parity suites is valid against it. The audit recipe finds a restored row by the actor of its audit record, not by a key number. The feature tests hold again after the tests and owners that other rows removed. (#T334-3-4-13)

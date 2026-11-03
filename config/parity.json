@@ -313,7 +313,6 @@
         "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
         "packages/php/tests/CoverageCompositeKeysCase.php",
-        "packages/php/tests/CoverageModelQueriesCase.php",
         "packages/php/tests/CoverageModelWritesCase.php",
         "packages/php/tests/Cpx5DuplicateRelationCases.php",
         "packages/php/tests/DatabaseTestAssertions.php",
@@ -4489,56 +4488,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelQueryRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelQueryRows",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/page_holds_the_first_rows_and_the_total"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::testModelQueryRows"
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "model_query_rows"
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "page_holds_the_first_rows_and_the_total"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "page_holds_the_first_rows_and_the_total"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
-          ]
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::page_holds_the_first_rows_and_the_total"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/sum_of_a_column"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "sum_of_a_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "sum_of_a_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::sum_of_a_column"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/relation_loads_the_child_of_a_row"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "relation_loads_the_child_of_a_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "relation_loads_the_child_of_a_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::relation_loads_the_child_of_a_row"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::joined_child_keeps_its_scalar_subquery_order_and_index"
         }
       ]
     },
@@ -4550,62 +4586,39 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelQueryRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelQueryRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::testModelQueryRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "model_query_rows"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_subqueries.py",
           "id": "test_read_total_is_the_sum_of_the_correlated_rows"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "joined_child_keeps_its_scalar_subquery_order_and_index"
+        },
+        {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
-          ]
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::joined_child_keeps_its_scalar_subquery_order_and_index"
         }
       ]
     },
@@ -4617,67 +4630,44 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelQueryRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelQueryRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::testModelQueryRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::testModelQueryRows"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
           "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "model_query_rows"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
-          ]
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_alias_columns.py",
           "id": "test_alias_column_is_keyed_by_its_snake_case_name"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/function_column_is_keyed_by_its_alias"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "function_column_is_keyed_by_its_alias"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "function_column_is_keyed_by_its_alias"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::function_column_is_keyed_by_its_alias"
         }
       ]
     },
@@ -12565,11 +12555,6 @@
           "id": "conditions"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
           "id": "conditions",
@@ -12585,6 +12570,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=conditions"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_condition_connectors_and_refusals"
         }
       ]
     },
@@ -12617,11 +12607,6 @@
           "id": "conditions"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
           "id": "conditions",
@@ -12637,6 +12622,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=conditions"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_condition_connectors_and_refusals"
         }
       ]
     },
@@ -12670,11 +12660,6 @@
           "id": "columnsAndSubqueries"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
           "id": "columns_and_subqueries",
@@ -12690,6 +12675,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=columns_and_subqueries"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_group_and_page"
         }
       ]
     },
@@ -24380,56 +24370,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageCollectionNullIdentity",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCollectionNullIdentity",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/null_collection_key_is_refused_after_one_select"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::testCollectionNullIdentity"
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::testCollectionNullIdentity"
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "collection_null_identity"
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "null_collection_key_is_refused_after_one_select"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_collection_null_identity"
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "null_collection_key_is_refused_after_one_select"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_collection_null_identity",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_collection_null_identity"
-          ]
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::null_collection_key_is_refused_after_one_select"
         }
       ]
     },
@@ -28302,11 +28269,6 @@
           "id": "joinsAndRelations"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_model_query_rows"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration_program/main.rs",
           "id": "joins_and_relations",
@@ -28322,6 +28284,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=joins_and_relations"
           ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite.py",
+          "id": "test_joined_child_refuses_its_own_connection"
         }
       ]
     },
@@ -28997,22 +28964,6 @@
           "id": "TestGroupRowsDatabase"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageGroupRowsDatabase",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageGroupRowsDatabase",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsDbTest.php",
           "id": "GroupRowsDbTest::testGroupRows"
@@ -29058,6 +29009,36 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
           ]
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/group_rows_keep_their_types_and_their_null"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "group_rows_keep_their_types_and_their_null"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "group_rows_keep_their_types_and_their_null"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::group_rows_keep_their_types_and_their_null"
         }
       ]
     },
@@ -30372,62 +30353,59 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelRemoveColumns",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelRemoveColumns",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::testRemoveColumnsKeysAndAddedColumn"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
-          "id": "CoverageModelQueriesExtensionTest::testRemoveColumnsKeysAndAddedColumn"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "remove_columns_keys_and_added_column"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "test_remove_columns_keys_and_added_column"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_remove_columns",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_remove_columns"
-          ]
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/test_remove_columns.py",
           "id": "test_keys_and_the_added_column_only"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/remove_all_columns_keeps_the_keys_and_the_added_column"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "remove_all_columns_keeps_the_keys_and_the_added_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "remove_all_columns_keeps_the_keys_and_the_added_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::remove_all_columns_keeps_the_keys_and_the_added_column"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "id": "TestRecipeModelQueriesChainSqlite/removing_an_added_column_keeps_the_function_column"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs",
+          "id": "removing_an_added_column_keeps_the_function_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py",
+          "id": "removing_an_added_column_keeps_the_function_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "id": "model_queries_chain_sqlite::removing_an_added_column_keeps_the_function_column"
         }
       ]
     },
@@ -42561,6 +42539,207 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_sqlite.rs",
           "symbol": "model_queries_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "model_queries_chain-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-90",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "INT-36",
+        "INT-87",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries_chain/model_queries_chain.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "symbol": "TestRecipeModelQueriesChainMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_mysql.rs",
+          "symbol": "model_queries_chain_mysql"
+        }
+      ]
+    },
+    {
+      "id": "model_queries_chain-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-90",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "INT-36",
+        "INT-87",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries_chain/model_queries_chain.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "symbol": "TestRecipeModelQueriesChainPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_postgres.rs",
+          "symbol": "model_queries_chain_postgres"
+        }
+      ]
+    },
+    {
+      "id": "model_queries_chain-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DSL-57",
+        "DSL-58",
+        "DSL-60",
+        "DSL-62",
+        "DSL-73",
+        "DSL-74",
+        "DSL-76",
+        "DSL-80",
+        "DSL-82",
+        "DSL-90",
+        "DSL-99",
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-31",
+        "INT-32",
+        "INT-33",
+        "INT-36",
+        "INT-87",
+        "PLN-11",
+        "PLN-25",
+        "PRT-35",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/model_queries_chain/model_queries_chain.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_model_queries_chain_test.go",
+          "symbol": "TestRecipeModelQueriesChainSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelQueriesChainRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ModelQueriesChainRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ModelQueriesChainRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_queries_chain-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_queries_chain_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
+          "symbol": "model_queries_chain_sqlite"
         }
       ]
     },

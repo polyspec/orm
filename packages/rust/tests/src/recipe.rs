@@ -3686,6 +3686,12 @@ mod tables {
             if let Some(mode) = q["lock"].as_str() {
                 core.lock(leaked(mode));
             }
+            if let Some(name) = q["force_index"].as_str() {
+                core.force_index(name);
+            }
+            if let Some(column) = q["key_by"].as_str() {
+                core.key_name(column);
+            }
             Ok(())
         }
 
@@ -3955,6 +3961,12 @@ mod tables {
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
             let root = TableRow::from_core(core);
+            if let Some(name) = step["group_value"].as_str() {
+                let groups = gets_count(&root).await.map_err(orm)?;
+                let row = groups.iter().next().ok_or_else(|| format!("group_value {name}: the aggregate has no group row"))?;
+                row.value(name).map_err(orm)?;
+                return Ok(json!({ "json": row.to_array().map_err(orm)?[name].clone() }));
+            }
             if let Some(aggregate) = step.get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
                     Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),

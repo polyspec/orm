@@ -35,6 +35,7 @@ type chainQuery struct {
 	Aggregate     *chainAggregate   `json:"aggregate"`
 	Joins         []chainJoin       `json:"joins"`
 	Relations     []chainRelation   `json:"relations"`
+	ForceIndex    string            `json:"force_index"`
 }
 
 type chainOrder struct {
@@ -112,6 +113,8 @@ type chainStep struct {
 	As              string                     `json:"as"`
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
+	KeyBy           string                     `json:"key_by"`
+	GroupValue      string                     `json:"group_value"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Values          json.RawMessage            `json:"values"`
@@ -699,6 +702,9 @@ func (b *chainBuild) query(core *orm.Core, q chainQuery) error {
 	if q.Lock != "" {
 		core.Lock(q.Lock)
 	}
+	if q.ForceIndex != "" {
+		core.ForceIndex(q.ForceIndex)
+	}
 	return nil
 }
 
@@ -892,6 +898,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 	if err := build.query(core, q); err != nil {
 		return nil, err
 	}
+	if s.KeyBy != "" {
+		core.KeyName(s.KeyBy)
+	}
 	if len(s.Relation) > 0 {
 		var r chainRelation
 		if err := json.Unmarshal(s.Relation, &r); err != nil {
@@ -951,6 +960,16 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		groups, err := orm.GetsCount(core)
 		if err != nil {
 			return outcome{}, err
+		}
+		if s.GroupValue != "" {
+			for row := range groups.All() {
+				value, err := row.Value(s.GroupValue)
+				if err != nil {
+					return outcome{}, err
+				}
+				return jsonOutcome(value), nil
+			}
+			return outcome{}, fmt.Errorf("group_value %s: the aggregate has no group row", s.GroupValue)
 		}
 		return jsonOutcome(groups.ToArray()), nil
 	case s.Page:

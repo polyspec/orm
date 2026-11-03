@@ -4765,9 +4765,12 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/go/orm/recipe_model_queries_test.go",
         "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go"
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/recipe_model_queries_chain_test.go"
       ]
     },
     "model-queries-check/rust": {
@@ -4778,11 +4781,16 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/rust/tests/tests/model_queries_mysql.rs",
         "packages/rust/tests/tests/model_queries_postgres.rs",
         "packages/rust/tests/tests/model_queries_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/rust/tests/Cargo.toml"
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/tests/tests/model_queries_chain_mysql.rs",
+        "packages/rust/tests/tests/model_queries_chain_postgres.rs",
+        "packages/rust/tests/tests/model_queries_chain_sqlite.rs"
       ]
     },
     "model-queries-check/typescript": {
@@ -4793,10 +4801,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/ts/tests/model_queries-mysql.test.mjs",
         "packages/ts/tests/model_queries-postgres.test.mjs",
         "packages/ts/tests/model_queries-sqlite.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/model_queries_chain-mysql.test.mjs",
+        "packages/ts/tests/model_queries_chain-postgres.test.mjs",
+        "packages/ts/tests/model_queries_chain-sqlite.test.mjs"
       ]
     },
     "model-queries-check/python": {
@@ -4807,10 +4820,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/python/tests/test_model_queries_mysql.py",
         "packages/python/tests/test_model_queries_postgres.py",
         "packages/python/tests/test_model_queries_sqlite.py",
-        "packages/python/tests/recipe.py"
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/test_model_queries_chain_mysql.py",
+        "packages/python/tests/test_model_queries_chain_postgres.py",
+        "packages/python/tests/test_model_queries_chain_sqlite.py"
       ]
     },
     "model-queries-check/php": {
@@ -4822,10 +4840,13 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php"
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "model-queries-check/php-extension": {
@@ -4838,11 +4859,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "constraints-and-relations-check/go": {
