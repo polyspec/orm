@@ -319,12 +319,10 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # the server environment of TEST_ENV has no such database. The runner does not pass MAKEFLAGS, so the VECTOR and RECORD of conformance-check
 # are passed as environment variables.
 # databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
-# builds the TypeScript client, creates the run-owned bench and decimal databases, with COMPLEX_QUERY=1 also the 18 owner-specific
-# complex-query fixture databases, and writes every DSN to the run environment before coverage reads database state. A run passes
-# COMPLEX_QUERY=1 only when a target needs complex-query (contracts/check-inputs.json) or an owner part reads a COMPLEX_QUERY_*_DSN.
+# builds the TypeScript client, creates the run-owned bench and decimal databases, and writes every DSN to the run environment before coverage reads database state.
 databases-create: typescript-build
 	$(READ_TYPESCRIPT)
-	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'$(if $(COMPLEX_QUERY), --complex-query)
+	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
 
 run-databases:
 	( $(LEASE_READY) ) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
@@ -2202,28 +2200,20 @@ parity-check: parity-prepare
 
 # Kit's gates workflow runs parity context preparation and cleanup in separate job steps. This context gives that job the same
 # run-owned servers, benchmark fixtures and build-output directory as run-databases, while GITHUB_ENV carries the two paths to the gate.
-# PARITY_CONTEXT_TARGETS and PHP_EXTENSION_CONTEXT_TARGETS name the targets that the context's databases serve. The databases get the
-# complex-query fixtures only when one of them needs it (complexQueryNeeded, parity-context.mts, B3-3). Every parity gate runs
-# parity-bench-env-check, which requires the COMPLEX_QUERY_*_DSN, and parity-check declares the need complex-query, so the parity context names the gates.
-PARITY_CONTEXT_TARGETS ?= $(PARITY_GATE_TARGETS)
-PHP_EXTENSION_CONTEXT_TARGETS ?=
 .PHONY: parity-context-prepare parity-context-cleanup
 parity-context-prepare:
-	$(NODE) scripts/check/parity-context.mts prepare parity $(PARITY_CONTEXT_TARGETS)
+	$(NODE) scripts/check/parity-context.mts prepare parity
 parity-context-cleanup:
 	$(NODE) scripts/check/parity-context.mts cleanup parity
 php-extension-context-prepare:
-	$(NODE) scripts/check/parity-context.mts prepare php-ext $(PHP_EXTENSION_CONTEXT_TARGETS)
+	$(NODE) scripts/check/parity-context.mts prepare php-ext
 php-extension-context-cleanup:
 	$(NODE) scripts/check/parity-context.mts cleanup php-ext
 # interface-check runs first: it reads the API units of config/parity.json and the symbol snapshots that parity-check reads.
-# The servers, bench and complex-query DSNs of a run are in its TEST_ENV file (run-databases writes it; its lines are export NAME='value',
+# The servers and bench DSNs of a run are in its TEST_ENV file (run-databases writes it; its lines are export NAME='value',
 # scripts/check/databases.mts environmentFile). Export every variable of it into make itself, as the CI contexts export the run env
 # (scripts/check/parity-context.mts), so the units that kit starts from make, such as the parity units and the native suite of test-php-ext,
-# inherit the run (T299). A TEST_ENV without the complex-query DSNs exports none of them, and the guard below names what is missing.
-COMPLEX_QUERY_RUNTIMES := GO PHP PHP_EXTENSION TYPESCRIPT PYTHON RUST
-COMPLEX_QUERY_DIALECTS := MYSQL POSTGRES SQLITE
-COMPLEX_QUERY_DSN_NAMES := $(foreach runtime,$(COMPLEX_QUERY_RUNTIMES),$(foreach dialect,$(COMPLEX_QUERY_DIALECTS),COMPLEX_QUERY_$(runtime)_$(dialect)_DSN))
+# inherit the run (T299). The guard below names a missing DSN.
 ifneq ($(wildcard $(abspath $(TEST_ENV))),)
 TEST_ENV_NAMES := $(shell sed -n "s/^export \([A-Z_][A-Z0-9_]*\)=.*/\1/p" $(abspath $(TEST_ENV)))
 $(foreach v,$(TEST_ENV_NAMES),$(eval export $(v) := $(shell . $(abspath $(TEST_ENV)) >/dev/null 2>&1 && printf "%s" "$$$(v)")))
@@ -2236,10 +2226,10 @@ $(foreach v,$(DECIMAL_DSN_NAMES),$(eval export $(v) := $(shell . $(abspath $(DEC
 endif
 endif
 
-# parity-bench-env-check names each bench or complex-query DSN parity-check needs that the environment does not set, so a run
+# parity-bench-env-check names each bench DSN parity-check needs that the environment does not set, so a run
 # without its databases stops at the missing variable instead of failing every unit with the same message. run-databases sets them.
 parity-bench-env-check:
-	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN $(COMPLEX_QUERY_DSN_NAMES); do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench and complex-query databases and their DSNs"; exit 1; }; done
+	@set -a; test -f $(abspath $(TEST_ENV)) && . $(abspath $(TEST_ENV)); set +a; for v in BENCH_MYSQL_DSN BENCH_POSTGRES_DSN BENCH_SQLITE_DSN; do test -n "$$(printenv $$v)" || { echo "parity-bench-env-check: $$v is not set; run make run-databases TARGETS=parity-check, which creates the bench and complex-query databases and their DSNs"; exit 1; }; done
 
 # flowmark-check names the flowmark binary that the markdown conformance units read (FLOWMARK) before parity-check runs them;
 # orm-install-flowmark builds it from the version pinned in tests/markdown/flowmark.version.

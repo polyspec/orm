@@ -27,43 +27,6 @@ function contextDirectory(root: string, scope: 'parity' | 'php-ext') {
   return resolve(root, `.runtime/run/kit-${scope}-4321-2`);
 }
 
-// The complex-query rule (CR7, B3-3): the databases of a context get the complex-query fixtures only when one of its targets needs them.
-caseTest('a parity context whose targets need no complex-query fixture creates none', COMPUTE, () => {
-  const f = fixture();
-  try {
-    const calls: string[] = [];
-    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['collection-php-extension-check']);
-    assert.ok(calls.some(call => call.includes('databases-create')), 'the context creates its databases');
-    assert.deepEqual(calls.filter(call => call.includes('COMPLEX_QUERY')), [], 'no COMPLEX_QUERY for a context whose targets meet neither condition');
-  } finally {
-    f.dispose();
-  }
-});
-
-caseTest('a parity context with a target that reads a complex-query DSN creates the fixtures', COMPUTE, () => {
-  const f = fixture();
-  try {
-    const calls: string[] = [];
-    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['complex-query-python-mysql-check']);
-    assert.ok(calls.some(call => call.endsWith('COMPLEX_QUERY=1')), 'the target reads COMPLEX_QUERY_PYTHON_MYSQL_DSN, so the fixtures are created');
-  } finally {
-    f.dispose();
-  }
-});
-
-// The parity gates run parity-bench-env-check, which requires the COMPLEX_QUERY_*_DSN, so the parity context of the Makefile
-// (PARITY_CONTEXT_TARGETS) names them, and parity-check declares the need complex-query: the databases get the fixtures.
-caseTest('a parity context whose target is a parity gate creates the complex-query fixtures', COMPUTE, () => {
-  const f = fixture();
-  try {
-    const calls: string[] = [];
-    prepareContext('parity', f.root, f.env, stub(f.root, calls), ['parity-check', 'parity-api-check']);
-    assert.ok(calls.some(call => call.endsWith('COMPLEX_QUERY=1')), 'parity-check declares the need complex-query, so the fixtures are created');
-  } finally {
-    f.dispose();
-  }
-});
-
 const stub = (root: string, calls: string[], failCreate = false, decimal = true): ContextCommand => (program, args, cwd) => {
   assert.equal(cwd, root);
   calls.push(`${program} ${args.join(' ')}`);

@@ -5324,6 +5324,97 @@
         "packages/go/internal/recipe/requests.go",
         "packages/go/orm/aes_rotation.go"
       ]
+    },
+    "complex-query-check/go": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/go/orm/recipe_complex_query_test.go",
+        "packages/go/internal/recipe/recipe.go",
+        "packages/go/internal/recipe/database.go",
+        "packages/go/internal/recipe/requests.go"
+      ]
+    },
+    "complex-query-check/typescript": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/ts/tests/complex_query-mysql.test.mjs",
+        "packages/ts/tests/complex_query-postgres.test.mjs",
+        "packages/ts/tests/complex_query-sqlite.test.mjs",
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/recipe_model.mjs"
+      ]
+    },
+    "complex-query-check/python": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/python/tests/test_complex_query_mysql.py",
+        "packages/python/tests/test_complex_query_postgres.py",
+        "packages/python/tests/test_complex_query_sqlite.py",
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/recipe_model.py"
+      ]
+    },
+    "complex-query-check/php": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
+        "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
+        "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeModel.php"
+      ]
+    },
+    "complex-query-check/php-extension": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+        "packages/php/tests/Recipe.php",
+        "packages/php/tests/RecipeModel.php"
+      ]
+    },
+    "complex-query-check/rust": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases"
+      ],
+      "inputs": [
+        "contracts/fixtures/complex_query/**",
+        "packages/rust/tests/tests/complex_query_mysql.rs",
+        "packages/rust/tests/tests/complex_query_postgres.rs",
+        "packages/rust/tests/tests/complex_query_sqlite.rs",
+        "packages/rust/tests/src/recipe.rs"
+      ]
     }
   },
   "paths": {
