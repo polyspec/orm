@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { minimatch } from 'minimatch';
-import { caseTest } from '../../tests/testcase.mts';
+import { caseTest, PROCESS } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
 import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
@@ -369,4 +369,10 @@ caseTest('a php-extension coverage part is the one that needs the built extensio
   assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/php-extension'), true);
   assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/php'), false);
   assert.equal(ownerSelection.isPhpExtensionPart(feature, 'owner/python'), false);
+});
+
+// The contracts pass on this tree: a recipe and a document set are no feature fixture, and every test of a moved unit has its feature.
+caseTest('the feature contracts of this checkout pass', PROCESS, () => {
+  const output = execFileSync(process.execPath, ['scripts/features/check.mts'], { cwd: root, encoding: 'utf8' });
+  assert.match(output, /ok - features\/contracts/);
 });

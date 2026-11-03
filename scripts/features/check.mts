@@ -94,7 +94,11 @@ for (const feature of manifest.features) {
   }
   for (const relative of feature.fixtures) {
     if (!relative.startsWith('contracts/fixtures/') || !relative.endsWith('.json')) continue;
+    // A document set and a recipe have checks of their own (FCV-3); this schema is that of a feature fixture.
+    if (relative.endsWith('/dbspec-set.json')) continue;
     try {
+      const declared = JSON.parse(await readFile(resolve(root, relative), 'utf8')) as { $schema?: string };
+      if (declared.$schema?.endsWith('recipe.schema.json')) continue;
       const fixture = readJsonFile<{ feature: string }>(resolve(root, relative), FIXTURE_SCHEMA);
       if (fixture.feature !== feature.id) errors.push(`${feature.id}: fixture ${relative} has a different feature id`);
     } catch (error) {
