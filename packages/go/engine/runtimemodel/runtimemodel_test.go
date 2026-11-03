@@ -3,11 +3,9 @@ package runtimemodel
 import (
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -55,34 +53,6 @@ const loadSetOwned = "dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  s
 const loadSetExternal = "dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n"
 
 // Requirements: DBS-156, SCH-12.
-func TestLoadSetReturnsExternalDocumentsMarked(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	model, diagnostics := LoadSet(loadSetOwned, loadSetExternal)
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
-	}
-	if len(model.Documents) != 2 || model.Documents[0].Name != "shop" || model.Documents[0].External || model.Documents[1].Name != "core" || !model.Documents[1].External {
-		got := make([]string, len(model.Documents))
-		for i, document := range model.Documents {
-			got[i] = document.Name + ":external=" + strconv.FormatBool(document.External)
-		}
-		t.Fatalf("documents = %v, want [shop:external=false core:external=true]", got)
-	}
-	withoutExternal, diagnostics := LoadSet(loadSetExternal, "")
-	if len(diagnostics) > 0 {
-		t.Fatal(DiagnosticsError(diagnostics))
-	}
-	if len(withoutExternal.Documents) != 1 || withoutExternal.Documents[0].Name != "core" || withoutExternal.Documents[0].External {
-		t.Fatalf("documents without external text = %+v, want core owned", withoutExternal.Documents)
-	}
-	if _, diagnostics := LoadSet("table item {}\n", loadSetExternal); len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleHeader {
-		t.Fatalf("LoadSet without a manifest header = %v, want header diagnostic", diagnostics)
-	}
-	if _, diagnostics := LoadSet(loadSetOwned, "table account {}\n"); len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleHeader {
-		t.Fatalf("LoadSet with external text without a header = %v, want header diagnostic", diagnostics)
-	}
-}
-
 // TestLoadRebuildsTheModelOfTheManifestText checks that reading the manifest text of a document set again
 // gives the same manifestHash and entities.
 // Requirements: DBS-104, DBS-111, DBS-120.

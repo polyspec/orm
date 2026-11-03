@@ -48,14 +48,6 @@ DBSPEC;
         );
     }
 
-    // Requirements: DBS-156, SCH-12.
-    public function testNativeLoadSetReturnsExternalDocumentsMarked(): void
-    {
-        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
-        require_once dirname(__DIR__, 2) . '/php/tests/RuntimeModelTest.php';
-        \Polyspec\Orm\Tests\RuntimeModelTest::assertLoadSetReturnsExternalDocumentsMarked();
-    }
-
     // Requirements: DBS-104, DBS-111, DBS-120.
     public function testOwnedAndExternalManifestEntities(): void
     {

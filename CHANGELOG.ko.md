@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- SCH-12의 문서 set 읽기는 새 op `dbspec.load_set`으로 여섯 runtime 모두에서 recipe `tests/dbspec/load-set.json`이고, native 시험은 사라진다.
 - PRT-9의 기본 select 집합은 여섯 runtime 모두에서 recipe `tests/planner/default-select-set.json`이고, native 시험은 사라진다.
 - Go 분석 시험의 token 예제는 `tests/dbspec/rules.json`의 case `analyze-worked-example`이고, TypeScript와 Python의 native header token 시험은 `analyze-header`가 담으므로 사라진다.
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.

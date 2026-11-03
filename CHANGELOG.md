@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The load of a document set of SCH-12 is the recipe `tests/dbspec/load-set.json` in all six runtimes, through the new op `dbspec.load_set`, and its native tests go.
 - The default select set of PRT-9 is the recipe `tests/planner/default-select-set.json` in all six runtimes, and its native tests go.
 - The worked token example of the Go analysis test is the case `analyze-worked-example` of `tests/dbspec/rules.json`, and the native header token tests of TypeScript and Python go, because `analyze-header` holds them.
 - The refusal of an unknown dialect by `planSteps` and `render` is the two cases of the recipe `tests/dbspec/dialect-refusal.json` in Go, PHP, the PHP extension, TypeScript and Python; Rust keeps its compile fixtures, because it takes a dialect by an enum type.

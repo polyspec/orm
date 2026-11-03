@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -1864,7 +1864,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -1939,6 +1939,19 @@ async function checkDbspecFiles(step, dir, database) {
       assert.deepEqual(formatted.diagnostics, [], 'the text formats');
       assert.ok(formatted.text === expected, 'formatted text');
       assert.ok(formatDbspec(formatted.text, set).text === formatted.text, 'a formatted text is its own format');
+      break;
+    }
+    case 'dbspec.load_set': {
+      const text = lines => (lines.length === 0 ? '' : `${lines.join('\n')}\n`);
+      let documents;
+      try {
+        documents = loadSet(text(step.owned), text(step.external));
+      } catch (error) {
+        if (error.code !== expect.error) throw error;
+        break;
+      }
+      assert.equal(expect.error, undefined, 'the set loaded');
+      assert.deepEqual(documents.map(d => ({ name: d.name, external: d.external === true })), expect.documents, 'documents');
       break;
     }
     case 'dbspec.parse_set': {

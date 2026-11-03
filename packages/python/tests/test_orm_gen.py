@@ -13,7 +13,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from polyspec.orm import OrmError, RuntimeModel
+from polyspec.orm.database import Db
+from polyspec.orm.dbspec.manifest import dbspec_manifest
+from polyspec.orm.engine import model as engine_model
 from polyspec.orm.generate.python import write_text_if_changed
+from polyspec.orm.model import register_model
+from polyspec.orm.schema import Schema
 
 from . import testcase
 
@@ -711,6 +717,58 @@ class WriteTextIfChangedTest(unittest.TestCase):
             with open(path, encoding="utf-8") as handle:
                 self.assertEqual(handle.read(), "b = 1\n")
             self.assertEqual(os.listdir(directory), ["models.py"])
+
+
+REGISTRY_DOCUMENT = "dbspec 1 registry\n\ntable note {\n  seq i64\n  primary key (seq)\n}\n"
+
+
+class ModelRegistryTest(unittest.TestCase):
+    """A process builds the model of a manifest once (DBS-104): a second registration of the same texts and hash, on any
+    connection, and a second load_set of the same texts parse nothing."""
+
+    # Requirements: DBS-104.
+    def test_the_same_schema_is_parsed_once(self):
+        documents = RuntimeModel.load_set(REGISTRY_DOCUMENT, "")
+        manifest, diagnostics = dbspec_manifest(documents)
+        self.assertEqual(diagnostics, ())
+        schema = Schema(manifest.manifest_text, manifest.manifest_hash)
+        parse = mock.patch.object(
+            engine_model,
+            "parse_document_set",
+            wraps=engine_model.parse_document_set,
+        )
+        folder = tempfile.TemporaryDirectory(prefix="orm-model-registry-")
+        self.addCleanup(folder.cleanup)
+        connections = [Db(f"sqlite://{folder.name}/{i}.sqlite") for i in range(2)]
+        try:
+            with parse as parsed:
+                first = register_model(schema.manifest_text, schema.manifest_hash)
+                built = parsed.call_count
+                self.assertLessEqual(built, 1)
+                register_model(schema.manifest_text, schema.manifest_hash)
+                for db in connections:
+                    db.register(schema)
+                RuntimeModel.load_set(schema.manifest_text, "")
+                RuntimeModel.load_set(schema.manifest_text, "")
+                self.assertEqual(
+                    parsed.call_count, built, "a registered schema is not parsed again"
+                )
+        finally:
+            for db in connections:
+                db.close()
+        self.assertIs(
+            register_model(schema.manifest_text, schema.manifest_hash).runtime,
+            first.runtime,
+        )
+
+    # Requirements: DBS-104.
+    def test_a_known_text_under_another_hash_is_still_refused(self):
+        documents = RuntimeModel.load_set(REGISTRY_DOCUMENT, "")
+        manifest, _ = dbspec_manifest(documents)
+        register_model(manifest.manifest_text, manifest.manifest_hash)
+        with self.assertRaises(OrmError) as caught:
+            register_model(manifest.manifest_text, "sha256:" + "0" * 64)
+        self.assertEqual(caught.exception.code, "SCHEMA_HASH_MISMATCH")
 
 
 if __name__ == "__main__":

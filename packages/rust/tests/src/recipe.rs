@@ -227,6 +227,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         | "dbspec.format"
         | "dbspec.parse_set"
         | "dbspec.set"
+        | "dbspec.load_set"
         | "dbspec.read_file"
         | "dbspec.read_bytes" => return dbspec_step(step, dir, database),
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
@@ -761,6 +762,7 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
         "dbspec.format" => dbspec_format(step, want),
         "dbspec.parse_set" => dbspec_parse_set(step, want),
         "dbspec.set" => dbspec_set(step, want),
+        "dbspec.load_set" => dbspec_load_set(step, want),
         "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
@@ -946,6 +948,29 @@ fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), St
 /// and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its
 /// manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders
 /// statements in each dialect that create the tables of expect.created.
+/// The dbspec.load_set op (FCV-4): the documents of a set with their external marks, through `Schema::with_external` on the
+/// manifest that the set builds, or the code of `Manifest::load_set` on a set that does not build.
+fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
+    let text = |value: &Value| {
+        let lines = lines_of(value);
+        if lines.is_empty() { String::new() } else { format!("{}\n", lines.join("\n")) }
+    };
+    let (owned, external) = (text(&step["owned"]), text(&step["external"]));
+    let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
+        let refs: Vec<&Document> = documents.iter().collect();
+        dbspec::manifest(&refs).ok()
+    });
+    let Some(built) = loaded else {
+        let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
+        return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+    };
+    let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
+    let schema = polyspec_orm::Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash));
+    let documents = schema.documents().map_err(|error| error.to_string())?;
+    let got: Vec<Value> = documents.iter().map(|d| json!({"name": d.name.text, "external": d.external})).collect();
+    if want["documents"].as_array() == Some(&got) { Ok(()) } else { Err(format!("documents {got:?}, want {want}")) }
+}
+
 fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
     let owned = strings_of(&step["owned"]);
     let external = strings_of(&step["external"]);

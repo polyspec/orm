@@ -43,6 +43,14 @@ func readDocuments(dir string, paths []string) ([]string, []*dbspec.Document, er
 	return texts, documents, nil
 }
 
+// linesText is the text of a list of lines, each ended by a line feed; no lines are the empty text.
+func linesText(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
 // checkDBSpec runs one dbspec op of a recipe step through the public calls of the dbspec package and checks the
 // result against the expect of database.
 func checkDBSpec(s step, dir, database string) error {
@@ -214,6 +222,36 @@ func checkDBSpec(s step, dir, database string) error {
 		}
 		if again, _ := dbspec.Format(formatted, set); again != formatted {
 			return fmt.Errorf("the format of the formatted text differs:\n%s", again)
+		}
+	case "dbspec.load_set":
+		var want struct {
+			Documents []struct {
+				Name     string `json:"name"`
+				External bool   `json:"external"`
+			} `json:"documents"`
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(raw, &want); err != nil {
+			return err
+		}
+		model, diagnostics := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
+		if len(diagnostics) > 0 {
+			// Go returns the diagnostics of SCHEMA_INVALID (SCH-12) and no code.
+			if want.Error != "SCHEMA_INVALID" {
+				return fmt.Errorf("diagnostics %s, want %+v", runtimemodel.DiagnosticsError(diagnostics), want)
+			}
+			return nil
+		}
+		if want.Error != "" {
+			return fmt.Errorf("the set loaded, want %s", want.Error)
+		}
+		if len(model.Documents) != len(want.Documents) {
+			return fmt.Errorf("%d documents, want %d", len(model.Documents), len(want.Documents))
+		}
+		for i, w := range want.Documents {
+			if d := model.Documents[i]; d.Name != w.Name || d.External != w.External {
+				return fmt.Errorf("documents[%d] = %s external %v, want %s external %v", i, d.Name, d.External, w.Name, w.External)
+			}
 		}
 	case "dbspec.parse_set":
 		var want struct {

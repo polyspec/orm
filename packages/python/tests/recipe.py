@@ -34,6 +34,7 @@ from polyspec.orm import (
     Db,
     Model,
     OrmError,
+    RuntimeModel,
     Schema,
     connect_catalog,
     orm,
@@ -559,6 +560,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.format",
     "dbspec.parse_set",
     "dbspec.set",
+    "dbspec.load_set",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -678,6 +680,20 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             formatted,
             "a formatted text is its own format",
         )
+    elif op == "dbspec.load_set":
+        def text(lines):
+            return "\n".join(lines) + "\n" if lines else ""
+
+        try:
+            documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
+        except OrmError as error:
+            _expect_equal(error.code, expect.get("error"), "error")
+        else:
+            _expect_equal(
+                [{"name": d.name, "external": d.external} for d in documents],
+                expect.get("documents"),
+                "documents",
+            )
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
