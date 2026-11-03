@@ -22782,7 +22782,8 @@
     "DSL-106",
     "DSL-107",
     "DSL-110",
-    "DSL-112"
+    "DSL-112",
+    "INT-91"
    ],
    "steps": [
     {
@@ -46822,6 +46823,27 @@
        "as": "created"
       },
       {
+       "op": "db.last_affected",
+       "connection": "db",
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "1"
+         }
+        }
+       }
+      },
+      {
        "op": "model.duplicate_create",
        "connection": "db",
        "model": "UpsertCell",
@@ -46836,6 +46858,27 @@
        "duplication": {
         "label": {
          "text": "y"
+        }
+       }
+      },
+      {
+       "op": "db.last_affected",
+       "connection": "db",
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "1"
+         }
         }
        }
       },
@@ -46861,12 +46904,54 @@
        }
       },
       {
+       "op": "db.last_affected",
+       "connection": "db",
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "1"
+         }
+        }
+       }
+      },
+      {
        "op": "model.update",
        "connection": "db",
        "row": "row",
        "set": {
         "label": {
          "text": "z"
+        }
+       }
+      },
+      {
+       "op": "db.last_affected",
+       "connection": "db",
+       "expect": {
+        "mysql": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "postgres": {
+         "value": {
+          "int": "1"
+         }
+        },
+        "sqlite": {
+         "value": {
+          "int": "1"
+         }
         }
        }
       },

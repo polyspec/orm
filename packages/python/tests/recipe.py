@@ -45,6 +45,7 @@ from polyspec.orm import (
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.testing import last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -82,6 +83,7 @@ from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
 from .case_database import case_database
+from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_generator
 from .server_database import with_database
@@ -1119,8 +1121,11 @@ class _FaultConnection:
         self.cause: Exception | None = None
         self.fail_at = 0
         self.reads = 0
+        self.fail: dict[str, Exception] = {}
 
     def execute(self, sql: str, args: Any) -> dict:
+        if sql in self.fail:
+            raise self.fail[sql]
         if sql.startswith("SELECT type, name, tbl_name"):
             self.reads += 1
             if self.cause is not None and self.reads == self.fail_at:
@@ -1147,17 +1152,39 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         if "fail_catalog_read" in step:
             fault.cause = RuntimeError("catalog read failed")
             fault.fail_at = fault.reads + step["fail_catalog_read"]
+        for f in step.get("fail_statements", []):
+            injected = sqlite3.OperationalError(f["message"])
+            if "sqlite_result" in f:
+                injected.sqlite_errorcode = f["sqlite_result"]
+            fault.fail[f["statement"]] = injected
         kinds: list[str] = []
+
+        def events(event: dict) -> None:
+            kinds.append(event["kind"])
+            if "stop_on_applied" in step and event["kind"] == "applied":
+                raise RuntimeError(step["stop_on_applied"])
+
         call = rollback_plans if step["call"] == "rollback" else apply_plans
         try:
-            call(fault, "sqlite", plans, now, lambda event: kinds.append(event["kind"]))
-        except DbspecApplyError as error:
-            if error.code != expect["code"]:
-                raise AssertionError(f"the call raised {error.code}, want {expect['code']}") from error
+            call(fault, "sqlite", plans, now, events)
+        except Exception as error:  # noqa: BLE001 - the expect states the failure of any type
+            if "code" in expect and getattr(error, "code", None) != expect["code"]:
+                raise AssertionError(f"the call raised {error!r}, want {expect['code']}") from error
+            if "failure" in expect:
+                _expect_equal(str(error), expect["failure"], "failure")
+            if not str(error).endswith(expect.get("failure_ends_with", "")):
+                raise AssertionError(f"the failure {error} does not end with {expect['failure_ends_with']}")
+            # The failure holds a note for each cleanup error, in order (PLN-101, PLN-106).
+            if "cleanup" in expect:
+                _expect_equal(
+                    getattr(error, "__notes__", []),
+                    [f"cleanup failed: {message}" for message in expect["cleanup"]],
+                    "cleanup",
+                )
             if fault.cause is not None and error.cause is not fault.cause:
                 raise AssertionError(f"the error {error} does not hold the catalog read error") from error
         else:
-            raise AssertionError(f"the call succeeded, want {expect['code']}")
+            raise AssertionError(f"the call succeeded, want {expect}")
         if "history_state" in expect:
             state = fault.connection.execute('SELECT state FROM "dbspec$plans"').fetchone()[0]
             if state != expect["history_state"]:
@@ -3244,6 +3271,10 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _db_last_affected(step: dict, context: dict) -> dict:
+    return {"value": {"int": str(last_affected(_connection_of(step, context)))}}
+
+
 def _db_notify(step: dict, context: dict) -> dict:
     _connection_of(step, context).notify(step["channel"], step["payload"])
     return {}
@@ -3296,10 +3327,13 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
 
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
+    refusal: Exception = RuntimeError("subscriber refused the event")
+    if "refusal" in step:
+        refusal = OrmError(step["refusal"]["code"], step["refusal"]["message"])
 
     def refuse(event) -> None:
         if event.kind == kind:
-            raise RuntimeError("subscriber refused the event")
+            raise refusal
 
     stop = _connection_of(step, context).subscribe(refuse)
     return {"bind": _Subscription(stop, None)}
@@ -4152,6 +4186,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.last_affected": _db_last_affected,
     "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
@@ -4182,3 +4217,5 @@ def _dispatch_model_op(name: str):
 
 for _name in _TABLE_OPS:
     _MODEL_OPS[_name] = _dispatch_model_op(_name)
+
+_DATABASE_OPS.update(apply_ops(_sql, _run_database_step))

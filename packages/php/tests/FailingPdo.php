@@ -22,7 +22,7 @@ final class FailingPdo extends PDO
      */
     public function __construct(
         string $path,
-        private readonly array $fail,
+        private array $fail,
         private readonly array $replace,
         array $failClose,
         private array $queryFail = [],
@@ -33,6 +33,12 @@ final class FailingPdo extends PDO
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_STATEMENT_CLASS => [FailingStatement::class, [array_values($replace), $failClose]],
         ]);
+    }
+
+    /** From now on exec throws the error of each statement. @param array<string, PDOException> $fail */
+    public function failStatements(array $fail): void
+    {
+        $this->fail = $fail;
     }
 
     /** Read $reads of $query from now on throws $error. */

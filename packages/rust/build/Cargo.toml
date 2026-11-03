@@ -39,10 +39,6 @@ polyspec-orm-case-clock = { path = "../case-clock" }
 polyspec-orm-build = { path = ".", features = ["live-db"] }
 
 [[test]]
-name = "catalog"
-required-features = ["live-db"]
-
-[[test]]
 name = "tool_cells"
 required-features = ["live-db"]
 
@@ -63,10 +59,6 @@ name = "tool_columns"
 required-features = ["live-db"]
 
 [[test]]
-name = "read_only_query"
-required-features = ["live-db"]
-
-[[test]]
 name = "grid_cells"
 required-features = ["live-db"]
 
@@ -80,14 +72,6 @@ required-features = ["live-db"]
 
 [[test]]
 name = "grid_temporal"
-required-features = ["live-db"]
-
-[[test]]
-name = "table_metadata"
-required-features = ["live-db"]
-
-[[test]]
-name = "table_page"
 required-features = ["live-db"]
 
 [[test]]

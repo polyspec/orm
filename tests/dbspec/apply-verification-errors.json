@@ -3,7 +3,8 @@
   "requirements": [
     "PLN-92",
     "PLN-93",
-    "PLN-96"
+    "PLN-96",
+    "PLN-106"
   ],
   "cases": [
     {
@@ -282,6 +283,263 @@
                 "verified",
                 "done"
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cleanup-a-stop-without-a-cleanup-error-is-the-stop",
+      "requirements": [
+        "PLN-106"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "sql": [
+            "PRAGMA foreign_keys = 0"
+          ],
+          "stop_on_applied": "stop",
+          "expect": {
+            "none": {
+              "failure": "stop",
+              "cleanup": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cleanup-the-failure-then-every-cleanup-error-in-order",
+      "requirements": [
+        "PLN-106"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "sql": [
+            "PRAGMA foreign_keys = 0"
+          ],
+          "stop_on_applied": "stop",
+          "fail_statements": [
+            {
+              "statement": "PRAGMA foreign_keys = 0",
+              "message": "restore failed"
+            },
+            {
+              "statement": "PRAGMA locking_mode = normal",
+              "message": "release failed"
+            }
+          ],
+          "expect": {
+            "none": {
+              "failure": "stop",
+              "cleanup": [
+                "restore failed",
+                "release failed"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "cleanup-a-locked-begin-then-the-restore-error",
+      "requirements": [
+        "PLN-106"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "apply",
+          "sql": [
+            "PRAGMA foreign_keys = 0"
+          ],
+          "fail_statements": [
+            {
+              "statement": "BEGIN EXCLUSIVE",
+              "message": "begin failed",
+              "sqlite_result": 5
+            },
+            {
+              "statement": "PRAGMA foreign_keys = 0",
+              "message": "restore failed"
+            }
+          ],
+          "expect": {
+            "none": {
+              "code": "locked",
+              "cleanup": [
+                "restore failed"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rollback-of-a-recorded-step-outside-the-plan",
+      "requirements": [
+        "PLN-96"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "rollback",
+          "applied_first": true,
+          "sql": [
+            "UPDATE \"dbspec$plans\" SET step = 99"
+          ],
+          "expect": {
+            "none": {
+              "code": "chain",
+              "failure_ends_with": "the recorded step 99 is outside the plan's 4 steps"
             }
           }
         }

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"unicode/utf8"
 
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
@@ -121,9 +122,13 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 			return outcome{}, true, err
 		}
 		kind := s.Kind
+		refusal := errors.New("subscriber refused the event")
+		if s.Refusal != nil {
+			refusal = &ir.Error{Code: s.Refusal.Code, Msg: s.Refusal.Message}
+		}
 		stop, err := db.Subscribe(func(e orm.StatementEvent) error {
 			if e.Kind == kind {
-				return errors.New("subscriber refused the event")
+				return refusal
 			}
 			return nil
 		})
