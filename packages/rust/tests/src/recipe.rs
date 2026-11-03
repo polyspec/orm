@@ -339,6 +339,71 @@ struct FaultConnection {
     cause: Option<String>,
     fail_at: usize,
     reads: usize,
+    fail: HashMap<String, (String, Option<i64>)>,
+}
+
+/// An error of a SQLite result code, as the driver returns it.
+#[derive(Debug)]
+struct SqliteResult {
+    message: String,
+    code: i64,
+}
+
+impl std::fmt::Display for SqliteResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for SqliteResult {}
+
+impl sqlx::error::DatabaseError for SqliteResult {
+    fn message(&self) -> &str {
+        &self.message
+    }
+
+    fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
+        Some(self.code.to_string().into())
+    }
+
+    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+        self
+    }
+
+    fn kind(&self) -> sqlx::error::ErrorKind {
+        sqlx::error::ErrorKind::Other
+    }
+}
+
+/// The message of an error of a statement of the op.
+fn injected_message(error: &sqlx::Error) -> String {
+    match error {
+        sqlx::Error::Protocol(message) => message.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// The failure and the cleanup errors in order: each `Cleanup` wraps the previous result as its `error` (PLN-100, PLN-106).
+fn cleanup_chain(error: &dbspec::ApplyError) -> (&dbspec::ApplyError, Vec<String>) {
+    match error {
+        dbspec::ApplyError::Cleanup { error, cleanup } => {
+            let (failure, mut messages) = cleanup_chain(error);
+            messages.push(match cleanup.as_ref() {
+                dbspec::ApplyError::Database(database) => injected_message(database),
+                other => other.to_string(),
+            });
+            (failure, messages)
+        }
+        other => (other, Vec::new()),
+    }
 }
 
 impl dbspec::CatalogQuerier for FaultConnection {
@@ -357,7 +422,11 @@ impl dbspec::CatalogQuerier for FaultConnection {
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         use dbspec::ApplyConnection as _;
-        self.inner.execute(statement).await
+        match self.fail.get(statement) {
+            Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(SqliteResult { message: message.clone(), code: *code }))),
+            Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
+            None => self.inner.execute(statement).await,
+        }
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[dbspec::CatalogValue]) -> Result<(), sqlx::Error> {
@@ -383,12 +452,12 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     use dbspec::{ApplyConnection as _, ApplyError, ApplyEvent, ApplyEventError, IntrospectError};
     use sqlx::Connection as _;
     let expect = &step["expect"][database];
-    let want = expect["code"].as_str().ok_or("the expect has no code")?;
+    let want = expect["code"].as_str();
     let plans = vec![bound_plan(&step["plan"], bound)?];
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0 };
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new() };
         if step["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
@@ -402,11 +471,22 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
         }
+        if let Some(failing) = step["fail_statements"].as_array() {
+            for f in failing {
+                let statement = f["statement"].as_str().ok_or("a failing statement has no text")?.to_owned();
+                let message = f["message"].as_str().ok_or("a failing statement has no message")?.to_owned();
+                fault.fail.insert(statement, (message, f["sqlite_result"].as_i64()));
+            }
+        }
+        let stop = step["stop_on_applied"].as_str();
         let mut kinds: Vec<String> = Vec::new();
         let result = {
             let mut events = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
                 kinds.push(event.kind.as_str().to_owned());
-                Ok(())
+                match stop {
+                    Some(message) if event.kind.as_str() == "applied" => Err(message.into()),
+                    _ => Ok(()),
+                }
             };
             if step["call"] == "rollback" {
                 dbspec::rollback(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
@@ -414,9 +494,11 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                 dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
             }
         };
-        match (&result, want) {
-            (Err(ApplyError::Drift { .. }), "drift") => {}
-            (Err(ApplyError::Verify { source, .. }), "verify") => {
+        let error = result.as_ref().err().ok_or("the call succeeded")?;
+        let (failure, cleanup) = cleanup_chain(error);
+        match (failure, want) {
+            (_, None) | (ApplyError::Drift { .. }, Some("drift")) | (ApplyError::Locked { .. }, Some("locked")) | (ApplyError::Chain { .. }, Some("chain")) => {}
+            (ApplyError::Verify { source, .. }, Some("verify")) => {
                 if let Some(cause) = &fault.cause {
                     let held = matches!(source, Some(IntrospectError::Query(sqlx::Error::Protocol(message))) if message == cause);
                     if !held {
@@ -424,7 +506,27 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                     }
                 }
             }
-            _ => return Err(format!("the call returned {result:?}, want the code {want}")),
+            _ => return Err(format!("the call returned {result:?}, want the code {want:?}")),
+        }
+        if let Some(message) = expect["failure"].as_str() {
+            let got = match failure {
+                ApplyError::Event(event) => event.to_string(),
+                other => other.to_string(),
+            };
+            if got != message {
+                return Err(format!("the failure is {got}, want {message}"));
+            }
+        }
+        if let Some(end) = expect["failure_ends_with"].as_str() {
+            if !failure.to_string().ends_with(end) {
+                return Err(format!("the failure {failure} does not end with {end}"));
+            }
+        }
+        if let Some(want_cleanup) = expect["cleanup"].as_array() {
+            let want_cleanup: Vec<&str> = want_cleanup.iter().filter_map(Value::as_str).collect();
+            if cleanup != want_cleanup {
+                return Err(format!("the cleanup errors are {cleanup:?}, want {want_cleanup:?}"));
+            }
         }
         if let Some(state) = expect["history_state"].as_str() {
             let rows = fault.query_bound("SELECT state FROM \"dbspec$plans\"", &[]).await.map_err(|error| error.to_string())?;
@@ -2422,6 +2524,8 @@ mod database {
         models: Box<dyn ModelDispatcher>,
         /// The fixture of the recipe with its external documents, which schema.install of a connection installs.
         schemas: Option<&'a (Schema, Vec<Schema>)>,
+        /// The named plans and connections of the dbspec apply ops.
+        apply: crate::recipe_apply::ApplyOps,
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
@@ -2670,10 +2774,11 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
+        let closed = context.apply.close();
         context.models.close().await;
-        outcome
+        outcome.and(closed)
     }
 
     /// The seed rows of the recipe and then of the case, and the steps of the case in their order.
@@ -2876,6 +2981,7 @@ mod database {
         "model.query",
         "model.save",
         "model.chain",
+        "db.last_affected",
         "db.notify",
         "utils.lock",
         "utils.set_local",
@@ -3033,6 +3139,12 @@ mod database {
     async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            // The dbspec apply ops (FCV-4) run on their own connections and report their value.
+            op if crate::recipe_apply::OPS.contains(&op) => {
+                let database = context.database;
+                let dsn = context.dsn.clone();
+                Output::fields(context.apply.run(step, database, &dsn).map_err(fault)?)
+            }
             // schema.install (FCV-4): {schema} installs the set of the step on the case database; {connection} installs the
             // recipe fixture on that connection.
             "schema.install" => {
@@ -5079,6 +5191,9 @@ mod tables {
                         ["pending", { "int": status.pending.to_string() }],
                         ["versions", { "object": versions }],
                     ] } }))
+                }
+                "db.last_affected" => {
+                    Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
                     db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;

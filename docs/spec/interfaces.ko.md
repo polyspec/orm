@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 83405a2a689f06a8d3537bb397cb0576ddc241a3bea606c69b61c04d48b89997 -->
+<!-- source-sha256: d111c7816f4423d0068bf456f63456e5f60f0ca1480d7580b883bd801b3ce11d -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -198,6 +198,7 @@ classDiagram
 - **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청과 bind된 매개변수 값을 계획 직전에 hook에 전달한다. bind된 매개변수 값은 읽기 전용이고, hook은 제공된 매개변수 추가 수단으로만 매개변수를 덧붙인다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
 - **INT-79** `stats()`는 연결 풀의 개수를 돌려준다: 최대 열린 연결 수, 열린 연결 수, 사용 중인 연결 수, 유휴 연결 수(Go `DBStats`, PHP `Stats`, TypeScript `PoolStats`, Python `DbStats`).
 - **INT-150** 문 실행기는 모든 runtime에서 하나의 모양을 가진 public API다: `utils().run(fn)`이 유일한 public 문 실행기다. 이 함수는 연결의 transaction frame으로 `fn`을 호출한다. 활성 transaction이 없으면 transaction을 열고, 있으면 그에 참여한다. 연 transaction은 `transaction`과 같이 끝내며 재시도하지 않는다. frame의 `run(kind, tables, sql, params)`(TypeScript `TxFrame.run`과 같은 순서와 의미, 모든 runtime 동일, `params`는 선택)는 종류 `kind`의 statement 하나를 실행하고, `tables` 목록(없으면 빈 목록)을 건드리며, statement event 하나를 기록(INT-77)하고 행을 포함한 statement 결과를 돌려준다. frame은 활성 transaction을 쓰며 새로 열지 않는다. 텍스트가 아닌 statement는 `CONFIG`로 실패하고, 그 밖의 오류는 statement의 database 오류 코드다. Python도 `utils().run(fn)`으로 같은 frame을 받으며, `active_frame()`은 열린 transaction frame 또는 없음을 계속 돌려준다. 판정(T345): frame 호출의 의미와 인자 이름은 모든 runtime이 공유한다. 공개 frame 호출이 아직 없는 runtime은 TypeScript의 위치 인자 순서 `(kind, tables, sql, params)`를 쓴다. Python의 공개 `TxFrame.run`은 시그니처를 유지하며, 매개변수 `values`는 `params`와 다른 기록된 차이이고 이름을 바꾸지 않는다. runtime은 이 규칙에 나열하고 사유를 적은 예외로만 실행기를 뺄 수 있다. 선언된 예외는 없으므로 모든 runtime이 구현한다.
+- **INT-161** Python: `Db.active_frame()`은 public이며 연결에 열린 트랜잭션 frame을 반환하고, 열린 것이 없으면 `None`을 반환한다. `utils().run(fn)`의 callback 안에서는 `fn`이 받는 frame이고, `transaction` 안에서는 합류한 `utils().run(fn)`이 받는 frame이며, 트랜잭션이 끝나면 다시 `None`이다.
 - **INT-150a** Go, PHP, PHP extension, TypeScript, Python은 transaction이 끝난 뒤 쓰는 frame에 `CONFIG`로 실패하고 statement를 보내지 않는다. Rust frame은 그것을 빌린 callback보다 오래 살 수 없으므로 compiler가 그 사용을 거부한다.
 - **INT-150b** PHP, PHP extension, TypeScript, Python은 텍스트가 아닌 statement에 `CONFIG`로 실패하고 statement를 보내지 않는다. Go와 Rust의 `run`은 statement를 text로 받으므로 compiler가 그 사용을 거부한다.
 - **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.

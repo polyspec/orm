@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.last_affected',
         'db.notify',
         'utils.lock',
         'utils.set_local',
@@ -1568,9 +1569,20 @@ final class Recipe
             $cause = new \PDOException('catalog read failed');
             $pdo->failQuery($master, $cause, $step['fail_catalog_read']);
         }
+        $fail = [];
+        foreach ($step['fail_statements'] ?? [] as $f) {
+            $fail[$f['statement']] = new \PDOException($f['message']);
+            if (isset($f['sqlite_result'])) {
+                $fail[$f['statement']]->errorInfo = ['HY000', $f['sqlite_result'], $f['message']];
+            }
+        }
+        $pdo->failStatements($fail);
         $kinds = [];
-        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds): void {
+        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds, $step): void {
             $kinds[] = $event->kind;
+            if (isset($step['stop_on_applied']) && $event->kind === 'applied') {
+                throw new \RuntimeException($step['stop_on_applied']);
+            }
         };
         $error = null;
         try {
@@ -1579,11 +1591,29 @@ final class Recipe
             } else {
                 Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
             }
-        } catch (\Polyspec\Orm\Dbspec\ApplyError $caught) {
+        } catch (\Throwable $caught) {
             $error = $caught;
         }
-        Assert::assertNotNull($error, "the call succeeded, want {$expect['code']}");
-        Assert::assertSame($expect['code'], $error->code_);
+        Assert::assertNotNull($error, 'the call succeeded');
+        // ApplyCleanupError holds the failure as its previous throwable and the cleanup errors in order (PLN-98, PLN-106).
+        $cleanup = [];
+        if ($error instanceof \Polyspec\Orm\Dbspec\ApplyCleanupError) {
+            $cleanup = array_map(static fn(\Throwable $e): string => $e->getMessage(), $error->cleanup);
+            $error = $error->getPrevious();
+        }
+        if (isset($expect['code'])) {
+            Assert::assertInstanceOf(\Polyspec\Orm\Dbspec\ApplyError::class, $error);
+            Assert::assertSame($expect['code'], $error->code_);
+        }
+        if (isset($expect['failure'])) {
+            Assert::assertSame($expect['failure'], $error->getMessage());
+        }
+        if (isset($expect['failure_ends_with'])) {
+            Assert::assertStringEndsWith($expect['failure_ends_with'], $error->getMessage());
+        }
+        if (isset($expect['cleanup'])) {
+            Assert::assertSame($expect['cleanup'], $cleanup);
+        }
         if ($cause !== null) {
             $previous = $error->getPrevious();
             Assert::assertTrue(
@@ -2932,6 +2962,14 @@ final class Recipe
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
         }
+        if (in_array($s['op'], RecipeApply::OPS, true)) {
+            return RecipeApply::op($s, $context, static function (array $nested) use (&$context): void {
+                // A nested step with only runs on the databases it names, as a step of the case does.
+                if (!isset($nested['only']) || in_array($context['database'], $nested['only'], true)) {
+                    self::databaseStep($nested, $context);
+                }
+            });
+        }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
 
@@ -3955,6 +3993,9 @@ final class Recipe
                 }
                 self::chainTarget($s, $context)->delete($recursive);
                 return [];
+            case 'db.last_affected':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context))]];
             case 'db.notify':
                 self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
                 return [];
