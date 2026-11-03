@@ -3,7 +3,7 @@
 //! bench set as `crate::model` and share this file. A model, a column or an op without an arm here fails its step by name.
 
 use polyspec_orm::Db;
-use polyspec_orm_tests::bench_models::{bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
+use polyspec_orm_tests::bench_models::{bench_config, bench_dispatcher, cells, columns, fail, int, names, text, BenchModels};
 use polyspec_orm_tests::recipe::ModelDispatcher;
 use serde_json::{json, Value};
 
@@ -21,11 +21,96 @@ impl BenchModels for ModelWrites {
     async fn run(&self, db: &Db, op: &str, step: &Value) -> Result<Value, String> {
         run(db, op, step).await
     }
+
+    async fn run_unconnected(&self, op: &str, step: &Value) -> Result<Value, String> {
+        match op {
+            "model.create" => assign_account(CompositeAccount::new(), &step["values"])?.create().await.map(|_| json!({})).map_err(fail),
+            "model.count" => {
+                let count = CompositeAccount::new().get_count().await.map_err(fail)?;
+                Ok(json!({ "value": { "int": count.to_string() } }))
+            }
+            other => Err(format!("{other} has no unconnected form")),
+        }
+    }
+}
+
+/// The key of a CompositeAccount row of transaction.deadlock.
+fn account_key(key: &Value) -> Result<(i64, i64), String> {
+    Ok((int(&key["tenant_id"])?, int(&key["account_id"])?))
+}
+
+/// Writes `name` to the name column of the row of `key` on `db`, a read and then an update.
+async fn write_account_name(db: &Db, key: (i64, i64), name: &str) -> polyspec_orm::Result<()> {
+    let row = account(db).get_by_tenant_id_and_account_id(key.0, key.1).await?;
+    let row = row.ok_or_else(|| polyspec_orm::Error::Config(format!("composite_account {key:?} is missing")))?;
+    row.set_name(name).update(false).await?;
+    Ok(())
+}
+
+/// Two flows write two rows in opposite order (PLN-24), each on its own thread and connection: each holds its first row until
+/// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
+async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
+    if step["column"] != "name" {
+        return Err(format!("CompositeAccount column {} has no recipe deadlock", step["column"]));
+    }
+    let dsn = step["dsn"].as_str().ok_or_else(|| "transaction.deadlock has no dsn".to_owned())?.to_owned();
+    let keys = [account_key(&step["rows"][0])?, account_key(&step["rows"][1])?];
+    let held = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let flows: Vec<_> = [0, 1]
+        .into_iter()
+        .map(|index: usize| {
+            let (held, dsn) = (held.clone(), dsn.clone());
+            std::thread::spawn(move || -> Result<(u64, u64), String> {
+                let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+                runtime.block_on(async move {
+                    let conn = Db::connect_schema(&dsn, &SCHEMA, 1, bench_config()).await.map_err(fail)?;
+                    let name = format!("flow-{index}");
+                    let attempts = std::cell::Cell::new(0_u64);
+                    let deadlocks = std::cell::Cell::new(0_u64);
+                    let result: polyspec_orm::Result<()> = conn
+                        .transaction(async || {
+                            attempts.set(attempts.get() + 1);
+                            let first_attempt = attempts.get() == 1;
+                            let first = write_account_name(&conn, keys[index], &name).await;
+                            if first_attempt {
+                                held.wait();
+                            }
+                            first?;
+                            let second = write_account_name(&conn, keys[1 - index], &name).await;
+                            if first_attempt && second.as_ref().is_err_and(|error| error.code() == "DEADLOCK") {
+                                deadlocks.set(1);
+                            }
+                            second
+                        })
+                        .isolation(polyspec_orm::Isolation::ReadCommitted)
+                        .retry(3)
+                        .await;
+                    conn.close().await;
+                    result.map_err(fail)?;
+                    Ok((attempts.get(), deadlocks.get()))
+                })
+            })
+        })
+        .collect();
+    let (mut attempts, mut deadlocks) = (0, 0);
+    for flow in flows {
+        let (flow_attempts, flow_deadlocks) = flow.join().map_err(|_| "a flow thread panicked".to_owned())??;
+        attempts += flow_attempts;
+        deadlocks += flow_deadlocks;
+    }
+    let mut names = Vec::new();
+    for key in keys {
+        let row = account(db).get_by_tenant_id_and_account_id(key.0, key.1).await.map_err(fail)?;
+        names.push(row.ok_or_else(|| format!("composite_account {key:?} is missing"))?.get_name().map_err(fail)?);
+    }
+    let same_flow = names[0] == names[1] && (names[0] == "flow-0" || names[0] == "flow-1");
+    Ok(json!({ "attempts": attempts, "deadlocks": deadlocks, "same_flow": same_flow }))
 }
 
 /// The op of `step` on `db`: its fields, which the expect of the step compares.
 async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
     match op {
+        "transaction.deadlock" => transaction_deadlock(db, step).await,
         "model.create" => set_account(db, &step["values"])?.create().await.map(|_| json!({})).map_err(fail),
         "model.creates" if step["model"] == "CompositeMembership" => {
             let rows = step["rows"].as_array().into_iter().flatten().map(|row| set_membership(db, row)).collect::<Result<Vec<_>, _>>()?;
@@ -184,7 +269,11 @@ fn account(db: &Db) -> CompositeAccount {
 
 /// A CompositeAccount with the columns of `values`, which are the setters of the recipe.
 fn set_account(db: &Db, values: &Value) -> Result<CompositeAccount, String> {
-    let mut row = account(db);
+    assign_account(account(db), values)
+}
+
+/// `row` with the columns of `values`.
+fn assign_account(mut row: CompositeAccount, values: &Value) -> Result<CompositeAccount, String> {
     for (column, value) in columns(values)? {
         row = match column.as_str() {
             "tenant_id" => row.set_tenant_id(int(value)?),

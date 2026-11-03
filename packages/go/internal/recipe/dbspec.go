@@ -230,13 +230,14 @@ func checkDBSpec(s step, dir, database string) error {
 			} `json:"documents"`
 			Error        string `json:"error"`
 			ManifestHash string `json:"manifest_hash"`
+			Rule         string `json:"rule"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
 		model, invalid := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
 		if invalid != nil {
-			if invalid.Code() != want.Error {
+			if invalid.Code() != want.Error || (want.Rule != "" && !strings.Contains(invalid.Message(), want.Rule)) {
 				return fmt.Errorf("%v, want %+v", invalid, want)
 			}
 			return nil
@@ -260,15 +261,26 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		texts := make([]string, len(s.Documents))
-		for i, path := range s.Documents {
-			text, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
-			if err != nil {
-				return err
+		read := func(paths []string) ([]string, error) {
+			texts := make([]string, len(paths))
+			for i, path := range paths {
+				text, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+				if err != nil {
+					return nil, err
+				}
+				texts[i] = string(text)
 			}
-			texts[i] = string(text)
+			return texts, nil
 		}
-		model, diagnostics := runtimemodel.LoadDocuments(texts)
+		owned, err := read(s.Documents)
+		if err != nil {
+			return err
+		}
+		external, err := read(s.External)
+		if err != nil {
+			return err
+		}
+		model, diagnostics := runtimemodel.LoadDocumentSet(owned, external)
 		if len(diagnostics) > 0 {
 			return errors.New(runtimemodel.DiagnosticsError(diagnostics))
 		}
@@ -681,14 +693,23 @@ func sameDiagnostics(want []setDiagnostic, got []dbspec.Diagnostic) error {
 // runtimeModelView is the expect of a dbspec.runtime_model step (FCV-4): the entity names in order and, for the entities and
 // fields it names, the values it names.
 type runtimeModelView struct {
-	Entities []string                  `json:"entities"`
-	Models   map[string]map[string]any `json:"models"`
+	Entities []string `json:"entities"`
+	// ManifestText is the lines of the manifest text and ManifestHash its hash, when the expect names them.
+	ManifestText []string                  `json:"manifest_text"`
+	ManifestHash string                    `json:"manifest_hash"`
+	Models       map[string]map[string]any `json:"models"`
 }
 
 // checkRuntimeModel compares the runtime model with the values that want names.
 func checkRuntimeModel(m *runtimemodel.Model, want runtimeModelView) error {
 	if !slices.Equal(m.Order, want.Entities) {
 		return fmt.Errorf("entities %v, want %v", m.Order, want.Entities)
+	}
+	if want.ManifestText != nil && m.ManifestText != strings.Join(want.ManifestText, "\n")+"\n" {
+		return fmt.Errorf("manifest text %q, want %q", m.ManifestText, want.ManifestText)
+	}
+	if want.ManifestHash != "" && m.ManifestHash != want.ManifestHash {
+		return fmt.Errorf("manifest hash %s, want %s", m.ManifestHash, want.ManifestHash)
 	}
 	for name, values := range want.Models {
 		e := m.Entities[name]
@@ -712,7 +733,7 @@ func checkRuntimeModel(m *runtimemodel.Model, want runtimeModelView) error {
 		got["key_names"] = keys
 		fields := map[string]any{}
 		for _, f := range e.Fields {
-			fields[f.Name] = map[string]any{"type": f.Type, "nullable": f.Null, "default": f.Default, "default_now": f.DefaultNow,
+			fields[f.Name] = map[string]any{"type": f.Type, "nullable": f.Null, "default": f.Default, "default_now": f.DefaultNow, "select_explicit": f.SelectExplicit,
 				"codec": f.Codec, "blind_index": f.BlindIndex, "primary_key": f.PrimaryKey, "foreign_key": f.ForeignKey}
 		}
 		got["fields"] = fields

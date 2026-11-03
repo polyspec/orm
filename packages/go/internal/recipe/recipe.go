@@ -7,6 +7,8 @@ package recipe
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -29,6 +31,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	_ "modernc.org/sqlite"
 )
 
 // None is the database part of a recipe without a database (FCV-3).
@@ -46,6 +49,9 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	GenSet  string                     `json:"document_set"`
+	Same    []string                   `json:"unchanged"`
+	Diff    []string                   `json:"changed"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -57,7 +63,7 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	DSN     string                     `json:"dsn"`
-	Config  dsnConfig              `json:"config"`
+	Config  dsnConfig                  `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
 	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
@@ -102,6 +108,15 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
+	// SQL is the statements of dbspec.introspect_sqlite or dbspec.apply_fault.
+	SQL []string `json:"sql"`
+	// Call, AppliedFirst and FailCatalogRead are the fields of dbspec.apply_fault.
+	Call            string `json:"call"`
+	AppliedFirst    bool   `json:"applied_first"`
+	FailCatalogRead int    `json:"fail_catalog_read"`
+	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -248,6 +263,8 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlannerColumns(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
+	case "generator.check":
+		return checkGeneratedFiles(o.dir, s)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
@@ -287,6 +304,15 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "keyring.versions" {
 		return checkKeyring(s, database)
+	}
+	if s.Op == "dbspec.introspect_shown" {
+		return checkIntrospectShown(t, o.dir, s, database)
+	}
+	if s.Op == "dbspec.apply_fault" {
+		return checkApplyFault(t, s, bound, database)
+	}
+	if s.Op == "dbspec.introspect_sqlite" {
+		return checkIntrospectSQLite(t, s, database)
 	}
 	var r result
 	switch s.Op {
@@ -345,10 +371,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 
 // dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
 type dsnConfig struct {
-	PoolSize           int `json:"pool_size"`
-	PoolIdleSize       int `json:"pool_idle_size"`
-	PoolLifetimeMs     int `json:"pool_lifetime_ms"`
-	StatementTimeoutMs int `json:"statement_timeout_ms"`
+	PoolSize           int  `json:"pool_size"`
+	PoolIdleSize       int  `json:"pool_idle_size"`
+	PoolLifetimeMs     int  `json:"pool_lifetime_ms"`
+	StatementTimeoutMs int  `json:"statement_timeout_ms"`
 	TLSVersion         bool `json:"tls_version"`
 }
 
@@ -1812,7 +1838,7 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 		return fmt.Errorf("markdown.builder needs WithMarkdownBuilder")
 	}
 	var want struct {
-		Error           string `json:"error"`
+		Error   string `json:"error"`
 		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
@@ -1821,6 +1847,41 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 	code, message := fn(t, s.Calls)
 	if code != want.Error || message != want.Message {
 		return fmt.Errorf("the terminal returned %q %q, want %q %q", code, message, want.Error, want.Message)
+	}
+	return nil
+}
+
+// checkIntrospectSQLite runs one dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public Introspect, whose unsupported objects it compares with the expect of database (DIA-191).
+func checkIntrospectSQLite(t *testing.T, s step, database string) error {
+	var want struct {
+		Unsupported []dbspec.Unsupported `json:"unsupported"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close the memory SQLite connection: %v", err)
+		}
+	}()
+	db.SetMaxOpenConns(1)
+	ctx := context.Background()
+	for _, statement := range s.SQL {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(unsupported, want.Unsupported) {
+		return fmt.Errorf("unsupported objects = %+v, want %+v", unsupported, want.Unsupported)
 	}
 	return nil
 }

@@ -29,7 +29,6 @@ await run.run('engine', COMPUTE, async () => {
   check(MANIFEST_TEXT === manifest.manifestText && MANIFEST_HASH === manifest.manifestHash && EXTERNAL_TEXT === manifest.externalText, 'the generated models embed the manifest of the bench set');
   const model = registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT);
   check(registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT) === model, 'registering the same manifest returns the registered model');
-  check([...model.entities.keys()].join(',') === 'author,user,service,service_region,service_member,composite_account,composite_membership,soft_record,soft_link,account,project,account_project,task,hex_cell,time_cell,clock_cell,day_cell,upsert_cell,uuid_cell,ip_hex_cell,bind_cell,audit_record,audited_note,audited_note_history,note_reader,shared_note', 'entities in document order');
   // Requirements: SCH-15.
   // Text that does not hash to the declared hash is SCHEMA_HASH_MISMATCH, even if that hash is already registered.
   const edited = MANIFEST_TEXT.replace('table author', 'table authors');
@@ -39,10 +38,6 @@ await run.run('engine', COMPUTE, async () => {
   check(code(() => registerModel(`${MANIFEST_TEXT}# note\n`, manifest.manifestHash.replace(/.$/, '0'))) === 'SCHEMA_INVALID', 'a text that is not a manifest text is rejected');
   check(code(() => registerModel('{', 'sha256:00')) === 'SCHEMA_INVALID', 'a text that is not dbspec is rejected');
   check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
-  const author = model.entities.get('author');
-  const field = name => author.fields.find(f => f.name === name);
-  check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_hex_email').stages.join(',') === 'aes,hex' && field('aes_hex_email').blindIndex === 'email_blind_index', 'codec stages and blind index');
-  check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
   // A request names a manifest that no imported model registered.
   check(await codeOf(Db.connect('sqlite:///tmp/orm-engine-unused.sqlite', 'contracts/fixtures/bench/bench.dbs')) === 'CONFIG', 'connect rejects a string in place of the options object');

@@ -4,7 +4,8 @@
     "DSL-82",
     "INT-87",
     "PRT-12",
-    "PRT-40"
+    "PRT-40",
+    "CPX-4"
   ],
   "fixture": "contracts/fixtures/bench/dbspec-set.json",
   "cases": [
@@ -14,7 +15,8 @@
         "DSL-82",
         "INT-87",
         "PRT-12",
-        "PRT-40"
+        "PRT-40",
+        "CPX-4"
       ],
       "steps": [
         {

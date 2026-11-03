@@ -68,11 +68,11 @@ caseTest('feature ownership distinguishes declared implementation-internal tests
 
 caseTest('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', COMPUTE, () => {
   const globs = implementationTestGlobs(parity);
-  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/coverage_transactions_test.go', globs), true);
+  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/recipe_transactions_test.go', globs), true);
   assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/coverage_statement_events_test.go', globs), true);
-  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/CoverageTransactionsTest.php', globs), true);
+  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/TransactionsRecipeTest.php', globs), true);
   assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/CallbackFailed.php', globs), false);
-  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/integration/coverage_transactions.rs', globs), true);
+  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/transactions_mysql.rs', globs), true);
   assert.equal(isDeclaredSharedTest('rust', 'packages/rust/orm/tests/common/test_support.rs', globs), false);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_transactions.mjs', globs), true);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_case.mjs', globs), true);
@@ -81,7 +81,7 @@ caseTest('shared feature tests come from parity test globs or exact bindings, wh
   assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/transaction_api_test.go'));
   const internal = implementationInternalTestPaths(parity);
   const support = implementationSupportGlobs(parity);
-  assert.equal(isFeatureTestPath('go', 'packages/go/orm/coverage_transactions_test.go', globs, [], internal, support), true);
+  assert.equal(isFeatureTestPath('go', 'packages/go/orm/recipe_transactions_test.go', globs, [], internal, support), true);
   assert.equal(isFeatureTestPath('go', 'packages/go/model/coverage_helpers_test.go', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/transaction_api_test.go', globs, ['packages/go/orm/transaction_api_test.go'], internal, support), true);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/mysqlonly/mysqlonly_test.go', globs, [], internal, support), true);
