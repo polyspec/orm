@@ -38,7 +38,6 @@ final class RecipeGenerator
         try {
             [$status, $output] = $gen();
             Assert::assertSame(0, $status, $output);
-            $expect($step['unchanged'], '');
             $files = glob("$out/*") ?: [];
             sort($files);
             $file = null;
@@ -49,11 +48,17 @@ final class RecipeGenerator
                 }
             }
             Assert::assertNotNull($file, "$out holds no generated file");
+            // A file that the generation does not write and that does not carry the marker is not compared.
+            file_put_contents("$out/ZzNotes.php", "<?php\n");
+            $expect($step['unchanged'], '');
             $text = (string) file_get_contents($file);
             $text[0] = chr(ord($text[0]) ^ 1);
             file_put_contents($file, $text);
             $expect($step['changed'], $file);
             Assert::assertSame($text, file_get_contents($file), 'the check wrote the file');
+            unlink($file);
+            $expect($step['removed'], $file);
+            Assert::assertFileDoesNotExist($file, 'the check wrote the file');
         } finally {
             foreach (glob("$out/*") ?: [] as $file) {
                 unlink($file);
@@ -61,6 +66,41 @@ final class RecipeGenerator
             if (is_dir($out)) {
                 rmdir($out);
             }
+            rmdir($work);
+        }
+    }
+
+    /**
+     * Runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client.
+     *
+     * @param array<string, mixed> $step
+     */
+    public static function checkRefused(array $step, string $dir): void
+    {
+        $work = sys_get_temp_dir() . '/orm-recipe-generator-refused-' . bin2hex(random_bytes(8));
+        mkdir($work, 0o700, true);
+        $out = "$work/model";
+        try {
+            foreach ($step['files'] as $name => $entry) {
+                $text = is_string($entry) ? $entry : file_get_contents("$dir/{$entry['path']}");
+                file_put_contents("$work/$name", $text);
+            }
+            [$status, $stdout, $stderr] = coverageProcess(
+                [PHP_BINARY, 'vendor-php/bin/orm-gen', 'gen', '--set', "$work/dbspec-set.json", '--out', $out,
+                    '--namespace', 'Polyspec\\Orm\\Tests\\RecipeRefused',
+                    ...(($step['check'] ?? false) ? ['--check'] : [])],
+                dirname(__DIR__, 3),
+            );
+            Assert::assertSame([1, ''], [$status, $stdout], $stderr);
+            $from = 0;
+            foreach ($step['parts'] as $part) {
+                $at = strpos($stderr, $part, $from);
+                Assert::assertNotFalse($at, "the output lacks $part in order: $stderr");
+                $from = $at + strlen($part);
+            }
+            Assert::assertFileDoesNotExist($out, 'the generation wrote the output');
+        } finally {
+            array_map('unlink', glob("$work/*") ?: []);
             rmdir($work);
         }
     }

@@ -34,7 +34,7 @@ func TestParseDSN(t *testing.T) {
 }
 
 // TestDriverFromDSN checks that DriverFromDSN names the database of each DSN scheme and refuses a DSN that is no URI.
-// Requirements: CFG-1.
+// Requirements: CFG-40.
 func TestDriverFromDSN(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for input, want := range map[string]string{

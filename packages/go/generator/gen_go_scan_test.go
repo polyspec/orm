@@ -251,9 +251,9 @@ func TestGeneratedExternalModelReadsItsTable(t *testing.T) {
 		}
 		return string(raw)
 	}
-	m, diagnostics := runtimemodel.LoadSet(read("member.dbs"), read("core.dbs"))
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	m, problems := runtimemodel.LoadSet(read("member.dbs"), read("core.dbs"))
+	if problems != nil {
+		t.Fatal(problems)
 	}
 	write := scannedModule(t)
 	write("example/example.go", `package example

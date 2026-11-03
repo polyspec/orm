@@ -810,6 +810,7 @@
             "collection.key",
             "sql.exec",
             "session.end",
+            "fault.next_rollback",
             "query.search",
             "query.search_chain",
             "ir.validate",
@@ -853,6 +854,7 @@
             "events.unsubscribe",
             "utils.run",
             "events.captured",
+            "events.server_transactions",
             "planner.compile",
             "dbspec.parse",
             "dbspec.parse_plan",
@@ -879,10 +881,12 @@
             "catalog.close",
             "catalog.reconnect",
             "catalog.revision",
+            "catalog.revision_compare",
             "catalog.row_cells",
             "model.read_bind_cell",
             "generator.generate",
             "generator.check",
+            "generator.refused",
             "dbspec.export_mermaid",
             "dbspec.import_mermaid",
             "hook.install",
@@ -974,6 +978,9 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/fault.next_rollback"
         },
         {
           "$ref": "#/$defs/ops/query.search"
@@ -1126,6 +1133,9 @@
           "$ref": "#/$defs/ops/events.captured"
         },
         {
+          "$ref": "#/$defs/ops/events.server_transactions"
+        },
+        {
           "$ref": "#/$defs/ops/utils.aes_status"
         },
         {
@@ -1177,6 +1187,9 @@
           "$ref": "#/$defs/ops/catalog.revision"
         },
         {
+          "$ref": "#/$defs/ops/catalog.revision_compare"
+        },
+        {
           "$ref": "#/$defs/ops/catalog.row_cells"
         },
         {
@@ -1187,6 +1200,9 @@
         },
         {
           "$ref": "#/$defs/ops/generator.check"
+        },
+        {
+          "$ref": "#/$defs/ops/generator.refused"
         },
         {
           "$ref": "#/$defs/ops/dbspec.export_mermaid"
@@ -2189,7 +2205,7 @@
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
@@ -3375,6 +3391,20 @@
           }
         }
       },
+      "fault.next_rollback": {
+        "description": "Arms the rollback fault of the test entry point of the client on the connection (PRT-43 and its peers).",
+        "type": "object",
+        "required": ["op", "connection"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "fault.next_rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
       "session.end": {
         "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",
         "type": "object",
@@ -3460,7 +3490,8 @@
             "const": "catalog.describe_table"
           },
           "table": {
-            "$ref": "#/$defs/name"
+            "description": "The text of the call, which a case of a refused reference holds as it is.",
+            "type": "string"
           },
           "namespace": {
             "$ref": "#/$defs/name"
@@ -3495,7 +3526,8 @@
             "const": "catalog.table_page"
           },
           "table": {
-            "$ref": "#/$defs/name"
+            "description": "The text of the call, which a case of a quoted name holds as it is.",
+            "type": "string"
           },
           "limit": {
             "type": "integer"
@@ -3654,6 +3686,43 @@
               "column_name": {
                 "description": "The name that replaces the name of the first column of the descriptor of the page.",
                 "type": "string"
+              },
+              "primary_key": {
+                "description": "The key columns that replace the primary key of the descriptor of the page.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "limit": {
+                "description": "The limit that replaces the limit of the page.",
+                "type": "integer"
+              },
+              "result_column_name": {
+                "description": "The name that replaces the name of the first column of the result of the page.",
+                "type": "string"
+              },
+              "drop_last_cell": {
+                "description": "Removes the last cell of the first row of the page.",
+                "const": true
+              },
+              "fill_last_cell": {
+                "description": "Replaces the last cell of the first row of the page with the text fill repeated count times.",
+                "type": "object",
+                "required": [
+                  "fill",
+                  "count"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "fill": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
               }
             }
           },
@@ -5083,6 +5152,50 @@
           }
         }
       },
+      "events.server_transactions": {
+        "type": "object",
+        "required": ["op", "connection", "probe", "first_run_prepare_clients", "steps", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "events.server_transactions",
+            "description": "Runs steps twice on the connection and reads, by the difference of probe, the server transactions of each run (INT-149)."
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "probe": {
+            "type": "string",
+            "description": "One statement whose single integer cell grows with the server transactions of the connection."
+          },
+          "first_run_prepare_clients": {
+            "type": "array",
+            "items": {
+              "enum": ["go", "php", "php-extension", "python", "rust", "typescript"]
+            },
+            "description": "The clients whose first run prepares each distinct text in a round trip of its own, one more transaction for each."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/step"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/serverTransactions"
+              }
+            }
+          }
+        }
+      },
       "events.fail_subscriber": {
         "type": "object",
         "required": [
@@ -6418,6 +6531,35 @@
           }
         }
       },
+      "catalog.revision_compare": {
+        "description": "Compares the revision of a snapshot with the revision of another: the outcome is the json {\"length\": the characters of the revision, \"differs\": whether the two differ}.",
+        "type": "object",
+        "required": [
+          "op",
+          "snapshot",
+          "other",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "catalog.revision_compare"
+          },
+          "snapshot": {
+            "$ref": "#/$defs/ref"
+          },
+          "other": {
+            "$ref": "#/$defs/ref"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/json"
+            }
+          }
+        }
+      },
       "catalog.revision": {
         "type": "object",
         "required": [
@@ -6468,7 +6610,8 @@
           "op",
           "document_set",
           "unchanged",
-          "changed"
+          "changed",
+          "removed"
         ],
         "additionalProperties": false,
         "properties": {
@@ -6489,6 +6632,70 @@
           "changed": {
             "description": "The lines of the check after one byte of one generated file changed; <file> is that file as the runtime names it.",
             "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removed": {
+            "description": "The lines of the check after that file was removed.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "generator.refused": {
+        "type": "object",
+        "required": [
+          "op",
+          "files",
+          "parts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.refused"
+          },
+          "files": {
+            "description": "The tree of the generation, with dbspec-set.json at its root: a name to its text, or to the path of a file to copy, relative to the recipe file.",
+            "type": "object",
+            "required": [
+              "dbspec-set.json"
+            ],
+            "properties": {
+              "dbspec-set.json": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "check": {
+            "description": "True runs the check of the generated files in place of the generation.",
+            "type": "boolean"
+          },
+          "parts": {
+            "description": "The texts that the output of the refusal holds, each after the one before it.",
+            "type": "array",
+            "minItems": 1,
             "items": {
               "type": "string"
             }
@@ -7843,6 +8050,34 @@
       }
     },
     "outcomes": {
+      "serverTransactions": {
+        "type": "object",
+        "required": ["probe_cost", "events", "texts", "first_excess", "second_excess"],
+        "additionalProperties": false,
+        "properties": {
+          "probe_cost": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "integer"
+          },
+          "texts": {
+            "type": "integer"
+          },
+          "first_excess": {
+            "type": "integer"
+          },
+          "second_excess": {
+            "type": "integer"
+          },
+          "time_zone": {
+            "type": "string"
+          },
+          "time_zone_from_startup": {
+            "type": "boolean"
+          }
+        }
+      },
       "deadlock": {
         "type": "object",
         "required": [
@@ -8082,7 +8317,7 @@
               "columns": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/name"
+                  "type": "string"
                 }
               },
               "order_by": {
@@ -8364,7 +8599,6 @@
     },
     "assignments": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "array",
         "prefixItems": [
@@ -8924,6 +9158,18 @@
       "minItems": 1,
       "items": {
         "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "random"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "random": {
+                "const": true
+              }
+            }
+          },
           {
             "$ref": "#/$defs/name"
           },

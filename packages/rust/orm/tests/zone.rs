@@ -5,7 +5,7 @@
 //! database of its own (polyspec-orm-case-database). A test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDate, NaiveDateTime};
 use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
@@ -63,61 +63,6 @@ fn event(db: &Db) -> ZoneEvent {
     let mut core = Core::new(&ENTITY);
     core.connect(db);
     ZoneEvent::from_core(core)
-}
-
-#[tokio::test]
-// The test of DSL-141, DIA-57 (docs/spec).
-// Requirements: CFG-2.
-async fn connections_use_utc() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    // The Rust input is timezone-less; use the UTC wall clock of 2026-01-02T00:00:00+09:00.
-    let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(15, 0, 0).unwrap();
-    for driver in ["sqlite", "mysql", "postgres"] {
-        // The test server's MySQL is SYSTEM (KST), and PostgreSQL is Asia/Seoul.
-        for zone in ["", "UTC", "+00:00"] {
-            // The schema is installed anew for each zone, so it uses its own case database.
-            let database = CaseDatabase::create(driver).await;
-            let base = database.dsn().to_owned();
-            let sep = if base.contains('?') { '&' } else { '?' };
-            let dsn = if zone.is_empty() { base.clone() } else { format!("{base}{sep}timezone={}", zone.replace('+', "%2B")) };
-            let label = format!("{driver}/{zone}");
-            let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{label}: {e}"));
-            db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{label}: install: {e}"));
-            let before = Utc::now().naive_utc();
-            let mut row = event(&db);
-            row.core_mut().set("start_dt", datetime_param(start));
-            polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{label}: create: {e}"));
-            let got = polyspec_orm::model::get(&event(&db)).await.or_panic(|e| format!("{label}: {e}")).expect("the created row");
-            assert_eq!(got.start_dt, start, "{label}: start_dt");
-            // `default now` is the UTC statement time.
-            let skew = (got.created_ts - before).num_seconds().abs();
-            assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
-            const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
-            let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(datetime_param(start)))]);
-            let found = polyspec_orm::model::get_count(&filter).await.or_panic(|e| format!("{label}: count: {e}"));
-            assert_eq!(found, 1, "{label}: where start_dt");
-            let text = |v: &str| Param::Str(v.to_owned());
-            const BETWEEN: &[ChainKey] = &[ChainKey { conn: "", op: "between", column: "start_dt", columns: &[], compare: "" }];
-            let filters = [
-                ("equal by text", KEYS, polyspec_orm::args::Value::One(text("2026-01-01 15:00:00")), 1),
-                ("equal by text with fraction", KEYS, polyspec_orm::args::Value::One(text("2026-01-01T15:00:00.0")), 1),
-                ("in by text", KEYS, polyspec_orm::args::Value::List(vec![text("2026-01-01 15:00:00"), text("2026-01-03 00:00:00")]), 1),
-                ("between by text", BETWEEN, polyspec_orm::args::Value::Pair(text("2026-01-01 15:00:00"), text("2026-01-01 15:00:00.5")), 1),
-            ];
-            for (name, keys, value, want) in filters {
-                let filter = event(&db).core().by(keys, vec![Arg::Value(value)]);
-                let found = polyspec_orm::model::get_count(&filter).await.or_panic(|e| format!("{label}: {name}: {e}"));
-                assert_eq!(found, want, "{label}: {name}");
-            }
-            if driver == "sqlite" {
-                let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(text("2026-01-01")))]);
-                let err = polyspec_orm::model::get_count(&filter).await.expect_err("date-only datetime text");
-                assert_eq!(err.code(), polyspec_orm::codes::CODEC_ENCODE, "{label}: date-only datetime text: {err}");
-            }
-            db.close().await;
-            database.drop().await;
-        }
-    }
 }
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.

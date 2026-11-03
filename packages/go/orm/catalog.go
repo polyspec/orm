@@ -436,7 +436,7 @@ func catalogConvert(raw catalogRaw, nativeTypes []string) ([][]any, error) {
 }
 
 // catalogValue converts one driver value to the catalog value of its native type. Text is a string, binary a copy of its
-// bytes, integers int64, floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
+// bytes, integers int64 (uint64 for a MySQL unsigned value beyond it), floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
 func catalogValue(value any, nativeType string) (any, error) {
 	switch v := value.(type) {
 	case nil, bool, int64, uint64, float64, time.Time:
