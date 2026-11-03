@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
-import { JsonError, parseJson, readJsonFile, SchemaError } from './schema.mts';
+import { JsonError, parseJson, readJsonFile, SchemaError, validator } from './schema.mts';
 
 type Pair = { name: string; size: number };
 
@@ -51,5 +51,15 @@ caseTest('invalid JSON throws a JsonError naming the source', COMPUTE, () => {
 caseTest('a schema that strict mode refuses throws', COMPUTE, () => {
   withSchema({ type: 'object', unknownKeyword: true }, schema => {
     assert.throws(() => parseJson<Pair>('{}', schema, 'x.json'), /unknown keyword/);
+  });
+});
+
+caseTest('a schema file is compiled once, and again when its text changes', COMPUTE, () => {
+  withSchema({ type: 'object' }, path => {
+    const first = validator(path);
+    assert.equal(validator(path), first);
+    writeFileSync(path, JSON.stringify({ type: 'array' }));
+    assert.notEqual(validator(path), first);
+    assert.equal(validator(path)([]), true);
   });
 });

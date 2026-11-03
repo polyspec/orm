@@ -41,11 +41,20 @@ function parse(text: string, source: string): unknown {
   }
 }
 
-// validator compiles the schema file; a schema holds no $id, so compiling it again adds nothing to ajv.
-function validator<T>(schema: string): ValidateFunction<T> {
-  const rules = parse(readFileSync(schema, 'utf8'), schema);
+// validators holds the compiled schemas by their text: ajv keeps every schema object it compiles for the life of the process,
+// so compiling a schema once per check grows the heap until a run of many checks aborts.
+const validators = new Map<string, ValidateFunction>();
+
+/** validator is the compiled schema of the file, compiled once for each text the file holds. */
+export function validator<T>(schema: string): ValidateFunction<T> {
+  const text = readFileSync(schema, 'utf8');
+  const known = validators.get(text);
+  if (known) return known as ValidateFunction<T>;
+  const rules = parse(text, schema);
   if (rules === null || typeof rules !== 'object' || Array.isArray(rules)) throw new JsonError(`${schema}: a JSON Schema is an object`);
-  return ajv.compile<T>(rules);
+  const compiled = ajv.compile<T>(rules);
+  validators.set(text, compiled);
+  return compiled;
 }
 
 /** checkJson is a parsed JSON value against the schema file, typed; it throws a SchemaError naming source. */
