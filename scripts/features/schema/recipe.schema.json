@@ -790,6 +790,9 @@
             "catalog.delete_row",
             "schema.install",
             "schema.register",
+            "schema.empty",
+            "schema.exists",
+            "schema.installed",
             "schema.connect",
             "schema.add_tables_and_columns",
             "statements.count",
@@ -967,6 +970,15 @@
         },
         {
           "$ref": "#/$defs/ops/schema.register"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.empty"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.exists"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.installed"
         },
         {
           "$ref": "#/$defs/ops/schema.connect"
@@ -1208,6 +1220,116 @@
           },
           "schema": {
             "$ref": "#/$defs/schemaArgument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.empty": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.empty"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.exists": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.exists"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.installed": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "table",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.installed"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "table": {
+            "type": "string"
           },
           "expect": {
             "$ref": "#/$defs/expect"

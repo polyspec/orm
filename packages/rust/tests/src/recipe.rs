@@ -2478,6 +2478,16 @@ mod database {
                 context.db.utils().schema().register(&schema).map_err(orm)?;
                 Output::fields(ok_value())
             }
+            "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),
+            "schema.exists" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().exists(&name).await.map_err(orm)? } }))
+            }
+            "schema.installed" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                let table = step["table"].as_str().unwrap_or_default();
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().installed(&name, table).await.map_err(orm)? } }))
+            }
             "schema.connect" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
                 let connected = Db::connect_schema(&context.dsn, &schema, 1, Config::default()).await.map_err(orm)?;
@@ -2902,6 +2912,15 @@ mod database {
 
     /// The SQL of a sql.exec field for the case database: a string, or the entry of the database when the object has its key.
     /// An absent key is None, so the step runs nothing on that database.
+    fn inspected_schema(field: &Value, context: &Context<'_>) -> Result<String, String> {
+        let name = field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} names no schema for {}", context.database))?;
+        if name != "$database" {
+            return Ok(name.to_owned());
+        }
+        let path = context.dsn.split('?').next().unwrap_or_default();
+        Ok(path.rsplit('/').next().unwrap_or_default().to_owned())
+    }
+
     fn sql_entry<'a>(field: &'a Value, context: &Context<'_>) -> Result<Option<&'a str>, String> {
         if let Some(text) = field.as_str() {
             return Ok(Some(text));

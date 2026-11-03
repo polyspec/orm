@@ -16,7 +16,9 @@
     "SCH-11",
     "INT-56",
     "SCH-8",
-    "SCH-9"
+    "SCH-9",
+    "INT-57",
+    "INT-58"
   ],
   "fixture": "none",
   "cases": [
@@ -2283,6 +2285,816 @@
                   }
                 ]
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_empty",
+      "requirements": [
+        "INT-58"
+      ],
+      "steps": [
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE SCHEMA unowned_empty",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP SCHEMA unowned_empty",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE SEQUENCE public.not_content",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)",
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE orm__probe (k TEXT)",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE VIEW listing AS SELECT 1 AS one",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)"
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP VIEW listing",
+          "reason": "content that a .dbs does not declare, which the emptiness of the database reads (INT-58)"
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.empty",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_exists_and_installed",
+      "requirements": [
+        "INT-57"
+      ],
+      "steps": [
+        {
+          "op": "schema.exists",
+          "schema": "no_such_schema",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE app__user (k TEXT)",
+          "reason": "a table outside the set, whose name schema inspection reads (INT-57)",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE apps (k TEXT)",
+          "reason": "a table outside the set, whose name schema inspection reads (INT-57)",
+          "only": [
+            "sqlite"
+          ]
+        },
+        {
+          "op": "schema.exists",
+          "schema": {
+            "mysql": "$database",
+            "postgres": "public",
+            "sqlite": "app"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "ap",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "a_p",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": {
+            "mysql": "$database",
+            "postgres": "public",
+            "sqlite": "app"
+          },
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": {
+            "mysql": "$database",
+            "postgres": "public",
+            "sqlite": "app"
+          },
+          "table": "missing",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": "ormexample",
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_exists_literal_underscore",
+      "requirements": [
+        "INT-57"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE fooXbar__schema_probe (id INTEGER)",
+          "reason": "a table outside the set, whose name schema inspection reads (INT-57)"
+        },
+        {
+          "op": "schema.exists",
+          "schema": "foo_bar",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "foo_bar",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": false
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()",
+            "postgres": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "fooXbar",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": false
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": false
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_inspection_invalid_names",
+      "requirements": [
+        "INT-57"
+      ],
+      "steps": [
+        {
+          "op": "schema.exists",
+          "schema": "bad name",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.exists",
+          "schema": "",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": "app",
+          "table": "bad name",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.installed",
+          "schema": ".app",
+          "table": "user",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_renders_triggers",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../audit.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../audit.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()",
+            "postgres": "SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = current_schema()",
+            "sqlite": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE item_history",
+          "reason": "a table of the set removed from outside, so that only some of the set exists"
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../audit.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "install_differs",
+      "requirements": [
+        "DBS-108"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "ALTER TABLE `user` ADD COLUMN junk INTEGER NULL",
+            "postgres": "ALTER TABLE \"user\" ADD COLUMN junk INTEGER NULL",
+            "sqlite": "ALTER TABLE \"user\" ADD COLUMN junk INTEGER NULL"
+          },
+          "reason": "a column added from outside the ORM, so that the database differs from the set"
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "user.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
             }
           }
         }

@@ -1168,6 +1168,12 @@ async function schemaArgument(arg, context) {
 // okValue is the value of an op that returns without error (FCV-4).
 const okValue = { value: { bool: true } };
 
+// inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database.
+function inspectedSchema(value, context) {
+  const name = typeof value === 'string' ? value : value[context.database];
+  return name === '$database' ? new URL(context.dsn).pathname.slice(1) : name;
+}
+
 // runNested runs the nested steps of statements.count or transaction, each with its own expect, through the same runStep (FCV-4).
 async function runNested(steps, context) {
   for (const nested of steps) await runStep(nested, context);
@@ -1185,6 +1191,15 @@ Object.assign(OPS, {
   async 'schema.register'(s, context) {
     context.db.utils().schema().register(await schemaArgument(s.schema, context));
     return okValue;
+  },
+  async 'schema.empty'(_s, context) {
+    return { value: { bool: await context.db.utils().schema().empty() } };
+  },
+  async 'schema.exists'(s, context) {
+    return { value: { bool: await context.db.utils().schema().exists(inspectedSchema(s.schema, context)) } };
+  },
+  async 'schema.installed'(s, context) {
+    return { value: { bool: await context.db.utils().schema().installed(inspectedSchema(s.schema, context), s.table) } };
   },
   async 'schema.connect'(s, context) {
     const connected = await Db.connectSchema(context.dsn, await schemaArgument(s.schema, context));

@@ -5640,7 +5640,6 @@
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
-        "packages/python/tests/test_schema_install.py",
         "packages/python/tests/test_schema_install_uses.py",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
@@ -5666,9 +5665,6 @@
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
         "packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
         "packages/php-ext/tests/DbspecRulesNativeTest.php",
-        "packages/go/orm/schema_exists_underscore_test.go",
-        "packages/php/tests/SchemaExistsSqliteTest.php",
-        "packages/rust/orm/tests/schema_exists_underscore.rs",
         "packages/python/tests/test_schema_set.py",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_schema_install_test.go",
@@ -5713,7 +5709,7 @@
         },
         {
           "id": "install-register-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterRefusesEditedManifest|TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestRegisterRefusesEditedManifest|TestRegisterReusesEnginePerHash|TestInstallVerifiesTheDatabase)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/install_test.go",
@@ -5791,10 +5787,9 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_schema_install.py",
             "packages/python/tests/test_schema_install_uses.py",
             "packages/python/tests/test_installed_differences.py",
             "packages/python/tests/test_schema_inspection.py",

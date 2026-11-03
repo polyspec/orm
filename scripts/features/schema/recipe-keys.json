@@ -206,6 +206,21 @@
       "op",
       "schema"
     ],
+    "schema.empty": [
+      "expect",
+      "op"
+    ],
+    "schema.exists": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.installed": [
+      "expect",
+      "op",
+      "schema",
+      "table"
+    ],
     "schema.connect": [
       "expect",
       "op",

@@ -773,20 +773,6 @@ async fn read_only_sqlite(t: &Target) {
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
 // Requirements: DBS-108, INT-58, SCH-7.
-async fn schema_empty_case(t: &Target) {
-    let db = &t.db;
-    assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
-    if let Pool::Postgres(p) = db.pool() {
-        sqlx::raw_sql("CREATE SCHEMA unowned_empty").execute(p).await.unwrap();
-        let with_schema = db.utils().schema().empty().await;
-        sqlx::raw_sql("DROP SCHEMA unowned_empty").execute(p).await.unwrap();
-        assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
-        assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
-    }
-    bench_set::install(db).await.unwrap();
-    assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
-}
-
 /// Inserts and reads more values than SQLite binds in one statement: the
 /// inserts and the root IN list are split, duplicate IN values are read once,
 /// and a shape that a merge would change is rejected.
@@ -951,18 +937,6 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
     let t = Target::installed(driver).await;
     body(&t).await;
     t.finish().await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn schema_empty() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
-        let t = Target::empty(driver).await;
-        schema_empty_case(&t).await;
-        t.finish().await;
-        drop(case);
-    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
