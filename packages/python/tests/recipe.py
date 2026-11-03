@@ -2818,6 +2818,7 @@ def _install_hook(step: dict, context: dict) -> None:
             if "value" in h
             else None,
             "nested": h.get("nested") is True,
+            "first": h.get("first") is True,
             "code": h.get("error", ""),
         }
         for h in hooks
@@ -2836,9 +2837,21 @@ def _install_hook(step: dict, context: dict) -> None:
                     and_where(query, _equal_pred(add_param, a["column"], a["value"]))
             elif action == "assign":
                 p = add_param(a["value"])
-                query.setdefault("set", []).append({"column": a["column"], "p": p})
+                query.setdefault("set", []).insert(
+                    0 if a["first"] else len(query.get("set") or []),
+                    {"column": a["column"], "p": p},
+                )
                 for row in query.get("rows") or []:
                     row.append(add_param(a["value"]))
+            elif action == "rebind":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        assignment["p"] = add_param(a["value"])
+            elif action == "bad_param":
+                and_where(
+                    query,
+                    {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
             elif action == "record":
                 context["records"].append(
                     {"kind": query["kind"], "entity": query["entity"]}

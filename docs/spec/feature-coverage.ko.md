@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 657f0ddcfe15028463c51e9fa8f3b2e1e8028dc0eded22fcf1c26b2c527a5917 -->
+<!-- source-sha256: 26ca08fa42c6c9ec4bb16d12fe3dc0504764d28add0627924c4ad687a4a0edda -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -128,7 +128,9 @@
   - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. parity unit이 명명하지 않으므로 vector와 requirement로 선언한다.
   - `hook.install {connection, hooks}`는 연결 `connection`에 request hook 하나를 설치한다. Go는 `db.WithRequestHook`이고 각 runtime은 그 공개 대응 호출이다(API unit `client-db-with-request-hook`). helper는 `connection`을 hook이 걸린 연결로 다시 묶고 hook을 건 연결을 보관하므로, 같은 이름에 나중의 `hook.install`은 hook을 바꾸며, 기록을 비운다. 그 step은 `expect`가 없다. `hooks`는 아래 action의 목록이고, 연결의 모든 요청마다 순서대로 실행한다:
     - `{"action": "scope", "kinds": K, "column": C, "value": V, "nested": B}`는 종류가 K에 있는 요청의 where에 `C = V`를 AND로 덧붙인다. V는 parameter로 바인딩한다. `nested: true`이면 그 요청의 모든 relation query에도 덧붙인다.
-    - `{"action": "assign", "kinds": K, "column": C, "value": V}`는 일치하는 insert(단일과 묶음 모두)의 Set에 `C = V`를 덧붙인다. V는 parameter로 바인딩한다.
+    - `{"action": "assign", "kinds": K, "column": C, "value": V, "first"?: B}`는 일치하는 insert(단일과 묶음 모두)나 restore의 Set에 `C = V`를 덧붙인다. V는 parameter로 바인딩하며, `first: true`이면 `C = V`를 Set의 맨 앞에 둔다.
+    - `{"action": "rebind", "kinds": K, "column": C, "value": V}`는 Set에 이미 있는 C의 할당에 V로 바인딩한 새 parameter를 준다.
+    - `{"action": "bad_param", "kinds": K, "column": C}`는 요청의 parameter 범위 밖 index로 `C =`를 AND한다. 검증이 이를 거부한다(PRT-65).
     - `{"action": "record", "kinds": K}`는 일치하는 요청마다 `{"kind": <kind>, "entity": <table>}`을 기록한다.
     - `{"action": "fail", "kinds": K, "error": CODE}`는 일치하는 요청을 오류 코드 CODE로 실패시킨다.
     K는 요청 종류의 목록(`one`, `all`, `count`, `group_count`, `sum`, `avg`, `paginate`, `insert`, `update`, `delete`, `restore`)이거나 이름 `reads`(앞의 일곱), `reads+restore`(같은 것과 `restore`), `every` 중 하나이다. hook은 요청의 바인딩된 parameter 값을 읽지 않는다. 그것이 필요한 사례는 native다(FCV-2).

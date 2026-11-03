@@ -138,6 +138,7 @@ type hookAction struct {
 	column string
 	value  any
 	nested bool
+	first  bool
 	code   string
 }
 
@@ -162,12 +163,13 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 			Column string          `json:"column"`
 			Value  json.RawMessage `json:"value"`
 			Nested bool            `json:"nested"`
+			First  bool            `json:"first"`
 			Error  string          `json:"error"`
 		}
 		if err := json.Unmarshal(raw, &h); err != nil {
 			return outcome{}, err
 		}
-		a := hookAction{action: h.Action, column: h.Column, nested: h.Nested, code: h.Error}
+		a := hookAction{action: h.Action, column: h.Column, nested: h.Nested, first: h.First, code: h.Error}
 		if err := json.Unmarshal(h.Kinds, &a.kinds); err != nil {
 			return outcome{}, err
 		}
@@ -195,10 +197,23 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 				}
 			case "assign":
 				p := addParam(a.value)
-				r.Set = append(r.Set, ir.Assign{Column: a.column, P: &p})
+				if a.first {
+					r.Set = slices.Insert(r.Set, 0, ir.Assign{Column: a.column, P: &p})
+				} else {
+					r.Set = append(r.Set, ir.Assign{Column: a.column, P: &p})
+				}
 				for i := range r.Rows {
 					r.Rows[i] = append(r.Rows[i], addParam(a.value))
 				}
+			case "rebind":
+				for i := range r.Set {
+					if r.Set[i].Column == a.column {
+						p := addParam(a.value)
+						r.Set[i].P = &p
+					}
+				}
+			case "bad_param":
+				irwhere.And(&r.Query, equalPred(func(any) int { return len(params) + 5 }, a.column, nil))
 			case "record":
 				c.records = append(c.records, hookRecord{kind: r.Kind, entity: r.Entity})
 			case "fail":

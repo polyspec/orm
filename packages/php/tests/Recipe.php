@@ -2485,6 +2485,7 @@ final class Recipe
             'column' => $a['column'] ?? '',
             'value' => array_key_exists('value', $a) ? self::nativeValue($a['value']) : null,
             'nested' => ($a['nested'] ?? false) === true,
+            'first' => ($a['first'] ?? false) === true,
             'code' => $a['error'] ?? '',
         ], $hooks);
         return static function (Request $r) use (&$context, $actions): void {
@@ -2501,10 +2502,25 @@ final class Recipe
                         }
                         break;
                     case 'assign':
-                        $r->ir['set'][] = ['column' => $a['column'], 'p' => $r->param($a['value'])];
+                        $assignment = ['column' => $a['column'], 'p' => $r->param($a['value'])];
+                        if ($a['first']) {
+                            array_unshift($r->ir['set'], $assignment);
+                        } else {
+                            $r->ir['set'][] = $assignment;
+                        }
                         foreach (array_keys($r->ir['rows'] ?? []) as $i) {
                             $r->ir['rows'][$i][] = $r->param($a['value']);
                         }
+                        break;
+                    case 'rebind':
+                        foreach (array_keys($r->ir['set'] ?? []) as $i) {
+                            if ($r->ir['set'][$i]['column'] === $a['column']) {
+                                $r->ir['set'][$i]['p'] = $r->param($a['value']);
+                            }
+                        }
+                        break;
+                    case 'bad_param':
+                        self::andWhere($r->ir, ['column' => $a['column'], 'op' => 'eq', 'p' => count($r->params) + 5]);
                         break;
                     case 'record':
                         $context['records'][] = [

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The cases of the request hook that only native tests held are cases of the recipe `request_hook` in all six runtimes, through the new hook actions `rebind` and `bad_param` and `first` on `assign`: a hook that rewrites a restore key, a parameter index outside the request, no statement on a refused restore, and the bound value of a hooked `getQuery`. The native tests of TypeScript and PHP keep only what a recipe cannot state: the handle sharing its connection, and a hook that reads the bound parameters.
 - The statement event coverage files of TypeScript, PHP and the PHP extension are removed: the eight vectors they ran are the eight cases of the recipe `statement_events`, event by event on the three databases. The TypeScript helper also refuses an event error that is not an `OrmError`, and the check that the PHP extension publishes events natively moves to `StatementEventsTestExtensionTest`.
 - The statement runner coverage files of TypeScript, PHP and the PHP extension are removed: their two reads of `SELECT 1`, outside and inside a transaction, are cases of the recipe `statement_runner`, which also names their feature owners.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.

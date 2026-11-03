@@ -12,7 +12,8 @@
     "INT-37",
     "PLN-16",
     "DIA-161",
-    "INT-38"
+    "INT-38",
+    "PRT-65"
   ],
   "fixture": "contracts/fixtures/request_hook/dbspec-set.json",
   "cases": [
@@ -278,6 +279,43 @@
             }
           ],
           "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "compile": true,
+          "connection": "db",
+          "expect": {
+            "mysql": {
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT `a`.`id` AS `a__id`, `a`.`part` AS `a__part`, `a`.`label` AS `a__label` FROM `hook_item` AS `a` WHERE `a`.`part` = ?"
+              }
+            },
+            "postgres": {
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"part\" AS \"a__part\", \"a\".\"label\" AS \"a__label\" FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = $1"
+              }
+            },
+            "sqlite": {
+              "json": {
+                "binds": [
+                  "a"
+                ],
+                "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"part\" AS \"a__part\", \"a\".\"label\" AS \"a__label\" FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = ?"
+              }
+            }
+          }
         },
         {
           "op": "model.query",
@@ -2497,6 +2535,11 @@
           "as": "db"
         },
         {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
           "op": "hook.install",
           "hooks": [
             {
@@ -2531,6 +2574,739 @@
             }
           },
           "connection": "db"
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "restore_rewritten_key",
+      "requirements": [
+        "DIA-161"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "rebind",
+              "kinds": [
+                "restore"
+              ],
+              "column": "label",
+              "value": {
+                "text": "y"
+              }
+            },
+            {
+              "action": "scope",
+              "kinds": "reads+restore",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "label": {
+              "text": "x"
+            },
+            "note": {
+              "text": "n4"
+            }
+          },
+          "columns": [
+            "id",
+            "label",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "id",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n4"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "restore_hook_set_key",
+      "requirements": [
+        "DIA-161"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "assign",
+              "kinds": [
+                "restore"
+              ],
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "first": true
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "label": {
+              "text": "x"
+            },
+            "note": {
+              "text": "n5"
+            }
+          },
+          "columns": [
+            "id",
+            "part",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "id",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "n5"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "restore_rewritten_key_set_scope",
+      "requirements": [
+        "DIA-161"
+      ],
+      "seed": {
+        "rows": {
+          "hook_entry": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "x"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "y"
+              },
+              "note": {
+                "text": "n0"
+              },
+              "deleted_at": {
+                "datetime": "2026-01-01 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "plain"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "rebind",
+              "kinds": [
+                "restore"
+              ],
+              "column": "label",
+              "value": {
+                "text": "y"
+              }
+            },
+            {
+              "action": "assign",
+              "kinds": [
+                "restore"
+              ],
+              "column": "part",
+              "value": {
+                "text": "a"
+              }
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.restore",
+          "model": "HookEntry",
+          "values": {
+            "label": {
+              "text": "x"
+            },
+            "note": {
+              "text": "n6"
+            }
+          },
+          "columns": [
+            "id",
+            "label",
+            "note"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "y"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "where": {},
+          "columns": [
+            "id",
+            "note"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "plain",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "text": "n6"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "invalid_param",
+      "requirements": [
+        "PRT-65"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "bad_param",
+              "kinds": [
+                "count"
+              ],
+              "column": "part"
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
         }
       ]
     }

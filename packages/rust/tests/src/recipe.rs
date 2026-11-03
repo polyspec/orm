@@ -4342,6 +4342,7 @@ mod tables {
         column: String,
         value: Option<Param>,
         nested: bool,
+        first: bool,
         code: String,
     }
 
@@ -4353,7 +4354,7 @@ mod tables {
                 Value::Null => None,
                 wrapper => Some(param(wrapper)?),
             };
-            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+            if matches!(action.as_str(), "scope" | "assign" | "rebind") && (value.is_none() || hook["column"].as_str().is_none()) {
                 return Err(format!("hook action {action} needs a column and a value"));
             }
             out.push(HookAction {
@@ -4362,6 +4363,7 @@ mod tables {
                 column: hook["column"].as_str().map(str::to_owned).unwrap_or_default(),
                 value,
                 nested: hook["nested"].as_bool() == Some(true),
+                first: hook["first"].as_bool() == Some(true),
                 code: hook["error"].as_str().map(str::to_owned).unwrap_or_default(),
             });
         }
@@ -4420,11 +4422,27 @@ mod tables {
                 }
                 ("assign", Some(value)) => {
                     let p = params.add(value.clone());
-                    request.set.push(Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                    let assignment = Assign { column: action.column.clone(), p: Some(p), ..Default::default() };
+                    if action.first {
+                        request.set.insert(0, assignment);
+                    } else {
+                        request.set.push(assignment);
+                    }
                     for row in &mut request.rows {
                         let q = params.add(value.clone());
                         row.push(q);
                     }
+                }
+                ("rebind", Some(value)) => {
+                    for assignment in &mut request.set {
+                        if assignment.column == action.column {
+                            assignment.p = Some(params.add(value.clone()));
+                        }
+                    }
+                }
+                ("bad_param", _) => {
+                    let p = request.n_params + 5;
+                    and_where(&mut request.query, equal_pred(&action.column, p));
                 }
                 ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
                 ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),

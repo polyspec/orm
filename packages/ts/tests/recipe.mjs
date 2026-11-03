@@ -1611,6 +1611,7 @@ function installHook(s, context) {
     column: a.column,
     value: a.value === undefined ? undefined : native(databaseValue(stepArgument(a.value, context), context)),
     nested: a.nested === true,
+    first: a.first === true,
     code: a.error,
   }));
   context.records = [];
@@ -1624,10 +1625,18 @@ function installHook(s, context) {
           break;
         case 'assign': {
           const p = addParam(a.value);
-          (query.set ??= []).push({ column: a.column, p });
+          query.set ??= [];
+          if (a.first) query.set.unshift({ column: a.column, p });
+          else query.set.push({ column: a.column, p });
           for (const row of query.rows ?? []) row.push(addParam(a.value));
           break;
         }
+        case 'rebind':
+          for (const assignment of query.set ?? []) if (assignment.column === a.column) assignment.p = addParam(a.value);
+          break;
+        case 'bad_param':
+          andWhere(query, { column: a.column, op: 'eq', p: query.n_params + 5 });
+          break;
         case 'record':
           context.records.push({ kind: query.kind, entity: query.entity });
           break;

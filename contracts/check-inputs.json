@@ -4111,9 +4111,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
         "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",

@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class RequestHookTest extends TestCase
+class RequestHookTest extends TestCase
 {
     /** @return iterable<string, array{string}> */
     public static function cases(): iterable

@@ -12605,15 +12605,13 @@
         "packages/go/orm/request_hook_test.go",
         "packages/go/orm/coverage_request_hook_test.go",
         "packages/ts/tests/request_hook.mjs",
-        "packages/ts/tests/coverage_request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/coverage_request_hook.py",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
+        "packages/php-ext/tests/RequestHookTestExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -12821,10 +12819,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageRequestHookTest.php"
+              "packages/php/tests/RequestHookMysqlRecipeTest.php",
+              "packages/php/tests/RequestHookPostgresRecipeTest.php",
+              "packages/php/tests/RequestHookSqliteRecipeTest.php"
             ],
             "inputs": [
-              "packages/php/tests/request_hook_cases.php",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
@@ -12832,7 +12832,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageRequestHookTest.php",
+                  "test": "packages/php/tests/RequestHookMysqlRecipeTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -12850,20 +12850,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testMysql",
+                    "read_filter": "testMysql",
+                    "same_handle_child_hook_once": "testMysql",
+                    "relation_scope": "testMysql",
+                    "insert_assign": "testMysql",
+                    "upsert_scope": "testMysql",
+                    "loaded_row_writes": "testMysql",
+                    "invalid_param": "testMysql",
+                    "restore_key": "testMysql",
+                    "restore_condition": "testMysql",
+                    "restore_no_key": "testMysql",
+                    "restore_rewritten_key": "testMysql",
+                    "restore_hook_set_key": "testMysql",
+                    "restore_rewritten_key_set_scope": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12871,7 +12871,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageRequestHookTest.php",
+                  "test": "packages/php/tests/RequestHookPostgresRecipeTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -12889,20 +12889,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testPostgres",
+                    "read_filter": "testPostgres",
+                    "same_handle_child_hook_once": "testPostgres",
+                    "relation_scope": "testPostgres",
+                    "insert_assign": "testPostgres",
+                    "upsert_scope": "testPostgres",
+                    "loaded_row_writes": "testPostgres",
+                    "invalid_param": "testPostgres",
+                    "restore_key": "testPostgres",
+                    "restore_condition": "testPostgres",
+                    "restore_no_key": "testPostgres",
+                    "restore_rewritten_key": "testPostgres",
+                    "restore_hook_set_key": "testPostgres",
+                    "restore_rewritten_key_set_scope": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12910,7 +12910,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageRequestHookTest.php",
+                  "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -12928,20 +12928,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testSqlite",
+                    "read_filter": "testSqlite",
+                    "same_handle_child_hook_once": "testSqlite",
+                    "relation_scope": "testSqlite",
+                    "insert_assign": "testSqlite",
+                    "upsert_scope": "testSqlite",
+                    "loaded_row_writes": "testSqlite",
+                    "invalid_param": "testSqlite",
+                    "restore_key": "testSqlite",
+                    "restore_condition": "testSqlite",
+                    "restore_no_key": "testSqlite",
+                    "restore_rewritten_key": "testSqlite",
+                    "restore_hook_set_key": "testSqlite",
+                    "restore_rewritten_key_set_scope": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -13079,10 +13079,12 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_request_hook.mjs"
+              "packages/ts/tests/request_hook-mysql.test.mjs",
+              "packages/ts/tests/request_hook-postgres.test.mjs",
+              "packages/ts/tests/request_hook-sqlite.test.mjs"
             ],
             "inputs": [
-              "packages/ts/tests/request_hook_run.mjs",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/ts/tests/case-database.mjs",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
@@ -13090,7 +13092,7 @@
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_request_hook.mjs",
+                  "test": "packages/ts/tests/request_hook-mysql.test.mjs",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13113,7 +13115,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_request_hook.mjs",
+                  "test": "packages/ts/tests/request_hook-postgres.test.mjs",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13136,7 +13138,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_request_hook.mjs",
+                  "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13243,10 +13245,12 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
+              "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/request_hook_cases.php",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/request_hook/request_hook.dbs",
               "packages/php/tests/CoverageRequestHookTest.php"
@@ -13255,7 +13259,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+                  "test": "packages/php-ext/tests/RequestHookMysqlRecipeTestExtensionTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13273,20 +13277,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testMysql",
+                    "read_filter": "testMysql",
+                    "same_handle_child_hook_once": "testMysql",
+                    "relation_scope": "testMysql",
+                    "insert_assign": "testMysql",
+                    "upsert_scope": "testMysql",
+                    "loaded_row_writes": "testMysql",
+                    "invalid_param": "testMysql",
+                    "restore_key": "testMysql",
+                    "restore_condition": "testMysql",
+                    "restore_no_key": "testMysql",
+                    "restore_rewritten_key": "testMysql",
+                    "restore_hook_set_key": "testMysql",
+                    "restore_rewritten_key_set_scope": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -13294,7 +13298,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+                  "test": "packages/php-ext/tests/RequestHookPostgresRecipeTestExtensionTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13312,20 +13316,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testPostgres",
+                    "read_filter": "testPostgres",
+                    "same_handle_child_hook_once": "testPostgres",
+                    "relation_scope": "testPostgres",
+                    "insert_assign": "testPostgres",
+                    "upsert_scope": "testPostgres",
+                    "loaded_row_writes": "testPostgres",
+                    "invalid_param": "testPostgres",
+                    "restore_key": "testPostgres",
+                    "restore_condition": "testPostgres",
+                    "restore_no_key": "testPostgres",
+                    "restore_rewritten_key": "testPostgres",
+                    "restore_hook_set_key": "testPostgres",
+                    "restore_rewritten_key_set_scope": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -13333,7 +13337,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+                  "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13351,20 +13355,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "testWithoutHook",
-                    "read_filter": "testReadFilter",
-                    "same_handle_child_hook_once": "testSameHandleChildHookOnce",
-                    "relation_scope": "testRelationScope",
-                    "insert_assign": "testInsertAssign",
-                    "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "testLoadedRowWrites",
-                    "invalid_param": "testInvalidParam",
-                    "restore_key": "testRestoreKey",
-                    "restore_condition": "testRestoreCondition",
-                    "restore_no_key": "testRestoreNoKey",
-                    "restore_rewritten_key": "testRestoreRewrittenKey",
-                    "restore_hook_set_key": "testRestoreHookSetKey",
-                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
+                    "without_hook": "testSqlite",
+                    "read_filter": "testSqlite",
+                    "same_handle_child_hook_once": "testSqlite",
+                    "relation_scope": "testSqlite",
+                    "insert_assign": "testSqlite",
+                    "upsert_scope": "testSqlite",
+                    "loaded_row_writes": "testSqlite",
+                    "invalid_param": "testSqlite",
+                    "restore_key": "testSqlite",
+                    "restore_condition": "testSqlite",
+                    "restore_no_key": "testSqlite",
+                    "restore_rewritten_key": "testSqlite",
+                    "restore_hook_set_key": "testSqlite",
+                    "restore_rewritten_key_set_scope": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
