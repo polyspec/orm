@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 55efd2b08c3771bf5e83e3348d37664c4cd8e4b7a53fa44faa1e1c9aa31d333f -->
+<!-- source-sha256: 786a12000b2d1d65ffdb7edd45521fa583122460afd678ccf8e9f58ae9570dbe -->
 # 변경 이력
 
 ## Unreleased
 
+- 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.

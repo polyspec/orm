@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The statement runner is the recipe `statement_runner`, whose cases all six runtimes run on MySQL, PostgreSQL and SQLite through the new op `utils.run`. The Go `TxFrame.Run` and the Rust `TxFrame::run` return a MySQL text column as text, where they returned bytes. A frame used after its transaction ended now fails with `CONFIG` in Go, TypeScript, PHP and the PHP extension: Go returned `DRIVER`, and TypeScript and PHP ran the statement. A statement that is not text fails with `CONFIG` in TypeScript, where it returned `DRIVER` (INT-150a, INT-150b).
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.

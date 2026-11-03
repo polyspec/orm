@@ -117,6 +117,27 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_mysql"
+path = "tests/statement_runner_mysql.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_postgres::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_postgres"
+path = "tests/statement_runner_postgres.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_sqlite::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_sqlite"
+path = "tests/statement_runner_sqlite.rs"
+harness = false
+
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
 # statement_events_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
