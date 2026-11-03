@@ -29,7 +29,17 @@ from polyspec.ordered_json import (
 from polyspec.ordered_json import (
     parse as ordered_json_parse,
 )
-from polyspec.orm import Db, Model, OrmError, Schema, connect_catalog, register_model
+from polyspec.orm import (
+    Collection,
+    Db,
+    Model,
+    OrmError,
+    Schema,
+    connect_catalog,
+    orm,
+    register_model,
+)
+from polyspec.orm.engine.model import field_of
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -1662,6 +1672,7 @@ def _run_case_on(
     catalog = connect_catalog(dsn)
     closers: list = []
     context = {
+        "fixture": recipe["fixture"],
         "catalog": catalog,
         "namespace": None,
         "database": database,
@@ -1850,6 +1861,14 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
     if "page_with" in step:
         bound = _bound(step["page_with"]["page"]["ref"], context)
         page = dataclasses.replace(bound, order_by=step["page_with"]["order_by"])
+        if "column_name" in step["page_with"]:
+            first = dataclasses.replace(
+                page.metadata.columns[0], name=step["page_with"]["column_name"]
+            )
+            columns = [first, *page.metadata.columns[1:]]
+            page = dataclasses.replace(
+                page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
     else:
         page = _step_argument(step["page"], context)
     snapshot = context["catalog"].row_snapshot_from_page(page, step["index"])
@@ -1893,7 +1912,12 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
         return {}
     try:
         native_query(context["database"], context["dsn"], [statement])
-    except Exception:  # noqa: BLE001 - any driver error of the refused statement
+    except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+        text = step.get("refused_message", "")
+        if text not in str(error).lower():
+            raise AssertionError(
+                f"the database refused the statement for another reason: {error}"
+            ) from error
         return {}
     raise AssertionError(
         f"the database accepted the statement that the step expects it to refuse: {statement}"
@@ -1923,29 +1947,6 @@ def _connection_of(step: dict, context: dict) -> Any:
         if "connection" not in step
         else _bound_value(step["connection"], context)
     )
-
-
-TABLE_MODELS = {
-    "EventProbe": "event_probe",
-    "HookItem": "hook_item",
-    "HookEntry": "hook_entry",
-    "HookUpsert": "hook_upsert",
-    "RotRow": "rot_row",
-    "ChunkAuthor": "chunk_author",
-    "Item": "item",
-    "Card": "card",
-    "Tag": "tag",
-    "Membership": "membership",
-    "Label": "label",
-    "Audit": "audit",
-}
-
-
-def _table_of(model: str) -> str:
-    """The table of a table model, or a failure that names the model."""
-    if model not in TABLE_MODELS:
-        raise AssertionError(f"model {model} has no table entry")
-    return TABLE_MODELS[model]
 
 
 # The statement-event ops (FCV-4). A table of the fixture has no generated class here, so its model class is a Model
@@ -1994,159 +1995,537 @@ def _table_model(context: dict, table: str):
     return context["tables"][table]
 
 
-def _new_row(context: dict, db: Db, table: str) -> Model:
-    return _table_model(context, table)().connect(db)
+def _snake_of(model: str) -> str:
+    """The table of a model name as the generator spells it: CompositeAccount is composite_account."""
+    return re.sub(r"(?<!^)([A-Z])", r"_\1", model).lower()
 
 
-def _set_columns(row: Model, assignments: list) -> Model:
-    for name, value in assignments:
-        row.core.set_value(name, value)
-    return row
+def _new_core_model(context: dict, model: str) -> Model:
+    """A new model of a model name, on no connection (FCV-4)."""
+    return _table_model(context, _snake_of(model))()
 
 
-def _table_model_create(step: dict, context: dict) -> dict:
-    db = _connection_of(step, context)
-    row = _new_row(context, db, TABLE_MODELS[step["model"]])
-    _set_columns(row, _assignments(step["values"], context)).create()
-    # With `as`, the created row is bound on the connection it was made on (FCV-4, model.create).
-    return {"bind": row} if "as" in step else {}
+def _new_row(context: dict, db: Db, model: str) -> Model:
+    return _new_core_model(context, model).connect(db)
 
 
-def _table_model_get_by(step: dict, context: dict) -> dict:
-    if "key" in step:
-        raise AssertionError("model.get_by with key has no table-model path")
-    db = _connection_of(step, context)
-    where = _assignments(step["where"], context)
-    if len(where) != 1:
-        raise AssertionError("model.get_by names one column of the recipe")
-    name, value = where[0]
-    row = _new_row(context, db, TABLE_MODELS[step["model"]])
-    return {"bind": getattr(row, f"get_by_{name}")(value)}
+# The chain operator of a predicate operator of FCV-4.
+_OPERATOR_KEYS = {
+    "eq": "",
+    "ne": "ne",
+    "gt": "gt",
+    "ge": "ge",
+    "lt": "lt",
+    "le": "le",
+    "in": "",
+    "not_in": "ne",
+    "between": "between",
+    "like": "lk",
+    "binary_like": "lb",
+    "is_null": "",
+    "not_null": "ne",
+}
 
 
-def _table_model_update(step: dict, context: dict) -> dict:
-    # The key form sets the key and the assignments on a new model, with no read before it, so a key that names no row
-    # is an update that matches none (FCV-4).
-    if "key" in step:
-        db = _connection_of(step, context)
-        row = _new_row(context, db, _table_of(step["model"]))
-        _set_columns(
-            row,
-            _assignments(step["key"], context) + _assignments(step["set"], context),
-        ).update()
-        return {}
-    # A bound row carries the connection it was bound on, so the step names no connection.
-    row = _bound_value(step["row"], context)
-    _set_columns(row, _assignments(step["set"], context)).update()
-    return {}
+def _chain_value(raw, context: dict) -> Any:
+    """The native argument of a value wrapper: None, the list of an array, or one value."""
+    return _native(_database_value(_step_argument(raw, context), context))
 
 
-def _table_model_delete(step: dict, context: dict) -> dict:
-    if "row" in step:
-        _bound_value(step["row"], context).delete()
-        return {}
-    db = _connection_of(step, context)
-    model = _where_all(
-        _new_row(context, db, _table_of(step["model"])),
-        _assignments(step["where"], context),
-    )
-    for row in list(model.gets().values()):
-        row.delete()
-    return {}
+def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
+    """The value of a column for a wrapper: an object is the styled value of its codec."""
+    if "object" not in raw:
+        return _chain_value(raw, context)
+    field = field_of(model.core.ent.entity, column)
+    return _styled_argument(raw, [] if field is None else list(field.stages), {})
 
 
-def _where_all(model: Model, where: list) -> Model:
-    """Narrows a table-model chain by the equalities of where, joined by and in column order."""
-    for name, value in where:
-        connector = "and" if model.core.where.items else ""
-        model.core.where_chain(connector, [ChainKey(column=name)], (value,))
-    return model
+def _chain_func(call: dict) -> Any:
+    """The public function of a function call (F5)."""
+    function = getattr(orm, call["fn"], None)
+    if function is None:
+        raise AssertionError(f"function {call['fn']} has no recipe entry")
+    numbers = [int(arg["int"]) for arg in call.get("args", []) if "int" in arg]
+    return function(numbers[-1]) if numbers else function()
 
 
-def _table_model_creates(step: dict, context: dict) -> dict:
-    db = _connection_of(step, context)
-    table = _table_of(step["model"])
-    rows = [
-        _set_columns(_new_row(context, db, table), _assignments(values, context))
-        for values in step["rows"]
-    ]
-    return {
-        "value": {"int": str(_new_row(context, db, table).creates(rows, step["batch"]))}
-    }
+def _fn_column(call: dict) -> str:
+    """The column of a function call on a column."""
+    for arg in call.get("args", []):
+        if "column" in arg:
+            return arg["column"]
+    raise AssertionError(f"function {call['fn']} names no column")
 
 
-def _table_model_duplicate_create(step: dict, context: dict) -> dict:
-    db = _connection_of(step, context)
-    table = _table_of(step["model"])
-    row = _set_columns(
-        _new_row(context, db, table), _assignments(step["values"], context)
-    )
-    row.duplication(
-        _set_columns(
-            _new_row(context, db, table), _assignments(step["duplication"], context)
-        )
-    )
-    row.create()
-    return {}
+class _ChainBuild:
+    """One query: the joined models that its predicates name, and the enclosing model that an outer reference names."""
+
+    def __init__(self, context: dict, outer=None) -> None:
+        self.context = context
+        self.outer = outer
+        self.joined: dict = {}
+
+    def predicate(self, model: Model, conn: str, raw: dict) -> None:
+        """Adds the predicate raw to model, joined by conn."""
+        if len(raw) == 1:
+            name, value = next(iter(raw.items()))
+            if name == "chain":
+                return self.items(model, conn, value)
+            if name in ("and", "or"):
+                return self.group(model, conn, name, value)
+            if name == "not":
+                return model.core.negated(
+                    conn, lambda group: self.predicate(group, "", value)
+                )
+            if name == "placed":
+                if value not in self.joined:
+                    raise AssertionError(f"placed {value} names no join")
+                return model.core.connector(conn, [self.joined[value]])
+            if name == "tuple":
+                return self.tuple(model, conn, value)
+        if "expr" in raw and "cmp" in raw:
+            return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
+        for i, (column, value) in enumerate(raw.items()):
+            self.leaf(model, conn if i == 0 else "and", column, value)
+        return None
+
+    def items(self, model: Model, conn: str, items: list) -> None:
+        """The items of a chain: each is [connector, predicate], or [connector] alone for a connector written as its own call."""
+        for i, item in enumerate(items):
+            item_conn = conn if i == 0 and item[0] == "" else item[0]
+            if len(item) == 1:
+                model.core.connector(item_conn, [])
+            else:
+                self.nested(model, item_conn, item[1])
+
+    def group(self, model: Model, conn: str, joined: str, items: list) -> None:
+        """The predicates of an and or an or: at the top of a where they join flat; an item that is itself an and, an or or a chain is a group."""
+        for i, item in enumerate(items):
+            self.nested(model, conn if i == 0 else joined, item)
+
+    def nested(self, model: Model, conn: str, raw: dict) -> None:
+        if len(raw) == 1 and next(iter(raw)) in ("and", "or", "chain"):
+            model.core.connector(conn, [lambda group: self.predicate(group, "", raw)])
+            return
+        self.predicate(model, conn, raw)
+
+    def operand(self, raw: dict) -> tuple:
+        """One operand of a leaf: its native value, and the column of the other model when the operand is a column."""
+        if "column" in raw:
+            ref, column = raw["column"].split(".", 1)
+            if ref not in self.joined:
+                raise AssertionError(f"column operand {raw['column']} names no join")
+            return self.joined[ref], column
+        if "outer" in raw:
+            if self.outer is None:
+                raise AssertionError(f"outer {raw['outer']} has no enclosing query")
+            return self.outer, raw["outer"]
+        if "sub" in raw:
+            child = _new_core_model(self.context, raw["sub"]["model"])
+            _ChainBuild(self.context, self.outer).query(child, raw["sub"])
+            return child, ""
+        if "fn" in raw:
+            return _chain_func(raw), ""
+        return _chain_value(raw, self.context), ""
+
+    def leaf(self, model: Model, conn: str, column: str, raw: dict) -> None:
+        if len(raw) == 1 and next(iter(raw)) in _OPERATOR_KEYS:
+            operator, operand = next(iter(raw.items()))
+            op = _OPERATOR_KEYS[operator]
+            if operator in ("is_null", "not_null"):
+                model.core.where_chain(conn, [ChainKey(op=op, column=column)], (None,))
+            elif operator == "between":
+                pair = [_chain_value(item, self.context) for item in operand]
+                model.core.where_chain(conn, [ChainKey(op=op, column=column)], (pair,))
+            else:
+                value, compare = self.operand(operand)
+                key = ChainKey(op=op, column=column, compare=compare)
+                model.core.where_chain(conn, [key], (value,))
+            return
+        value = _chain_value(raw, self.context)
+        model.core.where_chain(conn, [ChainKey(column=column)], (value,))
+
+    def function_leaf(self, model: Model, conn: str, expr: dict, cmp: dict) -> None:
+        operator, value = next(iter(cmp.items()))
+        key = ChainKey(op=_OPERATOR_KEYS[operator], column=_fn_column(expr))
+        arguments = (_chain_func(expr), _chain_value(value, self.context))
+        model.core.where_chain(conn, [key], arguments)
+
+    def tuple(self, model: Model, conn: str, raw: list) -> None:
+        columns, rows = raw
+        values = [[_chain_value(item, self.context) for item in row] for row in rows]
+        key = ChainKey(op="tuple", columns=tuple(columns))
+        model.core.where_chain(conn, [key], (values,))
+
+    def column_entry(self, model: Model, entry) -> None:
+        """One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name."""
+        if isinstance(entry, str):
+            model.core.add_column(entry)
+            return
+        expr = entry["expr"]
+        if "sub" in expr:
+
+            def subquery(outer: Model) -> Model:
+                child = _new_core_model(self.context, expr["sub"]["model"])
+                _ChainBuild(self.context, outer).query(child, expr["sub"])
+                return child
+
+            model.core.add_column_sub(entry["as"], subquery)
+            return
+        model.core.add_column_func(_fn_column(expr), entry["as"], _chain_func(expr))
+
+    def query(self, model: Model, q: dict, with_limit: bool = True) -> None:
+        """Applies the fields of q to model, in the order that a chain writes them."""
+        columns = q.get("columns")
+        if columns == "all":
+            model.add_all_columns()
+        elif columns is not None:
+            model.remove_all_columns()
+            for entry in columns:
+                self.column_entry(model, entry)
+        for entry in q.get("add_columns", []):
+            self.column_entry(model, entry)
+        for column in q.get("remove_columns", []):
+            model.core.remove_column(column)
+        aggregate = q.get("aggregate")
+        if aggregate is not None:
+            if "column" in aggregate:
+                model.core.aggregate(aggregate["agg"], aggregate["column"])
+            model.core.group_by.extend(aggregate.get("group_by", []))
+        for join in q.get("joins", []):
+            child = _new_core_model(self.context, join["model"])
+            inner = _ChainBuild(self.context, self.outer)
+            if "alias" in join:
+                child.core.alias = _snake_of(join["alias"])
+            if "on" in join:
+                on = join["on"]
+                child.core.set_on(lambda group, on=on: inner.predicate(group, "", on))
+            inner.query(child, join)
+            kind = join.get("kind", "inner")
+            model.core.join(kind, join["match"][0], join["match"][1], child)
+            if "as" in join:
+                self.joined[join["as"]] = child
+        for relation in q.get("relations", []):
+            model.core.relation(relation.get("many") is True, self.relation(relation))
+        if "where" in q:
+            self.predicate(model, "", q["where"])
+        for entry in q.get("order", []):
+            if isinstance(entry, str):
+                model.core.order_by(entry.removeprefix("-"), entry.startswith("-"), [])
+            elif "fn" in entry:
+                model.core.order_by(
+                    _fn_column(entry["fn"]),
+                    entry.get("dir") == "desc",
+                    [_chain_func(entry["fn"])],
+                )
+            else:
+                model.core.order_by(entry["column"], entry.get("dir") == "desc", [])
+        limit = q.get("limit")
+        if with_limit and limit is not None:
+            if isinstance(limit, int):
+                model.limit(0, limit)
+            else:
+                model.limit(limit.get("offset", 0), limit["count"])
+        if "lock" in q:
+            model.core.lock = q["lock"]
+
+    def relation(self, relation: dict) -> Model:
+        """The child model of a relation."""
+        child = _new_core_model(self.context, relation["model"])
+        for left, right in relation.get("match", []):
+            child.core.matches.append({"left": left, "right": right})
+        if "alias" in relation:
+            child.core.alias = _snake_of(relation["alias"])
+        for column, value in relation.get("possible", {}).items():
+            child.core.possible = {
+                "column": column,
+                "value": _chain_value(value, self.context),
+            }
+        if relation.get("parent_node") is True:
+            child.parent_node()
+        _ChainBuild(self.context, self.outer).query(child, relation)
+        if relation.get("group_limit", 0) > 0:
+            child.group_limit(relation["group_limit"])
+        if "key_by" in relation:
+            child.core.key_name = relation["key_by"]
+        if relation.get("delete_lock") is True:
+            child.delete_lock()
+        return child
 
 
-def _table_model_restore(step: dict, context: dict) -> dict:
-    db = _connection_of(step, context)
-    restored = _set_columns(
-        _new_row(context, db, _table_of(step["model"])),
-        _assignments(step["values"], context),
-    ).restore()
-    # With columns, the rows expect compares the row that restore returns (INT-38).
-    return {"rows": [_project(restored, step["columns"])]} if "columns" in step else {}
+def _row_json(row, pick) -> Any:
+    """The JSON of a row, narrowed to pick when it is named; a missing row is None."""
+    if row is None:
+        return None
+    values = json.loads(row.to_json_text())
+    if not pick:
+        return values
+    missing = [name for name in pick if name not in values]
+    if missing:
+        raise AssertionError(f"the row has no field {missing[0]}")
+    return {name: values[name] for name in pick}
 
 
-def _table_model_query(step: dict, context: dict) -> dict:
-    db = _connection_of(step, context)
-    parent = _where_all(
-        _new_row(context, db, _table_of(step["model"])),
-        _assignments(step["where"], context),
-    )
-    for column in step.get("order") or []:
-        parent.core.order_by(column, False, [])
+def _wants_rows(step: dict, context: dict) -> bool:
+    """The expect of the database of the case compares rows of wrappers."""
+    return "rows" in (step.get("expect", {}).get(context["database"]) or {})
+
+
+def _chain_cells(parents: list, step: dict) -> list:
+    """The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation."""
     rel = step.get("relation")
-    if rel is not None:
-        child = _new_row(context, db, _table_of(rel["model"]))
-        for left, right in rel["match"]:
-            getattr(child, f"match_{left}_with_{right}")()
-        if rel["many"]:
-            parent.relations(child)
-        else:
-            parent.relation(child)
-    offset = step.get("offset", 0)
-    limit = step.get("limit", 0)
-    paged = step.get("page") is True
-    total = None
-    if paged:
-        if not limit > 0:
-            raise AssertionError("a paged model.query needs a limit above 0")
-        page = parent.gets_page(offset // limit + 1, limit)
-        parents = list(page["items"])
-        total = page["totalCount"]
-    else:
-        # limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
-        if limit > 0:
-            parent.core.set_limit(offset, limit)
-        parents = list(parent.gets().values())
     rows = []
     for row in parents:
         own = _project(row, step["columns"])
         if rel is None:
             rows.append(own)
             continue
-        for child in _related_rows(row, _table_of(rel["model"]), rel["many"]):
+        for child in _related_rows(row, _snake_of(rel["model"]), rel["many"]):
             rows.append(own + _project(child, rel["columns"]))
-    return {"rows": rows, "total": total} if paged else {"rows": rows}
+    return rows
+
+
+def _by_key(model: Model, step: dict, context: dict) -> Model:
+    """A terminal by: the model of the keys of the step, in the written order."""
+    if "key" not in step:
+        return model
+    members = list(step["key"].items())
+    keys = [
+        ChainKey(conn="" if i == 0 else "and", column=column)
+        for i, (column, _) in enumerate(members)
+    ]
+    values = [_chain_value(value, context) for _, value in members]
+    return model.core.by(keys, values).self
+
+
+def _chain_built(step: dict, context: dict) -> Model:
+    """The model of a read: the fields of the step applied, then the key of a terminal by."""
+    # A bound chain is read again: a terminal leaves it as it was (DSL-98).
+    if "from" in step:
+        return _by_key(_bound_value(step["from"], context), step, context)
+    db = _connection_of(step, context)
+    model = _new_row(context, db, step["model"])
+    build = _ChainBuild(context)
+    paged = step.get("page") is True
+    build.query(model, step, not paged and "offset" not in step)
+    if not paged and "offset" in step and "limit" in step:
+        limit = step["limit"]
+        model.limit(step["offset"], limit if isinstance(limit, int) else limit["count"])
+    relation = step.get("relation")
+    if relation is not None:
+        # The columns of this relation are read of each child row; they do not narrow its statement.
+        child = build.relation({k: v for k, v in relation.items() if k != "columns"})
+        # This relation runs on the connection of its query, as a relation that names connect does (INT-87).
+        child.connect(db)
+        model.core.relation(relation.get("many") is True, child)
+    return _by_key(model, step, context)
+
+
+def _chain_assign(model: Model, values, context: dict) -> Model:
+    """Sets the members of an object of values on a model, in the written order: an arith entry is plus or minus."""
+    for column, value in (values or {}).items():
+        if "arith" in value:
+            amount = _chain_value(value["arith"]["amount"], context)
+            if value["arith"]["operation"] == "minus":
+                model.core.put_minus(column, amount)
+            else:
+                model.core.put_plus(column, amount)
+        else:
+            model.core.set_value(column, _column_value(model, column, value, context))
+    return model
+
+
+def _chain_write(step: dict, context: dict, terminal) -> dict:
+    """A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result."""
+    db = _connection_of(step, context)
+    model = _chain_assign(
+        _new_row(context, db, step["model"]), step.get("values"), context
+    )
+    for name, value in step.get("attached", {}).items():
+        model.core.set_new(name, _chain_value(value, context))
+    if "duplication" in step:
+        model.duplication(
+            _chain_assign(
+                _new_core_model(context, step["model"]), step["duplication"], context
+            )
+        )
+    row = terminal(model)
+    fields = {"bind": row, "json": _row_json(row, step.get("pick"))}
+    # With columns, the rows expect compares the row that the write returns (INT-38).
+    if "columns" in step:
+        fields["rows"] = _chain_cells([row], step)
+    return fields
+
+
+def _chain_target(step: dict, context: dict) -> Model:
+    """The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read."""
+    if "row" in step:
+        model = _bound_value(step["row"], context)
+    else:
+        db = _connection_of(step, context)
+        # The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+        model = _chain_assign(
+            _new_row(context, db, step["model"]),
+            step.get("key", step.get("values")),
+            context,
+        )
+    if "revision" in step:
+        model.expect_revision(
+            step["revision"]["column"], _chain_value(step["revision"]["value"], context)
+        )
+    return model
+
+
+def _count_fields(n: int) -> dict:
+    return {"json": n, "value": {"int": str(n)}}
+
+
+def _table_model_chain(step: dict, context: dict) -> dict:
+    return {"bind": _chain_built(step, context)}
+
+
+def _table_model_query(step: dict, context: dict) -> dict:
+    model = _chain_built(step, context)
+    if step.get("compile") is True:
+        return {"json": _plain_json(model.get_query())}
+    aggregate = step.get("aggregate")
+    if aggregate is not None:
+        if aggregate["agg"] == "sum":
+            return {"json": model.get_sum()}
+        if aggregate["agg"] == "avg":
+            return {"json": model.get_avg()}
+        return {"json": _plain_json(model.gets_count().to_array())}
+    if step.get("page") is True:
+        limit = step.get("limit")
+        count = limit if isinstance(limit, int) else (limit or {}).get("count", 0)
+        if count <= 0:
+            raise AssertionError("a page needs a limit count above 0")
+        offset = step.get("offset", 0)
+        if isinstance(limit, dict):
+            offset += limit.get("offset", 0)
+        page = model.gets_page(offset // count + 1, count)
+        fields = {
+            "json": _plain_json(
+                {
+                    "keys": list(page["items"].keys()),
+                    "total": page["totalCount"],
+                    "pages": page["totalPages"],
+                    "page": page["page"],
+                    "per_page": page["perPage"],
+                }
+            ),
+            "total": page["totalCount"],
+        }
+        if _wants_rows(step, context):
+            fields["rows"] = _chain_cells(list(page["items"].values()), step)
+        return fields
+    rows = model.gets()
+    fields = {
+        "bind": rows,
+        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
+    }
+    if _wants_rows(step, context):
+        fields["rows"] = _chain_cells(list(rows.values()), step)
+    return fields
 
 
 def _table_model_count(step: dict, context: dict) -> dict:
+    return _count_fields(_chain_built(step, context).get_count())
+
+
+def _table_model_get_by(step: dict, context: dict) -> dict:
+    row = _chain_built(step, context).get()
+    fields = {"json": _row_json(row, step.get("pick"))}
+    if row is not None:
+        fields["bind"] = row
+    return fields
+
+
+def _table_model_create(step: dict, context: dict) -> dict:
+    if step.get("restore_or_create") is True:
+        return _chain_write(step, context, lambda model: model.restore_or_create())
+    return _chain_write(step, context, lambda model: model.create())
+
+
+def _table_model_save(step: dict, context: dict) -> dict:
+    return _chain_write(step, context, lambda model: model.save())
+
+
+def _table_model_restore(step: dict, context: dict) -> dict:
+    return _chain_write(step, context, lambda model: model.restore())
+
+
+def _table_model_creates(step: dict, context: dict) -> dict:
     db = _connection_of(step, context)
-    count = _new_row(context, db, TABLE_MODELS[step["model"]]).get_count()
-    return {"value": {"int": str(count)}}
+    sequence = step.get("rows_sequence")
+    if sequence is None:
+        rows = [
+            _chain_assign(_new_core_model(context, step["model"]), values, context)
+            for values in step["rows"]
+        ]
+    else:
+        rows = []
+        for i in range(sequence["count"]):
+            row = _new_core_model(context, step["model"])
+            row.core.set_value(sequence["column"], sequence["from"] + i)
+            rows.append(_chain_assign(row, sequence.get("values"), context))
+    batch = step.get("batch", len(rows))
+    return _count_fields(_new_row(context, db, step["model"]).creates(rows, batch))
+
+
+def _table_model_update(step: dict, context: dict) -> dict:
+    model = _chain_target(step, context)
+    _chain_assign(model, step.get("set"), context)
+    model.update(step.get("optimistic") is True)
+    return {}
+
+
+def _table_model_delete(step: dict, context: dict) -> dict:
+    recursive = step.get("recursive") is True
+    if "row" in step and isinstance(_bound_value(step["row"], context), Collection):
+        _bound_value(step["row"], context).delete(recursive)
+        return {}
+    if "where" in step:
+        # A delete by where loads the rows and deletes each one (FCV-4).
+        for row in list(_chain_built(step, context).gets().values()):
+            row.delete()
+        return {}
+    _chain_target(step, context).delete(recursive)
+    return {}
+
+
+def _plain_json(value) -> Any:
+    """A value of the API as plain JSON."""
+    if isinstance(value, dict):
+        return {key: _plain_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_json(item) for item in value]
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value).decode("utf-8", "surrogateescape")
+    return value
+
+
+def _utils_lock(step: dict, context: dict) -> dict:
+    _connection_of(step, context).utils().lock(step["name"])
+    return {}
+
+
+def _utils_set_local(step: dict, context: dict) -> dict:
+    _connection_of(step, context).utils().set_local(
+        step["name"], _chain_value(step["value"], context)
+    )
+    return {}
+
+
+def _utils_local(step: dict, context: dict) -> dict:
+    return {"json": _connection_of(step, context).utils().local(step["name"])}
+
+
+def _bind_cell(bind) -> dict:
+    """The recipe wrapper of a bind of an event: a vector writes the bytes of a bind as their text."""
+    if isinstance(bind, (bytes, bytearray, memoryview)):
+        return {"text": bytes(bind).decode("utf-8", "replace")}
+    return _plain(bind, None)
 
 
 def _op_events_subscribe(step: dict, context: dict) -> dict:
@@ -2181,6 +2560,10 @@ def _op_events_captured(step: dict, context: dict) -> dict:
     events = _captured_events(
         subscription.recording.events, step.get("compare", ""), context
     )
+    # A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
+    for mask in step.get("masks", {}).get(context["database"], []):
+        binds = events[mask["event"]]["object"][1][1]["array"]
+        binds[mask["bind"]] = {"text": mask["value"]}
     if step.get("compare") == "statements":
         # The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
         events = [
@@ -2215,7 +2598,7 @@ def _event_value(event, numbers: dict) -> dict:
     return {
         "object": [
             ["sql", {"text": event.sql}],
-            ["binds", {"array": [_plain(bind, None) for bind in event.binds]}],
+            ["binds", {"array": [_bind_cell(bind) for bind in event.binds]}],
             ["kind", {"text": event.kind}],
             ["tables", {"array": [{"text": name} for name in event.tables]}],
             ["transaction", transaction],
@@ -2378,7 +2761,7 @@ def _keyring(raw: dict) -> AesKeyring:
 def _op_aes_status(step: dict, context: dict) -> dict:
     keyring = _keyring(step["keyring"])
     db = _connection_of(step, context)
-    model = _new_row(context, db, _table_of(step["model"]))
+    model = _new_row(context, db, step["model"])
     status = db.utils().aes().status(model, keyring)
     versions = [
         [str(version), {"int": str(status.versions[version])}]
@@ -2399,7 +2782,7 @@ def _op_aes_status(step: dict, context: dict) -> dict:
 def _op_aes_rotate(step: dict, context: dict) -> dict:
     keyring = _keyring(step["keyring"])
     db = _connection_of(step, context)
-    model = _new_row(context, db, _table_of(step["model"]))
+    model = _new_row(context, db, step["model"])
     rotated = db.utils().aes().rotate(model, keyring)
     return {"value": {"int": str(rotated)}}
 
@@ -2778,51 +3161,37 @@ def _audit_source_of(step: dict, context: dict) -> dict:
 
 _MODEL_OPS = model_ops(_native, _database_value, _step_argument, _audit_source_of)
 _TABLE_OPS = {
+    "model.chain": _table_model_chain,
     "model.create": _table_model_create,
+    "model.duplicate_create": _table_model_create,
+    "model.save": _table_model_save,
     "model.get_by": _table_model_get_by,
     "model.update": _table_model_update,
     "model.delete": _table_model_delete,
     "model.count": _table_model_count,
     "model.creates": _table_model_creates,
-    "model.duplicate_create": _table_model_duplicate_create,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "utils.lock": _utils_lock,
+    "utils.set_local": _utils_set_local,
+    "utils.local": _utils_local,
 }
 
-
-def _route(step: dict, context: dict) -> str:
-    """The path of a model step, "table" or "generated" (coordinator ruling on row routing).
-
-    A step with `row` names no model and no connection: it is routed by the bound row, which records the path that made it.
-    A row that no bound row holds fails by name. Any other step is routed by its model.
-    """
-    if "row" in step:
-        name = step["row"] if isinstance(step["row"], str) else step["row"]["ref"]
-        paths = context.get("row_paths", {})
-        if name not in paths:
-            raise AssertionError(
-                f"{step['op']} names row {name}, which no bound row holds"
-            )
-        return paths[name]
-    return "table" if step.get("model") in TABLE_MODELS else "generated"
+# The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).
+GENERATED_FIXTURE = "contracts/fixtures/bench/dbspec-set.json"
 
 
 def _dispatch_model_op(name: str):
     generated, table = _MODEL_OPS.get(name), _TABLE_OPS[name]
 
     def run(step: dict, context: dict) -> dict:
-        path = _route(step, context)
-        if path == "table":
-            result = table(step, context)
-        elif "row" in step:
+        if context["fixture"] != GENERATED_FIXTURE:
+            return table(step, context)
+        if "row" in step:
             raise AssertionError(f"{name} with row: the generated path binds no row")
-        elif generated is None:
+        if generated is None:
             raise AssertionError(f"{name} has no generated-model path")
-        else:
-            result = generated(step, context)
-        if "as" in step and "bind" in result:
-            context.setdefault("row_paths", {})[step["as"]] = path
-        return result
+        return generated(step, context)
 
     return run
 

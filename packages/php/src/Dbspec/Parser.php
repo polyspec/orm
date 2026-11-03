@@ -837,6 +837,24 @@ final class Parser
     private function useLine(): void
     {
         $t = $this->tokens;
+        // The words of a use line that fails are names of a failed line, whose references report nothing more (DBS-153).
+        $count = count($this->document->uses);
+        try {
+            $this->readUseLine($t);
+        } finally {
+            if (count($this->document->uses) === $count) {
+                foreach (array_slice($t, 2) as $token) {
+                    if (self::isWord($token[0])) {
+                        $this->failedTables[$token[0]] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    /** @param list<array> $t */
+    private function readUseLine(array $t): void
+    {
         $document = $this->wordAt(1);
         if ($document === null) {
             return;
@@ -1188,6 +1206,11 @@ final class Parser
         $wellFormed = $this->name($name);
         if (!isset($t[1])) {
             $this->error('syntax', $this->line, $this->endColumn(), 'expected a column type');
+            $this->failColumn($name[0]);
+            return;
+        }
+        if (!self::isWord($t[1][0])) {
+            $this->error('syntax', $this->line, $t[1][1], "expected a column type, found `{$t[1][0]}`");
             $this->failColumn($name[0]);
             return;
         }

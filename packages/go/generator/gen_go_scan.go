@@ -113,9 +113,9 @@ func (g *goGen) scan(patterns []string) error {
 			g.errors = slices.Compact(g.errors)
 			text := strings.Join(g.errors, "\n")
 			if unattached {
-				return &ScanRefusedError{Code: "GENERATOR_SCAN_UNATTACHED", Text: text}
+				return &RefusedError{Code: "GENERATOR_SCAN_UNATTACHED", Text: text}
 			}
-			return errors.New(text)
+			return &RefusedError{Code: "CONFIG", Text: text}
 		}
 		if !g.pending {
 			return compileErrors(dir, pkgs, overlay)
@@ -230,7 +230,7 @@ func parseErrors(pkgs []*packages.Package, overlay map[string][]byte) error {
 		return nil
 	}
 	sort.Strings(failed)
-	return &ScanRefusedError{Code: "GENERATOR_SCAN_PARSE", Text: "the scanned files do not parse:\n" + listErrors(slices.Compact(failed))}
+	return &RefusedError{Code: "GENERATOR_SCAN_PARSE", Text: "the scanned files do not parse:\n" + listErrors(slices.Compact(failed))}
 }
 
 // errorFile returns the file of an error position of the form file:line:col.

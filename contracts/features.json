@@ -2330,7 +2330,6 @@
         "php-extension-native-write-layer",
         "model-codec-columns",
         "model-ip-input-rejects-whitespace",
-        "model-new-output-name-rejects-stored-column",
         "coverage-model-create-parts",
         "ts-revision-update-match",
         "ts-revision-update-mismatch",
@@ -4435,6 +4434,8 @@
         }
       ],
       "parity": [
+        "generator",
+        "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
         "coverage-model-generation-model-generation-check",
@@ -4456,6 +4457,10 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php/tests/RuntimeModelTest.php",
+        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+        "packages/ts/tests/model-new-output-name.mjs",
+        "packages/python/tests/test_new_values.py",
         "packages/rust/orm/tests/compiler_fixtures.rs",
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
@@ -4647,6 +4652,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
+              "packages/php/tests/RuntimeModelTest.php",
               "packages/php/tests/CoverageModelGenerationTest.php"
             ],
             "commands": {
@@ -4670,6 +4676,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
             "commands": {
@@ -4711,6 +4718,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/model-new-output-name.mjs",
               "packages/ts/tests/chain-types.mjs",
               "packages/ts/tests/coverage_model_generation.mjs"
             ],
@@ -4729,6 +4737,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
+              "packages/python/tests/test_new_values.py",
               "packages/python/tests/coverage_model_generation.py"
             ],
             "commands": {
@@ -4858,7 +4867,6 @@
         "packages/php/tests/DbspecStressTest.php",
         "packages/rust/schema/tests/dbspec_model.rs",
         "packages/rust/schema/tests/dbspec_render.rs",
-        "packages/rust/schema/tests/dbspec_rules.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/orm/tests/dbspec_apply.rs",
@@ -5099,7 +5107,6 @@
           "command": "make dbspec-rust-check",
           "shard": "other",
           "inputs": [
-            "packages/rust/schema/tests/dbspec_rules.rs",
             "packages/rust/schema/tests/dbspec_render.rs",
             "packages/rust/schema/tests/dbspec_runtime.rs",
             "packages/rust/schema/tests/dbspec_model.rs",
@@ -11947,7 +11954,6 @@
         "packages/rust/build/tests/unit/table_page_validation.rs",
         "packages/rust/build/tests/unit/tool_column_budgets.rs",
         "packages/rust/build/tests/unit/typed_bind_validation.rs",
-        "packages/rust/tests/tests/coverage_catalog_connection.rs",
         "packages/go/orm/recipe_catalog_connection_test.go",
         "packages/php/tests/CatalogConnectionRecipeTest.php",
         "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
@@ -11961,16 +11967,11 @@
         "packages/rust/tests/tests/catalog_connection_postgres.rs",
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-        "packages/go/orm/coverage_catalog_connection_test.go",
         "packages/go/orm/catalog_sqlite_sequence_test.go",
         "packages/go/orm/catalog_row_baseline_test.go",
-        "packages/php/tests/CoverageCatalogConnectionTest.php",
-        "packages/ts/tests/coverage_catalog_connection.mjs",
         "packages/ts/tests/catalog-mutation-helper.test.mjs",
-        "packages/python/tests/coverage_catalog_connection.py",
         "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_auto_key.py",
-        "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
         "packages/php/tests/CatalogQueryBoundsTest.php",
         "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
         "packages/go/orm/catalog_auto_identity_test.go",

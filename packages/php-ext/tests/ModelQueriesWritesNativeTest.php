@@ -63,7 +63,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-116.
+    // Requirements: DSL-159.
     public function testNewOutputNameRejectsAStoredColumnOnTheNativeModel(): void
     {
         self::assertTrue((new ReflectionClass(Model::class))->isInternal());
