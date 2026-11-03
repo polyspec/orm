@@ -10,10 +10,7 @@ mod coverage_constraints_and_relations;
 mod coverage_database;
 mod coverage_env;
 mod coverage_group_rows_db;
-mod coverage_model_queries;
 mod coverage_transactions;
 mod result_chains;
 #[path = "../common/result_code.rs"]
 mod result_code;
-#[path = "../common/temp_sqlite.rs"]
-mod temp_sqlite;

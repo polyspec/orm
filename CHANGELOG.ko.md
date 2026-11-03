@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 964fc7f9cffe4a181e3740f35554cac089c17326927bc4ac53b737b4a743e64b -->
+<!-- source-sha256: 8cec839ad9d586a10fb7513e7d4b7e26b4d51763af8291b447d4edddb1c473d6 -->
 # 변경 이력
 
 ## Unreleased
@@ -226,6 +226,10 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- FCV-2는 `recipe-unknown-keys`와 `hot-path-performance-measurement` unit 세 개가 native로 남는 이유를 밝힌다. loader의 거부는 어떤 case보다 먼저 일어나고, 시간은 case가 기대할 수 있는 값이 아니다
+- PRT-63의 markdown DSN 거부는 `dsn_reject`의 case이고, DSL-60, DSL-115, DSL-155, CPX-5, DSL-128은 새 case `core_conditions`, `core_columns_and_pages`, `core_writes`, `core_duplicate_relation`과 함께 `conformance_verification`이 담으며, 그 native unit은 없어졌다. FCV-2는 model core unit 네 개가 native로 남는 이유를 밝힌다.
+- `IN` 목록 채움(CPX-4)은 값 1개부터 5개까지의 문을 세 데이터베이스에서 읽는 case `core_in_list_padding`과 `composite_key_rows`의 채워진 tuple이다. runtime의 native 채움 시험은 없어졌다. PHP extension의 native `Request::padIn`은 CPX-6이다.
+- hot path 읽기의 projection, bind, 행(PRT-2, PRT-34)은 세 데이터베이스에서 `conformance_verification`의 case `core_projected_reads`이고, 그 native 시험은 없어졌다.
 - CR15-2: 한 연결의 여러 set, 등록되지 않은 set, 수정된 manifest는 statement_events recipe의 case가 되었고, 연결을 지정하지 않은 model op은 모든 runtime에서 case 연결로 실행된다.
 - CR15-2: `sqlite-row-lock-restoration`은 FCV-2 항목으로 native에 남는다. 공개 호출로는 `PRAGMA busy_timeout`을 실패하게 할 수 없기 때문이다.
 - CR15-2: `schema.empty`, `schema.exists`, `schema.installed`는 recipe op이 되었고, schema 비어 있음, 존재, 렌더된 install은 schema_install의 case가 되었으며, PERF-1은 timing의 `BENCH_*` 변수를 적는다.
