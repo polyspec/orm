@@ -3089,6 +3089,7 @@ mod database {
         "utils.was_inserted",
         "utils.backend_waiting_for_lock",
         "utils.groups",
+        "utils.stats",
     ];
 
     /// The start of the failure of a nested step whose public call returned an error that the step does not expect.
@@ -5354,6 +5355,11 @@ mod tables {
                     Ok(json!({ "value": { "bool": waiting } }))
                 }
                 // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
+                "utils.stats" => {
+                    // The pool counts of the connection (INT-79).
+                    let stats = db.utils().stats();
+                    Ok(json!({ "json": { "max_open_connections": stats.max_open_connections, "open_connections": stats.open_connections, "in_use": stats.in_use, "idle": stats.idle } }))
+                }
                 "utils.groups" => {
                     let utils = db.utils();
                     let (_aes, _privileges, _schema, _stats) = (utils.aes(), utils.privileges(), utils.schema(), utils.stats());

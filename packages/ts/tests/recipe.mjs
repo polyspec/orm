@@ -1958,6 +1958,11 @@ const TABLE_OPS = {
     return { value: { bool: await connectionOf(s, context).utils().backendWaitingForLock() } };
   },
   // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+  'utils.stats'(s, context) {
+    // The pool counts of the connection (INT-79).
+    const stats = connectionOf(s, context).utils().stats();
+    return { json: { max_open_connections: stats.maxOpenConnections, open_connections: stats.openConnections, in_use: stats.inUse, idle: stats.idle } };
+  },
   'utils.groups'(s, context) {
     const utils = connectionOf(s, context).utils();
     const held = { aes: utils.aes(), privileges: utils.privileges(), schema: utils.schema(), stats: utils.stats() };

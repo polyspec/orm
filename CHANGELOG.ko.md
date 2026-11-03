@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 862280ed3f197adcf9c27bf0a1de4fc244cf35a29c1571ff8b5ab6aaa8a3fae2 -->
+<!-- source-sha256: a27ca9802b8656b2963c46d00a0c47697bb212048b1c13b52d0c2144773322eb -->
 # 변경 이력
 
 ## Unreleased
 
+- INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
 - Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
 - vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).

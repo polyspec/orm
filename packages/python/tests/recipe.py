@@ -3409,6 +3409,19 @@ def _utils_groups(step: dict, context: dict) -> dict:
     return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
 
 
+def _utils_stats(step: dict, context: dict) -> dict:
+    """The pool counts of the connection (INT-79)."""
+    stats = _connection_of(step, context).utils().stats()
+    return {
+        "json": {
+            "max_open_connections": stats.max_open_connections,
+            "open_connections": stats.open_connections,
+            "in_use": stats.in_use,
+            "idle": stats.idle,
+        }
+    }
+
+
 def _bind_cell(bind) -> dict:
     """The recipe wrapper of a bind of an event: a vector writes the bytes of a bind as their text."""
     if isinstance(bind, (bytes, bytearray, memoryview)):
@@ -4291,6 +4304,7 @@ _TABLE_OPS = {
     "utils.was_inserted": _utils_was_inserted,
     "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
     "utils.groups": _utils_groups,
+    "utils.stats": _utils_stats,
 }
 
 # The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).

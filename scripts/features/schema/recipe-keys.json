@@ -795,6 +795,11 @@
       "expect",
       "op"
     ],
+    "utils.stats": [
+      "connection",
+      "expect",
+      "op"
+    ],
     "dbspec.plan": [
       "as",
       "lines",

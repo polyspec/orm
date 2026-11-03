@@ -26,21 +26,6 @@ class SchemaInspectionTest(unittest.TestCase):
             call()
         return caught.exception.code
 
-    # Requirements: INT-79.
-    def test_stats_report_the_pool_of_the_db(self):
-        from polyspec.orm.database import DbStats
-
-        idle = DbStats(max_open_connections=10, open_connections=1, in_use=0, idle=1)
-        self.assertEqual(self.db.stats(), idle)
-        self.assertEqual(self.db.utils().stats(), idle)
-        seen = []
-        self.db.transaction(
-            lambda: seen.append((self.db.stats(), self.db.utils().stats())),
-            {"retry": 0},
-        )
-        busy = DbStats(max_open_connections=10, open_connections=1, in_use=1, idle=0)
-        self.assertEqual(seen, [(busy, busy)])
-
     def test_inspection_runs_in_the_active_transaction(self):
         schema = self.db.utils().schema()
         seen = []
@@ -67,6 +52,7 @@ class SchemaInspectionTest(unittest.TestCase):
         )
         self.assertEqual(self.code(lambda: schema.installed(".app", "user")), "CONFIG")
 
+    # Requirements: INT-59.
     def test_privileges_are_unsupported_off_postgres(self):
         privileges = self.db.utils().privileges()
         self.assertEqual(

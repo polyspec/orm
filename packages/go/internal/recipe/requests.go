@@ -96,7 +96,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 			counts[r.entity]++
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": list}, "counts": counts}}, nil
-	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups":
+	case "utils.lock", "utils.set_local", "utils.local", "utils.was_inserted", "utils.backend_waiting_for_lock", "utils.groups", "utils.stats":
 		return utilsOp(s, c)
 	case "db.last_affected":
 		db, err := connectionOf(s, c)

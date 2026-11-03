@@ -29468,6 +29468,11 @@
       ],
       "bindings": [
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "test_privileges_are_unsupported_off_postgres"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
           "id": "TestTransactions"
@@ -30607,58 +30612,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "id": "TestRecipeUtilsSqlite/stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testTransactions"
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testSqlite with data set \"stats_report_the_pool_of_the_connection\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testNativeUtilsReportThePoolStatistics"
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testSqlite with data set \"stats_report_the_pool_of_the_connection\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "transactions"
+          "test": "packages/ts/tests/utils_recipe-sqlite.test.mjs",
+          "id": "stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_stats_report_the_pool_of_the_db"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
+          "test": "packages/python/tests/test_utils_recipe_sqlite.py",
+          "id": "stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "transactions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=transactions"
-          ]
+          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "id": "utils_recipe_sqlite::stats_report_the_pool_of_the_connection"
         }
       ]
     },

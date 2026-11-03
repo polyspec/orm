@@ -899,6 +899,7 @@
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
             "utils.groups",
+            "utils.stats",
             "dbspec.plan",
             "dbspec.connect",
             "dbspec.exec",
@@ -1235,6 +1236,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.groups"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.stats"
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan"
@@ -7807,6 +7811,26 @@
         "properties": {
           "op": {
             "const": "utils.groups"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.stats": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.stats"
           },
           "connection": {
             "$ref": "#/$defs/name"

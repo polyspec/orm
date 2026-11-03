@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
 - The constraint errors and the immutable write are held by the recipes in Rust, Go and Python too: the recipes compare the check name, the unique key, the SQLite code name and the driver cause, and `refusal.rs` is gone (#T334-3-18).
 - - The compile case of an output name conflict holds the exact text of the error in every dialect, by the optional message of a planner.compile expect (#T334-3-6-2)

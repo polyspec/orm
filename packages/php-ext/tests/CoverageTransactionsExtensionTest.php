@@ -16,32 +16,6 @@ use ReflectionMethod;
 // The native methods of the transaction surface; the transaction behaviours are the recipe `transactions`.
 final class CoverageTransactionsExtensionTest extends TestCase
 {
-    // Requirements: INT-79.
-    public function testNativeUtilsReportThePoolStatistics(): void
-    {
-        self::withLifecycleRows(static function (Db $db, \Closure $recorded): void {
-            $utils = $db->utils();
-            $stats = $utils->stats();
-            Assert::assertInstanceOf(\Polyspec\Orm\Stats::class, $stats);
-            Assert::assertSame([1, 1, 0, 1], [
-                $stats->maxOpenConnections,
-                $stats->openConnections,
-                $stats->inUse,
-                $stats->idle,
-            ]);
-            $db->transaction(static function () use ($utils): void {
-                $busy = $utils->stats();
-                Assert::assertSame([1, 1, 1, 0], [
-                    $busy->maxOpenConnections,
-                    $busy->openConnections,
-                    $busy->inUse,
-                    $busy->idle,
-                ]);
-            });
-            Assert::assertNotEmpty($recorded());
-        });
-    }
-
     // Requirements: DSL-124, PLN-19.
     public function testNativeMethodsAreInternal(): void
     {
