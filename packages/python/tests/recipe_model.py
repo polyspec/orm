@@ -125,8 +125,12 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             )
         return context["bound"][name]
 
+    def on_connection(model, db):
+        """A model on no connection (PLN-16) runs in the active transaction of its flow."""
+        return model if db is None else model.connect(db)
+
     def composite_set(db, values):
-        model = models.CompositeAccount().connect(db)
+        model = on_connection(models.CompositeAccount(), db)
         for column in sorted(values):
             if column == "tenant_id":
                 model.set_tenant_id(values[column])
@@ -141,7 +145,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         return model
 
     def composite_filter(db, where):
-        model = models.CompositeAccount().connect(db)
+        model = on_connection(models.CompositeAccount(), db)
         for index, column in enumerate(sorted(where)):
             if index > 0:
                 model.and_()
@@ -307,7 +311,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
 
     def model_create(step, context):
         model = composite_set(
-            connection(step["connection"], context), values_of(step["values"], context)
+            None if step.get("unconnected") else connection(step["connection"], context),
+            values_of(step["values"], context),
         )
         model.create()
         # With `as`, the created model is bound on the connection it was made on (FCV-4, model.create).
@@ -398,6 +403,9 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         return affected(db)
 
     def model_count(step, context):
+        if step.get("unconnected"):
+            count = composite_filter(None, values_of(step.get("where"), context)).get_count()
+            return {"value": {"int": str(count)}}
         db = connection(step["connection"], context)
         if step["model"] == "Author":
             return {
