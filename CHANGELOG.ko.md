@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7e1e69217a46d69d38cb2b00623cb3e5f2b7918aad04e66fa8d46048701fcb3d -->
+<!-- source-sha256: 285239746b60d7f80b64968597c31289933763edf2e2278ee19b9b8ec63302b3 -->
 # 변경 이력
 
 ## Unreleased
@@ -8,6 +8,10 @@
 - 네이티브 시험만 갖고 있던 request hook 사례는 새 hook action `rebind`, `bad_param`과 `assign`의 `first`로 여섯 runtime 모두에서 recipe `request_hook`의 사례가 된다. restore 키를 다시 쓰는 hook, 요청 범위 밖 parameter index, 거부된 restore가 문장을 보내지 않음, hook이 걸린 `getQuery`의 바인딩 값이 그것이다. TypeScript와 PHP의 네이티브 시험은 recipe로 적을 수 없는 것만 남긴다. 연결을 공유하는 핸들과 바인딩 parameter를 읽는 hook이다.
 - TypeScript, PHP, PHP extension의 statement event coverage 파일을 지운다. 이 파일들이 돌리던 여덟 vector는 세 database 모두에서 event 단위로 recipe `statement_events`의 여덟 사례와 같다. TypeScript helper는 `OrmError`가 아닌 event 오류도 거부하고, PHP extension이 event를 native로 발행한다는 검사는 `StatementEventsTestExtensionTest`로 옮긴다.
 - TypeScript, PHP, PHP extension의 statement runner coverage 파일을 지운다. 트랜잭션 밖과 안에서 `SELECT 1`을 읽는 두 검사는 recipe `statement_runner`의 사례이고, feature owner도 이 recipe를 가리킨다.
+- feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
+- `packages/go/internal/buildconstraints`의 Go test는 `go.work` module의 모든 Go 파일을 읽고, platform 제약이나 `GO_TEST_TAGS`의 tag가 아닌 build tag에서 실패한다. 실패하는 dbspec harness fixture는 tag 없이 `packages/go/engine/dbspec/testdata/fixture`로 옮겼다.
+- 문 실행기는 여섯 런타임에서 recipe `statement_runner`로만 실행되며, FCV-2의 거부를 뺀 native 시험과 coverage 시험은 사라졌다.
+- 유틸리티 그룹, 트랜잭션의 local 값, `wasInserted`, waiter 없는 보고는 여섯 런타임의 recipe `utils`이며, flow와 disposal 단위와 waiter는 FCV-2대로 native로 남는다.
 - recipe op `dbspec.analyze`의 inline 형태는 analysis가 `parse`의 document, position, diagnostic을 그대로 담는지 검사한다(DBS-134). Go, TypeScript, Python, PHP가 Rust처럼 이를 검사하므로 Go `TestAnalyzeIsParse`를 없앴다.
 - Go `runtimemodel.LoadSet`는 SCH-12가 정한 code `SCHEMA_INVALID`로 실패하고(`*SetLoadError`), recipe helper는 diagnostics를 옮겨 읽지 않고 그 code를 읽는다.
 - Go `rules_test.go`의 canonical 형식, state machine 규칙, markdown storage 규칙은 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다.
@@ -30,12 +34,15 @@
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
+- 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 분할된 root `in` 목록의 merge를 primary key 없는 표에 대한 public query로 recipe `parameter_chunking`에서 시험합니다.
 - collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.
 - Python 모델 read에서 codec이 거부하는 cell은 쓰기와 같이 code를 가진 `OrmError`를 던지며 `CodecError`를 던지지 않는다. codec을 직접 호출하면 `CodecError`를 유지한다.
 - TypeScript의 `toJSONText()`와 `JSON.stringify(row)`는 bigint를 담은 행에서 더 이상 던지지 않는다. 둘은 정확한 정수를 JSON 숫자로 쓰고, 스타일 값 안에서도 그렇게 쓴다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - immutable table의 거부는 recipe `immutable_write`이다(DBS-84). update와 delete는 `DRIVER`로 실패하고, 메시지는 `table refused_row is immutable`을 담으며, driver 원인이 남고, 이후 읽기는 저장된 값을 돌려준다. op의 outcome은 `message_holds`와 `driver_cause`를 받는다. delete는 이전에 어느 runtime에서도 검사하지 않았다. (#T334-3-4-16)
+- request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
+- conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - recipe `schema_install`은 install이 밝히는 차이를 담는다. 모든 op의 outcome이 `message_suffix`를 받고, `install_external_drift`는 메시지가 `column user.coverage_missing does not exist`로 끝나기를 기대한다. `coverageItemsOf`를 읽던 `CoverageSchemaInstallNativeTest`의 세 시험은 지웠고, 그 recipe와 `SchemaSetTest`가 담는다. (#T334-3-4-15)
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.

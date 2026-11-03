@@ -2,7 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -31,9 +31,20 @@ import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
+// reportCase appends the pass of a case to the file that ORM_RECIPE_RESULTS names, the line the feature checker reads
+// (FCV-12). A run outside the checker names no file.
+function reportCase(id, database) {
+  const path = process.env.ORM_RECIPE_RESULTS;
+  if (!path) return;
+  appendFileSync(path, database === NONE ? `CASE ${id} PASS\n` : `CASE ${id} [${database}] PASS\n`);
+}
+
 // registerRecipeCase registers one case of a recipe with node:test.
-function registerRecipeCase(recipeCase, deadline, body) {
-  return caseTest(recipeCase.id, deadline, body);
+function registerRecipeCase(recipeCase, database, deadline, body) {
+  return caseTest(recipeCase.id, deadline, async context => {
+    await body(context);
+    reportCase(recipeCase.id, database);
+  });
 }
 
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
@@ -50,7 +61,7 @@ export function runRecipe(path, database) {
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    registerRecipeCase(recipeCase, COMPUTE, async () => {
+    registerRecipeCase(recipeCase, database, COMPUTE, async () => {
       const bound = new Map();
       for (const [index, step] of recipeCase.steps.entries()) {
         try {
@@ -386,7 +397,7 @@ async function databaseRecipe(path, database) {
     : await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
     if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
-    registerRecipeCase(recipeCase, DATABASE, ({ step }) =>
+    registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
@@ -1624,6 +1635,16 @@ const TABLE_OPS = {
   },
   async 'utils.local'(s, context) {
     return { json: await connectionOf(s, context).utils().local(s.name) };
+  },
+  'utils.was_inserted': (s, context) => ({ value: { bool: connectionOf(s, context).utils().wasInserted(s.table, s.sequence) } }),
+  async 'utils.backend_waiting_for_lock'(s, context) {
+    return { value: { bool: await connectionOf(s, context).utils().backendWaitingForLock() } };
+  },
+  // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+  'utils.groups'(s, context) {
+    const utils = connectionOf(s, context).utils();
+    const held = { aes: utils.aes(), privileges: utils.privileges(), schema: utils.schema(), stats: utils.stats() };
+    return { value: { array: Object.keys(held).filter(name => held[name]).map(text => ({ text })) } };
   },
 };
 

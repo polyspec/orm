@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
@@ -20,8 +19,6 @@ use Polyspec\Orm\Tests\WasInsertedCases;
 #[Medium]
 final class UtilsNativeTest extends TestCase
 {
-    use ThreeDrivers;
-
     public function testNativeUtilityConstructorsKeepTheirTypeErrors(): void
     {
         foreach (
@@ -40,34 +37,11 @@ final class UtilsNativeTest extends TestCase
         }
     }
 
-    // Requirements: INT-52.
-    #[DataProvider('drivers')]
-    public function testWasInsertedTracksGeneratedRowsThroughNativeUtils(string $driver): void
-    {
-        self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
-        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
-
-        WasInsertedCases::onCase($driver, function (\Polyspec\Orm\Db $db): void {
-            WasInsertedCases::assertTracksGeneratedRows($this, $db);
-        });
-    }
-
-    /** Requirements: INT-53. */
-    #[DataProvider('drivers')]
-    public function testBackendWaitingForLockIsFalseWithoutAWaiterThroughNativeUtils(string $driver): void
-    {
-        self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
-        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
-
-        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
-            self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
-        });
-    }
-
     /** Requirements: INT-53. PostgreSQL reports the child backend while it waits for the row held here. */
     public function testPostgresReportsABackendWaitingForLockThroughNativeUtils(): void
     {
         self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
+        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
 
         WasInsertedCases::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {

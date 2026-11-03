@@ -104,6 +104,8 @@ type databaseStep struct {
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
 	Lock      string          `json:"lock"`
+	// The generated key of utils.was_inserted (INT-52).
+	Sequence int64 `json:"sequence"`
 	Isolation string          `json:"isolation"`
 	ReadOnly  bool            `json:"read_only"`
 	Amount    json.RawMessage `json:"amount"`
@@ -211,6 +213,7 @@ func runDatabase(t *testing.T, path, database string) {
 		t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
 			runCase(t, path, f, c, database, schema, external)
+			reportCase(t, c.ID, database)
 		})
 	}
 }

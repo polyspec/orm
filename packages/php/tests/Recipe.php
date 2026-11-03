@@ -70,6 +70,9 @@ final class Recipe
         'utils.lock',
         'utils.set_local',
         'utils.local',
+        'utils.was_inserted',
+        'utils.backend_waiting_for_lock',
+        'utils.groups',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -99,6 +102,24 @@ final class Recipe
         $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
         foreach ($recipe['cases'] as $case) {
             yield $case['id'] => [$case];
+        }
+    }
+
+    /**
+     * Appends the pass of a case that ran on database to the file that ORM_RECIPE_RESULTS names, the line the feature
+     * checker reads (FCV-12). A run outside the checker names no file.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function report(array $case, string $database): void
+    {
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+            return;
+        }
+        $named = $database === self::NONE ? '' : " [{$database}]";
+        if (file_put_contents($path, "CASE {$case['id']}{$named} PASS\n", FILE_APPEND) === false) {
+            throw new \RuntimeException("recipe results: cannot append to {$path}");
         }
     }
 
@@ -3386,6 +3407,24 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.was_inserted':
+                $utils = self::connectionOf($s, $context)->utils();
+                return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
+            case 'utils.backend_waiting_for_lock':
+                return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'utils.groups':
+                // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+                $utils = self::connectionOf($s, $context)->utils();
+                $held = [
+                    'aes' => $utils->aes(),
+                    'privileges' => $utils->privileges(),
+                    'schema' => $utils->schema(),
+                    'stats' => $utils->stats(),
+                ];
+                return ['value' => ['array' => array_map(
+                    static fn(string $text): array => ['text' => $text],
+                    array_keys(array_filter($held, static fn(mixed $group): bool => $group !== null))
+                )]];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// INT-52 wasInserted and INT-53 backendWaitingForLock on Polyspec\Orm\Utils, on SQLite, MySQL and PostgreSQL. The model
+// INT-53 backendWaitingForLock on Polyspec\Orm\Utils with a waiter on PostgreSQL and on markdown; the recipe utils holds the rest. The model
 // is the clock fixture contracts/fixtures/clock.dbs, generated into a temporary directory under
 // Polyspec\Orm\Tests\WasInsertedCase. Each case runs in a case database of its own (case_database.php); MySQL and
 // PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and the test fails when either is unset.
@@ -15,90 +15,12 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
 final class WasInsertedTest extends TestCase
 {
-    use ThreeDrivers;
-
-    /** The error code that $call raises, or 'none'. */
-    private static function codeOf(\Closure $call): string
-    {
-        try {
-            $call();
-        } catch (OrmException $e) {
-            return $e->code_;
-        }
-        return 'none';
-    }
-
-    /**
-     * A generated insert inside a transaction is recorded for its key; an insert of another transaction is not. Nested
-     * rollback removes its key only.
-     */
-    // Requirements: INT-52.
-    #[DataProvider('drivers')]
-    public function testWasInsertedTracksGeneratedRows(string $driver): void
-    {
-        WasInsertedCases::onCase($driver, function (\Polyspec\Orm\Db $db): void {
-            WasInsertedCases::assertTracksGeneratedRows($this, $db);
-        });
-    }
-
-    /** The shared inserted-row scenario has a database-free SQLite library owner case. */
-    public function testWasInsertedTracksGeneratedRowsOnSqlite(): void
-    {
-        WasInsertedCases::onSqlite(function (\Polyspec\Orm\Db $db): void {
-            WasInsertedCases::assertTracksGeneratedRows($this, $db);
-        });
-    }
-
-    /** The utility needs an active transaction and a valid entity and key; each violation is CONFIG. */
-    #[DataProvider('drivers')]
-    public function testWasInsertedNeedsATransactionAndValidArguments(string $driver): void
-    {
-        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
-            self::assertSame(
-                Code::CONFIG,
-                self::codeOf(static fn() => $db->utils()->wasInserted('clock_event', 1)),
-                'outside a transaction'
-            );
-            $db->transaction(static function () use ($db): void {
-                self::assertSame(
-                    Code::CONFIG,
-                    self::codeOf(static fn() => $db->utils()->wasInserted('', 1)),
-                    'an empty entity'
-                );
-                self::assertSame(
-                    Code::CONFIG,
-                    self::codeOf(static fn() => $db->utils()->wasInserted('clock_event', 0)),
-                    'a zero key'
-                );
-                self::assertSame(
-                    Code::CONFIG,
-                    self::codeOf(static fn() => $db->utils()->wasInserted('clock_event', -1)),
-                    'a negative key'
-                );
-            }, retry: 0);
-        });
-    }
-
-    /**
-     * SQLite and MySQL have no backend lock view: INT-53 answers false without a statement, and an empty pool of
-     * PostgreSQL waits for no one.
-     */
-    // Requirements: INT-53.
-    #[DataProvider('drivers')]
-    public function testBackendWaitingForLockIsFalseWithoutAWaiter(string $driver): void
-    {
-        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
-            self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
-        });
-    }
-
     /**
      * PostgreSQL: a second backend that waits for a row lock is reported. The transaction holds the row; a child
      * process updates the same row and blocks. The parent checks the state the database reports, bounded to ten

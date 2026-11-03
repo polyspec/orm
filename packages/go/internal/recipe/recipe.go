@@ -159,6 +159,32 @@ type result struct {
 	dbspec any
 }
 
+// reportCase appends the pass of the running case to the file that ORM_RECIPE_RESULTS names, the line the feature
+// checker reads (FCV-12). A run outside the checker names no file.
+func reportCase(t *testing.T, id, database string) {
+	t.Helper()
+	path := os.Getenv("ORM_RECIPE_RESULTS")
+	if path == "" || t.Failed() {
+		return
+	}
+	line := "CASE " + id + " [" + database + "] PASS\n"
+	if database == None {
+		line = "CASE " + id + " PASS\n"
+	}
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatalf("recipe results: %v", err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("recipe results: %v", err)
+		}
+	}()
+	if _, err := file.WriteString(line); err != nil {
+		t.Fatalf("recipe results: %v", err)
+	}
+}
+
 // Run runs every case of the recipe at path, relative to the test's package directory, on database. The options configure
 // the ops that need a function from the test, such as WithIRAnswer.
 func Run(t *testing.T, path, database string, opts ...Option) {
@@ -193,6 +219,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
+			reportCase(t, c.ID, database)
 		})
 	}
 }

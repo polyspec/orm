@@ -122,6 +122,23 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a
+# case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "utils_recipe_mysql"
+path = "tests/utils_recipe_mysql.rs"
+harness = false
+
+[[test]]
+name = "utils_recipe_postgres"
+path = "tests/utils_recipe_postgres.rs"
+harness = false
+
+[[test]]
+name = "utils_recipe_sqlite"
+path = "tests/utils_recipe_sqlite.rs"
+harness = false
+
 # Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
 # statement_runner_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]

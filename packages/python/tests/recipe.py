@@ -118,6 +118,22 @@ class _Failed:
         self.error = error
 
 
+def _reporting(check, database: str):
+    """check, which then appends the pass of its case to the file that ORM_RECIPE_RESULTS names, the line the feature
+    checker reads (FCV-12). A run outside the checker names no file."""
+
+    def reported(test: unittest.TestCase, case: dict) -> None:
+        check(test, case)
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if not path:
+            return
+        named = "" if database == NONE else f" [{database}]"
+        with open(path, "a", encoding="utf-8") as results:
+            results.write(f"CASE {case['id']}{named} PASS\n")
+
+    return reported
+
+
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
@@ -184,7 +200,9 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = recipe["cases"]
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
+    )
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -1759,7 +1777,7 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case for case in recipe["cases"] if database in case.get("only", DATABASES)
     ]
-    return vector_load_tests(DatabaseRecipeCase, cases, check)
+    return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
 
 def _fixture_schema(set_path: Path):
@@ -2712,6 +2730,27 @@ def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
 
 
+def _utils_was_inserted(step: dict, context: dict) -> dict:
+    inserted = _connection_of(step, context).utils().was_inserted(step["table"], step["sequence"])
+    return {"value": {"bool": inserted}}
+
+
+def _utils_backend_waiting_for_lock(step: dict, context: dict) -> dict:
+    return {"value": {"bool": _connection_of(step, context).utils().backend_waiting_for_lock()}}
+
+
+def _utils_groups(step: dict, context: dict) -> dict:
+    """The names of the groups that the value of utils() holds (INT-134), each read through its own call."""
+    utils = _connection_of(step, context).utils()
+    held = {
+        "aes": utils.aes(),
+        "privileges": utils.privileges(),
+        "schema": utils.schema(),
+        "stats": utils.stats(),
+    }
+    return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
+
+
 def _bind_cell(bind) -> dict:
     """The recipe wrapper of a bind of an event: a vector writes the bytes of a bind as their text."""
     if isinstance(bind, (bytes, bytearray, memoryview)):
@@ -3442,6 +3481,9 @@ _TABLE_OPS = {
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
+    "utils.was_inserted": _utils_was_inserted,
+    "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
+    "utils.groups": _utils_groups,
 }
 
 # The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).
