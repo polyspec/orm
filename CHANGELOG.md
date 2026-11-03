@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The AES envelope and blind index cases and the param_uses cases are their recipes in all six runtimes: the suites authenticated-encryption and planner-params and their fixtures are removed, the owners of authenticated_encryption and planner name tests/codec/codec.json and tests/planner/compile.json, and a native test on its own case database states `case_database` in place of a bench DSN.
 - TypeScript exports `transactionConflict(message)` and Python exports `transaction_conflict(message)`, the retryable `DEADLOCK` error of INT-48, which only the other runtimes had; the utilities of both use it and the recipe helpers call it. The recipe `model_queries_chain` reads the scalar SUM of a joined child as the integer of INT-160 and compares the message of the NULL collection key.
 - The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
 - The recipe `tests/planner/runtime-model.json` holds what Go `runtime_model_test.go` held and all six runtimes run it: i16 read and plus, the insert of a default or a missing required column (PRT-81), and the audit slot of audited writes (PRT-32, PRT-82). `planner.compile` compares an audit slot with its `name` and, with `assemble_types`, the output types.

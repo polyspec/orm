@@ -1097,7 +1097,6 @@
         "packages/go/engine/ir/params_test.go",
         "packages/go/engine/planner/planner.go",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
-        "packages/go/orm/coverage_planner_test.go",
         "packages/go/orm/recipe_planner_test.go",
         "packages/go/orm/markdown.go",
         "packages/rust/orm/src/engine/params.rs",
@@ -1122,9 +1121,7 @@
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
-        "packages/python/tests/coverage_planner.py",
         "packages/python/tests/test_planner_compile_none.py",
-        "contracts/fixtures/planner.json",
         "tests/planner/compile.json"
       ]
     },
@@ -2918,7 +2915,6 @@
         "packages/go/orm/coverage_transaction_failure_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/test_helpers_test.go",
-        "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/rollback_fault_test.go",
         "Makefile"
@@ -3501,7 +3497,6 @@
         "tests/dbspec/invalid.json",
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
-        "contracts/fixtures/planner.json",
         "tests/planner/compile.json",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"
