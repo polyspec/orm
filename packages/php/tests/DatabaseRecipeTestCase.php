@@ -16,24 +16,21 @@ abstract class DatabaseRecipeTestCase extends TestCase
 {
     use RecipeCases;
 
-    /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function testMysql(array $case): void
+    public function testMysql(string $id): void
     {
-        $this->runCase($case, 'mysql');
+        $this->runCase($id, 'mysql');
     }
 
-    /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function testPostgres(array $case): void
+    public function testPostgres(string $id): void
     {
-        $this->runCase($case, 'postgres');
+        $this->runCase($id, 'postgres');
     }
 
-    /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function testSqlite(array $case): void
+    public function testSqlite(string $id): void
     {
-        $this->runCase($case, 'sqlite');
+        $this->runCase($id, 'sqlite');
     }
 }

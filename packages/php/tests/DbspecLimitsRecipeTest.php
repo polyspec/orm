@@ -21,11 +21,11 @@ class DbspecLimitsRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testNone(array $case): void
+    public function testNone(string $id): void
     {
         // A case holds several copies of a 32 MiB text, its emission and the expected text, and the stress document
         // takes 512M as DbspecStressTest measures, which the default 128M of the CLI cannot hold.
         self::assertNotFalse(ini_set('memory_limit', '512M'));
-        $this->runCase($case, Recipe::NONE);
+        $this->runCase($id, Recipe::NONE);
     }
 }
