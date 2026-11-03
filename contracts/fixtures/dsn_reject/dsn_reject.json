@@ -3,10 +3,13 @@
   "requirements": [
     "CFG-1",
     "CFG-2",
+    "CFG-5",
     "CFG-11",
+    "CFG-12",
     "CFG-17",
     "CFG-19",
-    "CFG-26"
+    "CFG-26",
+    "PRT-64"
   ],
   "cases": [
     {
@@ -429,6 +432,119 @@
           "expect": {
             "none": {
               "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_root_path",
+      "requirements": [
+        "CFG-26"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "pool_idle_above_the_pool_size",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_size": 3,
+            "pool_idle_size": 4
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "pool_idle_above_the_default_pool_size",
+      "requirements": [
+        "CFG-5"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_idle_size": 11
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_pragma_without_value",
+      "requirements": [
+        "CFG-12"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app.sqlite?_pragma=busy_timeout",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_busy_timeout_not_a_number",
+      "requirements": [
+        "CFG-12"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/app.sqlite?_pragma=busy_timeout(soon)",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown_connect_refused",
+      "requirements": [
+        "PRT-64"
+      ],
+      "steps": [
+        {
+          "op": "markdown.connect",
+          "corpus": "tracker",
+          "token": "0123456789abcdef0123456789abcdef",
+          "reply": "{\"error\":{\"code\":\"CONFIG\",\"message\":\"connect: the token is not the corpus's token\"}}",
+          "received": "{\"op\":\"connect\",\"corpus\":\"tracker\",\"token\":\"0123456789abcdef0123456789abcdef\"}",
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_holds": "connect: the token is not the corpus's token"
             }
           }
         }

@@ -22139,6 +22139,10 @@
     "exported": true,
     "signature": "export function rollbackFailed(cause: unknown, rollback: unknown): OrmError"
   },
+  "packages/ts/src/runtime_error.ts::transactionConflict": {
+    "exported": true,
+    "signature": "export function transactionConflict(message: string): OrmError"
+  },
   "packages/ts/src/sqlite-codes.ts::sqliteResultCodeSuffix": {
     "exported": true,
     "signature": "export function sqliteResultCodeSuffix(code: number): string"

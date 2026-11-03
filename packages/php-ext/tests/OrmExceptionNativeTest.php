@@ -90,48 +90,6 @@ final class OrmExceptionNativeTest extends TestCase
         );
     }
 
-    // Requirements: CFG-26.
-    public function testNativeOrmRequiresAbsoluteSqlitePath(): void
-    {
-        try {
-            Orm::parseDsn('sqlite://relative.sqlite');
-            Assert::fail('SQLite accepted a relative database path');
-        } catch (OrmException $error) {
-            Assert::assertSame(Code::CONFIG, $error->code_);
-        }
-        Assert::assertSame('sqlite', Orm::parseDsn('sqlite:///tmp/orm-example.sqlite')[0]);
-    }
-
-    // Requirements: CFG-2, CFG-19, CFG-20.
-    public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
-    {
-        foreach (
-            [
-            'mysql://localhost/',
-            'sqlite:///tmp/app.sqlite?_pragma=busy_timeout',
-            'mysql://localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem',
-            'mysql://localhost/app?charset=utf8',
-            'postgres://localhost/app?application_name=orm',
-            'mysql://localhost/app?ssl-mode%5B%5D=VERIFY_IDENTITY',
-            ] as $dsn
-        ) {
-            try {
-                Orm::parseDsn($dsn);
-                Assert::fail("invalid DSN was accepted: $dsn");
-            } catch (OrmException $error) {
-                Assert::assertSame(Code::CONFIG, $error->code_, "wrong error for $dsn");
-            }
-        }
-    }
-
-    // Requirements: CFG-19.
-    public function testNativeMysqlTlsKeepsTheCaPathOfAHostName(): void
-    {
-        Assert::assertSame('/tmp/ca.pem', Orm::parseDsn(
-            'mysql://db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem'
-        )[5]);
-    }
-
     public function testNativeDsnErrorsPreserveTheirSupportedParameterDetails(): void
     {
         try {
@@ -332,46 +290,6 @@ final class OrmExceptionNativeTest extends TestCase
             $request = json_decode((string) base64_decode($encoded, true), true, 512, JSON_THROW_ON_ERROR);
             Assert::assertSame(['op' => 'connect', 'corpus' => 'corpus', 'token' => 'test-token'], $request);
             $db->close();
-        } finally {
-            self::stopMarkdownTestServer($process, $pipes);
-        }
-    }
-
-    // Requirements: PRT-64.
-    public function testNativeMarkdownConnectionRefusesConnectError(): void
-    {
-        $response = json_encode(
-            ['error' => ['code' => 'CONFIG', 'message' => "connect: the token is not the corpus's token"]],
-            JSON_THROW_ON_ERROR
-        );
-        $serverCode = self::markdownTestServerCode($response);
-        [$process, $pipes] = self::startMarkdownTestServer($serverCode);
-        try {
-            $port = trim((string) fgets($pipes[1]));
-            Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
-            Assert::assertTrue((new \ReflectionMethod(Orm::class, 'connect'))->isInternal());
-            try {
-                Orm::connect("markdown://127.0.0.1:$port/corpus?token=wrong-token", new Config());
-                Assert::fail('a rejected native Markdown handshake must fail connect');
-            } catch (OrmException $error) {
-                Assert::assertSame(Code::CONFIG, $error->code_);
-                Assert::assertSame(
-                    "CONFIG: connect: the token is not the corpus's token",
-                    $error->getMessage()
-                );
-                Assert::assertNull($error->getPrevious());
-            }
-            $encoded = trim((string) fgets($pipes[1]), "\r\n");
-            $request = json_decode(
-                (string) base64_decode($encoded, true),
-                true,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-            Assert::assertSame(
-                ['op' => 'connect', 'corpus' => 'corpus', 'token' => 'wrong-token'],
-                $request
-            );
         } finally {
             self::stopMarkdownTestServer($process, $pipes);
         }
