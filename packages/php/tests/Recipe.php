@@ -4071,7 +4071,7 @@ final class Recipe
     {
         $child = self::chainModel($relation['model'], $context);
         if (isset($relation['connection'])) {
-            $child->connect(self::connectionOf(['connection' => $relation['connection']], $context));
+            $child->connect(self::connectionOf(new RecipeStep(['connection' => $relation['connection']]), $context));
         }
         foreach ($relation['match'] ?? [] as [$left, $right]) {
             $child->{'match' . self::pascal($left) . 'With' . self::pascal($right)}();
@@ -4103,6 +4103,9 @@ final class Recipe
     {
         // A bound chain is read again: a terminal leaves it as it was (DSL-98).
         if (isset($s['from'])) {
+            // The bound chain keeps its model; the connection that the step names must be bound still.
+            self::connectionOf($s, $context);
+            $s->has('model');
             return self::boundValue($s['from'], $context);
         }
         $db = self::connectionOf($s, $context);
@@ -4235,6 +4238,7 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(RecipeStep $s, array $context, \Closure $terminal): array
     {
+        $pick = $s['pick'] ?? null;
         $table = ($s['unconnected'] ?? false) === true
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
@@ -4247,7 +4251,7 @@ final class Recipe
             $model->duplication(self::chainAssign($duplicate, $s['duplication'], $context));
         }
         $row = $terminal($model);
-        $fields = ['bind' => $row, 'json' => self::chainRow($row, $s['pick'] ?? null)];
+        $fields = ['bind' => $row, 'json' => self::chainRow($row, $pick)];
         // With columns, the rows expect compares the row that the write returns (INT-38).
         if (isset($s['columns'])) {
             $fields['rows'] = self::chainCells([$row], $s);
@@ -4433,6 +4437,7 @@ final class Recipe
     /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
     private static function chainGets(RecipeStep $s, array $context): array
     {
+        $pick = $s['pick'] ?? null;
         $model = self::chainBuilt($s, $context);
         if (($s['compile'] ?? false) === true) {
             return ['json' => $model->getQuery()];
@@ -4485,7 +4490,7 @@ final class Recipe
             if (($s['items'] ?? false) === true) {
                 $fields['json']['items'] = [];
                 foreach ($page->items as $row) {
-                    $fields['json']['items'][] = self::chainRow($row, $s['pick'] ?? null);
+                    $fields['json']['items'][] = self::chainRow($row, $pick);
                 }
             }
             if (self::chainWantsRows($s, $context)) {
@@ -4501,7 +4506,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::chainRow($row, $s['pick'] ?? null);
+            $list[] = self::chainRow($row, $pick);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {
