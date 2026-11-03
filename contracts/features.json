@@ -12604,7 +12604,9 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
-        "packages/python/tests/coverage_request_hook.py",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
         "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
       ],
       "docs": [
@@ -13153,18 +13155,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_request_hook.py"
+              "packages/python/tests/test_request_hook_mysql.py",
+              "packages/python/tests/test_request_hook_postgres.py",
+              "packages/python/tests/test_request_hook_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/test_request_hook.py",
-              "packages/python/tests/case_database.py",
+              "contracts/fixtures/request_hook/request_hook.json",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_mysql.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13187,7 +13190,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_postgres.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13210,7 +13213,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_sqlite.py",
                   "cases": [
                     "without_hook",
                     "read_filter",

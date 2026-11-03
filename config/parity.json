@@ -4968,7 +4968,12 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
         },
         {
@@ -5036,8 +5041,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_read_filter"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "read_filter"
         },
         {
           "implementation": "rust",
@@ -5103,8 +5108,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_invalid_param"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "invalid_param"
         },
         {
           "implementation": "rust",
@@ -5170,8 +5175,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_no_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_no_key"
         },
         {
           "implementation": "rust",
@@ -5237,8 +5242,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key"
         },
         {
           "implementation": "rust",
@@ -5304,8 +5309,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_hook_set_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_hook_set_key"
         },
         {
           "implementation": "rust",
@@ -5371,8 +5376,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key_set_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key_set_scope"
         },
         {
           "implementation": "rust",
@@ -5438,8 +5443,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_relation_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "relation_scope"
         },
         {
           "implementation": "rust",
@@ -5663,8 +5668,13 @@
         },
         {
           "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_reads_params"
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "rust",
