@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/polyspec/orm/packages/go/orm"
 )
@@ -64,7 +65,11 @@ func tableEntity(table string, s *orm.Schema) *orm.Entity {
 			if !ok {
 				return false, fmt.Errorf("model is a %T, not a table row", m)
 			}
-			row.vals[name] = v
+			converted, err := tableValue(s, table, row, name, v)
+			if err != nil {
+				return true, fmt.Errorf("column %s: %w", name, err)
+			}
+			row.vals[name] = converted
 			return true, nil
 		},
 		Value: func(m orm.Model, name string) (any, bool) {
@@ -90,131 +95,10 @@ func tableCore(db *orm.DB, table string, s *orm.Schema) *orm.Core {
 	return c
 }
 
-// tableModels are the models of the fixtures that have no generated model: each names its table of the fixture schema. A
-// model op on any other model name fails the case by name (model.go).
-var tableModels = map[string]string{
-	"EventProbe":  "event_probe",
-	"HookItem":    "hook_item",
-	"HookEntry":   "hook_entry",
-	"HookUpsert":  "hook_upsert",
-	"RotRow":      "rot_row",
-	"ChunkAuthor": "chunk_author",
-	"Item":        "item",
-	"Card":        "card",
-	"Tag":         "tag",
-	"Membership":  "membership",
-	"Label":       "label",
-	"Audit":       "audit",
-}
-
-// boundRow records which path made a bound row, the generated or the table path, with its model and the connection it was
-// made on. A model op of the {row} form (no model, no connection) runs on this path and connection (coordinator ruling).
-type boundRow struct {
-	path  string
-	model string
-	db    *orm.DB
-}
-
-// tableModelOp runs a model op on a table model of the fixture, through the entity of tableEntity.
-func tableModelOp(s databaseStep, c *databaseContext, db *orm.DB, table string) (outcome, error) {
-	if out, handled, err := tableModelRequest(s, c, db, table); handled {
-		return out, err
-	}
-	core := tableCore(db, table, c.schema)
-	switch s.Op {
-	case "model.create":
-		values, err := assignments(s.Values, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		for _, a := range values {
-			core.Set(a.Name, a.Value)
-		}
-		m, err := core.Create()
-		if err != nil {
-			return outcome{}, err
-		}
-		return outcome{api: m, fields: map[string]any{}, row: &boundRow{path: "table", model: s.Model, db: db}}, nil
-	case "model.get_by":
-		if s.Key != nil {
-			return outcome{}, fmt.Errorf("model.get_by with key has no table-model path")
-		}
-		if err := filterWhere(core, s, c); err != nil {
-			return outcome{}, err
-		}
-		m, err := core.Get()
-		if err != nil {
-			return outcome{}, err
-		}
-		return outcome{api: m, fields: map[string]any{}, row: &boundRow{path: "table", model: s.Model, db: db}}, nil
-	case "model.update":
-		if s.Key != nil {
-			return tableUpdateByKey(s, c, core)
-		}
-		row, err := boundAPI[orm.Model](s.Row, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		values, err := assignments(s.Set, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		for _, a := range values {
-			row.Orm_().Set(a.Name, a.Value)
-		}
-		if err := row.Orm_().Update(nil); err != nil {
-			return outcome{}, err
-		}
-		return outcome{fields: map[string]any{}}, nil
-	case "model.delete":
-		row, err := boundAPI[orm.Model](s.Row, c)
-		if err != nil {
-			return outcome{}, err
-		}
-		if err := row.Orm_().Delete(nil); err != nil {
-			return outcome{}, err
-		}
-		return outcome{fields: map[string]any{}}, nil
-	case "model.count":
-		if s.Where != nil {
-			if err := filterWhere(core, s, c); err != nil {
-				return outcome{}, err
-			}
-		}
-		n, err := core.GetCount()
-		if err != nil {
-			return outcome{}, err
-		}
-		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, nil
-	}
-	return outcome{}, fmt.Errorf("model op %s has no table-model path", s.Op)
-}
-
-// filterWhere narrows core by the where of s.
-func filterWhere(core *orm.Core, s databaseStep, c *databaseContext) error {
-	where, err := assignments(s.Where, c)
-	if err != nil {
-		return err
-	}
-	return filterTable(core, where)
-}
-
-// filterTable narrows a table-model chain by the equalities of where, joined by and in column order.
-func filterTable(core *orm.Core, where []orm.CatalogAssignment) error {
-	keys := make([]orm.ChainKey, len(where))
-	args := make([]any, len(where))
-	for i, a := range where {
-		keys[i] = orm.ChainKey{Column: a.Name}
-		if i > 0 {
-			keys[i].Conn = "and"
-		}
-		args[i] = a.Value
-	}
-	if len(keys) > 0 {
-		core.Where("", keys, args...)
-	}
-	return nil
-}
+// generatedFixture is the one recipe fixture that generates models (packages/go/models.txt). A model op of any other
+// fixture names a table of that fixture, and chain.go runs it on the entity of the table (FCV-4); a model op of this fixture
+// calls the generated methods of its model (model.go), which are other calls of the public API than those of the builder.
+const generatedFixture = "contracts/fixtures/bench/dbspec-set.json"
 
 // statementOp runs the statement-event ops of FCV-4 (events.*). It reports whether s is one of them.
 func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
@@ -268,6 +152,9 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 		if err != nil {
 			return outcome{}, true, err
 		}
+		if err := applyMasks(events, s.Masks, c.database); err != nil {
+			return outcome{}, true, err
+		}
 		return outcome{fields: map[string]any{"value": map[string]any{"array": events}}}, true, nil
 	}
 	return outcome{}, false, nil
@@ -286,9 +173,31 @@ func capturedEvents(events []orm.StatementEvent, compare string, c *databaseCont
 		if compare == "tables" && len(e.Tables) == 0 {
 			continue
 		}
+		if compare == "statements" {
+			// The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+			value = map[string]any{"object": []any{
+				[]any{"sql", map[string]any{"text": e.SQL}},
+				[]any{"kind", map[string]any{"text": e.Kind}},
+			}}
+		}
 		out = append(out, value)
 	}
 	return out, nil
+}
+
+// bindValue is a bind in the one form of every runtime: a 32-bit integer is an integer and UTF-8 bytes are their text.
+func bindValue(b any) any {
+	switch x := b.(type) {
+	case int:
+		return int64(x)
+	case int32:
+		return int64(x)
+	case []byte:
+		if utf8.Valid(x) {
+			return string(x)
+		}
+	}
+	return b
 }
 
 // eventValue is the recipe object of one statement event: its sql, binds, kind, tables, transaction and error (FCV-4).
@@ -296,7 +205,7 @@ func capturedEvents(events []orm.StatementEvent, compare string, c *databaseCont
 func eventValue(e orm.StatementEvent, numbers map[int64]int64, c *databaseContext) (any, error) {
 	binds := []any{}
 	for _, b := range e.Binds {
-		w, err := plain(b, "", c.database)
+		w, err := plain(bindValue(b), "", c.database)
 		if err != nil {
 			return nil, err
 		}

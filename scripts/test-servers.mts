@@ -667,10 +667,17 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   console.log(`test-servers: MySQL TLS from ${dir}`);
 }
 
+// The accounts of the user orm: ProxySQL reaches the primary as 'orm'@'127.0.0.1', and a client of that user that connects through
+// the Unix socket of the primary, the case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10), authenticates as 'orm'@'localhost'.
+// The statements are idempotent, so start runs them on a new server and on one that already runs.
+export const ORM_ACCOUNTS_SQL = ['127.0.0.1', 'localhost']
+  .map(host => `CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'${host}';`)
+  .join(' ');
+
 // startProxysql pools the connections of the user orm to the MySQL primary and multiplexes them over at most four server
 // connections. The admin and PostgreSQL interfaces listen on Unix sockets only.
 async function startProxysql(p: Paths, ports: Ports): Promise<void> {
-  mysqlAt(ports.mysql, "CREATE USER 'orm'@'127.0.0.1' IDENTIFIED BY 'orm'; GRANT ALL ON *.* TO 'orm'@'127.0.0.1'");
+  mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
   mkdirSync(p.proxysqlData, { recursive: true });
   writeFileSync(join(p.dir, 'proxysql.cnf'), `datadir="${p.proxysqlData}"
 admin_variables=
@@ -746,6 +753,7 @@ async function start(p: Paths): Promise<void> {
     // initialized directories.
     run(process.execPath, [join(ROOT, 'scripts/test-servers-mysql.mts'), join(ROOT, 'scripts/test-servers.mts'), p.dir, String(ports.mysql), String(ports.mysqlReplica), String(MYSQL_LOWER_CASE)],
       { env: { ...process.env, LEASES: p.leases } });
+    mysqlAt(ports.mysql, ORM_ACCOUNTS_SQL);
     writeEnvironment(p, ports);
     console.log(`test-servers: running; environment ${p.env}`);
     // This reuse path never restarts mysqld or rewrites PostgreSQL's pg_hba.conf. To adopt startup policy changes, use

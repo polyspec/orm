@@ -73,12 +73,6 @@ fn recipe_text(path: &str) -> (PathBuf, String) {
     (root, text)
 }
 
-/// The row `step` names, of the rows that its steps bound by `as`.
-fn bound_row<R: Clone>(rows: &HashMap<String, R>, step: &Value) -> Result<R, String> {
-    let name = step["row"].as_str().ok_or_else(|| format!("{} names no row", step["op"]))?;
-    rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))
-}
-
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
 /// `<entry>::<case id>`.
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -1680,7 +1674,11 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::{database_trials, database_trials_with_models, ModelDispatcher, ModelFuture};
+pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture};
+
+/// The member in which a step of the table path keeps the written order of an object, since serde_json sorts the keys of
+/// its objects and a column list is written in the order of the recipe (FCV-4).
+const WRITTEN_ORDER: &str = "__written_order";
 
 mod database {
     use std::collections::HashMap;
@@ -1751,6 +1749,10 @@ mod database {
     /// The fields that a model op receives have their values resolved: a ref is its bound value, and a per-database object
     /// is its entry for the database. A trial binary implements it over the models of its fixture.
     pub trait ModelDispatcher: Send {
+        /// Whether the ops run on the table path (FCV-4), which reads the fields of a step as the document writes them.
+        fn table_path(&self) -> bool {
+            false
+        }
         /// model.connect: opens the connection `name` on `dsn` with `pool_size` connections.
         fn connect<'a>(&'a mut self, name: &'a str, dsn: &'a str, pool_size: u32) -> ModelFuture<'a>;
         /// A model op `op` on `connection`, with the resolved fields of its step.
@@ -1819,6 +1821,21 @@ mod database {
     /// database_trials with the generated models of the trial binary: model.connect opens connections, and the model ops
     /// call the models through the dispatcher that `models` builds for each case (FCV-4).
     pub fn database_trials_with_models(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>) -> Vec<polyspec_orm_testcase::Trial> {
+        trials_of(entry, path, database, models, false)
+    }
+
+    /// database_trials_with_models for the table path, whose ops read the members of an object in the order of the
+    /// document (WRITTEN_ORDER).
+    pub fn database_trials_written_order(
+        entry: &str,
+        path: &str,
+        database: &str,
+        models: fn() -> Box<dyn ModelDispatcher>,
+    ) -> Vec<polyspec_orm_testcase::Trial> {
+        trials_of(entry, path, database, models, true)
+    }
+
+    fn trials_of(entry: &str, path: &str, database: &str, models: fn() -> Box<dyn ModelDispatcher>, written_order: bool) -> Vec<polyspec_orm_testcase::Trial> {
         assert!(DATABASES.contains(&database), "recipe {path}: unknown database {database}");
         let (root, text) = super::recipe_text(path);
         let (mut recipe, ordered) = read_recipe(&root.join(path), &text);
@@ -1840,6 +1857,11 @@ mod database {
                 let (recipe, schema, dir, models) = (recipe.clone(), schema.clone(), dir.clone(), models);
                 let mut case = case.clone();
                 case["seed_order"] = ordered_cases[index].clone();
+                if written_order {
+                    if let Some(steps) = member(&ordered, "cases").and_then(|cases| cases.items()).and_then(|cases| member(&cases[index], "steps")) {
+                        mark_written_order(&mut case["steps"], steps);
+                    }
+                }
                 let (path, database) = (path.to_owned(), database.to_owned());
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
@@ -1858,6 +1880,31 @@ mod database {
         match polyspec_orm::ordered_json::parse(text) {
             Ok(ordered) => (value, ordered),
             Err(error) => panic!("{}: {error}", path.display()),
+        }
+    }
+
+    /// Records the written order of each object of a step that serde_json would sort: a step and its expect are read by
+    /// name, so they stay as they are.
+    fn mark_written_order(value: &mut Value, ordered: &polyspec_orm::ordered_json::Value) {
+        if let Some(items) = ordered.items() {
+            for (item, written) in value.as_array_mut().into_iter().flatten().zip(items) {
+                mark_written_order(item, written);
+            }
+            return;
+        }
+        let (Some(map), Some(written)) = (value.as_object_mut(), ordered.members()) else { return };
+        let mut names = Vec::new();
+        for (key, child) in written.iter() {
+            let name = String::from_utf8(key.string_value().expect("a member name is a JSON string")).expect("a member name is UTF-8");
+            if name != "expect" {
+                if let Some(item) = map.get_mut(&name) {
+                    mark_written_order(item, child);
+                }
+            }
+            names.push(name);
+        }
+        if !map.contains_key("op") && !names.is_sorted() {
+            map.insert(super::WRITTEN_ORDER.to_owned(), json!(names));
         }
     }
 
@@ -1880,10 +1927,9 @@ mod database {
     /// The Schema of a dbspec-set.json through the public dbspec API (docs/spec/dbspec.md "External documents"): the
     /// owned documents parsed with the external ones of the set, and the manifest of the owned documents with the external
     /// text. Each external document is also a schema of its own, which a case installs first, as the bench set does.
-    /// The schema of a fixture set without external documents, for a dispatcher that lives as long as the process.
+    /// The schema of a fixture set, for a dispatcher that lives as long as the process.
     pub(super) fn fixture_schema_of(set_path: &Path) -> &'static Schema {
-        let (schema, external) = fixture_schema(set_path);
-        assert!(external.is_empty(), "{}: a table recipe fixture has no external documents", set_path.display());
+        let (schema, _) = fixture_schema(set_path);
         Box::leak(Box::new(schema))
     }
 
@@ -2175,7 +2221,7 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 16] = [
+    const MODEL_OPS: [&str; 21] = [
         "model.connect",
         "model.restore",
         "hook.install",
@@ -2192,6 +2238,11 @@ mod database {
         "model.count",
         "model.get_by",
         "model.query",
+        "model.save",
+        "model.chain",
+        "utils.lock",
+        "utils.set_local",
+        "utils.local",
     ];
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
@@ -2238,6 +2289,17 @@ mod database {
         } else {
             Err(format!("got {got}, want {want}"))
         }
+    }
+
+    /// Replaces the masked binds of captured events: a mask names a value that no recipe can fix (FCV-4 events.captured).
+    fn apply_masks(events: &mut [Value], masks: &Value) -> Result<(), String> {
+        for mask in masks.as_array().into_iter().flatten() {
+            let index = |name: &str| mask[name].as_u64().map(|n| n as usize).ok_or_else(|| format!("mask {mask} names no {name}"));
+            let (event, bind) = (index("event")?, index("bind")?);
+            let slot = events.get_mut(event).and_then(|found| found["object"][1][1]["array"].get_mut(bind));
+            *slot.ok_or_else(|| format!("mask {mask} names no captured bind"))? = json!({ "text": mask["value"] });
+        }
+        Ok(())
     }
 
     /// The open catalog connection of a case, or the CATALOG_CLOSED error of a step after catalog.close.
@@ -2431,7 +2493,16 @@ mod database {
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
-                let events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
+                let mut events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
+                apply_masks(&mut events, &step["masks"][context.database]).map_err(fault)?;
+                if step["compare"].as_str() == Some("statements") {
+                    // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+                    for event in &mut events {
+                        if let Some(members) = event["object"].as_array_mut() {
+                            members.retain(|member| matches!(member[0].as_str(), Some("sql" | "kind")));
+                        }
+                    }
+                }
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
@@ -2577,7 +2648,14 @@ mod database {
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
-                    native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
+                    let done = native_exec(&context.dsn, sql).await;
+                    if step["refused"].as_bool() == Some(true) {
+                        if done.is_ok() {
+                            return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}")));
+                        }
+                    } else {
+                        done.map_err(Failure::Call)?;
+                    }
                 }
                 Output::fields(json!({}))
             }
@@ -2604,8 +2682,13 @@ mod database {
                 Some(Ok(count)) => count,
                 _ => return Err(Failure::Step("pool_size is not a count".into())),
             };
-            let dsn = super::connect_dsn(step["dsn"].as_str(), context.database, &context.dsn, std::env::var("ORM_TEST_MYSQL_SOCKET").ok().as_deref())
-                .map_err(Failure::Step)?;
+            let dsn = super::connect_dsn(
+                step["dsn"].as_str(),
+                context.database,
+                &context.dsn,
+                std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
+            )
+            .map_err(Failure::Step)?;
             match (step.get("aes_keyring"), step.get("audit_source")) {
                 (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
                 (None, Some(source)) => {
@@ -2623,7 +2706,7 @@ mod database {
             None if step.get("row").is_some() || op == "hook.records" => "",
             None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
         };
-        let resolved = resolve_model_step(step, context).map_err(Failure::Step)?;
+        let resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
         let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
         Ok(Output::fields(fields))
     }
@@ -2922,73 +3005,14 @@ mod database {
         result.map(|_| ())
     }
 }
-/// The statement_events recipe (docs/spec/feature-coverage.md FCV-4): each case runs on a case database of its own, and
-/// each op calls the public polyspec_orm API that the op names (model.*, schema.install, transaction, events.*). The events
-/// ops and the schema and transaction ops are the arms of the one `call` dispatch; the EventProbe model ops are the
-/// dispatcher of each case, which opens the connections that model.connect names.
-pub use statement::statement_trials;
-
+/// The recording subscriber of the events ops (docs/spec/feature-coverage.md FCV-4): events.subscribe installs it on a
+/// connection and events.captured reads what it received. The statement_events recipe runs on the table path.
 mod statement {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::HashMap;
     use std::sync::Mutex;
 
-    use polyspec_orm::core::{Arg, ChainKey};
-    use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
+    use polyspec_orm::{Param, StatementEvent};
     use serde_json::{json, Value};
-
-    use super::{database_trials_with_models, ModelDispatcher};
-    use crate::bench_models::{CaseModels, Connections};
-
-    /// The columns of the table event_probe of the fixture.
-    const COLUMNS: [&str; 2] = ["seq", "label"];
-    /// The key of the label column: the only `where` that the recipe names.
-    const BY_LABEL: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "label", columns: &[], compare: "" }];
-
-    static STATEMENT_SCHEMA: Schema = Schema::new(
-        include_str!("../../../../contracts/fixtures/statement_events/statement_events.dbs"),
-        "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207",
-    );
-    static EVENT_PROBE: Entity = Entity {
-        name: "event_probe",
-        schema: &STATEMENT_SCHEMA,
-        new: polyspec_orm::model::new_boxed::<EventProbe>,
-        collect: polyspec_orm::model::collect_boxed::<EventProbe>,
-    };
-
-    /// The row of event_probe: its core and the column values that were assigned.
-    #[derive(Clone)]
-    pub struct EventProbe {
-        core: Core,
-        values: BTreeMap<String, Val>,
-    }
-
-    impl Model for EventProbe {
-        fn entity() -> &'static Entity {
-            &EVENT_PROBE
-        }
-        fn core(&self) -> &Core {
-            &self.core
-        }
-        fn core_mut(&mut self) -> &mut Core {
-            &mut self.core
-        }
-        fn from_core(core: Core) -> Self {
-            EventProbe { core, values: BTreeMap::new() }
-        }
-        fn into_core(self) -> Core {
-            self.core
-        }
-        fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-            if !COLUMNS.contains(&name) {
-                return Ok(false);
-            }
-            self.values.insert(name.to_owned(), v);
-            Ok(true)
-        }
-        fn value(&self, name: &str) -> Option<Val> {
-            self.values.get(name).cloned()
-        }
-    }
 
     /// The events that a recording subscriber received: each with whether it names a table, and its wrapper.
     #[derive(Default)]
@@ -3004,129 +3028,12 @@ mod statement {
         }
     }
 
-    /// The statement_events recipe trials of `database` (FCV-3, FCV-4).
-    pub fn statement_trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
-        database_trials_with_models(entry, path, database, dispatcher)
-    }
-
-    /// The dispatcher of one case: its connections and the rows bound by `as`.
-    fn dispatcher() -> Box<dyn ModelDispatcher> {
-        crate::bench_models::case_dispatcher(EventProbes::default())
-    }
-
-    /// The model ops of the statement recipe over the EventProbe model (FCV-4): model.connect opens a connection with the
-    /// statement schema, and each model op calls the model on the connection that its step names.
-    #[derive(Default)]
-    struct EventProbes {
-        rows: HashMap<String, EventProbe>,
-    }
-
-    impl EventProbes {
-        fn bound_row(&self, step: &Value) -> Result<EventProbe, String> {
-            super::bound_row(&self.rows, step)
-        }
-    }
-
-    impl CaseModels for EventProbes {
-        async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, String> {
-            connections.open(name, dsn, &STATEMENT_SCHEMA, pool_size, Config::default()).await.map_err(|e| e.to_string())
-        }
-
-        async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
-            // model.update and model.delete with `row` run on the connection of the bound row, not on a named one.
-            if matches!(op, "model.update" | "model.delete") && step.get("row").is_some() {
-                let row = self.bound_row(step)?;
-                return if op == "model.update" {
-                    let mut row = row;
-                    set_values(&mut row, &step["set"])?;
-                    polyspec_orm::model::update(&mut row, false).await.map_err(|e| e.to_string())?;
-                    Ok(json!({}))
-                } else {
-                    polyspec_orm::model::delete(&row, false).await.map_err(|e| e.to_string())?;
-                    Ok(json!({}))
-                };
-            }
-            let db = connections.bound(connection)?;
-            match op {
-                "model.create" => {
-                    let mut row = new_row(&db);
-                    set_values(&mut row, &step["values"])?;
-                    polyspec_orm::model::create(&mut row).await.map_err(|e| e.to_string())?;
-                    Ok(json!({}))
-                }
-                "model.get_by" => {
-                    // The statement cases name only the where form; the key form has no case here, so it fails by name.
-                    if step.get("key").is_some() {
-                        return Err("model.get_by key form is not served by the statement dispatcher: the statement cases use where only".into());
-                    }
-                    let filter = where_filter(&db, &step["where"])?;
-                    let row = polyspec_orm::model::get_core::<EventProbe>(&filter)
-                        .await
-                        .map_err(|e| e.to_string())?
-                        .ok_or_else(|| polyspec_orm::Error::NoRows.to_string())?;
-                    // A get_by without `as` only checks that the row exists; it binds nothing.
-                    if let Some(name) = step["as"].as_str() {
-                        self.rows.insert(name.to_owned(), row);
-                    }
-                    Ok(json!({}))
-                }
-                "model.update" | "model.delete" => Err(format!("{op} names no row: the statement cases bind updates and deletes by row")),
-                "model.count" => {
-                    let mut core = Core::new(&EVENT_PROBE);
-                    core.connect(&db);
-                    let n = polyspec_orm::model::get_count(&core).await.map_err(|e| e.to_string())?;
-                    Ok(json!({ "value": { "int": n.to_string() } }))
-                }
-                other => Err(format!("OP_UNKNOWN {other}: the statement recipe binds no such model op")),
-            }
-        }
-    }
-
-    fn new_row(db: &Db) -> EventProbe {
-        let mut core = Core::new(&EVENT_PROBE);
-        core.connect(db);
-        EventProbe::from_core(core)
-    }
-
-    /// The filter of a `where` object: the label column, which the recipe names alone.
-    fn where_filter(db: &Db, field: &Value) -> Result<Core, String> {
-        let map = field.as_object().ok_or_else(|| format!("where {field} is not an object"))?;
-        let [(column, value)] = map.iter().collect::<Vec<_>>()[..] else { return Err("where names one column".into()) };
-        if column != "label" {
-            return Err(format!("where column {column} has no key in the recipe helper"));
-        }
-        let mut core = Core::new(&EVENT_PROBE);
-        core.connect(db);
-        Ok(core.by(BY_LABEL, vec![Arg::Value(polyspec_orm::args::Value::One(param(value)?))]))
-    }
-
-    /// Assigns each column of an object of wrappers to the row.
-    fn set_values(row: &mut EventProbe, values: &Value) -> Result<(), String> {
-        let map = values.as_object().ok_or_else(|| format!("{values} is not an object of columns"))?;
-        for (column, value) in map {
-            row.core_mut().set(column, param(value)?);
-        }
-        Ok(())
-    }
-
-    /// The bound value of a text, int, bool or null wrapper of the recipe.
-    fn param(wrapper: &Value) -> Result<Param, String> {
-        let map = wrapper.as_object().filter(|m| m.len() == 1).ok_or_else(|| format!("{wrapper} is no wrapper"))?;
-        let (kind, body) = map.iter().next().expect("one key");
-        Ok(match kind.as_str() {
-            "text" => Param::Str(body.as_str().unwrap_or_default().to_owned()),
-            "int" => Param::I64(body.as_str().unwrap_or_default().parse().map_err(|e| format!("int {body}: {e}"))?),
-            "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("bool {body}"))?),
-            "null" => Param::Null,
-            other => return Err(format!("a {other} wrapper is not a bound value")),
-        })
-    }
-
-    /// The recipe wrapper of a bind value of a statement event.
+    /// The wrapper of one bind of an event: a byte bind (a value a codec encoded) compares as its text.
     fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
+            Param::Bytes(bytes) => json!({ "text": String::from_utf8_lossy(bytes) }),
             Param::I64(n) => json!({ "int": n.to_string() }),
             Param::Bool(b) => json!({ "bool": b }),
             other => panic!("the statement recipe has no wrapper for the bind {other:?}"),
@@ -3173,30 +3080,19 @@ mod tables {
     use std::collections::{BTreeMap, HashMap};
     use std::sync::{Arc, Mutex, OnceLock};
 
-    use polyspec_orm::args::Value as ArgValue;
+    use polyspec_orm::args::{self, Func, Value as ArgValue};
     use polyspec_orm::core::{Arg, ChainKey};
+    use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
-    use polyspec_orm::model::{create, creates, delete, get_core, get_count, gets, gets_page, restore, update};
-    use polyspec_orm::{AesKeyring, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
+    use polyspec_orm::model::{
+        create, creates, delete, get_avg, get_core, get_count, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
+        update,
+    };
+    use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
     use serde_json::{json, Map, Value};
 
-    use super::{database_trials_with_models, ModelDispatcher};
-    use crate::bench_models::{CaseModels, Connections};
-
-    /// The models of the table recipes and their tables (FCV-4): a model op on any other model fails by name.
-    const TABLE_MODELS: [(&str, &str); 11] = [
-        ("HookItem", "hook_item"),
-        ("HookEntry", "hook_entry"),
-        ("HookUpsert", "hook_upsert"),
-        ("RotRow", "rot_row"),
-        ("ChunkAuthor", "chunk_author"),
-        ("Item", "item"),
-        ("Card", "card"),
-        ("Tag", "tag"),
-        ("Membership", "membership"),
-        ("Label", "label"),
-        ("Audit", "audit"),
-    ];
+    use super::{database_trials_written_order, ModelDispatcher, WRITTEN_ORDER};
+    use crate::bench_models::{bench_config, CaseModels, Connections};
 
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
@@ -3211,24 +3107,38 @@ mod tables {
         if CURRENT.set(schema).is_err() {
             panic!("{entry}: a trial binary runs one table recipe");
         }
-        database_trials_with_models(entry, path, database, dispatcher)
+        database_trials_written_order(entry, path, database, dispatcher)
     }
 
     /// The schema of the trial binary: one table recipe runs per binary.
     static CURRENT: OnceLock<&'static Schema> = OnceLock::new();
 
+    /// The entities of the tables of the binary: each lives as long as the process, as the core of a model requires.
+    static ENTITIES: OnceLock<Mutex<HashMap<String, &'static Entity>>> = OnceLock::new();
+
+    /// The runtime model of the tables of the binary, read once per table.
+    static FIELDS: OnceLock<Mutex<HashMap<String, Arc<polyspec_orm::dbspec::Entity>>>> = OnceLock::new();
+
     fn dispatcher() -> Box<dyn ModelDispatcher> {
         let schema = CURRENT.get().copied().expect("table_trials sets the schema of the binary");
-        crate::bench_models::case_dispatcher(Tables { schema, bases: HashMap::new(), rows: HashMap::new(), entities: HashMap::new(), records: Arc::default() })
+        crate::bench_models::case_dispatcher(Tables {
+            schema,
+            bases: HashMap::new(),
+            rows: HashMap::new(),
+            collections: HashMap::new(),
+            chains: HashMap::new(),
+            records: Arc::default(),
+        })
     }
 
-    /// The connections of a case, the base connection of each hooked one, the rows bound by `as`, the entities of the
-    /// tables and the records of the installed hook.
+    /// The connections of a case, the base connection of each hooked one, the rows, collections and chains bound by `as`,
+    /// and the records of the installed hook.
     struct Tables {
         schema: &'static Schema,
         bases: HashMap<String, Db>,
         rows: HashMap<String, TableRow>,
-        entities: HashMap<String, &'static Entity>,
+        collections: HashMap<String, Collection<TableRow>>,
+        chains: HashMap<String, Core>,
         records: Arc<Mutex<Vec<Record>>>,
     }
 
@@ -3255,8 +3165,35 @@ mod tables {
         fn into_core(self) -> Core {
             self.core
         }
-        fn assign(&mut self, name: &str, value: Val) -> polyspec_orm::Result<bool> {
-            self.values.insert(name.to_owned(), value);
+        /// Converts a read value as the assign of a generated model does, from the field of the runtime model; a name that
+        /// is no field, such as an added column, is left to the core. A SQL NULL stays NULL.
+        fn assign(&mut self, name: &str, mut value: Val) -> polyspec_orm::Result<bool> {
+            let entity = fields_of(self.core.entity())?;
+            let Some(field) = entity.field(name) else { return Ok(false) };
+            let converted = if value.is_null() {
+                Val::Null
+            } else if field.codec.first().is_some_and(|stage| stage == "ordered_json") {
+                Val::Ordered(value.take_ordered()?)
+            } else if field.styled_value() {
+                Val::Json(value.into_json()?)
+            } else if !field.codec.is_empty() {
+                Val::Str(value.take_string()?)
+            } else {
+                match field.ty {
+                    Type::I16 => Val::I64(i64::from(value.as_i16()?)),
+                    Type::I32 => Val::I64(i64::from(value.as_i32()?)),
+                    Type::I64 => Val::I64(value.as_i64()?),
+                    Type::F64 => Val::F64(value.as_f64()?),
+                    Type::Bool => Val::Bool(value.as_bool()?),
+                    Type::DateTime(_) => Val::DateTime(value.as_datetime()?),
+                    Type::Date => Val::Date(value.as_date()?),
+                    Type::Bytes => Val::Bytes(value.take_bytes()?),
+                    Type::Decimal(precision, scale) => Val::Str(polyspec_orm::decimal::decode(value, precision, scale)?),
+                    Type::Varchar(_) | Type::Text | Type::Uuid | Type::Time(_) => Val::Str(value.take_string()?),
+                }
+            };
+            self.values.insert(name.to_owned(), converted);
+            self.core.mark_field_ready(name);
             Ok(true)
         }
         fn value(&self, name: &str) -> Option<Val> {
@@ -3274,47 +3211,574 @@ mod tables {
         Box::leak(text.to_owned().into_boxed_str())
     }
 
-    impl Tables {
-        /// The entity of the table of a model, leaked once per table and case.
-        fn entity(&mut self, model: &str) -> Result<&'static Entity, String> {
-            let table =
-                TABLE_MODELS.iter().find(|(name, _)| *name == model).map(|(_, table)| *table).ok_or_else(|| format!("model {model} has no table entry"))?;
-            if let Some(&entity) = self.entities.get(table) {
-                return Ok(entity);
+    /// The table of a model name as the generator spells it: CompositeAccount is composite_account.
+    fn snake_of(model: &str) -> String {
+        let mut out = String::with_capacity(model.len() + 4);
+        for (i, c) in model.char_indices() {
+            if c.is_ascii_uppercase() {
+                if i > 0 {
+                    out.push('_');
+                }
+                out.push(c.to_ascii_lowercase());
+            } else {
+                out.push(c);
             }
-            let entity: &'static Entity = Box::leak(Box::new(Entity {
-                name: table,
-                schema: self.schema,
-                new: polyspec_orm::model::new_boxed::<TableRow>,
-                collect: polyspec_orm::model::collect_boxed::<TableRow>,
-            }));
-            self.entities.insert(table.to_owned(), entity);
-            Ok(entity)
+        }
+        out
+    }
+
+    /// The entity of the table of a model of the fixture (FCV-4).
+    fn entity_of(model: &str) -> Result<&'static Entity, String> {
+        let schema = CURRENT.get().copied().ok_or_else(|| "table_trials sets the schema of the binary".to_owned())?;
+        let table = snake_of(model);
+        let mut entities = ENTITIES.get_or_init(Mutex::default).lock().expect("the entities");
+        if let Some(&entity) = entities.get(&table) {
+            return Ok(entity);
+        }
+        let name = leaked(&table);
+        let entity: &'static Entity = Box::leak(Box::new(Entity {
+            name,
+            schema,
+            new: polyspec_orm::model::new_boxed::<TableRow>,
+            collect: polyspec_orm::model::collect_boxed::<TableRow>,
+        }));
+        entities.insert(table, entity);
+        Ok(entity)
+    }
+
+    /// The runtime model of an entity, read once.
+    fn fields_of(entity: &Entity) -> polyspec_orm::Result<Arc<polyspec_orm::dbspec::Entity>> {
+        let mut fields = FIELDS.get_or_init(Mutex::default).lock().expect("the fields");
+        if let Some(found) = fields.get(entity.name) {
+            return Ok(found.clone());
+        }
+        let found = Arc::new(entity.entity_schema()?);
+        fields.insert(entity.name.to_owned(), found.clone());
+        Ok(found)
+    }
+
+    /// A new core of a model of the fixture, on no connection.
+    fn core_of(model: &str) -> Result<Core, String> {
+        Ok(Core::new(entity_of(model)?))
+    }
+
+    /// The members of an object in the order of the document; a name that a step does not hold is skipped (WRITTEN_ORDER).
+    fn members(raw: &Value) -> Vec<(&str, &Value)> {
+        let Some(map) = raw.as_object() else { return Vec::new() };
+        if let Some(order) = map.get(WRITTEN_ORDER).and_then(Value::as_array) {
+            return order.iter().filter_map(Value::as_str).filter_map(|name| map.get(name).map(|value| (name, value))).collect();
+        }
+        map.iter().map(|(name, value)| (name.as_str(), value)).collect()
+    }
+
+    /// The connector of a name of a recipe.
+    fn connector(name: &str) -> Result<&'static str, String> {
+        match name {
+            "" => Ok(""),
+            "and" => Ok("and"),
+            "or" => Ok("or"),
+            other => Err(format!("{other} is not a connector")),
+        }
+    }
+
+    /// The chain operator of a predicate operator of FCV-4.
+    fn operator(name: &str) -> Option<&'static str> {
+        Some(match name {
+            "eq" | "in" | "is_null" => "",
+            "ne" | "not_in" | "not_null" => "ne",
+            "gt" => "gt",
+            "ge" => "ge",
+            "lt" => "lt",
+            "le" => "le",
+            "between" => "between",
+            "like" => "lk",
+            "binary_like" => "lb",
+            _ => return None,
+        })
+    }
+
+    /// The public function of a function call (F5).
+    fn function(call: &Value) -> Result<Func, String> {
+        let name = call["fn"].as_str().ok_or_else(|| format!("{call} names no fn"))?;
+        let mut n = 0;
+        for arg in call["args"].as_array().into_iter().flatten() {
+            if let Some(digits) = arg["int"].as_str() {
+                n = digits.parse().map_err(|e| format!("{arg}: {e}"))?;
+            }
+        }
+        Ok(match name {
+            "year" => args::year(),
+            "month" => args::month(),
+            "day_of_week" => args::day_of_week(),
+            "now" => args::now(),
+            "days_ago" => args::days_ago(n),
+            "days_later" => args::days_later(n),
+            "months_ago" => args::months_ago(n),
+            "months_later" => args::months_later(n),
+            "seconds_ago" => args::seconds_ago(n),
+            other => return Err(format!("function {other} has no recipe entry")),
+        })
+    }
+
+    /// The column of a function call on a column.
+    fn function_column(call: &Value) -> Result<&str, String> {
+        call["args"].as_array().into_iter().flatten().find_map(|arg| arg["column"].as_str()).ok_or_else(|| format!("function {call} names no column"))
+    }
+
+    /// The native argument of a value wrapper: null, the list of an array, or one parameter.
+    fn value_of(raw: &Value) -> Result<ArgValue, String> {
+        if raw.get("array").is_some() {
+            return Ok(ArgValue::List(list_params(raw)?));
+        }
+        if raw.get("null").is_some() {
+            return Ok(ArgValue::Null);
+        }
+        Ok(ArgValue::One(param(raw)?))
+    }
+
+    /// The state of building one query: the joined models that its predicates name, and the enclosing model that an outer
+    /// reference names.
+    #[derive(Default)]
+    struct Build {
+        joined: HashMap<String, u64>,
+        outer: Option<u64>,
+    }
+
+    impl Build {
+        /// Adds the predicate raw to core, joined by conn.
+        fn predicate(&self, core: &mut Core, conn: &'static str, raw: &Value) -> Result<(), String> {
+            let found = members(raw);
+            if let [(name, value)] = found[..] {
+                match name {
+                    "chain" => return self.items(core, conn, value),
+                    "and" | "or" => return self.group(core, conn, connector(name)?, value),
+                    "not" => {
+                        let mut group = core.group();
+                        self.predicate(&mut group, "", value)?;
+                        core.add_negated_group(conn, group);
+                        return Ok(());
+                    }
+                    "placed" => {
+                        let name = value.as_str().ok_or_else(|| format!("placed {value} is not a name"))?;
+                        let joined = self.joined.get(name).ok_or_else(|| format!("placed {name} names no join"))?;
+                        core.place(conn, *joined);
+                        return Ok(());
+                    }
+                    "tuple" => return tuple(core, conn, value),
+                    _ => {}
+                }
+            }
+            if raw.get("expr").is_some() && raw.get("cmp").is_some() {
+                return function_leaf(core, conn, &raw["expr"], &raw["cmp"]);
+            }
+            for (i, (column, value)) in found.into_iter().enumerate() {
+                self.leaf(core, if i == 0 { conn } else { "and" }, column, value)?;
+            }
+            Ok(())
         }
 
-        /// A new row of a model, connected to db, with the values of an object of wrappers set in column order.
-        fn row(&mut self, model: &str, db: &Db, values: &Value) -> Result<TableRow, String> {
-            let mut core = Core::new(self.entity(model)?);
+        /// Adds the items of a chain: each is [connector, predicate], or [connector] alone for a connector written as its
+        /// own call. The first item of the chain takes conn when it names none.
+        fn items(&self, core: &mut Core, conn: &'static str, raw: &Value) -> Result<(), String> {
+            for (i, item) in raw.as_array().ok_or_else(|| format!("chain {raw} is no list"))?.iter().enumerate() {
+                let mut item_conn = connector(item[0].as_str().ok_or_else(|| format!("chain item {item} names no connector"))?)?;
+                if i == 0 && item_conn.is_empty() {
+                    item_conn = conn;
+                }
+                if item.as_array().is_some_and(|parts| parts.len() == 1) {
+                    core.connector(item_conn);
+                    continue;
+                }
+                self.nested(core, item_conn, &item[1])?;
+            }
+            Ok(())
+        }
+
+        /// Adds the predicates of an and or an or: at the top of a where they join flat, and an item that is itself an and,
+        /// an or or a chain is a parenthesised group of its own.
+        fn group(&self, core: &mut Core, conn: &'static str, joined: &'static str, raw: &Value) -> Result<(), String> {
+            for (i, item) in raw.as_array().ok_or_else(|| format!("{raw} is no list"))?.iter().enumerate() {
+                self.nested(core, if i == 0 { conn } else { joined }, item)?;
+            }
+            Ok(())
+        }
+
+        /// Adds a predicate inside a list: an and, an or or a chain opens a group callback of the model.
+        fn nested(&self, core: &mut Core, conn: &'static str, raw: &Value) -> Result<(), String> {
+            if let [(name, _)] = members(raw)[..] {
+                if matches!(name, "and" | "or" | "chain") {
+                    let mut group = core.group();
+                    self.predicate(&mut group, "", raw)?;
+                    core.add_group(conn, group);
+                    return Ok(());
+                }
+            }
+            self.predicate(core, conn, raw)
+        }
+
+        /// One operand of a leaf: a joined column, a correlated column, a subquery, a function or a value. The compare is
+        /// the column of the other model when the operand is a column.
+        fn operand(&self, raw: &Value) -> Result<(Arg, &'static str), String> {
+            if let Some(name) = raw.get("column").and_then(Value::as_str) {
+                let (reference, column) = name.split_once('.').ok_or_else(|| format!("column operand {name} names no joined model"))?;
+                let joined = self.joined.get(reference).ok_or_else(|| format!("column operand {name} names no join"))?;
+                return Ok((Arg::Model(*joined), leaked(column)));
+            }
+            if let Some(name) = raw.get("outer").and_then(Value::as_str) {
+                let outer = self.outer.ok_or_else(|| format!("outer {name} has no enclosing query"))?;
+                return Ok((Arg::Model(outer), leaked(name)));
+            }
+            if let Some(sub) = raw.get("sub") {
+                let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
+                Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, sub, true)?;
+                return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
+            }
+            if raw.get("fn").is_some() {
+                return Ok((Arg::Value(ArgValue::Func(function(raw)?)), ""));
+            }
+            Ok((Arg::Value(value_of(raw)?), ""))
+        }
+
+        /// Adds {column: value} or {column: {operator: operand}}.
+        fn leaf(&self, core: &mut Core, conn: &'static str, column: &str, raw: &Value) -> Result<(), String> {
+            let column_name = leaked(column);
+            if let [(name, operand)] = members(raw)[..] {
+                if let Some(op) = operator(name) {
+                    let key = ChainKey { op, column: column_name, ..ChainKey::EMPTY };
+                    if matches!(name, "is_null" | "not_null") {
+                        core.chain(conn, &[key], vec![Arg::Value(ArgValue::Null)]);
+                        return Ok(());
+                    }
+                    if name == "between" {
+                        let low = param(&operand[0])?;
+                        let high = param(&operand[1])?;
+                        core.chain(conn, &[key], vec![Arg::Value(ArgValue::Pair(low, high))]);
+                        return Ok(());
+                    }
+                    let (arg, compare) = self.operand(operand)?;
+                    core.chain(conn, &[ChainKey { compare, ..key }], vec![arg]);
+                    return Ok(());
+                }
+            }
+            core.chain(conn, &[ChainKey { column: column_name, ..ChainKey::EMPTY }], vec![Arg::Value(value_of(raw)?)]);
+            Ok(())
+        }
+
+        /// Adds one entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery
+        /// under a name.
+        fn column_entry(&self, core: &mut Core, raw: &Value) -> Result<(), String> {
+            if let Some(name) = raw.as_str() {
+                core.add_column(name);
+                return Ok(());
+            }
+            let name = raw["as"].as_str().ok_or_else(|| format!("column {raw} names no as"))?;
+            let expr = &raw["expr"];
+            if let Some(sub) = expr.get("sub") {
+                let (sub, column) = (sub.clone(), name.to_owned());
+                core.add_column_sub(
+                    name,
+                    Arc::new(move |outer: &Core| -> Core {
+                        let build = || -> Result<Core, String> {
+                            let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()) }.query(&mut child, &sub, true)?;
+                            Ok(child)
+                        };
+                        match build() {
+                            Ok(child) => child,
+                            Err(message) => panic!("the subquery column {column}: {message}"),
+                        }
+                    }),
+                );
+                return Ok(());
+            }
+            core.add_column_func(function_column(expr)?, name, function(expr)?);
+            Ok(())
+        }
+
+        /// Applies the fields of q to core, in the order that a chain writes them: the projection, the joins and relations,
+        /// the conditions, the order, the limit and the lock.
+        fn query(&mut self, core: &mut Core, q: &Value, with_limit: bool) -> Result<(), String> {
+            match &q["columns"] {
+                Value::Null => {}
+                Value::String(all) if all == "all" => core.add_all_columns(),
+                Value::Array(entries) => {
+                    core.remove_all_columns();
+                    for entry in entries {
+                        self.column_entry(core, entry)?;
+                    }
+                }
+                other => return Err(format!("columns {other} is neither a list nor all")),
+            }
+            for entry in q["add_columns"].as_array().into_iter().flatten() {
+                self.column_entry(core, entry)?;
+            }
+            for column in names(&q["remove_columns"]) {
+                core.remove_column(&column);
+            }
+            if let Some(aggregate) = q.get("aggregate") {
+                if let (Some(agg), Some(column)) = (aggregate["agg"].as_str(), aggregate["column"].as_str()) {
+                    core.aggregate(leaked(agg), column);
+                }
+                for column in names(&aggregate["group_by"]) {
+                    core.group_by(&column);
+                }
+            }
+            for join in q["joins"].as_array().into_iter().flatten() {
+                let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer };
+                if let Some(alias) = join["alias"].as_str() {
+                    child.set_alias(alias);
+                }
+                if let Some(on) = join.get("on") {
+                    let mut group = child.group();
+                    inner.predicate(&mut group, "", on)?;
+                    child.set_on(group);
+                }
+                inner.query(&mut child, join, true)?;
+                let id = child.id();
+                let (left, right) = (join["match"][0].as_str().unwrap_or_default(), join["match"][1].as_str().unwrap_or_default());
+                core.join(leaked(join["kind"].as_str().unwrap_or("inner")), left, right, child);
+                if let Some(name) = join["as"].as_str() {
+                    self.joined.insert(name.to_owned(), id);
+                }
+            }
+            for relation in q["relations"].as_array().into_iter().flatten() {
+                let child = self.relation(relation)?;
+                core.relation(relation["many"].as_bool() == Some(true), child);
+            }
+            if let Some(filter) = q.get("where") {
+                self.predicate(core, "", filter)?;
+            }
+            for entry in q["order"].as_array().into_iter().flatten() {
+                if let Some(name) = entry.as_str() {
+                    let (column, desc) = name.strip_prefix('-').map_or((name, false), |column| (column, true));
+                    core.order_by(column, desc, None);
+                    continue;
+                }
+                let desc = entry["dir"].as_str() == Some("desc");
+                match entry.get("fn") {
+                    Some(call) => core.order_by(function_column(call)?, desc, Some(function(call)?)),
+                    None => core.order_by(entry["column"].as_str().ok_or_else(|| format!("order {entry} names no column"))?, desc, None),
+                }
+            }
+            if with_limit {
+                if let Some((offset, count)) = limit_of(&q["limit"])? {
+                    core.limit(offset, count);
+                }
+            }
+            if let Some(mode) = q["lock"].as_str() {
+                core.lock(leaked(mode));
+            }
+            Ok(())
+        }
+
+        /// The child core of a relation.
+        fn relation(&self, relation: &Value) -> Result<Core, String> {
+            let mut child = core_of(relation["model"].as_str().ok_or_else(|| "relation model is not a name".to_owned())?)?;
+            for pair in relation["match"].as_array().into_iter().flatten() {
+                match (pair[0].as_str(), pair[1].as_str()) {
+                    (Some(left), Some(right)) => child.add_match(leaked(left), leaked(right)),
+                    _ => return Err(format!("relation match {pair} is not a pair of names")),
+                }
+            }
+            if let Some(alias) = relation["alias"].as_str() {
+                child.set_alias(alias);
+            }
+            for (column, value) in members(&relation["possible"]) {
+                child.possible(column, param(value)?);
+            }
+            if relation["parent_node"].as_bool() == Some(true) {
+                child.parent_node();
+            }
+            Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, relation, true)?;
+            if let Some(n) = relation["group_limit"].as_u64() {
+                child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
+            }
+            if let Some(column) = relation["key_by"].as_str() {
+                child.key_name(column);
+            }
+            if relation["delete_lock"].as_bool() == Some(true) {
+                child.delete_lock();
+            }
+            Ok(child)
+        }
+    }
+
+    /// Adds {expr: <function of a column>, cmp: {operator: value}}.
+    fn function_leaf(core: &mut Core, conn: &'static str, expr: &Value, cmp: &Value) -> Result<(), String> {
+        let [(name, value)] = members(cmp)[..] else { return Err(format!("cmp {cmp} holds more than one operator")) };
+        let op = operator(name).ok_or_else(|| format!("{name} is no operator"))?;
+        let key = ChainKey { op, column: leaked(function_column(expr)?), ..ChainKey::EMPTY };
+        core.chain(conn, &[key], vec![Arg::Function(function(expr)?, param(value)?)]);
+        Ok(())
+    }
+
+    /// Adds {"tuple": [[column, ...], [[value, ...], ...]]} through the tuple key of a composite key (DSL-82).
+    fn tuple(core: &mut Core, conn: &'static str, raw: &Value) -> Result<(), String> {
+        let columns: Vec<&'static str> = names(&raw[0]).iter().map(|name| leaked(name)).collect();
+        let mut rows = Vec::new();
+        for row in raw[1].as_array().into_iter().flatten() {
+            rows.push(row.as_array().into_iter().flatten().map(param).collect::<Result<Vec<_>, _>>()?);
+        }
+        let key = ChainKey { op: "tuple", columns: Box::leak(columns.into_boxed_slice()), ..ChainKey::EMPTY };
+        core.chain(conn, &[key], vec![Arg::Tuples(rows)]);
+        Ok(())
+    }
+
+    /// The offset and count of a limit: an object, or the count of the form that names its offset beside it (FCV-4).
+    fn limit_of(raw: &Value) -> Result<Option<(u32, u32)>, String> {
+        let number = |value: &Value| u32::try_from(value.as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+        Ok(match raw {
+            Value::Null => None,
+            Value::Number(_) => Some((0, number(raw)?)),
+            _ => Some((number(&raw["offset"])?, number(&raw["count"])?)),
+        })
+    }
+
+    /// The keys and arguments of a terminal by, in the written order.
+    fn key_of(raw: &Value) -> Result<(Vec<ChainKey>, Vec<Arg>), String> {
+        let mut keys = Vec::new();
+        let mut arguments = Vec::new();
+        for (i, (column, value)) in members(raw).into_iter().enumerate() {
+            keys.push(ChainKey { conn: if i == 0 { "" } else { "and" }, column: leaked(column), ..ChainKey::EMPTY });
+            arguments.push(Arg::Value(value_of(value)?));
+        }
+        Ok((keys, arguments))
+    }
+
+    /// The toArray of a row, narrowed to pick when it is named.
+    fn row_json(row: &TableRow, pick: &Value) -> Result<Value, String> {
+        let values = to_array(row).map_err(orm)?;
+        let wanted = names(pick);
+        if wanted.is_empty() {
+            return Ok(values);
+        }
+        let mut out = Map::new();
+        for name in wanted {
+            let value = values.get(&name).ok_or_else(|| format!("the row has no field {name}"))?;
+            out.insert(name, value.clone());
+        }
+        Ok(Value::Object(out))
+    }
+
+    /// Whether the expect of a step compares rows of wrappers.
+    fn wants_rows(step: &Value) -> bool {
+        step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
+    }
+
+    /// The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation; a
+    /// parent without a child gives no row.
+    fn cells_of<'a>(parents: impl Iterator<Item = &'a TableRow>, step: &Value) -> Result<Value, String> {
+        let columns = names(&step["columns"]);
+        let relation = &step["relation"];
+        let mut rows = Vec::new();
+        for parent in parents {
+            let own = project(parent, &columns)?;
+            if relation.is_null() {
+                rows.push(Value::Array(own));
+                continue;
+            }
+            let table = snake_of(relation["model"].as_str().ok_or_else(|| "relation model is not a name".to_owned())?);
+            for child in related(parent, &table, relation["many"].as_bool() == Some(true))? {
+                let mut row = own.clone();
+                row.extend(project(child, &names(&relation["columns"]))?);
+                rows.push(Value::Array(row));
+            }
+        }
+        Ok(Value::Array(rows))
+    }
+
+    /// The outcome of a count: an expect names it as {"value": {"int": ...}} or {"json": n}.
+    fn count_fields(n: impl std::fmt::Display + Into<serde_json::Number> + Copy) -> Value {
+        json!({ "json": Value::Number(n.into()), "value": { "int": n.to_string() } })
+    }
+
+    /// Sets the members of an object of values on a row, in the written order: a null wrapper stores NULL, and an arith entry
+    /// is plus or minus.
+    fn assign_values(row: &mut TableRow, raw: &Value) -> Result<(), String> {
+        for (column, value) in members(raw) {
+            if let Some(arith) = value.get("arith") {
+                let amount = param(&arith["amount"])?;
+                if arith["operation"].as_str() == Some("minus") {
+                    row.core.minus(column, amount);
+                } else {
+                    row.core.plus(column, amount);
+                }
+                continue;
+            }
+            set_value(row, column, value)?;
+        }
+        Ok(())
+    }
+
+    /// Sets one column as the setter of a generated model does: the decimal is validated, a styled value goes through its
+    /// codec, and the field holds what a read would.
+    fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
+        let entity = fields_of(row.core.entity()).map_err(orm)?;
+        let field = entity.field(column);
+        if raw.get("object").is_some() {
+            let value = object_of(raw)?;
+            if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
+                let ordered = polyspec_orm::ordered_json::parse(&value.to_string()).map_err(|e| e.to_string())?;
+                row.core.set_ordered(column, ordered.clone());
+                row.values.insert(column.to_owned(), Val::Ordered(ordered));
+            } else {
+                row.core.set_json(column, value.clone());
+                row.values.insert(column.to_owned(), Val::Json(value));
+            }
+            row.core.mark_field_ready(column);
+            return Ok(());
+        }
+        let mut value = param(raw)?;
+        if let (Some(Type::Decimal(precision, scale)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
+            value = Param::Str(polyspec_orm::decimal::normalize(text, precision, scale).map_err(orm)?);
+        }
+        let read = match &value {
+            Param::Null => Val::Null,
+            Param::Bool(b) => Val::Bool(*b),
+            Param::I64(n) => Val::I64(*n),
+            Param::F64(n) => Val::F64(*n),
+            Param::Str(text) => Val::Str(text.clone()),
+            Param::Bytes(bytes) => Val::Bytes(bytes.clone()),
+            Param::DateTime(at) => Val::DateTime(*at),
+            Param::Date(at) => Val::Date(*at),
+        };
+        row.core.set(column, value);
+        row.assign(column, read).map_err(orm)?;
+        Ok(())
+    }
+
+    /// The values of an object, sorted by column name (the audit values of a source).
+    fn pairs(raw: &Value) -> Result<Vec<(String, Param)>, String> {
+        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
+        let mut out = map.iter().map(|(column, wrapper)| Ok((column.clone(), param(wrapper)?))).collect::<Result<Vec<_>, String>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
+    }
+
+    /// The JSON value of an object wrapper: [[member, wrapper], ...] with each wrapper its plain value.
+    fn object_of(raw: &Value) -> Result<Value, String> {
+        let mut out = Map::new();
+        for pair in raw["object"].as_array().into_iter().flatten() {
+            let name = pair[0].as_str().ok_or_else(|| format!("{pair} names no member"))?;
+            out.insert(name.to_owned(), bind_json(&param(&pair[1])?));
+        }
+        Ok(Value::Object(out))
+    }
+
+    /// The name of the bound row of a step.
+    fn row_name(step: &Value) -> Result<&str, String> {
+        step["row"].as_str().ok_or_else(|| format!("{} names no row", step["op"]))
+    }
+
+    impl Tables {
+        /// A new row of a model, connected to db, with the values of an object set in the written order.
+        fn row(&self, model: &str, db: &Db, values: &Value) -> Result<TableRow, String> {
+            let mut core = core_of(model)?;
             core.connect(db);
             let mut row = TableRow::from_core(core);
-            for (column, value) in pairs(values)? {
-                row.core_mut().set(&column, value);
-            }
+            assign_values(&mut row, values)?;
             Ok(row)
-        }
-
-        /// A row of a model on db narrowed by the equalities of a where object.
-        fn filtered(&mut self, model: &str, db: &Db, filter: &Value) -> Result<TableRow, String> {
-            let mut row = self.row(model, db, &Value::Null)?;
-            for (i, (column, value)) in where_pairs(filter)?.into_iter().enumerate() {
-                let key = ChainKey { column: leaked(&column), ..ChainKey::EMPTY };
-                row.core_mut().chain(if i == 0 { "" } else { "and" }, &[key], vec![Arg::Value(value)]);
-            }
-            Ok(row)
-        }
-
-        fn bound_row(&self, step: &Value) -> Result<TableRow, String> {
-            super::bound_row(&self.rows, step)
         }
 
         fn records(&self) -> Value {
@@ -3329,74 +3793,252 @@ mod tables {
             json!({ "value": { "array": list }, "counts": counts })
         }
 
-        /// A model.query: the rows of the model, or one page of them with its total, and with a relation the parent
-        /// columns followed by the columns of each related row.
-        async fn query(&mut self, model: &str, db: &Db, step: &Value) -> Result<Value, String> {
-            let mut root = self.filtered(model, db, &step["where"])?;
-            for column in names(&step["order"]) {
-                root.core_mut().order_by(&column, false, None);
-            }
-            let relation = match &step["relation"] {
-                Value::Null => None,
-                raw => Some(relation_spec(raw)?),
-            };
-            if let Some(spec) = &relation {
-                let mut child = self.row(&spec.model, db, &Value::Null)?;
-                for (left, right) in &spec.matches {
-                    child.core_mut().add_match(leaked(left), leaked(right));
-                }
-                root.core_mut().relation(spec.many, child.into_core());
-            }
-            let count = |field: &str| -> Result<usize, String> {
-                match step[field].as_u64() {
-                    None => Ok(0),
-                    Some(n) => usize::try_from(n).map_err(|e| e.to_string()),
-                }
-            };
-            let (limit, offset) = (count("limit")?, count("offset")?);
-            let paged = step["page"].as_bool() == Some(true);
-            let (parents, total) = if paged {
-                if limit == 0 {
-                    return Err("a paged model.query needs a limit above 0".into());
-                }
-                let page = u32::try_from(offset / limit + 1).map_err(|e| e.to_string())?;
-                let per_page = u32::try_from(limit).map_err(|e| e.to_string())?;
-                let found = gets_page(&root, page, per_page).await.map_err(orm)?;
-                (found.items.models().cloned().collect::<Vec<_>>(), Some(found.total_count))
+        /// The core of a read: the fields of the step applied, then the key of a terminal by.
+        fn built(&self, step: &Value, db: &Db) -> Result<Core, String> {
+            let core = if let Some(from) = step["from"].as_str() {
+                // A bound chain is read again: a terminal leaves it as it was (DSL-98).
+                self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
             } else {
-                // limit is the public limit of the statement (FCV-4), so a limit on a split IN list fails with IR_INVALID.
-                if limit > 0 {
-                    root.core_mut().limit(u32::try_from(offset).map_err(|e| e.to_string())?, u32::try_from(limit).map_err(|e| e.to_string())?);
+                let mut core = core_of(step["model"].as_str().ok_or_else(|| format!("{} names no model", step["op"]))?)?;
+                core.connect(db);
+                let mut build = Build::default();
+                let paged = step["page"].as_bool() == Some(true);
+                build.query(&mut core, step, !paged && step["offset"].is_null())?;
+                if !paged && !step["offset"].is_null() {
+                    let (_, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                    let offset = u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+                    if count > 0 {
+                        core.limit(offset, count);
+                    }
                 }
-                (gets(&root).await.map_err(orm)?.models().cloned().collect::<Vec<TableRow>>(), None)
+                if !step["relation"].is_null() {
+                    // The columns of this relation are read of each child row; they do not narrow its statement.
+                    let mut relation = step["relation"].clone();
+                    relation["columns"] = Value::Null;
+                    let mut child = build.relation(&relation)?;
+                    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
+                    child.connect(db);
+                    core.relation(relation["many"].as_bool() == Some(true), child);
+                }
+                core
             };
-            let columns = names(&step["columns"]);
-            let mut rows = Vec::new();
-            for parent in &parents {
-                let own = project(parent, &columns)?;
-                let Some(spec) = &relation else {
-                    rows.push(Value::Array(own));
-                    continue;
-                };
-                let table = self.entity(&spec.model)?.name;
-                for child in related(parent, table, spec.many)? {
-                    let mut row = own.clone();
-                    row.extend(project(child, &spec.columns)?);
-                    rows.push(Value::Array(row));
-                }
+            if step.get("key").is_none() {
+                return Ok(core);
             }
-            let mut fields = json!({ "rows": rows });
-            if let Some(total) = total {
-                fields["total"] = json!(total);
+            let (keys, arguments) = key_of(&step["key"])?;
+            Ok(core.by(&keys, arguments))
+        }
+
+        /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
+        async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, String> {
+            let core = self.built(step, db)?;
+            if step["compile"].as_bool() == Some(true) {
+                let statement = get_query(&core).await.map_err(orm)?;
+                let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
+                return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
+            }
+            let root = TableRow::from_core(core);
+            if let Some(aggregate) = step.get("aggregate") {
+                return Ok(json!({ "json": match aggregate["agg"].as_str() {
+                    Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),
+                    Some("avg") => json!(get_avg(root.core()).await.map_err(orm)?),
+                    _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
+                } }));
+            }
+            if step["page"].as_bool() == Some(true) {
+                return self.page(step, &root).await;
+            }
+            let rows = gets(&root).await.map_err(orm)?;
+            let mut list = Vec::with_capacity(rows.len());
+            for row in rows.models() {
+                list.push(row_json(row, &step["pick"])?);
+            }
+            let mut fields = json!({ "json": list });
+            if wants_rows(step) {
+                fields["rows"] = cells_of(rows.models(), step)?;
+            }
+            if let Some(name) = step["as"].as_str() {
+                self.collections.insert(name.to_owned(), rows);
             }
             Ok(fields)
+        }
+
+        /// gets_page: the keys and the counts of the page, and the rows and total of a rows expect.
+        async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
+            let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+            let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+            if count == 0 {
+                return Err("a paged model.query needs a limit above 0".into());
+            }
+            let page = gets_page(root, offset / count + 1, count).await.map_err(orm)?;
+            let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
+            let mut fields = json!({
+                "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
+                "total": page.total_count,
+            });
+            if wants_rows(step) {
+                fields["rows"] = cells_of(page.items.models(), step)?;
+            }
+            Ok(fields)
+        }
+
+        /// model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its terminal.
+        /// The written model is bound with as, and its toArray is the result.
+        async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
+            let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
+            let mut row = self.row(model, db, &step["values"])?;
+            for (name, value) in members(&step["attached"]) {
+                let plain = match param(value)? {
+                    Param::Null => Value::Null,
+                    Param::Bool(b) => json!(b),
+                    Param::I64(n) => json!(n),
+                    Param::Str(text) => json!(text),
+                    other => return Err(format!("attached {name} holds {other:?}")),
+                };
+                row.core.attach(name, plain);
+            }
+            if step.get("duplication").is_some() {
+                let mut other = TableRow::from_core(core_of(model)?);
+                assign_values(&mut other, &step["duplication"])?;
+                row.core.duplication(other.into_core());
+            }
+            let written = match op {
+                "model.save" => save(&mut row).await,
+                "model.restore" => restore(&row).await,
+                _ if step["restore_or_create"].as_bool() == Some(true) => restore_or_create(&row).await,
+                _ => create(&mut row).await,
+            }
+            .map_err(orm)?;
+            let mut fields = json!({ "json": row_json(&written, &step["pick"])? });
+            // With columns, the rows expect compares the row that the write returns (INT-38).
+            if step.get("columns").is_some() {
+                fields["rows"] = cells_of(std::iter::once(&written), step)?;
+            }
+            if let Some(name) = step["as"].as_str() {
+                self.rows.insert(name.to_owned(), written);
+            }
+            Ok(fields)
+        }
+
+        /// model.creates on the rows of rows or rows_sequence.
+        async fn creates(&self, step: &Value, db: &Db) -> Result<Value, String> {
+            let model = step["model"].as_str().ok_or_else(|| "model.creates names no model".to_owned())?;
+            let mut rows = Vec::new();
+            let sequence = &step["rows_sequence"];
+            if sequence.is_null() {
+                for values in step["rows"].as_array().into_iter().flatten() {
+                    let mut row = TableRow::from_core(core_of(model)?);
+                    assign_values(&mut row, values)?;
+                    rows.push(row);
+                }
+            } else {
+                let column = sequence["column"].as_str().ok_or_else(|| "rows_sequence names no column".to_owned())?;
+                let from = sequence["from"].as_i64().ok_or_else(|| "rows_sequence has no from".to_owned())?;
+                for i in 0..sequence["count"].as_i64().ok_or_else(|| "rows_sequence has no count".to_owned())? {
+                    let mut row = TableRow::from_core(core_of(model)?);
+                    set_value(&mut row, column, &json!({ "int": (from + i).to_string() }))?;
+                    assign_values(&mut row, &sequence["values"])?;
+                    rows.push(row);
+                }
+            }
+            let batch = step["batch"].as_u64().map_or(Ok(rows.len()), usize::try_from).map_err(|e| e.to_string())?;
+            let all = self.row(model, db, &Value::Null)?;
+            let n = creates(&all, rows, batch).await.map_err(orm)?;
+            Ok(count_fields(n))
+        }
+
+        /// model.update on the bound row, or on a new model set from values, which writes with no read.
+        async fn update_row(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
+            let optimistic = step["optimistic"].as_bool() == Some(true);
+            let revision = revision_of(&step["revision"])?;
+            let bound = step.get("row").is_some();
+            let mut row = if bound {
+                let name = row_name(step)?;
+                self.rows.remove(name).ok_or_else(|| format!("no bound row {name}"))?
+            } else {
+                let db = db.ok_or_else(|| "model.update names no connection and no row".to_owned())?;
+                let model = step["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?;
+                // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
+                self.row(model, db, step.get("key").unwrap_or(&step["values"]))?
+            };
+            assign_values(&mut row, &step["set"])?;
+            if let Some((column, value)) = &revision {
+                row.core.expect_revision(column, *value);
+            }
+            let outcome = update(&mut row, optimistic).await.map_err(orm);
+            if bound {
+                self.rows.insert(row_name(step)?.to_owned(), row);
+            }
+            outcome?;
+            Ok(json!({}))
+        }
+
+        /// model.delete on a bound row, a bound collection, the rows of a where, or a new model set from values.
+        async fn delete_rows(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
+            let recursive = step["recursive"].as_bool() == Some(true);
+            if step.get("row").is_some() {
+                let name = row_name(step)?;
+                if let Some(collection) = self.collections.get(name) {
+                    collection.delete(recursive).await.map_err(orm)?;
+                    return Ok(json!({}));
+                }
+                let mut row = self.rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))?;
+                if let Some((column, value)) = revision_of(&step["revision"])? {
+                    row.core.expect_revision(&column, value);
+                }
+                delete(&row, recursive).await.map_err(orm)?;
+                return Ok(json!({}));
+            }
+            let db = db.ok_or_else(|| "model.delete names no connection and no row".to_owned())?;
+            if step.get("where").is_some() {
+                // A delete by where loads the rows and deletes each one (FCV-4).
+                let rows = gets(&TableRow::from_core(self.built(step, db)?)).await.map_err(orm)?;
+                for row in rows.models() {
+                    delete(row, false).await.map_err(orm)?;
+                }
+                return Ok(json!({}));
+            }
+            let mut row = self.row(step["model"].as_str().ok_or_else(|| "model.delete names no model".to_owned())?, db, &step["values"])?;
+            if let Some((column, value)) = revision_of(&step["revision"])? {
+                row.core.expect_revision(&column, value);
+            }
+            delete(&row, recursive).await.map_err(orm)?;
+            Ok(json!({}))
+        }
+    }
+
+    /// The guard of a write.
+    fn revision_of(raw: &Value) -> Result<Option<(String, i64)>, String> {
+        if raw.is_null() {
+            return Ok(None);
+        }
+        let column = raw["column"].as_str().ok_or_else(|| "revision names no column".to_owned())?;
+        match param(&raw["value"])? {
+            Param::I64(n) => Ok(Some((column.to_owned(), n))),
+            other => Err(format!("revision of {column} holds {other:?}")),
+        }
+    }
+
+    /// A bind of a compiled statement as JSON.
+    fn bind_json(bind: &Param) -> Value {
+        match bind {
+            Param::Null => Value::Null,
+            Param::Bool(b) => json!(b),
+            Param::I64(n) => json!(n),
+            Param::F64(n) => json!(n),
+            Param::Str(text) => json!(text),
+            Param::Bytes(bytes) => json!(String::from_utf8_lossy(bytes)),
+            Param::DateTime(at) => json!(at.format("%Y-%m-%d %H:%M:%S%.6f").to_string()),
+            Param::Date(at) => json!(at.format("%Y-%m-%d").to_string()),
         }
     }
 
     impl CaseModels for Tables {
+        const TABLE_PATH: bool = true;
+
         async fn connect(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32) -> Result<Value, String> {
             self.bases.remove(name);
-            connections.open(name, dsn, self.schema, pool_size, Config::default()).await.map_err(orm)
+            connections.open(name, dsn, self.schema, pool_size, bench_config()).await.map_err(orm)
         }
 
         async fn connect_keyring(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, keyring: &Value) -> Result<Value, String> {
@@ -3413,7 +4055,7 @@ mod tables {
                 let values = pairs(&source["values"])?;
                 Arc::new(move || Ok(values.clone()))
             };
-            let config = Config { audit_source: Some(source), ..Config::default() };
+            let config = Config { audit_source: Some(source), ..bench_config() };
             self.bases.remove(name);
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
@@ -3422,18 +4064,13 @@ mod tables {
             if op == "hook.records" {
                 return Ok(self.records());
             }
-            // model.update and model.delete with `row` run on the connection of the bound row.
-            if matches!(op, "model.update" | "model.delete") && step.get("row").is_some() {
-                let mut row = self.bound_row(step)?;
-                if op == "model.update" {
-                    for (column, value) in pairs(&step["set"])? {
-                        row.core_mut().set(&column, value);
-                    }
-                    update(&mut row, false).await.map_err(orm)?;
-                } else {
-                    delete(&row, false).await.map_err(orm)?;
-                }
-                return Ok(json!({}));
+            // A write with `row` runs on the connection of the bound row.
+            if connection.is_empty() {
+                return match op {
+                    "model.update" => self.update_row(step, None).await,
+                    "model.delete" => self.delete_rows(step, None).await,
+                    other => Err(format!("{other} names no connection")),
+                };
             }
             let db = connections.bound(connection)?;
             let model = step["model"].as_str().unwrap_or_default();
@@ -3467,72 +4104,38 @@ mod tables {
                         ["versions", { "object": versions }],
                     ] } }))
                 }
-                "model.create" => {
-                    let mut row = self.row(model, &db, &step["values"])?;
-                    create(&mut row).await.map_err(orm)?;
+                "utils.lock" => {
+                    db.utils().lock(step["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
                     Ok(json!({}))
                 }
-                "model.creates" => {
-                    let all = self.row(model, &db, &Value::Null)?;
-                    let mut rows = Vec::new();
-                    for values in step["rows"].as_array().into_iter().flatten() {
-                        rows.push(self.row(model, &db, values)?);
-                    }
-                    let batch = step["batch"].as_u64().ok_or_else(|| "model.creates names no batch".to_owned())?;
-                    let batch = usize::try_from(batch).map_err(|e| e.to_string())?;
-                    let n = creates(&all, rows, batch).await.map_err(orm)?;
-                    Ok(json!({ "value": { "int": n.to_string() } }))
-                }
-                "model.duplicate_create" => {
-                    let mut row = self.row(model, &db, &step["values"])?;
-                    let other = self.row(model, &db, &step["duplication"])?;
-                    row.core_mut().duplication(other.into_core());
-                    create(&mut row).await.map_err(orm)?;
+                "utils.set_local" => {
+                    let Param::Str(value) = param(&step["value"])? else { return Err("utils.set_local holds no text".into()) };
+                    db.utils().set_local(step["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
                     Ok(json!({}))
                 }
-                "model.restore" => {
-                    let row = self.row(model, &db, &step["values"])?;
-                    let restored = restore(&row).await.map_err(orm)?;
-                    // With columns, the rows expect compares the row that restore returns (INT-38).
-                    match step.get("columns") {
-                        Some(columns) => Ok(json!({ "rows": [project(&restored, &names(columns))?] })),
-                        None => Ok(json!({})),
+                "utils.local" => Ok(json!({ "json": db.utils().local(step["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                "model.chain" => {
+                    let core = self.built(step, &db)?;
+                    if let Some(name) = step["as"].as_str() {
+                        self.chains.insert(name.to_owned(), core);
                     }
-                }
-                // The key form sets the key and the assignments on a new model, with no read before it, so a key that names
-                // no row is an update that matches none (FCV-4).
-                "model.update" if step.get("key").is_some() => {
-                    let mut row = self.row(model, &db, &step["key"])?;
-                    for (column, value) in pairs(&step["set"])? {
-                        row.core_mut().set(&column, value);
-                    }
-                    update(&mut row, false).await.map_err(orm)?;
                     Ok(json!({}))
                 }
+                "model.create" | "model.save" | "model.duplicate_create" | "model.restore" => self.write(op, step, &db).await,
+                "model.creates" => self.creates(step, &db).await,
+                "model.update" => self.update_row(step, Some(&db)).await,
+                "model.delete" => self.delete_rows(step, Some(&db)).await,
                 "model.get_by" => {
-                    if step.get("key").is_some() {
-                        return Err("model.get_by with key has no table-model path".into());
-                    }
-                    let filter = self.filtered(model, &db, &step["where"])?;
-                    let row = get_core::<TableRow>(filter.core()).await.map_err(orm)?.ok_or_else(|| OrmError::NoRows.to_string())?;
+                    let core = self.built(step, &db)?;
+                    let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    let fields = json!({ "json": row_json(&row, &step["pick"])? });
                     if let Some(name) = step["as"].as_str() {
                         self.rows.insert(name.to_owned(), row);
                     }
-                    Ok(json!({}))
+                    Ok(fields)
                 }
-                "model.delete" => {
-                    let filter = self.filtered(model, &db, &step["where"])?;
-                    for row in gets(&filter).await.map_err(orm)?.models() {
-                        delete(row, false).await.map_err(orm)?;
-                    }
-                    Ok(json!({}))
-                }
-                "model.count" => {
-                    let filter = self.filtered(model, &db, &step["where"])?;
-                    let n = get_count(filter.core()).await.map_err(orm)?;
-                    Ok(json!({ "value": { "int": n.to_string() } }))
-                }
-                "model.query" => self.query(model, &db, step).await,
+                "model.count" => Ok(count_fields(get_count(&self.built(step, &db)?).await.map_err(orm)?)),
+                "model.query" => self.query(step, &db).await,
                 other => Err(format!("OP_UNKNOWN {other}: the table models bind no such op")),
             }
         }
@@ -3546,34 +4149,12 @@ mod tables {
     fn param(wrapper: &Value) -> Result<Param, String> {
         let (kind, body) = super::kind(wrapper)?;
         Ok(match kind {
-            "text" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
+            "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
             "int" => Param::I64(body.as_str().ok_or_else(|| format!("{wrapper} has no digits"))?.parse().map_err(|e| format!("int {body}: {e}"))?),
             "bool" => Param::Bool(body.as_bool().ok_or_else(|| format!("{wrapper} is not a bool"))?),
             "null" => Param::Null,
             other => return Err(format!("a table model has no parameter of the wrapper {other}")),
         })
-    }
-
-    /// The column values of an object, sorted by column name.
-    fn pairs(raw: &Value) -> Result<Vec<(String, Param)>, String> {
-        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
-        let mut out = map.iter().map(|(column, wrapper)| Ok((column.clone(), param(wrapper)?))).collect::<Result<Vec<_>, String>>()?;
-        out.sort_by(|a, b| a.0.cmp(&b.0));
-        Ok(out)
-    }
-
-    /// The where values of an object, sorted by column name: one parameter, or a list for an array (FCV-4, DSL-46).
-    fn where_pairs(raw: &Value) -> Result<Vec<(String, ArgValue)>, String> {
-        let Some(map) = raw.as_object() else { return Ok(Vec::new()) };
-        let mut out = map
-            .iter()
-            .map(|(column, wrapper)| {
-                let value = if wrapper.get("array").is_some() { ArgValue::List(list_params(wrapper)?) } else { ArgValue::One(param(wrapper)?) };
-                Ok((column.clone(), value))
-            })
-            .collect::<Result<Vec<_>, String>>()?;
-        out.sort_by(|a, b| a.0.cmp(&b.0));
-        Ok(out)
     }
 
     /// The parameters of an array wrapper; an item that is a sequence adds its integers in place (FCV-4).
@@ -3612,27 +4193,6 @@ mod tables {
                 })
             })
             .collect()
-    }
-
-    /// A relation of a model.query (FCV-4): the related model, its match pairs, whether it is a collection, and its columns.
-    struct RelationSpec {
-        model: String,
-        matches: Vec<(String, String)>,
-        many: bool,
-        columns: Vec<String>,
-    }
-
-    fn relation_spec(raw: &Value) -> Result<RelationSpec, String> {
-        let model = raw["model"].as_str().ok_or_else(|| "relation model is not a name".to_owned())?.to_owned();
-        let mut matches = Vec::new();
-        for pair in raw["match"].as_array().into_iter().flatten() {
-            match (pair[0].as_str(), pair[1].as_str()) {
-                (Some(left), Some(right)) => matches.push((left.to_owned(), right.to_owned())),
-                _ => return Err(format!("relation match {pair} is not a pair of names")),
-            }
-        }
-        let many = raw["many"].as_bool().ok_or_else(|| "relation names no many".to_owned())?;
-        Ok(RelationSpec { model, matches, many, columns: names(&raw["columns"]) })
     }
 
     /// The rows that a relation read attached to a parent: each row of a collection, or the one row of a single relation.
