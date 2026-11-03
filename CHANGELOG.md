@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The owners of parameter_chunking declare model_parameter_after_schema_change.
 - catalog_read_budgets names its wait for all three databases, as a recipe's sql must.
 - The coverage test binds no healthy run by a number of its own, and a process that never ends tests the process deadline (#T334-3-4-19)
 - orm pins kit 0.0.93 and takes its `ci-pipeline.yml`, where the install of the PHP symbol extractor moved into `ci-setup`. (#T334-3-4-18)

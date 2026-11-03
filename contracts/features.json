@@ -8823,7 +8823,8 @@
           "root_in_chunking",
           "split_root_null_identity",
           "split_root_composite_null_identity",
-          "split_root_retains_falsey_identities"
+          "split_root_retains_falsey_identities",
+          "model_parameter_after_schema_change"
         ],
         "owners": {
           "go": {
@@ -8843,7 +8844,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingMysql"
@@ -8857,7 +8859,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingPostgres"
@@ -8871,7 +8874,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingSqlite"
@@ -8898,7 +8902,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -8911,7 +8916,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -8924,7 +8930,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -8950,7 +8957,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -8963,7 +8971,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -8976,7 +8985,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9002,7 +9012,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9015,7 +9026,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9028,7 +9040,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9054,7 +9067,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testMysql"
@@ -9068,7 +9082,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testPostgres"
@@ -9082,7 +9097,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testSqlite"
@@ -9110,7 +9126,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testMysql"
@@ -9124,7 +9141,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testPostgres"
@@ -9138,7 +9156,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testSqlite"

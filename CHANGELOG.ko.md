@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7e1bbbea206700e990b8f92f5dcf4ca7530d64bba4e231eb448903d9782c652a -->
+<!-- source-sha256: 537fb90c2ed56457bfaf9e4ebfff54a16a0528e930ceef30179eb9ad054697ae -->
 # 변경 이력
 
 ## Unreleased
 
+- parameter_chunking의 owner가 model_parameter_after_schema_change를 선언함.
 - catalog_read_budgets는 recipe의 sql 규칙대로 대기 문을 세 database 모두에 적음.
 - CR32에 PHP 확장 catalog_read_budgets의 exit 137 원인에서 제외한 것을 적음. 보낸 쪽은 아직 모르며 수정은 없음.
 - CR31에 사실을 적음: PHP 확장은 CatalogColumn::$checkPrecision을 이미 계산하고 선언함.
