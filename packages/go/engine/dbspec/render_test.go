@@ -90,15 +90,3 @@ func TestRenderVectors(t *testing.T) {
 }
 
 // Requirements: DBS-174.
-func TestRenderRejectsUnknownDialect(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	runTimed(t, "render rejects an unknown dialect", 5*time.Second, func() (err error) {
-		documents, err := parseDDLSet(loadDDL(t).Cases[0])
-		if err != nil {
-			return err
-		}
-		return unknownDialectPanic("Render", func() {
-			_, _ = Render(documents, Dialect("oracle"))
-		})
-	})
-}

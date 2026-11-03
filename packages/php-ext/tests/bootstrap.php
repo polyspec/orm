@@ -74,6 +74,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/AuditTriggersRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecRulesRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DbspecDialectRefusalRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecLimitsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DslRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DslDynamicRecipeTest.php';

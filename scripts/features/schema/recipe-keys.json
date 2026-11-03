@@ -449,6 +449,7 @@
       "op"
     ],
     "dbspec.render": [
+      "dialect",
       "documents",
       "expect",
       "op"
