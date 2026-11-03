@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CR32 records what the exit 137 of catalog_read_budgets on the PHP extension is not; its sender stays unknown and no fix is made.
 - CR31 states what holds: the PHP extension already computes and declares CatalogColumn::$checkPrecision.
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.
 - TypeScript `toJSONText()` and `JSON.stringify(row)` no longer throw on a row that holds a bigint: both write the exact integer as a JSON number, also inside a styled value.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b0c296d327777fc5276bc9b3e2d578e41c8efc90177a1bbf6cce463a63f5f6e5 -->
+<!-- source-sha256: 1bb86b0b3eb51b62314a3ffeb5d61a26c1866d8e1480b607594712e2a8348703 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR32에 PHP 확장 catalog_read_budgets의 exit 137 원인에서 제외한 것을 적음. 보낸 쪽은 아직 모르며 수정은 없음.
 - CR31에 사실을 적음: PHP 확장은 CatalogColumn::$checkPrecision을 이미 계산하고 선언함.
 - schema 변경 뒤 Rust 재시도는 서버가 추론한 타입으로 문을 parse하고 각 값을 그 타입으로 bind하므로, 컬럼 타입이 바뀐 parameter가 다른 클라이언트처럼 유지된다.
 - 트랜잭션 밖에서 pool로 실행되는 Go 문은 schema 변경 뒤 model 문과 같은 재시도를 하므로 `Aes().Status`가 그 뒤에도 유지된다.
