@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 - The query forms of the Go physical test are recipe cases on every database: `{"random": true}` orders a `model.query` by `orderByRandom` and the case `query_now_and_random_order` holds it with `now`; the tuple and the date functions were cases already (#T334-3-18).
 - The constraint errors and the immutable write are held by the recipes in Rust, Go and Python too: the recipes compare the check name, the unique key, the SQLite code name and the driver cause, and `refusal.rs` is gone (#T334-3-18).
 - The manifest, analysis and format units of the schema definition bind only their recipe: Go `TestFormat` is gone, the invalid byte joins the stated native unit `dbspec-encoding-and-limit-natives`, and the test of the origin of the extension classes is internal (#T334-3-18).
