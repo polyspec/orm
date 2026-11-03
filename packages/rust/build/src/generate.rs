@@ -50,6 +50,7 @@ const FIXED: &[&str] = &[
     "get_sum",
     "get_avg",
     "gets_page",
+    "get_page_plan_steps",
     "get_query",
     "create",
     "creates",

@@ -478,6 +478,12 @@ class Model:
 
         return Page(page_of(self.core, page, per_page))
 
+    def get_page_plan_steps(self, page: int, per_page: int) -> list[dict]:
+        """Returns the steps of the plan that gets_page runs, in their order, without running it."""
+        from polyspec.orm.model_exec import page_plan_steps_of
+
+        return page_plan_steps_of(self.core, page, per_page)
+
     def get_query(self) -> dict:
         """Returns the gets() statement without running it."""
         from polyspec.orm.model_exec import _terminal

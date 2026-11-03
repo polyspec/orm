@@ -6475,6 +6475,10 @@
     "exported": true,
     "signature": "receiver=*AccountModel func() (string, error)"
   },
+  "packages/go/model/account.go::AccountModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AccountModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/account.go::AccountModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*AccountModel func() (*orm.Statement, error)"
@@ -6787,6 +6791,10 @@
     "exported": true,
     "signature": "receiver=*AccountProjectModel func() (int64, error)"
   },
+  "packages/go/model/account_project.go::AccountProjectModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AccountProjectModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/account_project.go::AccountProjectModel.GetProjectSeq": {
     "exported": true,
     "signature": "receiver=*AccountProjectModel func() (int64, error)"
@@ -7090,6 +7098,10 @@
   "packages/go/model/audit_record.go::AuditRecordModel.GetCount": {
     "exported": true,
     "signature": "receiver=*AuditRecordModel func() (int64, error)"
+  },
+  "packages/go/model/audit_record.go::AuditRecordModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AuditRecordModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/audit_record.go::AuditRecordModel.GetQuery": {
     "exported": true,
@@ -7414,6 +7426,10 @@
   "packages/go/model/audited_note.go::AuditedNoteModel.GetLabel": {
     "exported": true,
     "signature": "receiver=*AuditedNoteModel func() (string, error)"
+  },
+  "packages/go/model/audited_note.go::AuditedNoteModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetQuery": {
     "exported": true,
@@ -7810,6 +7826,10 @@
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetLabel": {
     "exported": true,
     "signature": "receiver=*AuditedNoteHistoryModel func() (string, error)"
+  },
+  "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AuditedNoteHistoryModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetPreviousAuditSeq": {
     "exported": true,
@@ -8862,6 +8882,10 @@
   "packages/go/model/author.go::AuthorModel.GetOwnerService": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*ServiceModel, error)"
+  },
+  "packages/go/model/author.go::AuthorModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetPhoneBlindIndex": {
     "exported": true,
@@ -10411,6 +10435,10 @@
     "exported": true,
     "signature": "receiver=*BindCellModel func() (string, error)"
   },
+  "packages/go/model/bind_cell.go::BindCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*BindCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/bind_cell.go::BindCellModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*BindCellModel func() (*orm.Statement, error)"
@@ -10822,6 +10850,10 @@
   "packages/go/model/clock_cell.go::ClockCellModel.GetLabel": {
     "exported": true,
     "signature": "receiver=*ClockCellModel func() (string, error)"
+  },
+  "packages/go/model/clock_cell.go::ClockCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*ClockCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetQuery": {
     "exported": true,
@@ -11235,6 +11267,10 @@
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func() (string, error)"
   },
+  "packages/go/model/composite_account.go::CompositeAccountModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*CompositeAccountModel func() (*orm.Statement, error)"
@@ -11590,6 +11626,10 @@
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetCount": {
     "exported": true,
     "signature": "receiver=*CompositeMembershipModel func() (int64, error)"
+  },
+  "packages/go/model/composite_membership.go::CompositeMembershipModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*CompositeMembershipModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetQuery": {
     "exported": true,
@@ -11971,6 +12011,10 @@
     "exported": true,
     "signature": "receiver=*DayCellModel func() (string, error)"
   },
+  "packages/go/model/day_cell.go::DayCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*DayCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/day_cell.go::DayCellModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*DayCellModel func() (*orm.Statement, error)"
@@ -12327,6 +12371,10 @@
     "exported": true,
     "signature": "receiver=*HexCellModel func() (string, error)"
   },
+  "packages/go/model/hex_cell.go::HexCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*HexCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/hex_cell.go::HexCellModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*HexCellModel func() (*orm.Statement, error)"
@@ -12659,6 +12707,10 @@
     "exported": true,
     "signature": "receiver=*IpHexCellModel func() (int64, error)"
   },
+  "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*IpHexCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/ip_hex_cell.go::IpHexCellModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*IpHexCellModel func() (*orm.Statement, error)"
@@ -12954,6 +13006,10 @@
   "packages/go/model/note_reader.go::NoteReaderModel.GetCount": {
     "exported": true,
     "signature": "receiver=*NoteReaderModel func() (int64, error)"
+  },
+  "packages/go/model/note_reader.go::NoteReaderModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*NoteReaderModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetQuery": {
     "exported": true,
@@ -13375,6 +13431,10 @@
     "exported": true,
     "signature": "receiver=*ProjectModel func() (string, error)"
   },
+  "packages/go/model/project.go::ProjectModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*ProjectModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/project.go::ProjectModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*ProjectModel func() (*orm.Statement, error)"
@@ -13678,6 +13738,10 @@
   "packages/go/model/service.go::ServiceModel.GetName": {
     "exported": true,
     "signature": "receiver=*ServiceModel func() (string, error)"
+  },
+  "packages/go/model/service.go::ServiceModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*ServiceModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/service.go::ServiceModel.GetQuery": {
     "exported": true,
@@ -14034,6 +14098,10 @@
   "packages/go/model/service_member.go::ServiceMemberModel.GetCountByServiceSeq": {
     "exported": true,
     "signature": "receiver=*ServiceMemberModel func[T0 argIntEq](v0 T0) (int64, error)"
+  },
+  "packages/go/model/service_member.go::ServiceMemberModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*ServiceMemberModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetQuery": {
     "exported": true,
@@ -14423,6 +14491,10 @@
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (string, error)"
   },
+  "packages/go/model/service_region.go::ServiceRegionModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*ServiceRegionModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/service_region.go::ServiceRegionModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*ServiceRegionModel func() (*orm.Statement, error)"
@@ -14771,6 +14843,10 @@
     "exported": true,
     "signature": "receiver=*SharedNoteModel func() (int64, error)"
   },
+  "packages/go/model/shared_note.go::SharedNoteModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*SharedNoteModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/shared_note.go::SharedNoteModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*SharedNoteModel func() (*orm.Statement, error)"
@@ -15106,6 +15182,10 @@
   "packages/go/model/soft_link.go::SoftLinkModel.GetLabel": {
     "exported": true,
     "signature": "receiver=*SoftLinkModel func() (string, error)"
+  },
+  "packages/go/model/soft_link.go::SoftLinkModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*SoftLinkModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetQuery": {
     "exported": true,
@@ -15475,6 +15555,10 @@
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() (string, error)"
   },
+  "packages/go/model/soft_record.go::SoftRecordModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*SoftRecordModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/soft_record.go::SoftRecordModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*SoftRecordModel func() (*orm.Statement, error)"
@@ -15798,6 +15882,10 @@
   "packages/go/model/task.go::TaskModel.GetCount": {
     "exported": true,
     "signature": "receiver=*TaskModel func() (int64, error)"
+  },
+  "packages/go/model/task.go::TaskModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*TaskModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/task.go::TaskModel.GetQuery": {
     "exported": true,
@@ -16151,6 +16239,10 @@
     "exported": true,
     "signature": "receiver=*TimeCellModel func() (int64, error)"
   },
+  "packages/go/model/time_cell.go::TimeCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*TimeCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/time_cell.go::TimeCellModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*TimeCellModel func() (*orm.Statement, error)"
@@ -16486,6 +16578,10 @@
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetLabel": {
     "exported": true,
     "signature": "receiver=*UpsertCellModel func() (string, error)"
+  },
+  "packages/go/model/upsert_cell.go::UpsertCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*UpsertCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetQuery": {
     "exported": true,
@@ -16827,6 +16923,10 @@
     "exported": true,
     "signature": "receiver=*UserModel func() (string, error)"
   },
+  "packages/go/model/user.go::UserModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*UserModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
+  },
   "packages/go/model/user.go::UserModel.GetQuery": {
     "exported": true,
     "signature": "receiver=*UserModel func() (*orm.Statement, error)"
@@ -17134,6 +17234,10 @@
   "packages/go/model/uuid_cell.go::UuidCellModel.GetId": {
     "exported": true,
     "signature": "receiver=*UuidCellModel func() (string, error)"
+  },
+  "packages/go/model/uuid_cell.go::UuidCellModel.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*UuidCellModel func(page, perPage int) ([]orm.QueryPlanStep, error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetQuery": {
     "exported": true,
@@ -19883,6 +19987,22 @@
     "exported": false,
     "signature": "receiver=*DB func(r *request) (*cached, error)"
   },
+  "packages/go/orm/exec.go::QueryPlanStep": {
+    "exported": true,
+    "signature": "type QueryPlanStep struct { Role string Tables []string SQL string }"
+  },
+  "packages/go/orm/exec.go::QueryPlanStep#field.Role": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/exec.go::QueryPlanStep#field.SQL": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/exec.go::QueryPlanStep#field.Tables": {
+    "exported": true,
+    "signature": "[]string"
+  },
   "packages/go/orm/exec.go::Statement": {
     "exported": true,
     "signature": "type Statement struct { SQL string Binds []any }"
@@ -19991,6 +20111,10 @@
     "exported": false,
     "signature": "func(key uint64, p *plan.Plan) *cached"
   },
+  "packages/go/orm/exec.go::pagePlanSteps": {
+    "exported": false,
+    "signature": "func(ex executor, r *request) ([]QueryPlanStep, error)"
+  },
   "packages/go/orm/exec.go::paginate": {
     "exported": false,
     "signature": "func(ex executor, r *request) (*result, int64, error)"
@@ -20002,6 +20126,10 @@
   "packages/go/orm/exec.go::parentValues": {
     "exported": false,
     "signature": "func(pr *plan.ParentRef, parents [][]any, params []any) ([]any, error)"
+  },
+  "packages/go/orm/exec.go::preparePage": {
+    "exported": false,
+    "signature": "func(ex executor, r *request) error"
   },
   "packages/go/orm/exec.go::query": {
     "exported": false,
@@ -20787,6 +20915,10 @@
     "exported": true,
     "signature": "receiver=*Core func() (int64, error)"
   },
+  "packages/go/orm/model.go::Core.GetPagePlanSteps": {
+    "exported": true,
+    "signature": "receiver=*Core func(page, perPage int) ([]QueryPlanStep, error)"
+  },
   "packages/go/orm/model.go::Core.GetQuery": {
     "exported": true,
     "signature": "receiver=*Core func() (*Statement, error)"
@@ -20862,6 +20994,10 @@
   "packages/go/orm/model.go::Core.load": {
     "exported": false,
     "signature": "receiver=*Core func(kind string) (*collection, error)"
+  },
+  "packages/go/orm/model.go::Core.pageRequest": {
+    "exported": false,
+    "signature": "receiver=*Core func(page, perPage int) (executor, *Core, *request, error)"
   },
   "packages/go/orm/model.go::Core.pairs": {
     "exported": false,

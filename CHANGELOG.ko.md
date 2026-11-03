@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- `getPagePlanSteps(page, perPage)`는 여섯 런타임 모두의 공개 종단 작업이다(DSL-159). `getsPage`가 실행하는 plan의 각 step의 role, tables, 문장을 실행 없이 돌려준다. request와 plan 호출을 `getsPage`와 공유한다.
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.

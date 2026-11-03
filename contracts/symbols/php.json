@@ -6535,6 +6535,10 @@
     "exported": false,
     "signature": "private function observedAs(Polyspec\\Orm\\StatementMetadata $statement, bool $control, Closure $send): mixed"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::pagePlanSteps": {
+    "exported": true,
+    "signature": "public function pagePlanSteps(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::paginate": {
     "exported": true,
     "signature": "public function paginate(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
@@ -6550,6 +6554,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::plan": {
     "exported": false,
     "signature": "private function plan(Polyspec\\Orm\\Request $r): array"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::preparePage": {
+    "exported": false,
+    "signature": "private function preparePage(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): void"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::publish": {
     "exported": true,
@@ -12015,6 +12023,10 @@
     "exported": true,
     "signature": "public function getCount(): int"
   },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::getPagePlanSteps": {
+    "exported": true,
+    "signature": "public function getPagePlanSteps(int $page, int $perPage): array"
+  },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::getQuery": {
     "exported": true,
     "signature": "public function getQuery(): array"
@@ -12138,6 +12150,10 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::outputName": {
     "exported": false,
     "signature": "private function outputName(string $pascal): string"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::pageRequest": {
+    "exported": false,
+    "signature": "private function pageRequest(int $page, int $perPage): array"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::pairs": {
     "exported": false,

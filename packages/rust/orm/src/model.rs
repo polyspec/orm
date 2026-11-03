@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 
 use crate::collection::{AnyCollection, Collection, GroupRow, GroupRows, Key, Page};
 use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
-use crate::db::{apply_request_hook, Db, Executor, Statement};
+use crate::db::{apply_request_hook, Db, Executor, QueryPlanStep, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
 use crate::ir;
 use crate::markdown::{markdown_read, markdown_scalar, markdown_write, MdRow};
@@ -425,14 +425,20 @@ fn request_lock(q: &ir::Query) -> &str {
     q.relations.iter().map(|r| request_lock(&r.query)).find(|lock| !lock.is_empty()).unwrap_or("")
 }
 
-async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
-    hook_request(conn, ex, req)?;
-    let db = ex.db().clone();
-    // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
+/// The lock of the request, refused outside a transaction.
+fn checked_lock(ex: &Executor, req: &Req) -> Result<String> {
     let lock = request_lock(&req.ir.query).to_owned();
     if !lock.is_empty() && matches!(ex, Executor::Db(_)) {
         return Err(Error::Config("row locks are allowed only inside a transaction".into()));
     }
+    Ok(lock)
+}
+
+async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
+    hook_request(conn, ex, req)?;
+    let db = ex.db().clone();
+    // The lock of the request, at the root or on a relation step, is checked and taken once, before any statement (PRT-8).
+    let lock = checked_lock(ex, req)?;
     if db.is_markdown() {
         let read = markdown_read(ex, req).await?;
         return Ok(QueryResult {
@@ -870,18 +876,7 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
 
 /// Returns one page and the total count.
 pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page<M>> {
-    let c = m.core();
-    if page == 0 || per_page == 0 {
-        return Err(config("gets_page requires a positive page and per_page"));
-    }
-    if c.limit.is_some() {
-        return Err(config("gets_page cannot be combined with limit"));
-    }
-    let ex = terminal(c)?;
-    let mut q = c.clone();
-    let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
-    q.limit = Some((offset, per_page));
-    let mut req = build(&q, "paginate");
+    let (ex, q, mut req) = page_request(m.core(), page, per_page)?;
     let res = select(&ex, &q.conn, &mut req).await?;
     // Markdown replies carry a count; a SQL select reads its count step in plan order.
     let total = res.count.ok_or_else(|| Error::internal("paginate plan has no count result"))?;
@@ -964,6 +959,32 @@ pub async fn get_avg(c: &Core) -> Result<Option<f64>> {
         Val::Null => Ok(None),
         v => v.as_aggregate_f64().map(Some),
     }
+}
+
+/// The arguments of a page checked and its request built: the one request of `gets_page` and `get_page_plan_steps`.
+fn page_request(c: &Core, page: u32, per_page: u32) -> Result<(Executor, Core, Req)> {
+    if page == 0 || per_page == 0 {
+        return Err(config("gets_page requires a positive page and per_page"));
+    }
+    if c.limit.is_some() {
+        return Err(config("gets_page cannot be combined with limit"));
+    }
+    let ex = terminal(c)?;
+    let mut q = c.clone();
+    let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
+    q.limit = Some((offset, per_page));
+    let req = build(&q, "paginate");
+    Ok((ex, q, req))
+}
+
+/// The steps of the plan that `gets_page` runs, in their order, without executing it.
+pub async fn get_page_plan_steps(c: &Core, page: u32, per_page: u32) -> Result<Vec<QueryPlanStep>> {
+    let (ex, q, mut req) = page_request(c, page, per_page)?;
+    ex.db().unsupported_on_markdown("get_page_plan_steps")?;
+    hook_request(&q.conn, &ex, &mut req)?;
+    checked_lock(&ex, &req)?;
+    let plan = ex.db().plan(&mut req).await?;
+    Ok(plan.steps.iter().map(|st| QueryPlanStep { role: st.role.clone(), tables: st.tables.clone(), sql: st.sql.clone() }).collect())
 }
 
 /// The statement of gets() without executing it.

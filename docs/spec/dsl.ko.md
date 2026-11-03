@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: fe60790a2f30d2ebae7b9dac7ed8f15ce0001ebf9d13f8024cab6bea50cc4784 -->
+<!-- source-sha256: 4b7045fc3af37bf6176313c76e6c32f544bb02a5136009fa01137e96bf773c47 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -144,6 +144,7 @@ Key   = [Operator] Column
 - **DSL-63** `avg<Col>()`와 `getAvg()` — 결과: 컬럼 평균; 값이 없으면 null
 - **DSL-64** `getsPage(page, perPage)` — 결과: `items`, `totalCount`, `totalPages`, `page`, `perPage`를 포함한 한 페이지
 - **DSL-65** `getQuery()` — 결과: 실행하지 않은 `gets()`의 SQL 문장과 바인드 값
+- **DSL-159** `getPagePlanSteps(page, perPage)` — 결과: `getsPage(page, perPage)`가 실행하는 plan의 step을 실행 없이 돌려준다. plan의 순서대로 main step, count step, 그리고 relation마다 step 하나이며, 각 step은 `role`(`main`, `count`, `relation`), `tables`(문장이 이름 짓는 물리 table 이름을 정렬하고 중복을 없앤 목록), `sql`(문장 텍스트, relation의 `IN` 목록은 펼치지 않는다)을 가진다. step에는 바인드 값이 없다. 이 호출은 `getsPage`가 실행하는 plan 호출에서 나오며 인자와 거부도 같다(DSL-67, DSL-68): page나 perPage가 1보다 작을 때, `limit`를 지정한 모델, 연결이 없는 모델은 `CONFIG`, planner의 거부는 `OPERATOR_NOT_ALLOWED`(DIA-187) 같은 코드, markdown에서는 `CAPABILITY_UNSUPPORTED`(DIA-185)다. handle의 request hook은 `getsPage`와 같이 이 request를 받는다.
 
 - **DSL-66** `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. SQL `SUM`과 `AVG`는 null 값을 건너뛰고, 남은 값이 없으면 일치하는 행이 없든 모든 값이 null이든 null scalar를 준다. 그러면 `getSum()`은 값이 없는 합인 0을, `getAvg()`는 null을 반환한다. 값이 없는 평균은 정의되지 않으며 0은 지어낸 평균이기 때문이다. 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
 - **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
