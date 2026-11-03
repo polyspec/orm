@@ -722,6 +722,9 @@ var authorColumns = map[string]func(*model.AuthorModel) *model.AuthorModel{
 	"read_count":         (*model.AuthorModel).AddColumnReadCount,
 	"like_count":         (*model.AuthorModel).AddColumnLikeCount,
 	"uuid":               (*model.AuthorModel).AddColumnUuid,
+	"aes_key_version":    (*model.AuthorModel).AddColumnAesKeyVersion,
+	"aes_hex_email":      (*model.AuthorModel).AddColumnAesHexEmail,
+	"aes_hex_phone":      (*model.AuthorModel).AddColumnAesHexPhone,
 }
 
 // authorOrders is the table of the Author orders that a recipe may name, by column name: a name is ascending, and a name

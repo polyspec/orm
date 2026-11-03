@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The recipe `performance_gate` holds the planned statement of the primary-key and descending 100-row reads (the 27-column projection in order, and the limit binds of each database) by `pk_statement` and `list_statement`, and the AES key version and decoded cells by `aes_cells`, so the TypeScript timing file asserts no correctness. It reads its seeded database from `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` or `BENCH_SQLITE_DSN` and no longer from the feature environment.
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.

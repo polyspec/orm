@@ -43,6 +43,9 @@ trait RecipeModel
         'read_count' => ['addColumnReadCount', 'getReadCount'],
         'like_count' => ['addColumnLikeCount', 'getLikeCount'],
         'uuid' => ['addColumnUuid', 'getUuid'],
+        'aes_key_version' => ['addColumnAesKeyVersion', 'getAesKeyVersion'],
+        'aes_hex_email' => ['addColumnAesHexEmail', 'getAesHexEmail'],
+        'aes_hex_phone' => ['addColumnAesHexPhone', 'getAesHexPhone'],
     ];
 
     /** The Author orders that a recipe may name, by column: a name is ascending, and a name with a leading "-" is descending (FCV-4). */
