@@ -2211,6 +2211,8 @@ def _chain_value(raw, context: dict) -> Any:
 
 def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
+    if "styled" in raw:
+        return StyledValue.value(_chain_value(raw["styled"], context))
     if "object" not in raw:
         return _chain_value(raw, context)
     field = field_of(model.core.ent.entity, column)
@@ -2408,6 +2410,10 @@ class _ChainBuild:
                 model.limit(limit.get("offset", 0), limit["count"])
         if "lock" in q:
             model.core.lock = q["lock"]
+        if "force_index" in q:
+            model.core.index = q["force_index"]
+        if "key_by" in q:
+            model.core.key_name = q["key_by"]
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -2593,6 +2599,13 @@ def _table_model_query(step: dict, context: dict) -> dict:
             return {"json": model.get_sum()}
         if aggregate["agg"] == "avg":
             return {"json": model.get_avg()}
+        if "group_value" in step:
+            rows = list(model.gets_count())
+            if not rows:
+                raise AssertionError(
+                    f"group_value {step['group_value']}: the aggregate has no group row"
+                )
+            return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
     if step.get("page") is True:
         limit = step.get("limit")
@@ -2644,6 +2657,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if "ordered_text" in step and row is not None:
+        return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row
@@ -2794,6 +2809,8 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        if "conflict" in step:
+            raise OrmError("DEADLOCK", step["conflict"])
         return last
 
     result = _connection_of(step, context).utils().run(run)

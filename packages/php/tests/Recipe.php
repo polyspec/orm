@@ -2344,6 +2344,9 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        if (isset($s['conflict'])) {
+                            throw Orm::transactionConflict($s['conflict']);
+                        }
                         return $last;
                     }
                 );
@@ -3137,6 +3140,12 @@ final class Recipe
                 ? $model->limit(0, $q['limit'])
                 : $model->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
         }
+        if (isset($q['force_index'])) {
+            $model->{'forceIndex' . self::pascal($q['force_index'])}();
+        }
+        if (isset($q['key_by'])) {
+            $model->{'keyName' . self::pascal($q['key_by'])}();
+        }
         if (isset($q['lock'])) {
             $model->{match ($q['lock']) {
                 'update' => 'forUpdate',
@@ -3286,6 +3295,8 @@ final class Recipe
             if (isset($value['arith'])) {
                 $call = ($value['arith']['operation'] === 'minus' ? 'minus' : 'plus') . $name;
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
+            } elseif (isset($value['styled'])) {
+                $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
@@ -3361,6 +3372,9 @@ final class Recipe
                     $row = $model->{'getBy' . $name}(...$args);
                 } else {
                     $row = $model->get();
+                }
+                if (isset($s['ordered_text']) && $row !== null) {
+                    return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
                 }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;
@@ -3465,10 +3479,17 @@ final class Recipe
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;
+        if (isset($s['group_value'])) {
+            $groups = $model->getsCount()->all();
+            if ($groups === []) {
+                Assert::fail("group_value {$s['group_value']}: the aggregate has no group row");
+            }
+            return ['json' => $groups[0]->value($s['group_value'])];
+        }
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
-                'sum' => $model->getSum(),
-                'avg' => $model->getAvg(),
+                'sum' => json_decode(json_encode($model->getSum())),
+                'avg' => json_decode(json_encode($model->getAvg())),
                 default => $model->getsCount()->toArray(),
             }];
         }

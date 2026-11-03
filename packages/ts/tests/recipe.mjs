@@ -1303,8 +1303,9 @@ function chainValue(raw, context) {
 }
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
+  if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.codec ?? [], new Map());
+  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1457,6 +1458,8 @@ class ChainBuild {
       else m.limit(q.limit.offset ?? 0, q.limit.count);
     }
     if (q.lock !== undefined) m[CORE].lock = q.lock;
+    if (q.force_index !== undefined) m[CORE].index = q.force_index;
+    if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
   }
 
   /** The child model of a relation. */
@@ -1583,6 +1586,11 @@ const TABLE_OPS = {
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
+    if (s.group_value !== undefined) {
+      const [row] = await m.getsCount();
+      if (row === undefined) throw new Error(`group_value ${s.group_value}: the aggregate has no group row`);
+      return { json: plainJson(row.value(s.group_value)) };
+    }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
     if (s.page === true) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
@@ -1603,6 +1611,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),
@@ -1820,6 +1829,7 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      if (s.conflict !== undefined) throw new OrmError('DEADLOCK', s.conflict);
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };

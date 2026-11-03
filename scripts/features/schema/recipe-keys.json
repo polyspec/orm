@@ -349,6 +349,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
@@ -363,9 +364,11 @@
       "connection",
       "expect",
       "from",
+      "group_value",
       "items",
       "joins",
       "key",
+      "key_by",
       "limit",
       "lock",
       "model",
@@ -402,6 +405,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",

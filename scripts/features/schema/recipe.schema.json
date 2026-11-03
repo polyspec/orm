@@ -3820,7 +3820,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3863,7 +3867,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3905,7 +3913,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -4218,6 +4230,14 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "key_by": {
+                "description": "The column that keys the collection of the result (PRT-35).",
+                "$ref": "#/$defs/name"
+              },
+              "group_value": {
+                "description": "The result is Value of this name on the first group row of the count aggregate (INT-31).",
+                "$ref": "#/$defs/name"
+              },
               "order": {
                 "$ref": "#/$defs/orderList"
               },
@@ -4402,6 +4422,11 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "conflict": {
+            "description": "After its statements the function fails with the retryable DEADLOCK error of this message (INT-48).",
+            "type": "string",
+            "minLength": 1
           },
           "statements": {
             "type": "array",
@@ -6882,6 +6907,19 @@
       "additionalProperties": {
         "oneOf": [
           {
+            "description": "The styled value of its value (a column with a codec of a styled value).",
+            "type": "object",
+            "required": [
+              "styled"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "styled": {
+                "$ref": "#/$defs/value"
+              }
+            }
+          },
+          {
             "$ref": "#/$defs/argument"
           },
           {
@@ -7625,6 +7663,19 @@
         },
         "where": {
           "$ref": "#/$defs/predicate"
+        },
+        "columns": {
+          "$ref": "#/$defs/columnChoice"
+        },
+        "add_columns": {
+          "$ref": "#/$defs/columnList"
+        },
+        "order": {
+          "$ref": "#/$defs/orderList"
+        },
+        "force_index": {
+          "description": "The index that the joined table is read through (DSL-90).",
+          "$ref": "#/$defs/name"
         }
       }
     },
