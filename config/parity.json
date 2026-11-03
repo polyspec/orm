@@ -10812,13 +10812,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
@@ -11024,13 +11024,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationPostgresRecipeTest::testPostgres"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
@@ -11237,13 +11237,13 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationSqliteRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
@@ -14573,13 +14573,33 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
@@ -14652,13 +14672,33 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
@@ -14731,13 +14771,33 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
@@ -26830,8 +26890,23 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"creates_and_save\""
         },
         {
           "implementation": "typescript",
@@ -26890,8 +26965,23 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"creates_and_save\""
         }
       ]
     },

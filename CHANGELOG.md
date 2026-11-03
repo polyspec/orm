@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
 - Tests: the finalization of a chain is held by the `dbspec_apply` recipe in every runtime, with a new case for a plan that hides nothing: its finalize event comes while the row is `applied`, no statement runs and the row becomes `done`; the Go `TestFinalizeMarksPlanDone` is gone.
 - Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 - The generators print a diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`: PHP and its extension and the Rust builder printed their own (#T334-3-20)

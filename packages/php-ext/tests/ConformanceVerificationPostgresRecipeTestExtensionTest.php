@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: PRT-77.
+// Requirements: DIA-24, INT-39, PRT-77.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;

@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: PRT-77.
+// Requirements: DIA-24, INT-39, PRT-77.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
 // postgres (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 declare(strict_types=1);

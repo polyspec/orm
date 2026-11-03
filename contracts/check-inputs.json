@@ -2705,7 +2705,6 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
