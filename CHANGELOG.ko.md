@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cfa9d66c29dda9b2ae78adeabaee86a21d466768882a9623e3482b661775abda -->
+<!-- source-sha256: 60c29df78fd1d80320836ae964f75839365de7f5d7255cef3fc46ce9eec446c4 -->
 # 변경 이력
 
 ## Unreleased
 
+- 어떤 시간 형식으로도 읽히지 않는 text를 모델에 쓰면 PHP와 PHP extension은 PRT-67대로 `CODEC_ENCODE`를 돌려준다. 예전에는 `CODEC_DECODE`였다. temporal column의 저장 형식과 그 거부는 recipe `conformance_verification`에서 돌고, PRT-67a는 Go에만 있는 setter 형식을 정한다.
+- 수정 시각과 soft delete의 microsecond, now 조건을 모든 runtime에서 recipe `conformance_verification`의 `clock_cell`과 `soft_record`로 돌린다. native 시험은 없앴고 recipe 함수 `seconds_later`를 더했다. TypeScript는 자기 clock source인 `wallMicros`의 시험을 지킨다.
 - rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
 - 시험: chain의 finalize는 모든 runtime에서 `dbspec_apply` recipe가 맡고, 아무것도 숨기지 않는 plan의 새 case를 둔다: finalize event는 행이 `applied`일 때 오고, 문장은 실행되지 않으며, 행은 `done`이 된다. Go의 `TestFinalizeMarksPlanDone`은 삭제했다.
 - 문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.

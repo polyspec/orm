@@ -944,7 +944,8 @@
         "group-row-driver-cell-forms",
         "model_queries_chain-mysql",
         "model_queries_chain-postgres",
-        "model_queries_chain-sqlite"
+        "model_queries_chain-sqlite",
+        "go-time-setter-records-the-first-bad-text"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1838,11 +1839,9 @@
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/clock.dbs",
-        "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
-        "contracts/fixtures/time_precision.dbs",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -1881,11 +1880,7 @@
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/go/orm/clock_test.go",
-        "packages/php/tests/ClockTest.php",
-        "packages/rust/orm/tests/clock.rs",
         "packages/ts/tests/clock.mjs",
-        "packages/python/tests/clock.py",
         "packages/go/orm/decimal_model_test.go",
         "packages/go/orm/write_set_test.go",
         "packages/go/model/decimal_field_test.go",
@@ -1899,14 +1894,12 @@
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
-        "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/styled_column_states.json",
         "packages/go/orm/identity_load_test.go",
         "packages/php/tests/IdentityLoadTest.php",
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
-        "packages/go/orm/time_precision_test.go",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
@@ -1915,7 +1908,6 @@
         "packages/rust/orm/tests/unit/time_precision.rs",
         "packages/php-ext/tests/DecimalModelDbNativeTest.php",
         "packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
-        "packages/php-ext/tests/ClockTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_model_writes_test.go",
@@ -2100,12 +2092,11 @@
         },
         {
           "id": "writes-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
-            "packages/go/orm/write_set_test.go",
-            "packages/go/orm/clock_test.go"
+            "packages/go/orm/write_set_test.go"
           ]
         },
         {
@@ -2114,16 +2105,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/assignment_test.go"
-          ]
-        },
-        {
-          "id": "clock-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/ClockTest.php",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
           ]
         },
         {
@@ -2136,34 +2117,12 @@
           ]
         },
         {
-          "id": "clock-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts clock-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/clock.rs",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
-          ]
-        },
-        {
           "id": "clock-typescript",
           "command": "node packages/ts/tests/clock.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/clock.mjs",
-            "packages/ts/src/clock.ts",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
-          ]
-        },
-        {
-          "id": "clock-python",
-          "command": "make python-clock-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/clock.py",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
+            "packages/ts/src/clock.ts"
           ]
         },
         {
@@ -2223,15 +2182,6 @@
             "packages/ts/tests/identity-load.mjs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "time-precision-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestSQLiteTimePrecision$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/time_precision_test.go",
-            "contracts/fixtures/time_precision.dbs"
           ]
         },
         {

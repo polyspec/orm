@@ -313,6 +313,8 @@ func chainFunc(f *chainFn) (orm.Func, error) {
 		return orm.MonthsLater(n), nil
 	case "seconds_ago":
 		return orm.SecondsAgo(n), nil
+	case "seconds_later":
+		return orm.SecondsLater(n), nil
 	}
 	return orm.Func{}, fmt.Errorf("function %s has no recipe entry", f.Fn)
 }
@@ -1322,9 +1324,31 @@ func chainAssign(core *orm.Core, raw json.RawMessage, c *databaseContext) error 
 			core.SetNull(member.key)
 			continue
 		}
+		if text, ok := value.(string); ok && temporalColumn(core, member.key, c) {
+			// A generated setter of a temporal column takes its text through SetTimeText, which records a bad text.
+			core.SetTimeText(member.key, text)
+			continue
+		}
 		core.Set(member.key, value)
 	}
 	return nil
+}
+
+// temporalColumn reports whether column of the model of core is a time or a datetime.
+func temporalColumn(core *orm.Core, column string, c *databaseContext) bool {
+	if c.schema == nil {
+		return false
+	}
+	model, err := c.schema.Model()
+	if err != nil {
+		return false
+	}
+	entity := model.Entities[core.Entity().Name]
+	if entity == nil {
+		return false
+	}
+	field := entity.Field(column)
+	return field != nil && (field.Type == "time" || field.Type == "datetime")
 }
 
 // chainWrite runs model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its

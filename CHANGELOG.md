@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- A model write of a text that no time form reads returns `CODEC_ENCODE` in PHP and the PHP extension, as PRT-67 states; it returned `CODEC_DECODE`. The stored form of a temporal column and that refusal run in the recipe `conformance_verification`; PRT-67a names the setter form that only Go has.
+- The microseconds of the update time and of a soft deletion and the now condition run in the recipe `conformance_verification` in every runtime, on `clock_cell` and `soft_record`; their native tests are gone, and the recipe function `seconds_later` is new. TypeScript keeps the test of `wallMicros`, its own clock source.
 - The natives of the rollback fault are gone from all runtimes: the case of the recipe transactions states them, with the new expect key `keeps_callback` for the callback error that a ROLLBACK keeps. `packages/ts/tests/rollback.mjs` and `packages/go/orm/rollback_fault_test.go` are removed, and the two Rust forms stay native as INT-72a.
 - Tests: the finalization of a chain is held by the `dbspec_apply` recipe in every runtime, with a new case for a plan that hides nothing: its finalize event comes while the row is `applied`, no statement runs and the row becomes `done`; the Go `TestFinalizeMarksPlanDone` is gone.
 - Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.

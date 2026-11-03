@@ -4547,6 +4547,7 @@ mod tables {
             "months_ago" => args::months_ago(n),
             "months_later" => args::months_later(n),
             "seconds_ago" => args::seconds_ago(n),
+            "seconds_later" => args::seconds_later(n),
             other => return Err(format!("function {other} has no recipe entry")),
         })
     }
