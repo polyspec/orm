@@ -2870,6 +2870,7 @@ mod database {
         "model.query",
         "model.save",
         "model.chain",
+        "db.last_affected",
         "db.notify",
         "utils.lock",
         "utils.set_local",
@@ -5012,6 +5013,9 @@ mod tables {
                         ["pending", { "int": status.pending.to_string() }],
                         ["versions", { "object": versions }],
                     ] } }))
+                }
+                "db.last_affected" => {
+                    Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
                     db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;

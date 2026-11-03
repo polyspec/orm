@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.last_affected',
         'db.notify',
         'utils.lock',
         'utils.set_local',
@@ -3926,6 +3927,9 @@ final class Recipe
                 }
                 self::chainTarget($s, $context)->delete($recursive);
                 return [];
+            case 'db.last_affected':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context))]];
             case 'db.notify':
                 self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
                 return [];

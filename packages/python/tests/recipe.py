@@ -45,6 +45,7 @@ from polyspec.orm import (
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.testing import last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -3193,6 +3194,10 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _db_last_affected(step: dict, context: dict) -> dict:
+    return {"value": {"int": str(last_affected(_connection_of(step, context)))}}
+
+
 def _db_notify(step: dict, context: dict) -> dict:
     _connection_of(step, context).notify(step["channel"], step["payload"])
     return {}
@@ -4094,6 +4099,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.last_affected": _db_last_affected,
     "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
