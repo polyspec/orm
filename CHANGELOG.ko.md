@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6e117c7b660dc9bd52d9975f04d746860a768bfb0e354433acefb2cb005800b3 -->
+<!-- source-sha256: c263e8a8033588d12f265af0c1e3b71e89847ec869318a30da39ac5b34074c3a -->
 # 변경 이력
 
 ## Unreleased
 
+- `clock_microseconds`, `clock_soft_delete_microseconds`, `now_defaults`는 database clock 기준 1분 범위를 허용하던 자리에서, 새 step `clock.read`로 write 앞뒤에 읽은 wall clock 사이에 저장된 clock 값을 잡는다.
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 생성된 모델을 맡는다. `ts-model-check`는 TypeScript 모델 다섯 묶음을 모두 맡고, 그 scan 목록은 모델을 부르는 source를 적는다.
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.

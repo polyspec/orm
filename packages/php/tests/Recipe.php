@@ -2713,6 +2713,14 @@ final class Recipe
                 return ['value' => ['bool' => true]];
             case 'transaction.attempts':
                 return ['value' => ['int' => (string) $context['attempts']]];
+            case 'clock.read':
+                // The client writes the reading of this clock, cut to the microsecond, so both edges are the
+                // reading itself: a value written between two readings lies between their texts (FCV-4).
+                if (!in_array($s['edge'], ['lower', 'upper'], true)) {
+                    Assert::fail('clock.read has no edge ' . json_encode($s['edge']));
+                }
+                return ['value' => ['text' => (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))
+                    ->format('Y-m-d H:i:s.u')]];
             case 'transaction.deadlock':
                 return self::transactionDeadlock($s, $context);
             case 'events.server_transactions':
@@ -2802,7 +2810,10 @@ final class Recipe
             case 'catalog.read_only_query':
                 $result = $catalog->readOnlyQuery(
                     self::sqlField($s['sql'], $context),
-                    array_map(self::nativeValue(...), $s['binds'] ?? []),
+                    array_map(
+                        static fn (mixed $bind): mixed => self::nativeValue(self::stepArgument($bind, $context)),
+                        $s['binds'] ?? []
+                    ),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );

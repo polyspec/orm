@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `clock_microseconds`, `clock_soft_delete_microseconds` and `now_defaults` hold a stored clock value between a wall-clock read before the write and one after it, through the new step `clock.read`, where they allowed one minute of the database clock.
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
 - The Rust test `coverage_conformance_verification`, which read the vector files, is gone; the bindings of its units name the recipe test `conformance_verification` of each database. The binary `conformance` stays: the `generated` and `fixed-clock` checks run it.
