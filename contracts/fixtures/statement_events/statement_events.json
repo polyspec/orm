@@ -3,7 +3,8 @@
   "requirements": [
     "INT-55",
     "INT-77",
-    "INT-91"
+    "INT-91",
+    "INT-96"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -4572,7 +4573,8 @@
       "requirements": [
         "INT-55",
         "INT-77",
-        "INT-91"
+        "INT-91",
+        "INT-96"
       ],
       "install": false,
       "steps": [
@@ -4607,13 +4609,19 @@
           },
           "expect": {
             "mysql": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             },
             "postgres": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             },
             "sqlite": {
-              "error": "SUBSCRIBER"
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: subscriber refused the event",
+              "cause": "subscriber refused the event"
             }
           }
         },

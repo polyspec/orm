@@ -449,6 +449,15 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if suffix, ok := expected["message_suffix"].(string); ok && !strings.HasSuffix(err.Error(), suffix) {
 			return fmt.Errorf("error message %q does not end with %q", err.Error(), suffix)
 		}
+		if message, ok := expected["message"].(string); ok && err.Error() != message {
+			return fmt.Errorf("error message %q, want %q", err.Error(), message)
+		}
+		if want, ok := expected["cause"].(string); ok {
+			cause := errors.Unwrap(err)
+			if cause == nil || cause.Error() != want {
+				return fmt.Errorf("error cause %v, want %q", cause, want)
+			}
+		}
 		return nil
 	}
 	if s.As != "" {

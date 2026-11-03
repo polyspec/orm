@@ -2841,6 +2841,16 @@ def _run_database_step(step: dict, context: dict) -> None:
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
             ) from error
+        message = expected.get("message")
+        if message is not None and str(error) != message:
+            raise AssertionError(
+                f"error message {str(error)!r}, want {message!r}"
+            ) from error
+        cause = expected.get("cause")
+        if cause is not None and str(error.cause) != cause:
+            raise AssertionError(
+                f"error cause {error.cause!r}, want {cause!r}"
+            ) from error
         return
     except CallbackError:
         # The step ends with its failed callback, so an enclosing transaction goes on, as the Go helper does (FCV-4).

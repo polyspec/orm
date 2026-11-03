@@ -1818,6 +1818,12 @@ final class Recipe
             if (isset($expected['message_suffix'])) {
                 Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['message'])) {
+                Assert::assertSame($expected['message'], $error->getMessage(), 'the error message');
+            }
+            if (isset($expected['cause'])) {
+                Assert::assertSame($expected['cause'], $error->getPrevious()?->getMessage(), 'the error cause');
+            }
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).

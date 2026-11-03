@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 4f6cbf3e6d7ddc2518603c09f96501965fec49930cd67d988db7020671c73e1b -->
+<!-- source-sha256: 118aca516a4a100b76ccd9287711b24b8e03b354c36dadd06452c2136f947e61 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -72,6 +72,7 @@
   - `events.fail_subscriber {connection, kind, as}`는 `connection`에 두 번째 subscriber를 등록하며, 이것은 제거될 때까지 종류 `kind`의 모든 event를 실패시킨다(DB.Subscribe, client-db-subscribe, INT-77). `as`는 subscription을 묶는다.
   - `events.stop_failing {ref}`와 `events.unsubscribe {ref}`는 `ref`가 이름 짓는 subscription을 Subscribe가 반환하는 함수로 제거한다(client-db-subscribe, INT-77).
   - `events.captured {ref, compare?, expect}`는 subscription `ref`가 기록한 statement event를 기록된 순서대로 `expect`와 비교한다. 그 값은 `{"value": [<event>, ...]}`이며, 각 event는 여섯 field의 객체다: `sql`, `binds`, `kind`, `tables`, `transaction`(case 안에서 처음 나타난 순서로 1부터 다시 번호를 매기고, transaction 밖이면 `null`), `error`(statement의 error code, 없으면 `null`). INT-91의 일곱째 field `elapsed`는 음수가 아닌지만 확인하고 비교하지 않는다. `compare`는 기본값 `all`, `tables`, `statements` 중 하나이며, `tables`는 table 이름을 가진 event만, `statements`는 각 event의 `sql`과 `kind`만 비교한다. `statements`는 bind에 host의 시각이 들어가는 문장에 쓴다.
+  - database에서 도는 step의 `{"error": <code>}`에는, 규칙이 그 값을 정하는 경우(INT-96: subscriber의 실패) 실패의 정확한 텍스트 `message`와 그 원인 오류의 텍스트 `cause`를 더할 수 있다. Go는 `errors.Unwrap`, PHP와 PHP extension은 `getPrevious`, TypeScript와 Python은 `cause`, Rust는 `source`로 원인을 읽는다.
   - 정규 op의 query 필드(T334-3-5). 각 필드는 그것을 명명한 op에 선택적으로, 덧붙여 더한다. 필드는 각 runtime의 public builder를 구동하며, 각 runtime은 그것을 API unit이 명명한 public call에 대응시킨다. 어떤 필드도 SQL을 싣지 않고, 어떤 runtime에도 두 번째 interpreter가 없다. 언어별 chain 메서드 이름은 native로 남고 chain 메서드 검사가 확인한다.
   - `model.count`, `model.get_by`(그 `where` 형식), `model.delete`, `model.query`의 `where`는 predicate다: 그룹 `{"and": [<predicate>, ...]}` 또는 `{"or": [...]}`; `{"not": <predicate>}`; composite key용 `{"tuple": [[<column>, ...], [[<expr>, ...], ...]]}`; 또는 leaf `{<column>: {<op>: <expr>}}`이며 `<op>`는 `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `in`, `not_in`, `between`, `like`(contains), `binary_like`(contains_binary), `is_null`, `not_null` 중 하나다. 동등 leaf `{<column>: <value>}`는 바뀌지 않는다. `expr`는 값 wrapper, `{"column": <name>}`(column 참조), `null` 또는 `{"fn": ...}`(F5)다. API unit: generated-model-query-chain(INT-29)과 client-query-base(INT-20부터 INT-26까지).
   - `model.query`의 `order`는 `[{"column" | "expr": <expr>, "dir": "asc" | "desc"}]`이며, NULL 위치는 방언의 것을 따른다. API unit: generated-model-query-chain과 client-query-base.

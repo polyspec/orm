@@ -1721,6 +1721,9 @@ mod database {
         Snapshot(RowSnapshot),
     }
 
+    /// What separates the message of a failed orm call from the text of the error and of its cause.
+    pub(crate) const ERROR_DETAIL: char = '\u{1}';
+
     /// Why a step has no result: the error of the call, whose code an expect may name, or a fault of the step or the helper,
     /// which has no code and always fails the case.
     enum Failure {
@@ -2261,11 +2264,17 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
+                let mut parts = message.split(ERROR_DETAIL);
+                let (message, text, cause) = (parts.next().unwrap_or_default(), parts.next(), parts.next());
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
-                return match error_code(&message) {
+                let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
+                let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
+                return match error_code(message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
+                        _ if exact.is_some() && text != exact => Err(format!("error message {text:?}, want {exact:?}")),
+                        _ if want_cause.is_some() && cause != want_cause => Err(format!("error cause {cause:?}, want {want_cause:?}")),
                         _ => Ok(()),
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
@@ -3201,9 +3210,12 @@ mod tables {
         }
     }
 
-    /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
+    /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it. After it
+    /// come the text of the error and of its cause, each after ERROR_DETAIL, which an expect with `message` or `cause` reads.
     fn orm(error: OrmError) -> String {
-        format!("{}: {error}", error.code())
+        use crate::recipe::database::ERROR_DETAIL;
+        let cause = std::error::Error::source(&error).map(ToString::to_string).unwrap_or_default();
+        format!("{}: {error}{ERROR_DETAIL}{error}{ERROR_DETAIL}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
