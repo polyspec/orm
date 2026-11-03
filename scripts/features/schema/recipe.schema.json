@@ -788,6 +788,7 @@
             "dsn.connect",
             "dsn.sqlite_file",
             "markdown.connect",
+            "markdown.session",
             "keyring.versions",
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
@@ -974,6 +975,9 @@
         },
         {
           "$ref": "#/$defs/ops/markdown.send"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.session"
         },
         {
           "$ref": "#/$defs/ops/model.assign"
@@ -1641,6 +1645,19 @@
               }
             }
           }
+        }
+      },
+      "markdown.session": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "replies", "messages", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.session" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "replies": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener answers, in order, one for each line it receives." },
+          "messages": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener must have received when the connection closes." },
+          "expect": { "$ref": "#/$defs/expect" }
         }
       },
       "markdown.connect": {
@@ -3111,11 +3128,23 @@
             "properties": {
               "begin": true
             }
+          },
+          {
+            "required": [
+              "surface"
+            ],
+            "properties": {
+              "surface": true
+            }
           }
         ],
         "properties": {
           "op": {
             "const": "markdown.send"
+          },
+          "surface": {
+            "enum": ["audit", "isolation", "timeout_ms", "get_query", "subscribe", "lock", "set_local", "local", "backend_waiting_for_lock", "privileges", "aes_status", "aes_rotate", "schema_install", "schema_evolution", "schema_exists"],
+            "description": "A public call that has no form on a markdown connection (DIA-183 to DIA-189), run in place of a statement."
           },
           "column": {
             "type": "string",

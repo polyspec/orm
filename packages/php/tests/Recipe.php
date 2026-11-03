@@ -190,6 +190,10 @@ final class Recipe
                     self::dbspecIntrospectSqliteStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'markdown.session') {
+                    self::markdownSessionStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'markdown.connect') {
                     self::markdownConnectStep($step, $database);
                     continue;
@@ -769,6 +773,64 @@ final class Recipe
         );
         Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
         Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+    }
+
+    /**
+     * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+     */
+    private static function markdownSessionStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
+        $db = Orm::connect($server[2], new Config());
+        $code = null;
+        $message = '';
+        $empty = static function (): void {
+        };
+        $db->transaction(static function () use ($db, $empty): void {
+            $db->transaction($empty);
+        }, readOnly: true);
+        try {
+            $db->transaction($empty);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        $db->close();
+        Assert::assertSame(
+            $step['messages'],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'], $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+    }
+
+    /** The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189). */
+    private static function refusedSurface(string $surface, mixed $db): void
+    {
+        $empty = static function (): void {
+        };
+        $model = new \Polyspec\Orm\Tests\BindModel\Slots();
+        $keyring = new \Polyspec\Orm\AesKeyring([1 => 'key'], 1);
+        $schema = new \Polyspec\Orm\Schema('', '');
+        match ($surface) {
+            'audit' => $db->transaction($empty, audit: ['actor' => 'tester']),
+            'isolation' => $db->transaction($empty, isolation: 'serializable'),
+            'timeout_ms' => $db->transaction($empty, timeoutMs: 100),
+            'get_query' => $model->connect($db)->getQuery(),
+            'subscribe' => $db->subscribe($empty),
+            'lock' => $db->utils()->lock('k'),
+            'set_local' => $db->utils()->setLocal('k', 'v'),
+            'local' => $db->utils()->local('k'),
+            'backend_waiting_for_lock' => $db->utils()->backendWaitingForLock(),
+            'privileges' => $db->utils()->privileges()->inspectTable('public.items'),
+            'aes_status' => $db->utils()->aes()->status($model, $keyring),
+            'aes_rotate' => $db->utils()->aes()->rotate($model, $keyring),
+            'schema_install' => $db->utils()->schema()->install($schema),
+            'schema_evolution' => $db->utils()->schema()->addTablesAndColumns($schema),
+            'schema_exists' => $db->utils()->schema()->exists('orm'),
+        };
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -1525,7 +1587,9 @@ final class Recipe
     {
         self::loadBindModels();
         [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
-            if (array_key_exists('begin', $step)) {
+            if (array_key_exists('surface', $step)) {
+                self::refusedSurface($step['surface'], $db);
+            } elseif (array_key_exists('begin', $step)) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);

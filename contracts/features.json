@@ -67,9 +67,7 @@
         "mysql-session",
         "php-python-session-initialization",
         "parameter-slot-validation-vectors",
-        "markdown-session-messages",
         "markdown-message-vectors",
-        "markdown-rejected-surfaces",
         "py-test-placeholders",
         "pool-idle-server-end",
         "dsn_connection-mysql",
@@ -121,13 +119,11 @@
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
-        "packages/go/orm/markdown_test.go",
         "packages/php/tests/MarkdownTest.php",
         "packages/php-ext/src/markdown_native.c",
         "packages/php-ext/src/markdown_native.h",
         "packages/php-ext/src/orm.c",
         "packages/php-ext/src/polyspec_orm.c",
-        "packages/rust/orm/tests/markdown.rs",
         "packages/ts/tests/markdown.mjs",
         "packages/go/orm/bind_check_test.go",
         "packages/rust/orm/tests/unit/bind_message.rs",
@@ -202,15 +198,6 @@
       ],
       "verification": [
         {
-          "id": "markdown-session-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestMarkdownSessionMessages|TestMarkdownConnectRefused|TestMarkdownRejectedSurfaces)$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/markdown_test.go",
-            "packages/go/orm/markdown.go"
-          ]
-        },
-        {
           "id": "markdown-session-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php",
           "shard": "other",
@@ -218,31 +205,6 @@
             "packages/php/tests/MarkdownTest.php",
             "packages/php/tests/markdown_test_server.php",
             "packages/php/src/Markdown.php"
-          ]
-        },
-        {
-          "id": "markdown-session-php-extension",
-          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testSessionMessages'",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php-ext/src/config.m4",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/markdown_native.c",
-            "packages/php-ext/src/markdown_native.h",
-            "packages/php-ext/src/orm.c",
-            "packages/php-ext/src/polyspec_orm.c"
-          ]
-        },
-        {
-          "id": "markdown-session-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts markdown-session-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test markdown",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/markdown.rs",
-            "packages/rust/orm/src/markdown.rs"
           ]
         },
         {
@@ -349,15 +311,6 @@
           "inputs": [
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/markdown.ts"
-          ]
-        },
-        {
-          "id": "markdown-session-python",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_markdown.MarkdownTest.test_markdown_session_messages",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_markdown.py",
-            "packages/python/src/polyspec/orm/markdown.py"
           ]
         },
         {
@@ -728,22 +681,6 @@
             "packages/ts/tests/markdown.mjs",
             "packages/ts/src/bind_check.ts",
             "tests/bind/vectors.json"
-          ]
-        },
-        {
-          "id": "markdown-rejected-surfaces-php-extension",
-          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testRejectedSurfaces'",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_test_server.php",
-            "packages/php-ext/src/config.m4",
-            "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/markdown_native.c",
-            "packages/php-ext/src/markdown_native.h",
-            "packages/php-ext/src/orm.c",
-            "packages/php-ext/src/polyspec_orm.c"
           ]
         }
       ],

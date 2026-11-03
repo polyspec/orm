@@ -2,6 +2,7 @@ package bindmessages_test
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -80,7 +81,7 @@ func markdownBuilder(t *testing.T, calls []string) (string, string) {
 // markdownSend runs one markdown.send step. It returns the first message that the listener receives, the message of a begin or
 // the parameter of a statement, or the code of the error that the call returns before it sends a message. A non-empty processZone
 // is the process default zone for the step, restored afterward.
-func markdownSend(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (json.RawMessage, string) {
+func markdownSend(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, surface, processZone string) (json.RawMessage, string) {
 	t.Helper()
 	testcase.Start(t, testcase.Compute)
 	if processZone != "" {
@@ -93,6 +94,9 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 		defer func() { time.Local = prev }()
 	}
 	return sendFirst(t, func(db *orm.DB) error {
+		if surface != "" {
+			return refusedSurface(t, db, surface)
+		}
 		if begin != nil {
 			var opts []orm.TransactionOption
 			if *begin {
@@ -112,6 +116,56 @@ func markdownSend(t *testing.T, column, operator string, params []json.RawMessag
 		}
 		return nil
 	})
+}
+
+// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+func refusedSurface(t *testing.T, db *orm.DB, surface string) error {
+	t.Helper()
+	empty := func() error { return nil }
+	switch surface {
+	case "audit":
+		return db.Transaction(empty, orm.Audit(map[string]any{"actor": "tester"}))
+	case "isolation":
+		return db.Transaction(empty, orm.Isolation(orm.Serializable))
+	case "timeout_ms":
+		return db.Transaction(empty, orm.TimeoutMs(100))
+	case "get_query":
+		_, err := bindmodel.Slots().Connect(db).GetQuery()
+		return err
+	case "subscribe":
+		_, err := db.Subscribe(func(orm.StatementEvent) error { return nil })
+		return err
+	case "lock":
+		return db.Utils().Lock("k")
+	case "set_local":
+		return db.Utils().SetLocal("k", "v")
+	case "local":
+		_, err := db.Utils().Local("k")
+		return err
+	case "backend_waiting_for_lock":
+		_, err := db.Utils().BackendWaitingForLock(context.Background())
+		return err
+	case "privileges":
+		_, err := db.Utils().Privileges().InspectTable("public.items")
+		return err
+	case "aes_status":
+		_, err := db.Utils().Aes().Status(nil, orm.AESKeyring{})
+		return err
+	case "aes_rotate":
+		_, err := db.Utils().Aes().Rotate(nil, orm.AESKeyring{})
+		return err
+	case "schema_install":
+		return db.Utils().Schema().Install(nil)
+	case "schema_evolution":
+		_, err := db.Utils().Schema().AddTablesAndColumns(nil)
+		return err
+	case "schema_exists":
+		_, err := db.Utils().Schema().Exists("orm")
+		return err
+	default:
+		t.Fatalf("markdown.send surface %s has no call in the Go cases", surface)
+	}
+	return nil
 }
 
 // modelAssign runs one model.assign step: the public setter of the column of a new row of the model, then its insert, which
