@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { checkKeys } from './recipe_keys.mjs';
 import { connectDsn } from './recipe_model.mjs';
+import { readStep } from './recipe_reads.mjs';
 
 // A recipe at a path whose $schema is the recipe schema of this checkout, so the key table beside it is read.
 const path = 'contracts/fixtures/model_writes/model_writes.json';
@@ -43,4 +44,18 @@ caseTest('model.connect opens the case database, the socket DSN or the text of i
   assert.equal(connectDsn('case-socket', 'mysql', caseDsn, '/s/mysql.sock'), 'mysql://root@localhost/orm_case_17?socket=/s/mysql.sock');
   assert.throws(() => connectDsn('case-socket', 'postgres', caseDsn, '/s/mysql.sock'), /needs mysql, not postgres$/);
   assert.throws(() => connectDsn('case-socket', 'mysql', caseDsn, ''), /ORM_TEST_MYSQL_SOCKET is unset/);
+});
+
+caseTest('a step key that the run does not read fails the step by name, and an annotation does not', COMPUTE, () => {
+  const reads = readStep({ op: 'dsn.connect', dsn: 'case', reason: 'for the reader', bogus: 1 }, 'none');
+  assert.equal(reads.step.dsn, 'case');
+  assert.throws(() => reads.check(), /the helper did not read bogus of dsn\.connect$/);
+  assert.equal(reads.step.bogus, 1);
+  assert.doesNotThrow(() => reads.check());
+});
+
+caseTest('an outcome key that the run does not read fails the step by name', COMPUTE, () => {
+  const reads = readStep({ op: 'dsn.connect', expect: { none: { error: 'X', bogus: 1 } } }, 'none');
+  assert.equal(reads.step.expect.none.error, 'X');
+  assert.throws(() => reads.check(), /the helper did not read expect\.bogus of dsn\.connect$/);
 });

@@ -406,6 +406,7 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/RecipeStep.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/RecipeKeys.php",
@@ -730,6 +731,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_reads.mjs",
         "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_keys.mjs",
         "packages/ts/tests/recipe_generator.mjs"
@@ -1007,6 +1009,7 @@
         "packages/python/tests/recipe.py",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_reads.py",
         "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_keys.py",
         "packages/python/tests/recipe_generator.py"

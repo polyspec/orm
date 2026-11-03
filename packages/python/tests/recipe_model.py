@@ -310,6 +310,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         return {"bind": db}
 
     def model_create(step, context):
+        if step["model"] != "CompositeAccount":
+            raise AssertionError(f"model {step['model']} has no model.create entry")
         model = composite_set(
             None if step.get("unconnected") else connection(step["connection"], context),
             values_of(step["values"], context),
@@ -347,6 +349,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         return {}
 
     def model_duplicate_create(step, context):
+        if step["model"] != "CompositeAccount":
+            raise AssertionError(f"model {step['model']} has no model.duplicate_create entry")
         db = connection(step["connection"], context)
         model = composite_set(db, values_of(step["values"], context))
         model.duplication(
@@ -488,10 +492,11 @@ def model_ops(native, database_value, step_argument, audit_source_of):
 
     def model_query(step, context):
         db = connection(step["connection"], context)
+        columns = step.get("columns")
         if step["model"] == "NoteReader":
             return note_reader_query(db, step)
         if step["model"] == "Author":
-            model = chain(db, values_of(step.get("where"), context), step["columns"])
+            model = chain(db, values_of(step.get("where"), context), columns)
             for column in step.get("order", []):
                 if column not in ORDERS:
                     raise AssertionError(f"Author column {column} has no recipe order")
@@ -504,7 +509,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
                 "rows": [
                     [
                         _wrap(getattr(row, COLUMNS[column][1])())
-                        for column in step["columns"]
+                        for column in columns
                     ]
                     for row in model.gets().values()
                 ]
@@ -535,7 +540,7 @@ def model_ops(native, database_value, step_argument, audit_source_of):
             getattr(model, _LOCKS[step["lock"]])()
         out = []
         for row in model.gets().values():
-            cells = [_column_wrap(row, column) for column in step["columns"]]
+            cells = [_column_wrap(row, column) for column in columns]
             if relation is None:
                 out.append(cells)
                 continue
@@ -550,6 +555,8 @@ def model_ops(native, database_value, step_argument, audit_source_of):
         return {"rows": out}
 
     def model_arithmetic(step, context):
+        if step["model"] != "Author":
+            raise AssertionError(f"model {step['model']} has no model.arithmetic entry")
         db = connection(step["connection"], context)
         if step["column"] != "read_count":
             raise AssertionError(
