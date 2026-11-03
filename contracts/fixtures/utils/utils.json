@@ -9,7 +9,8 @@
     "INT-53",
     "INT-61",
     "INT-72",
-    "INT-73"
+    "INT-73",
+    "INT-59"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -705,6 +706,295 @@
             "mysql": {
               "error": "CONFIG",
               "message_holds": "lock orm_test.not_held was not held at transaction end"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "table_privileges_on_postgres_only",
+      "requirements": [
+        "INT-59"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE privilege_probe (id INTEGER)",
+          "reason": "a table the fixture does not declare, so that its grants belong to this case"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "inspect",
+          "table": "public.privilege_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "json": {
+                "insert": true,
+                "select": true,
+                "update": true,
+                "delete": true,
+                "truncate": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "inspect",
+          "table": "privilege_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "sql": "DO $$ BEGIN CREATE ROLE orm_priv_probe; EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL; END $$",
+          "reason": "a role is a cluster object that no model call creates; every case database shares this one, so it is created once and stays"
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "privilege_probe",
+          "role": "orm_priv_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.privilege_probe",
+          "role": "invalid-role",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "grant",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "only": [
+            "postgres"
+          ],
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [],
+              "sql": "SELECT CAST(has_schema_privilege('orm_priv_probe', 'public', 'USAGE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'SELECT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'INSERT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'UPDATE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'DELETE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'TRUNCATE') AS integer)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "drop",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "invalid-role",
+          "privilege": "SELECT",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.privilege",
+          "connection": "conn",
+          "call": "revoke",
+          "table": "public.privilege_probe",
+          "role": "orm_priv_probe",
+          "privilege": " select ",
+          "expect": {
+            "mysql": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "error": "CAPABILITY_UNSUPPORTED"
+            }
+          }
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "only": [
+            "postgres"
+          ],
+          "statements": [
+            {
+              "kind": "select",
+              "tables": [],
+              "sql": "SELECT CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'SELECT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'INSERT') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'UPDATE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'DELETE') AS integer), CAST(has_table_privilege('orm_priv_probe', 'public.privilege_probe', 'TRUNCATE') AS integer)"
+            }
+          ],
+          "expect": {
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "int": "0"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "1"
+                      },
+                      {
+                        "int": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
             }
           }
         }

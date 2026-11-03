@@ -911,6 +911,7 @@
             "utils.local",
             "db.notify",
             "utils.was_inserted",
+            "utils.privilege",
             "utils.backend_waiting_for_lock",
             "utils.groups",
             "dbspec.plan",
@@ -1270,6 +1271,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.was_inserted"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.privilege"
         },
         {
           "$ref": "#/$defs/ops/utils.backend_waiting_for_lock"
@@ -5448,6 +5452,9 @@
           "op": {
             "const": "utils.run"
           },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
           "connection": {
             "$ref": "#/$defs/name"
           },
@@ -7613,6 +7620,48 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.privilege": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "call",
+          "table",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.privilege"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "call": {
+            "description": "grantTable, inspectTable or revokeTable of utils().privileges() (INT-59).",
+            "enum": [
+              "grant",
+              "inspect",
+              "revoke"
+            ]
+          },
+          "table": {
+            "description": "The table argument of the call, passed as it is.",
+            "type": "string"
+          },
+          "role": {
+            "description": "The role argument of grant and revoke, passed as it is.",
+            "type": "string"
+          },
+          "privilege": {
+            "description": "The privilege argument of revoke, passed as it is.",
+            "type": "string"
           },
           "expect": {
             "$ref": "#/$defs/expect"

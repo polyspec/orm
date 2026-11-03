@@ -4578,7 +4578,7 @@
         "schema_install-mysql",
         "schema_install-postgres",
         "schema_install-sqlite",
-        "privilege-table-operations",
+        "php-extension-privileges-native",
         "schema-exists-literal-underscore-sqlite",
         "dbspec-apply-chain-finalization",
         "schema-set-external-audit-record-mysql",
@@ -4687,7 +4687,8 @@
         "packages/php-ext/tests/SchemaInstallRecipeTestExtensionTest.php",
         "packages/go/model/coverage_schema_install_test.go",
         "packages/php/tests/AuditExternalSetsTest.php",
-        "packages/ts/tests/engine_features.mjs"
+        "packages/ts/tests/engine_features.mjs",
+        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",

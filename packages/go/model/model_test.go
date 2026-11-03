@@ -431,7 +431,6 @@ func TestWrites(t *testing.T) {
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
-		checkPrivilegeOperations(t, db)
 		idle := db.Stats()
 		if idle.MaxOpenConnections != 10 || idle.OpenConnections != 1 || idle.InUse != 0 || idle.Idle != 1 {
 			t.Fatalf("idle connection statistics: %+v", idle)
@@ -542,77 +541,6 @@ func TestTransactions(t *testing.T) {
 			t.Fatalf("idle pool statistics = %+v, want max=10 open=1 inUse=0 idle=1", stats)
 		}
 	})
-}
-
-func checkPrivilegeOperations(t *testing.T, db *orm.DB) {
-	t.Helper()
-	privileges := db.Utils().Privileges()
-	if db.Driver() != "postgres" {
-		for _, operation := range []func() error{
-			func() error { return privileges.GrantTable("public.user", "ormtest_privilege") },
-			func() error { _, err := privileges.InspectTable("public.user"); return err },
-			func() error { return privileges.RevokeTable("public.user", "SELECT", "ormtest_privilege") },
-		} {
-			if err := operation(); orm.ErrorCode(err) != orm.CodeCapabilityUnsupported {
-				t.Fatalf("%s privilege operation = %v, want CAPABILITY_UNSUPPORTED", db.Driver(), err)
-			}
-		}
-		return
-	}
-	const table = "public.privilege_probe"
-	raw := openNative(t, "postgres", dsnOf(t, db))
-	tableCreated := false
-	roleCreated := false
-	role := "orm_priv_" + testdb.Name()
-	defer func() {
-		if roleCreated {
-			if _, err := raw.ExecContext(t.Context(), "DROP OWNED BY \""+role+"\""); err != nil {
-				t.Errorf("drop owned privileges for %s: %v", role, err)
-			}
-			if _, err := raw.ExecContext(t.Context(), "DROP ROLE \""+role+"\""); err != nil {
-				t.Errorf("drop role %s: %v", role, err)
-			}
-		}
-		if tableCreated {
-			if _, err := raw.ExecContext(t.Context(), `DROP TABLE "privilege_probe"`); err != nil {
-				t.Errorf("drop privilege probe table: %v", err)
-			}
-		}
-		if err := raw.Close(); err != nil {
-			t.Errorf("close privilege probe connection: %v", err)
-		}
-	}()
-	if _, err := raw.ExecContext(t.Context(), `CREATE TABLE "privilege_probe" ("id" INTEGER)`); err != nil {
-		t.Fatal(err)
-	}
-	tableCreated = true
-	got, err := privileges.InspectTable(table)
-	if err != nil || !got.Select || !got.Insert || !got.Update || !got.Delete || !got.Truncate {
-		t.Fatalf("postgres owner privileges = %+v, %v", got, err)
-	}
-	if _, err := raw.ExecContext(t.Context(), "CREATE ROLE \""+role+"\""); err != nil {
-		t.Fatal(err)
-	}
-	roleCreated = true
-	if err := privileges.GrantTable(table, role); err != nil {
-		t.Fatal(err)
-	}
-	var schemaUsage, selectPrivilege, insertPrivilege, updatePrivilege, deletePrivilege bool
-	if err := raw.QueryRowContext(t.Context(), "SELECT has_schema_privilege($1, 'public', 'USAGE'), has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')", role).Scan(&schemaUsage, &selectPrivilege, &insertPrivilege, &updatePrivilege, &deletePrivilege); err != nil {
-		t.Fatal(err)
-	}
-	if !schemaUsage || !selectPrivilege || !insertPrivilege || !updatePrivilege || !deletePrivilege {
-		t.Fatalf("granted role privileges: schemaUsage=%t select=%t insert=%t update=%t delete=%t", schemaUsage, selectPrivilege, insertPrivilege, updatePrivilege, deletePrivilege)
-	}
-	if err := privileges.RevokeTable(table, " select ", role); err != nil {
-		t.Fatal(err)
-	}
-	if err := raw.QueryRowContext(t.Context(), "SELECT has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')", role).Scan(&selectPrivilege, &insertPrivilege, &updatePrivilege, &deletePrivilege); err != nil {
-		t.Fatal(err)
-	}
-	if selectPrivilege || !insertPrivilege || !updatePrivilege || !deletePrivilege {
-		t.Fatalf("privileges after SELECT revoke: select=%t insert=%t update=%t delete=%t", selectPrivilege, insertPrivilege, updatePrivilege, deletePrivilege)
-	}
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.

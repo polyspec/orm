@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: c27ea6de3338f3acadf84a30601658e81a3d3e6f0e757db04765747c5bade798 -->
+<!-- source-sha256: b3c5258793ec608aef54bc3a4f22f53eca298be7e4a8ba964623a7741cb0a009 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -190,6 +190,7 @@ classDiagram
 - **INT-57** `schema().exists(schema)`, `schema().installed(schema, table)`: 스키마 확인
 - **INT-58** `schema().empty()`: 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다
 - **INT-59** `privileges().grantTable(table, role)`, `revokeTable(table, privilege, role)`, `inspectTable(table)`: 테이블 권한. PostgreSQL이 아닌 방언은 `CAPABILITY_UNSUPPORTED` 반환
+- **INT-59a** PHP-extension package `polyspec/orm-php-ext`는 `PrivilegeUtils`와 그 세 table privilege method를 native로 구현한다.
 - **INT-60** `aes().status(model, keyring)`, `aes().rotate(model, keyring)`: AES 키 버전 상태와 모든 AES 컬럼·버전의 단일 트랜잭션 회전
 - **INT-61** `stats()`: 연결 풀 통계
 - **INT-74** `AESKeyring.versions()`(Go `AESVersions`, PHP `versions`, TypeScript `versions`, Python `versions`)는 선언된 key version을 숫자 오름차순으로 돌려준다.

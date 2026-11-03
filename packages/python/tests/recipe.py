@@ -3493,6 +3493,29 @@ def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
 
 
+def _utils_privilege(step: dict, context: dict) -> dict:
+    """One call of the table privileges of utils() (INT-59): a call that returns nothing gives true."""
+    privileges = _connection_of(step, context).utils().privileges()
+    if step["call"] == "inspect":
+        got = privileges.inspect_table(step["table"])
+        return {
+            "json": {
+                "insert": got.insert,
+                "select": got.select,
+                "update": got.update,
+                "delete": got.delete,
+                "truncate": got.truncate,
+            }
+        }
+    if step["call"] == "grant":
+        privileges.grant_table(step["table"], step["role"])
+    elif step["call"] == "revoke":
+        privileges.revoke_table(step["table"], step["privilege"], step["role"])
+    else:
+        raise AssertionError(f"utils.privilege has no call {step['call']}")
+    return {"value": {"bool": True}}
+
+
 def _utils_was_inserted(step: dict, context: dict) -> dict:
     inserted = _connection_of(step, context).utils().was_inserted(step["table"], step["sequence"])
     return {"value": {"bool": inserted}}
@@ -4461,6 +4484,7 @@ _TABLE_OPS = {
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
     "utils.was_inserted": _utils_was_inserted,
+    "utils.privilege": _utils_privilege,
     "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
     "utils.groups": _utils_groups,
 }

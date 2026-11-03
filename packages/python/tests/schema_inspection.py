@@ -1,8 +1,8 @@
-# Schema inspection, table privileges and connection statistics of the Python client on SQLite, MySQL and
+# Schema inspection and connection statistics of the Python client on SQLite, MySQL and
 # PostgreSQL, the cases that packages/ts/tests/model.mjs (schemaEmpty), packages/php/tests/ModelTest.php
 # (utilities) and packages/rust/tests/tests/integration_program/main.rs (schema_empty) run: schema().empty() on a new case
 # database, with an empty PostgreSQL schema other than public and with the installed tables; exists and installed;
-# the privileges that only PostgreSQL supports; stats. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
+# stats. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
 # ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 import contextlib
 import os
@@ -60,22 +60,6 @@ def postgres(dsn: str, statement: str) -> None:
         connection.execute(statement)
 
 
-def role_privileges(dsn: str, role: str) -> set:
-    """The table privileges of a role on the probe table that need the usage of its schema."""
-    with psycopg.connect(dsn, autocommit=True) as connection:
-        if not connection.execute(
-            "SELECT has_schema_privilege(%s, 'public', 'USAGE')", [role]
-        ).fetchone()[0]:
-            return set()
-        return {
-            p
-            for p in ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE")
-            if connection.execute(
-                "SELECT has_table_privilege(%s, %s, %s)", [role, f"public.{TABLE}", p]
-            ).fetchone()[0]
-        }
-
-
 class SchemaInspectionTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
@@ -111,32 +95,11 @@ class SchemaInspectionTest(unittest.TestCase):
             "CONFIG",
             f"{dialect}: invalid schema name",
         )
-        privileges = db.utils().privileges()
         if dialect == "mysql":
             self.assertTrue(schema.exists(name), "mysql: the case database is a schema")
             self.assertTrue(schema.installed(name, TABLE), "mysql: the installed table")
             self.assertFalse(
                 schema.installed(name, "missing"), "mysql: a missing table"
-            )
-            self.assertEqual(
-                self.code(lambda: privileges.inspect_table(f"public.{TABLE}")),
-                "CAPABILITY_UNSUPPORTED",
-            )
-            self.assertEqual(
-                self.code(
-                    lambda: privileges.grant_table(
-                        f"public.{TABLE}", "ormtest_privilege"
-                    )
-                ),
-                "CAPABILITY_UNSUPPORTED",
-            )
-            self.assertEqual(
-                self.code(
-                    lambda: privileges.revoke_table(
-                        f"public.{TABLE}", "SELECT", "ormtest_privilege"
-                    )
-                ),
-                "CAPABILITY_UNSUPPORTED",
             )
         elif dialect == "postgres":
             self.assertTrue(schema.exists("public"), "postgres: public")
@@ -149,64 +112,9 @@ class SchemaInspectionTest(unittest.TestCase):
             self.assertFalse(
                 schema.installed("public", "missing"), "postgres: a missing table"
             )
-            got = privileges.inspect_table(f"public.{TABLE}")
-            self.assertTrue(
-                got.select
-                and got.insert
-                and got.update
-                and got.delete
-                and got.truncate,
-                f"postgres: the owner privileges {got}",
-            )
-            self.assertEqual(
-                self.code(lambda: privileges.inspect_table(TABLE)),
-                "CONFIG",
-                "unqualified table",
-            )
-            self.assertEqual(
-                self.code(
-                    lambda: privileges.revoke_table(f"public.{TABLE}", "drop", "nobody")
-                ),
-                "CONFIG",
-                "unsupported privilege",
-            )
-            # The test user may be a superuser, whose privileges the grants do not change, so a new role
-            # receives them and the catalog reports its privileges.
-            role = f"orm_t147_{uuid.uuid4().hex[:12]}"
-            postgres(dsn, f'CREATE ROLE "{role}"')
-            try:
-                privileges.grant_table(f"public.{TABLE}", role)
-                self.assertEqual(
-                    role_privileges(dsn, role),
-                    {"INSERT", "SELECT", "UPDATE", "DELETE"},
-                    "postgres: the granted privileges",
-                )
-                privileges.revoke_table(f"public.{TABLE}", " select ", role)
-                self.assertEqual(
-                    role_privileges(dsn, role),
-                    {"INSERT", "UPDATE", "DELETE"},
-                    "postgres: SELECT revoked",
-                )
-            finally:
-                postgres(dsn, f'DROP OWNED BY "{role}"')
-                postgres(dsn, f'DROP ROLE "{role}"')
         else:
             self.assertFalse(
                 schema.installed("ormexample", TABLE), "sqlite: a schema without tables"
-            )
-            self.assertEqual(
-                self.code(lambda: privileges.grant_table(f"public.{TABLE}", "orm")),
-                "CAPABILITY_UNSUPPORTED",
-            )
-            self.assertEqual(
-                self.code(lambda: privileges.inspect_table(f"public.{TABLE}")),
-                "CAPABILITY_UNSUPPORTED",
-            )
-            self.assertEqual(
-                self.code(
-                    lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "orm")
-                ),
-                "CAPABILITY_UNSUPPORTED",
             )
         self.assertEqual(
             db.utils().stats(),
