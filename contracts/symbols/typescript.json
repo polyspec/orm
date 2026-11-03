@@ -7795,10 +7795,6 @@
     "exported": false,
     "signature": "private push(s: BindSlot): string"
   },
-  "packages/ts/src/engine/planner.ts::Builder.secret": {
-    "exported": false,
-    "signature": "public secret(name: string): string"
-  },
   "packages/ts/src/engine/planner.ts::Builder.table": {
     "exported": false,
     "signature": "public table(ent: Entity): string"

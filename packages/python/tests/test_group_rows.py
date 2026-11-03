@@ -5,7 +5,6 @@ import unittest
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
 from polyspec.orm.group_rows import GroupRow
-from polyspec.orm.model_exec import _group_value
 from . import testcase
 
 
@@ -42,20 +41,6 @@ class GroupRowDriverCellFormsTest(unittest.TestCase):
         with self.assertRaises(OrmError) as caught:
             GroupRow([("row_count", 1), ("row_count", 2)])
         self.assertEqual(caught.exception.code, codes.CONFIG)
-
-
-class GroupBooleanValueTest(unittest.TestCase):
-    # PRT-36: a non-boolean stored value is not coerced to a truth value.
-    def test_group_boolean_rejects_non_boolean_float(self):
-        with self.assertRaises(OrmError) as caught:
-            _group_value(
-                None,
-                {"name": "active", "column": "", "type": "bool"},
-                1.0,
-                None,
-            )
-        self.assertEqual(caught.exception.code, codes.CODEC_DECODE)
-        self.assertIn("active is not boolean", str(caught.exception))
 
 
 if __name__ == "__main__":

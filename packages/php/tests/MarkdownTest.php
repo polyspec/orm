@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 /*
- * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
- * the reading of control messages and error lines, the connect the server refuses, and the SQL-only surface that a markdown
- * connection refuses.
+ * markdown IR executor unit case (docs/spec/protocol.md §5): the request message and the bind cases. The session messages
+ * and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json.
  * The size of a class is Large, that of the largest case (a child process).
  * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
  * answers.
@@ -20,16 +19,8 @@ use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\Db;
-use Polyspec\Orm\Markdown;
-use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
-use Polyspec\Orm\Request;
-use Polyspec\Orm\Schema;
-use Polyspec\Orm\Validator;
 
 const MARKDOWN_TOKEN = '0123456789abcdef0123456789abcdef';
 const MARKDOWN_CONNECT_LINE = '{"op":"connect","corpus":"tracker","token":"' . MARKDOWN_TOKEN . '"}';
@@ -98,90 +89,6 @@ function markdown_test_server_received_messages(array $server): array
 #[Large]
 class MarkdownTest extends TestCase
 {
-    // Requirements: PRT-64.
-    public function testSessionMessages(): void
-    {
-        $server = start_markdown_test_server([
-            '{"ok":true}',
-            '{"ok":true}', '{"ok":true}', '{"ok":true}', '{"ok":true}',
-            '{"ok":true}', '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was '
-                . 'read"}}',
-        ]);
-        $db = Orm::connect($server[2], new Config());
-        self::assertFalse($db->driver() !== 'markdown', "driver() = {$db->driver()}; want markdown");
-        $db->transaction(static function () use ($db): void {
-            $db->transaction(static function (): void {
-            });
-        }, readOnly: true);
-        $e = markdown_error(static fn() => $db->transaction(static function (): void {
-        }));
-        self::assertFalse(
-            $e?->code_ !== Code::WRITE_CONFLICT || $e
-                ->getMessage() !== 'WRITE_CONFLICT: people.flowmark.md:3 changed since it was read',
-            'commit error = ' . ($e?->getMessage() ?? 'none') . "; want WRITE_CONFLICT with the server's message"
-        );
-        $db->close();
-        $want = [
-            MARKDOWN_CONNECT_LINE,
-            '{"op":"begin","read_only":true}',
-            '{"op":"savepoint","name":"orm_sp_1"}',
-            '{"op":"release","name":"orm_sp_1"}',
-            '{"op":"commit"}',
-            '{"op":"begin"}',
-            '{"op":"commit"}',
-        ];
-        self::assertFalse(
-            ($got = markdown_test_server_received_messages($server)) !== $want,
-            "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want)
-        );
-    }
-
-    // Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
-    public function testRejectedSurfaces(): void
-    {
-        $server = start_markdown_test_server(['{"ok":true}']);
-        $db = Orm::connect($server[2], new Config());
-        $surfaces = [
-            'isolation' => static fn() => $db->transaction(static function (): void {
-            }, isolation: 'serializable'),
-            'timeoutMs' => static fn() => $db->transaction(static function (): void {
-            }, timeoutMs: 100),
-            'audit' => static fn() => $db->transaction(static function (): void {
-            }, audit: ['account' => 'a']),
-            'lock' => static fn() => $db->utils()->lock('k'),
-            'setLocal' => static fn() => $db->utils()->setLocal('k', 'v'),
-            'local' => static fn() => $db->utils()->local('k'),
-            'subscribe' => static fn() => $db->subscribe(static function (): void {
-            }),
-            'privileges' => static fn() => $db->utils()->privileges()->inspectTable('public.items'),
-            'AES status' => static fn() => $db->utils()->aes()->status(
-                new \Polyspec\Orm\Tests\MarkdownModel\Tasks(),
-                new \Polyspec\Orm\AesKeyring([1 => 'key'], 1)
-            ),
-            'AES rotation' => static fn() => $db->utils()->aes()->rotate(
-                new \Polyspec\Orm\Tests\MarkdownModel\Tasks(),
-                new \Polyspec\Orm\AesKeyring([1 => 'key'], 1)
-            ),
-            'schema install' => static fn() => $db->utils()->schema()->install(new Schema('', '')),
-            'schema evolution' => static fn() => $db->utils()->schema()->addTablesAndColumns(new Schema('', '')),
-            'getQuery' => static fn() => (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)->getQuery(),
-        ];
-        foreach ($surfaces as $name => $fn) {
-            $e = markdown_error($fn);
-            self::assertFalse(
-                $e?->code_ !== Code::CAPABILITY_UNSUPPORTED,
-                "$name: " . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED'
-            );
-        }
-        $e = markdown_error(static fn() => Orm::connect($server[2], new Config(statementTimeoutMs: 100)));
-        self::assertFalse(
-            $e?->code_ !== Code::CAPABILITY_UNSUPPORTED,
-            'statementTimeoutMs: ' . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED'
-        );
-        $db->close();
-        markdown_test_server_received_messages($server);
-    }
-
     // Requirements: PRT-66.
     public function testRequestMessage(): void
     {

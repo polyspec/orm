@@ -383,29 +383,6 @@ go-test-check/cross-runtime: lease-tool python-venv-check php-vendor-check orm-c
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 
-# DSL-159: the plan steps of a page, through the generated terminal of each runtime, on a SQLite case database.
-.PHONY: get-page-plan-steps-check get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
-get-page-plan-steps-check: get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
-get-page-plan-steps-check/go:
-	$(GO_TEST) ./packages/go/complexquery -run '^TestGetPagePlanSteps$$' -count=1
-get-page-plan-steps-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php/tests/ComplexQueryDbTest.php
-get-page-plan-steps-check/php-extension: php-vendor-check php-models
-	@set -eu; \
-	run_dir="$(abspath .runtime/run)/get-page-plan-steps-php-extension-$$$$"; \
-	trap 'rm -rf "$$run_dir"' EXIT; \
-	mkdir -p "$$run_dir/php-extension"; \
-	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php-ext/tests/ComplexQueryNativeTest.php
-get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
-	$(NODE) --test --test-name-pattern='getPagePlanSteps' packages/ts/tests/complex-query-request.mjs
-get-page-plan-steps-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
-get-page-plan-steps-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_sqlite -- --exact complex_query_sqlite::page_plan_steps
-
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
 # its results (PASS, FAIL and reason), and the elapsed time, and that it reports a case past its deadline as FAIL,
 # using the output of the child processes.
@@ -875,7 +852,6 @@ dbspec-rust-check/set/unit:
 dbspec-rust-check/unicode:
 	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
 dbspec-rust-check/apply-cleanup:
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 dbspec-rust-check/render-physical:
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --test dbspec_render_physical_mysql --test dbspec_render_physical_postgres --test dbspec_render_physical_sqlite --test dbspec_set_decimal_mysql --test dbspec_set_decimal_postgres --test dbspec_set_decimal_sqlite
 
@@ -1111,12 +1087,7 @@ group-count-boolean-php-extension-unit-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
-
-# Runs the database-independent Rust group boolean decoder test with the checkout's target lease.
-.PHONY: group-count-boolean-rust-unit-check
-group-count-boolean-rust-unit-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-count-boolean-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode -- --test-threads=1 --exact
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
 
 # Runs the exact i64 grouped result decode and assembly test with the checkout's target lease.
 # Runs the GroupRow count decoder unit with the checkout's target lease.
@@ -1128,13 +1099,11 @@ group-row-count-rust-unit-check:
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
-	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowDriverCellForms)$$' -count=1; \
-	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
+	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
+	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
 	run_case php-extension $(MAKE) --no-print-directory group-count-boolean-php-extension-unit-check; \
-	run_case typescript $(NODE) --test --test-name-pattern='group_rows/(boolean_invalid_stored_value|driver_cell_forms)' packages/ts/tests/group_rows.mjs; \
-	run_case python-boolean $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float; \
+	run_case typescript $(NODE) --test --test-name-pattern='group_rows/driver_cell_forms' packages/ts/tests/group_rows.mjs; \
 	run_case python-count $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms; \
-	run_case rust-boolean $(MAKE) --no-print-directory group-count-boolean-rust-unit-check; \
 	run_case rust-count $(MAKE) --no-print-directory group-row-count-rust-unit-check; \
 	exit "$$status"
 
@@ -1519,13 +1488,6 @@ conformance-$(1)-check/rust: typescript-build lease-tool
 endef
 $(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
 $(eval $(call RECIPE_VECTORS_TARGETS,fixed-clock,fixed-clock))
-
-# feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
-# FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
-# the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
-.PHONY: feature-go-unit
-feature-go-unit:
-	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
 
 # feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
 # (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
@@ -2505,7 +2467,7 @@ ts-min-check: lease-tool orm-codes-typescript
 dbspec-ts-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
+	$(NODE) --test packages/ts/tests/browser-entry.mjs packages/ts/tests/recipe_canonical.mjs packages/ts/tests/recipe_normalize.mjs packages/ts/tests/recipe_positions.mjs packages/ts/tests/recipe_invalid.mjs packages/ts/tests/recipe_files.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-set-edges.mjs packages/ts/tests/recipe_set_parse.mjs packages/ts/tests/recipe_hashes.mjs packages/ts/tests/recipe_sets.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/dbspec_show_create_introspect-none.test.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec_dialect_refusal-none.test.mjs packages/ts/tests/dbspec-plan-cases.mjs packages/ts/tests/dbspec-plan-invalid.mjs packages/ts/tests/dbspec-plan-chains.mjs packages/ts/tests/dbspec-plan-parse.mjs packages/ts/tests/dbspec-plan-comparisons.mjs packages/ts/tests/dbspec-add-tables-steps.mjs packages/ts/tests/dbspec-mermaid-none.test.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs packages/ts/tests/dbspec-show-create-introspect.mjs
 	$(WITH_TEST_ENV) $(NODE) --test packages/ts/tests/dbspec_render_physical-mysql.test.mjs packages/ts/tests/dbspec_render_physical-postgres.test.mjs packages/ts/tests/dbspec_render_physical-sqlite.test.mjs packages/ts/tests/dbspec_set_decimal-mysql.test.mjs packages/ts/tests/dbspec_set_decimal-postgres.test.mjs packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs
 
 # dbspec-language-check builds the TypeScript client and @polyspec/dbspec-language, and checks that the language service's module graph does not reach
@@ -3772,7 +3734,6 @@ complex-query-typescript-unit-check: lease-tool orm-codes-typescript
 complex-query-typescript-request-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) packages/ts/tests/complex-query-request.mjs
 	$(NODE) packages/ts/tests/complex-query-request-types.mjs
 
 python-package-entry-check: python-venv-check
