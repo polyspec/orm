@@ -114,11 +114,12 @@ trait GroupRowsCases
         self::assertSame(['exact_value' => $want, 'row_count' => 1], $row->toArray());
     }
 
-    public function testGroupRowCountEnforcesExactness(): void
+    // The forms of a count that only a driver cell holds: a text and a float. The answer of a listener holds neither, since its
+    // count is a JSON number (PRT-69), so the collection recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.
+    public function testGroupRowDriverCellForms(): void
     {
         $this->assertGroupRowOwnership();
-        $invalidCounts = [true, -1, -1.5, '-1', '00', 1.5, 9007199254740992, 9007199254740992.0, '9007199254740992'];
-        foreach ($invalidCounts as $invalid) {
+        foreach (['three', '-1', '00', '+1', '', '9007199254740992', 1.5, -1.0, 9007199254740992.0] as $invalid) {
             try {
                 new GroupRow([['row_count', $invalid]]);
                 self::fail('an invalid row_count was accepted');
@@ -127,17 +128,16 @@ trait GroupRowsCases
                 $this->assertGroupRowCountError($error);
             }
         }
-        try {
-            new GroupRow([['selected', 'x']]);
-            self::fail('a missing row_count was accepted');
-        } catch (OrmException $error) {
-            self::assertSame(Code::INTERNAL, $error->code_);
-        }
-        foreach ([0, '0', 9007199254740991, '9007199254740991'] as $input) {
+        foreach ([['0', 0], ['9007199254740991', 9007199254740991], [3.0, 3], [9007199254740991.0, 9007199254740991]] as [$input, $expected]) {
             $row = new GroupRow([['row_count', $input]]);
-            $expected = (int) $input;
             self::assertSame($expected, $row->count());
             self::assertSame($expected, $row->toArray()['row_count']);
+        }
+        try {
+            new GroupRow([['row_count', 1], ['row_count', 2]]);
+            self::fail('a repeated row_count was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
         }
     }
 }

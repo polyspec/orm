@@ -14,6 +14,7 @@ use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogColumn;
 use Polyspec\Orm\Chain;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\CatalogGridCell;
@@ -40,6 +41,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\TxFrame;
 use Polyspec\Orm\Validator;
 use RuntimeException;
 
@@ -135,6 +137,14 @@ final class Recipe
                 }
                 if ($step['op'] === 'dsn.connect') {
                     self::dsnConnectStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'keyring.versions') {
+                    self::keyringVersionsStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.builder') {
+                    self::markdownBuilderStep($step, $database);
                     continue;
                 }
                 if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
@@ -484,11 +494,24 @@ final class Recipe
         throw new \RuntimeException('the listener received no request message');
     }
 
-    /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */
+    /**
+     * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+     * driver: the one implementation of dsn.connect (FCV-4).
+     */
     private static function connectDriver(string $dsn): string
     {
         $db = Orm::connect($dsn, new Config());
         try {
+            $rows = $db->utils()->run(
+                static fn (TxFrame $frame): array => $frame->run(
+                    StatementEvent::UTILITY,
+                    [],
+                    'SELECT 1',
+                ),
+            );
+            Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
+            Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
+            Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             return $db->driver();
         } finally {
             $db->close();
@@ -1177,6 +1200,55 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
+     * versions (INT-74, INT-130), against the expect of database.
+     */
+    private static function keyringVersionsStep(array $step, string $database): void
+    {
+        $expect = $step['expect'][$database];
+        try {
+            $keyring = self::aesKeyring($step['keyring']);
+        } catch (OrmException $error) {
+            Assert::assertSame($expect['error'] ?? null, $error->code_, 'the error of the keyring');
+            return;
+        }
+        Assert::assertArrayNotHasKey('error', $expect, 'the keyring was built');
+        Assert::assertSame($expect['current'], $keyring->currentVersion, 'the current version');
+        Assert::assertSame($expect['versions'], $keyring->versions(), 'the versions');
+    }
+
+    /**
+     * Runs one markdown.builder step (FCV-4): the builder calls on the slots model, then getCount, on the listener of
+     * sendFirst. The terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+     */
+    private static function markdownBuilderStep(array $step, string $database): void
+    {
+        self::loadBindModels();
+        $caught = null;
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step, &$caught): void {
+            $model = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db);
+            try {
+                foreach ($step['calls'] as $call) {
+                    $model = match ($call) {
+                        'limit_zero_count' => $model->limit(0, 0),
+                        'limit_negative_offset' => $model->limit(-1, 1),
+                        'empty_i64_list' => $model->i64Value([]),
+                        'empty_varchar_list' => $model->varcharValue([]),
+                    };
+                }
+                $model->getCount();
+            } catch (OrmException $error) {
+                $caught = $error;
+                throw $error;
+            }
+        });
+        Assert::assertNull($message, 'the terminal sent a message before its error');
+        $expect = $step['expect'][$database];
+        Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
+        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
     }
 
     /**
@@ -2040,6 +2112,34 @@ final class Recipe
                         $s['page_with']['order_by'],
                         $page->hasMore,
                     );
+                    if (isset($s['page_with']['column_name'])) {
+                        $columns = $page->metadata->columns;
+                        $first = $columns[0];
+                        $columns[0] = new CatalogColumn(
+                            $s['page_with']['column_name'],
+                            $first->nativeType,
+                            $first->nullable,
+                            $first->generated,
+                            $first->automaticKey,
+                            $first->defaultExpression,
+                            $first->expressionDefault,
+                            $first->checkPrecision,
+                        );
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $columns,
+                                $page->metadata->primaryKey,
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2179,8 +2279,11 @@ final class Recipe
                     }
                     try {
                         $pdo->exec($statement);
-                    } catch (\PDOException) {
-                        // Any driver error of the refused statement passes.
+                    } catch (\PDOException $error) {
+                        // Any driver error of the refused statement passes, unless the step names its text.
+                        if (isset($s['refused_message'])) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        }
                         return [];
                     }
                     throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");

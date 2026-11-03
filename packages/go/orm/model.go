@@ -738,20 +738,10 @@ func GetsCount(c *Core) (*GroupRows, error) {
 
 // GetsPage returns one page and the total count.
 func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
-	c.ensureStatement()
-	if page < 1 || perPage < 1 {
-		return nil, configErr("getsPage requires a positive page and perPage")
-	}
-	if c.limit != nil {
-		return nil, configErr("getsPage cannot be combined with limit")
-	}
-	ex, err := c.terminal()
+	ex, q, r, err := c.pageRequest(page, perPage)
 	if err != nil {
 		return nil, err
 	}
-	q := c.Clone()
-	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: perPage}
-	r := q.build("paginate")
 	res, total, err := paginate(ex, r)
 	if err != nil {
 		return nil, err
@@ -766,6 +756,33 @@ func GetsPage[T Model](c *Core, page, perPage int) (*Page[T], error) {
 		return nil, err
 	}
 	return &Page[T]{Items: items, TotalCount: total, TotalPages: pages, Page: page, PerPage: perPage}, nil
+}
+
+// pageRequest checks the arguments of a page and builds its request: the one request of GetsPage and GetPagePlanSteps.
+func (c *Core) pageRequest(page, perPage int) (executor, *Core, *request, error) {
+	c.ensureStatement()
+	if page < 1 || perPage < 1 {
+		return nil, nil, nil, configErr("getsPage requires a positive page and perPage")
+	}
+	if c.limit != nil {
+		return nil, nil, nil, configErr("getsPage cannot be combined with limit")
+	}
+	ex, err := c.terminal()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	q := c.Clone()
+	q.limit = &ir.Limit{Offset: (page - 1) * perPage, Count: perPage}
+	return ex, q, q.build("paginate"), nil
+}
+
+// GetPagePlanSteps returns the steps of the plan that GetsPage runs, in their order, without executing it.
+func (c *Core) GetPagePlanSteps(page, perPage int) ([]QueryPlanStep, error) {
+	ex, _, r, err := c.pageRequest(page, perPage)
+	if err != nil {
+		return nil, err
+	}
+	return pagePlanSteps(ex, r)
 }
 
 // GetCount returns the number of matching rows.

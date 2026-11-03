@@ -1351,8 +1351,7 @@ final class Db
     /** @internal @return array{0: array, 1: array, 2: int} */
     public function paginate(?TxFrame $frame, Request $r): array
     {
-        $this->hook($r);
-        $this->enter($frame, $r->ir);
+        $this->preparePage($frame, $r);
         if ($this->md !== null) {
             return Markdown::read($this, $r);
         }
@@ -1533,6 +1532,28 @@ final class Db
                 $st->closeCursor();
             });
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
+    }
+
+    /** What a page does to its request before its plan: the hook of the handle and the check of the frame. */
+    private function preparePage(?TxFrame $frame, Request $r): void
+    {
+        $this->hook($r);
+        $this->enter($frame, $r->ir);
+    }
+
+    /**
+     * @internal The steps of the plan of a page request, from the plan call that paginate runs.
+     * @return list<array{role: string, tables: list<string>, sql: string}>
+     */
+    public function pagePlanSteps(?TxFrame $frame, Request $r): array
+    {
+        $this->unsupportedOnMarkdown('getPagePlanSteps');
+        $this->preparePage($frame, $r);
+        return array_map(static fn(array $step): array => [
+            'role' => $step['role'],
+            'tables' => $step['tables'],
+            'sql' => $step['sql'],
+        ], $this->plan($r)['steps']);
     }
 
     /** @internal @return array{sql: string, binds: list<mixed>} */

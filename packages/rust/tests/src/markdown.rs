@@ -374,6 +374,20 @@ pub async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
         "count" => json!(Tasks::new().connect(db).owner("P1").get_count().await?),
         "group_count" => Tasks::new().connect(db).group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
         "group_count_no_rows" => Tasks::new().connect(db).owner("P9").group_by_owner().order_by_owner_asc().gets_count().await?.to_array()?,
+        "group_count_views" => {
+            let rows = People::new().connect(db).group_by_active().group_by_age().order_by_age_desc().gets_count().await?;
+            let first = match rows.iter().next() {
+                Some(row) => json!({
+                    "count": row.count(),
+                    "active": row.value("active")?.to_json()?,
+                    "age": row.value("age")?.to_json()?,
+                    "unselected": row.value("name").err().map(|error| error.code().to_owned()),
+                }),
+                None => Value::Null,
+            };
+            let counts: Vec<i64> = rows.iter().map(|row| row.count()).collect();
+            json!({ "length": rows.len(), "counts": counts, "rows": rows.to_array()?, "first": first })
+        }
         "sum" => json!(Tasks::new().connect(db).sum_points().get_sum().await?),
         "avg" => json!(People::new().connect(db).avg_age().get_avg().await?),
         "paginate" => {

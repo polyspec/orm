@@ -29,7 +29,8 @@ function generatedMethods(output) {
   const text = readFileSync(join(output, 'models.ts'), 'utf8');
   const names = new Set();
   for (const model of text.matchAll(/export class (\w+) extends Model \{\n([\s\S]*?)\n\}\n/g)) {
-    for (const member of model[2].matchAll(/^ {2}declare (\w+):/gm)) names.add(`${snake(model[1])}.${methodName(member[1])}`);
+    names.add(snake(model[1]));
+    for (const member of model[2].matchAll(/^ {2}(?:declare |public (?:async )?)(\w+)[:(]/gm)) names.add(`${snake(model[1])}.${methodName(member[1])}`);
   }
   return names;
 }
@@ -46,7 +47,9 @@ function generate(step, dir, root) {
     const model = modelOfDocuments(parseDocumentSet(documentTexts(dir, [before.schema]), []));
     generateTypeScript(model, join(root, before.output), [join(root, before.scan)]);
   }
-  const model = modelOfDocuments(parseDocumentSet(documentTexts(dir, [step.schema]), documentTexts(dir, options.used ?? [])));
+  const replace = options.schema_replace;
+  const documents = documentTexts(dir, [step.schema]).map(text => (replace === undefined ? text : text.replaceAll(replace.from, replace.to)));
+  const model = modelOfDocuments(parseDocumentSet(documents, documentTexts(dir, options.used ?? [])));
   generateTypeScript(model, join(root, 'model'), [root]);
   return generatedMethods(join(root, 'model'));
 }
@@ -63,6 +66,7 @@ export function checkGenerator(step, dir, database) {
     } catch (error) {
       if (want.error === undefined) throw error;
       assert.equal(error.code, want.error, error.message);
+      if (want.message !== undefined) assert.ok(error.message.includes(want.message), error.message);
       assert.ok(!existsSync(join(root, 'model')), 'a refused generation wrote its output');
       if (want.position !== undefined) assert.match(error.message, new RegExp(`\\.ts:${want.position.line}:`));
       return;

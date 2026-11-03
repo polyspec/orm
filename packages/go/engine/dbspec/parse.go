@@ -15,6 +15,7 @@ import (
 
 type documentNode struct {
 	name        token
+	failedUses  []string // the words of the use lines that failed: names of a failed line (DBS-153)
 	uses        []*useNode
 	tables      []*tableNode
 	diagrams    []*diagramNode
@@ -597,7 +598,15 @@ func (p *parser) topLine(c *cursor) {
 	first := c.tokens[0]
 	switch {
 	case first.is(tokenWord, "use"):
+		before := len(p.doc.uses)
 		p.useLine(c)
+		if len(p.doc.uses) == before {
+			for _, t := range c.tokens[min(2, len(c.tokens)):] {
+				if t.kind == tokenWord {
+					p.doc.failedUses = append(p.doc.failedUses, t.text)
+				}
+			}
+		}
 	case first.is(tokenWord, "table"):
 		p.openTable(c)
 	case first.is(tokenWord, "diagram"):
@@ -1202,6 +1211,18 @@ func (p *parser) diagramLine(c *cursor) {
 		return
 	}
 	if e.x, ok = c.value("the x coordinate", true); !ok {
+		return
+	}
+	if c.peekIs(tokenOperator, "-") && c.i+1 < len(c.tokens) && c.tokens[c.i+1].kind == tokenWord {
+		// A '-' before a word is a coordinate that is not an integer: the validator reports it at its '-'.
+		minus := c.tokens[c.i]
+		e.y = token{kind: tokenNumber, text: "-" + c.tokens[c.i+1].text, line: minus.line, col: minus.col}
+		c.i += 2
+		if !c.done() {
+			return
+		}
+		e.comments = p.takeComments()
+		d.entries = append(d.entries, e)
 		return
 	}
 	if e.y, ok = c.value("the y coordinate", true); !ok || !c.done() {

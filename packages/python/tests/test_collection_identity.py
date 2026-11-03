@@ -6,9 +6,7 @@ from pathlib import Path
 
 from polyspec.orm.database import _expand_parent, key_of_values, row_key
 from polyspec.orm.errors import OrmError
-from polyspec.orm.core import Core
 from polyspec.orm.model import Collection
-from polyspec.orm.model_exec import scalar_of
 
 from . import testcase
 
@@ -78,19 +76,6 @@ class CollectionIdentityTest(unittest.TestCase):
             "SELECT $1 WHERE (a, b) IN (($2, $3), ($4, $5), ($6, $7), ($8, $9)) AND active = $10",
         )
         self.assertEqual(values, [10, 11, 20, 21, 30, 31, 30, 31])
-
-    # Requirements: INT-88, INT-89.
-    def test_terminal_returns_the_first_recorded_builder_error(self):
-        core = Core(None)
-        core.set_limit(-1, 1)
-        core.set_limit(0, 0)
-        with self.assertRaises(OrmError) as caught:
-            scalar_of(core, "count")
-        self.assertEqual(caught.exception.code, "CONFIG")
-        self.assertEqual(
-            str(caught.exception),
-            "CONFIG: limit requires a non-negative offset and a positive count",
-        )
 
     # Requirements: INT-80, INT-86.
     def test_get_and_fetched_value_use_the_typed_key(self):

@@ -835,6 +835,10 @@
     "exported": true,
     "signature": "public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, Closure $send): mixed"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::pagePlanSteps": {
+    "exported": true,
+    "signature": "public function pagePlanSteps(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::paginate": {
     "exported": true,
     "signature": "public function paginate(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r): array"
@@ -3602,6 +3606,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getCount": {
     "exported": true,
     "signature": "public function getCount(): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getPagePlanSteps": {
+    "exported": true,
+    "signature": "public function getPagePlanSteps(int $page, int $perPage): array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getQuery": {
     "exported": true,

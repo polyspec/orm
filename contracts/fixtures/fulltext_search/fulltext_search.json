@@ -26,10 +26,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search",
@@ -81,10 +82,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search",
@@ -136,10 +138,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search",
@@ -191,10 +194,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search",
@@ -241,10 +245,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search_chain",
@@ -293,10 +298,11 @@
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "mysql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)"
-          },
-          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index"
+          "sql": "CREATE FULLTEXT INDEX ft_author_name_description ON author (name, description)",
+          "reason": "dbspec has no fulltext form (docs/spec/dbspec.md:500), so the MySQL FULLTEXT index is created natively; PostgreSQL and SQLite need no index",
+          "only": [
+            "mysql"
+          ]
         },
         {
           "op": "query.search_chain",

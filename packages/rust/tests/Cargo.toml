@@ -35,6 +35,11 @@ harness = false
 
 # Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
+name = "collection_none"
+path = "tests/collection_none.rs"
+harness = false
+
+[[test]]
 name = "ir_answers"
 path = "tests/ir_answers.rs"
 harness = false
@@ -348,6 +353,13 @@ name = "model_writes_sqlite"
 path = "tests/model_writes_sqlite.rs"
 harness = false
 
+# Each case of the public interface recipe, contracts/fixtures/public_interface/public_interface.json, is the trial
+# public_interface_none::<case id> (FCV-3).
+[[test]]
+name = "public_interface_none"
+path = "tests/public_interface_none.rs"
+harness = false
+
 # Each case of the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, is the trial dsn_reject_none::<case id> (FCV-3).
 [[test]]
 name = "dsn_reject_none"
@@ -409,6 +421,12 @@ harness = false
 [[test]]
 name = "generator_scan_none"
 path = "tests/generator_scan_none.rs"
+harness = false
+
+# Each case of the generator recipe, contracts/fixtures/generator/generator.json, is the trial generator_none::<case id> (FCV-3).
+[[test]]
+name = "generator_none"
+path = "tests/generator_none.rs"
 harness = false
 
 # Each case of the planner compile recipe, tests/planner/compile.json, is the trial planner_compile_none::<case id> (FCV-3).
@@ -527,4 +545,10 @@ harness = false
 [[test]]
 name = "dbspec_limits_none"
 path = "tests/dbspec_limits_none.rs"
+harness = false
+
+# Each case of The rule diagnostics and canonical forms of tests/dbspec/rules.json, tests/dbspec/rules.json, is the trial dbspec_rules_recipe_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_rules_recipe_none"
+path = "tests/dbspec_rules_recipe_none.rs"
 harness = false

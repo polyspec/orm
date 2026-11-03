@@ -2,7 +2,6 @@ package orm
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -10,61 +9,6 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-// Requirements: INT-68, INT-69, INT-70, INT-71.
-func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, tc := range []struct {
-		name   string
-		values []groupValue
-	}{
-		{"missing count", []groupValue{{name: "is_close", value: false}}},
-		{"invalid count", []groupValue{{name: "row_count", value: "three"}}},
-		{"boolean count", []groupValue{{name: "row_count", value: true}}},
-		{"negative count", []groupValue{{name: "row_count", value: int64(-1)}}},
-		{"duplicate column", []groupValue{{name: "row_count", value: int64(1)}, {name: "row_count", value: int64(2)}}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if _, err := newGroupRow(tc.values); err == nil {
-				t.Fatal("invalid grouped row accepted")
-			}
-		})
-	}
-	row, err := newGroupRow([]groupValue{{name: "is_close", value: false}, {name: "row_count", value: int64(3)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if row.Count() != 3 {
-		t.Fatalf("count = %d", row.Count())
-	}
-	if value, err := row.Value("is_close"); err != nil || value != false {
-		t.Fatalf("group value = %#v, error = %v", value, err)
-	}
-	if _, err := row.Value("name"); ErrorCode(err) != CodeColumnUnselected {
-		t.Fatalf("unselected group value error = %v", err)
-	}
-	nullRow, err := newGroupRow([]groupValue{{name: "nullable", value: nil}, {name: "row_count", value: int64(1)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if value, err := nullRow.Value("nullable"); err != nil || value != nil {
-		t.Fatalf("selected SQL NULL = %#v, error = %v", value, err)
-	}
-	if want := map[string]any{"nullable": nil, "row_count": int64(1)}; !reflect.DeepEqual(nullRow.ToArray(), want) {
-		t.Fatalf("selected SQL NULL array = %#v, want %#v", nullRow.ToArray(), want)
-	}
-	second, err := newGroupRow([]groupValue{{name: "is_close", value: true}, {name: "row_count", value: int64(2)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	rows := &GroupRows{rows: []GroupRow{row, second}}
-	if rows.Len() != 2 {
-		t.Fatalf("group rows length = %d, want 2", rows.Len())
-	}
-	if want := []map[string]any{{"is_close": false, "row_count": int64(3)}, {"is_close": true, "row_count": int64(2)}}; !reflect.DeepEqual(rows.ToArray(), want) {
-		t.Fatalf("group rows = %#v, want %#v", rows.ToArray(), want)
-	}
-}
 
 func TestGroupColumnValueChecksDeclaredType(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -137,35 +81,26 @@ func TestGroupColumnDeclarationRejectsMissingAndDuplicateCount(t *testing.T) {
 	}
 }
 
-// Requirements: INT-90.
-func TestGroupRowNegativeCountIsCodecDecode(t *testing.T) {
+// TestGroupRowDriverCellForms reads the forms of a count that only a driver cell holds: a text, a float, and a repeated column. The
+// answer of a listener holds none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the collection
+// recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.
+func TestGroupRowDriverCellForms(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	for _, count := range []any{int64(-1), "-1", float64(-1)} {
-		_, err := newGroupRow([]groupValue{{name: "row_count", value: count}})
-		if code := ErrorCode(err); code != CodeCodecDecode {
-			t.Fatalf("negative count %v: code %s, want %s", count, code, CodeCodecDecode)
-		}
-	}
-}
-
-// Requirements: PRT-69, INT-90. The row count remains an exact nonnegative integer in the grouped result.
-func TestGroupRowCountEnforcesExactness(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, count := range []any{true, float64(1.5), int64(-1), int64(9007199254740992), float64(9007199254740992), "9007199254740992"} {
+	for _, count := range []any{"three", "-1", "00", "+1", "", "9007199254740992", float64(1.5), float64(-1), float64(9007199254740992)} {
 		if _, err := newGroupRow([]groupValue{{name: "row_count", value: count}}); ErrorCode(err) != CodeCodecDecode {
 			t.Errorf("invalid row_count %#v error = %v, want %s", count, err, CodeCodecDecode)
 		}
 	}
-	if _, err := newGroupRow([]groupValue{{name: "selected", value: "x"}}); ErrorCode(err) != CodeInternal {
-		t.Fatalf("missing row_count error = %v, want %s", err, CodeInternal)
-	}
 	for _, tc := range []struct {
 		input any
 		want  int64
-	}{{int64(0), 0}, {"0", 0}, {int64(9007199254740991), 9007199254740991}, {"9007199254740991", 9007199254740991}} {
+	}{{"0", 0}, {"9007199254740991", 9007199254740991}, {float64(3), 3}, {float64(9007199254740991), 9007199254740991}} {
 		row, err := newGroupRow([]groupValue{{name: "row_count", value: tc.input}})
 		if err != nil || row.Count() != tc.want || row.ToArray()["row_count"] != tc.want {
-			t.Errorf("row_count %v assembled as %#v, %v; want %d", tc.input, row.ToArray(), err, tc.want)
+			t.Errorf("row_count %#v assembled as %#v, %v; want %d", tc.input, row.ToArray(), err, tc.want)
 		}
+	}
+	if _, err := newGroupRow([]groupValue{{name: "row_count", value: int64(1)}, {name: "row_count", value: int64(2)}}); ErrorCode(err) != CodeConfig {
+		t.Fatalf("repeated row_count error = %v, want %s", err, CodeConfig)
 	}
 }

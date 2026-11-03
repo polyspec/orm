@@ -36,6 +36,7 @@ def _generated_methods(model, root: Path) -> set:
     names = set()
     for node in ast.parse((out / "models.py").read_text(encoding="utf-8")).body:
         if isinstance(node, ast.ClassDef):
+            names.add(_snake(node.name))
             for member in node.body:
                 if isinstance(member, ast.FunctionDef):
                     names.add(f"{_snake(node.name)}.{_without_prefix(member.name)}")
@@ -69,6 +70,9 @@ def _generate(step: dict, recipe_dir: Path, root: Path) -> set:
             model, str(root / before["output"]), [str(root / before["scan"])]
         )
     documents = _document_texts(recipe_dir, [step["schema"]])
+    replace = options.get("schema_replace")
+    if replace is not None:
+        documents = [text.replace(replace["from"], replace["to"]) for text in documents]
     model = model_of_documents(
         parse_document_set(
             documents, _document_texts(recipe_dir, options.get("used", []))
@@ -92,6 +96,10 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
             if error.code != want["error"]:
                 raise AssertionError(
                     f"error code {error.code}, want {want['error']}: {error}"
+                ) from error
+            if "message" in want and want["message"] not in str(error):
+                raise AssertionError(
+                    f"error does not contain {want['message']}: {error}"
                 ) from error
             if (Path(work) / "model").exists():
                 raise AssertionError("a refused generation wrote its output") from error
