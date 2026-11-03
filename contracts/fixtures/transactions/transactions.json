@@ -2733,6 +2733,173 @@
           }
         }
       ]
+    },
+    {
+      "id": "a_rollback_fault_is_consumed_by_the_next_failed_rollback",
+      "requirements": [
+        "INT-72"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "fault.next_rollback",
+          "connection": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990020"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "committed"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990020"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT"
+            },
+            "postgres": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT"
+            },
+            "sqlite": {
+              "error": "ROLLBACK",
+              "message_holds": "test fault: the rollback of the transaction ran and is reported as failed",
+              "rollback": "FAULT"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990020"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "fail": true,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990020"
+                },
+                "account_id": {
+                  "int": "3"
+                },
+                "name": {
+                  "text": "rolled back"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CALLBACK"
+            },
+            "postgres": {
+              "error": "CALLBACK"
+            },
+            "sqlite": {
+              "error": "CALLBACK"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990020"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

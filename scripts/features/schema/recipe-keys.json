@@ -148,6 +148,10 @@
       "op",
       "table"
     ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -506,6 +510,14 @@
       "op",
       "ref"
     ],
+    "events.server_transactions": [
+      "connection",
+      "expect",
+      "first_run_prepare_clients",
+      "op",
+      "probe",
+      "steps"
+    ],
     "planner.compile": [
       "assemble_types",
       "expect",
@@ -661,6 +673,12 @@
       "as",
       "expect",
       "op",
+      "snapshot"
+    ],
+    "catalog.revision_compare": [
+      "expect",
+      "op",
+      "other",
       "snapshot"
     ],
     "catalog.row_cells": [
