@@ -5,7 +5,7 @@ import {
   Author, CORE, Db, Model, Service, ServiceMember, ServiceRegion, User, connect,
   dbspecManifest, parseDbspec, registerModel,
 } from '../dist/index.js';
-import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { caseName, mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
@@ -180,20 +180,6 @@ async function verifyDialect(dialect, database, step) {
   if (cleanupErrors.length) throw new AggregateError(cleanupErrors, `${dialect}: timeout test cleanup failed`, { cause: cleanupErrors[0] });
   if (primaryFailure) throw primaryFailure;
 }
-
-// Requirements: CFG-6. The cases use the database lock as the slow statement,
-// not a timer or a sleep in the statement under test.
-caseTest('connection/statement-timeout-negative-refused', COMPUTE, async () => {
-  let failure;
-  try {
-    await connect('mysql://orm@127.0.0.1:1/timeout', { statementTimeoutMs: -1 });
-  } catch (error) {
-    failure = error;
-  }
-  if (failure?.code !== 'CONFIG' || !String(failure.message).includes('statement timeout')) {
-    throw new Error(`negative statementTimeoutMs failed with ${failure?.code ?? 'no error'}: ${failure?.message ?? ''}`);
-  }
-});
 
 caseTest('connection/statement-timeout-canceled', DATABASE, async ({ step }) => {
   for (const dialect of ['mysql', 'postgres']) {

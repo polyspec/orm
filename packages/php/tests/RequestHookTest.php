@@ -6,6 +6,7 @@
 // path.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php
 // [--filter <case>]
+// Requirements: INT-78.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
@@ -16,7 +17,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class RequestHookTest extends TestCase
+class RequestHookTest extends TestCase
 {
     /** @return iterable<string, array{string}> */
     public static function cases(): iterable
