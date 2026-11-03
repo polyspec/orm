@@ -7,10 +7,6 @@ import { basename, join, resolve } from 'node:path';
 import { environmentFile } from './databases.mts';
 
 const SERVER_ENV = '.runtime/servers/env';
-// The declarations of the repository that holds this script (the Makefile and contracts/check-inputs.json of that checkout).
-const REPOSITORY = resolve(import.meta.dirname, '../..');
-const CHECK_INPUTS = 'contracts/check-inputs.json';
-const COMPLEX_QUERY_FIXTURES = 'contracts/fixtures/complex_query/**';
 const RUN_PARENT = '.runtime/run';
 const markerName = '.kit-parity-context.json';
 
@@ -18,53 +14,6 @@ export type ContextScope = 'parity' | 'php-ext';
 type ContextState = { schema: 1; scope: ContextScope; runId: string; attempt: string; serverStartAttempted: boolean; databaseCreateAttempted: boolean };
 export type ContextCommandResult = { status: number | null; signal: NodeJS.Signals | null };
 export type ContextCommand = (command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv) => ContextCommandResult;
-
-// complexQueryNeeded returns whether one of the targets of a context needs the complex-query fixtures (B3-3): its inputs in
-// contracts/check-inputs.json include contracts/fixtures/complex_query/**, its recipe in the Makefile reads a COMPLEX_QUERY_*_DSN,
-// or it declares the need complex-query in contracts/check-inputs.json, the declaration that owners.mts reads too.
-// A context with no target creates no complex-query databases.
-export function complexQueryNeeded(targets: readonly string[]): boolean {
-  if (targets.length === 0) return false;
-  const parsed: unknown = JSON.parse(readFileSync(join(REPOSITORY, CHECK_INPUTS), 'utf8'));
-  const declared = declaredInputs(parsed);
-  const needing = declaredNeeds(parsed, 'complex-query');
-  const lines = readFileSync(join(REPOSITORY, 'Makefile'), 'utf8').split('\n');
-  const reads = new Set<string>();
-  let owners: string[] = [];
-  for (const line of lines) {
-    if (line.startsWith('\t')) {
-      if (/COMPLEX_QUERY_[A-Z_]*_DSN/.test(line)) for (const owner of owners) reads.add(owner);
-      continue;
-    }
-    const rule = /^([^\s#:=][^:=]*?)\s*:(?![=])/.exec(line);
-    owners = rule ? (rule[1] ?? '').trim().split(/\s+/) : [];
-  }
-  return targets.some(target => needing.has(target) || (declared.get(target) ?? []).includes(COMPLEX_QUERY_FIXTURES) || reads.has(target));
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-
-// declaredInputs maps each target of contracts/check-inputs.json to its declared inputs; a target with no list has none.
-function declaredInputs(value: unknown): Map<string, string[]> {
-  const inputs = new Map<string, string[]>();
-  const targets = isRecord(value) && isRecord(value.targets) ? value.targets : {};
-  for (const [name, entry] of Object.entries(targets)) {
-    const list: unknown[] = isRecord(entry) && Array.isArray(entry.inputs) ? entry.inputs : [];
-    inputs.set(name, list.filter((item): item is string => typeof item === 'string'));
-  }
-  return inputs;
-}
-
-// declaredNeeds returns the targets of contracts/check-inputs.json whose needs list the named need.
-function declaredNeeds(value: unknown, need: string): Set<string> {
-  const names = new Set<string>();
-  const targets = isRecord(value) && isRecord(value.targets) ? value.targets : {};
-  for (const [name, entry] of Object.entries(targets)) {
-    const list: unknown[] = isRecord(entry) && Array.isArray(entry.needs) ? entry.needs : [];
-    if (list.includes(need)) names.add(name);
-  }
-  return names;
-}
 
 function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): ContextCommandResult {
   const result = spawnSync(command, args, { cwd, env, stdio: 'inherit' });
@@ -133,7 +82,7 @@ const commandFailure = (result: ContextCommandResult): string => result.status =
   : `exited with ${result.status}`;
 
 /** Prepare one workflow job's server/database resources and publish their paths to following Actions steps. */
-export function prepareContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env, command: ContextCommand = run, targets: readonly string[] = []): void {
+export function prepareContext(scope: ContextScope, root: string = resolve(process.cwd()), env: NodeJS.ProcessEnv = process.env, command: ContextCommand = run): void {
   root = resolve(root);
   const { runId, attempt, name } = identity(scope, env);
   const githubEnv = env.GITHUB_ENV;
@@ -154,8 +103,7 @@ export function prepareContext(scope: ContextScope, root: string = resolve(proce
   state.databaseCreateAttempted = true;
   writeState(directory, state);
   const testEnv = join(directory, 'env');
-  const complexQuery = complexQueryNeeded(targets) ? ['COMPLEX_QUERY=1'] : [];
-  const databaseSetup = ['--no-print-directory', 'databases-create', `SERVERS=${resolve(root, SERVER_ENV)}`, `DIRECTORY=${directory}`, `NAME=${name}`, ...complexQuery];
+  const databaseSetup = ['--no-print-directory', 'databases-create', `SERVERS=${resolve(root, SERVER_ENV)}`, `DIRECTORY=${directory}`, `NAME=${name}`];
   const databaseResult = command('make', databaseSetup, root, env);
   if (databaseResult.status !== 0 || databaseResult.signal !== null) {
     throw new Error(`${scope} database setup ${commandFailure(databaseResult)} for ${name}; inspect the setup output and rerun the Kit gate`);
@@ -224,7 +172,7 @@ if (import.meta.main) {
   const scope = process.argv[3];
   try {
     if (scope !== 'parity' && scope !== 'php-ext') throw new Error('context scope must be parity or php-ext');
-    if (action === 'prepare') prepareContext(scope, undefined, undefined, undefined, process.argv.slice(4));
+    if (action === 'prepare') prepareContext(scope);
     else if (action === 'cleanup') cleanupContext(scope);
     else throw new Error('usage: parity-context.mts prepare|cleanup parity|php-ext');
   } catch (error) {
