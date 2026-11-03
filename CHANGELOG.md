@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Python and PHP, library and extension, refuse a nonfinite PostgreSQL numeric grid cell with `CATALOG_VALUE`, as the catalog grid section of `docs/spec/interfaces.md` states; they returned `NaN` as a decimal cell. The recipe case `grid_decimal_values` holds it.
 - The group_rows_db natives and the physical check are gone; the recipe holds the values and the exact read-only statements (#T334-3-4-25)
 - The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
 - `active_frame()` of Python is a stated requirement (INT-161) with its native test, the recipe `utils` refuses `setLocal` outside a transaction, and the recipe `aes_rotation` holds the status counts of several key versions.

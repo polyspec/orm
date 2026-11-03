@@ -2187,6 +2187,11 @@ static bool cat_grid_pdo_cell(zval *v, const char *dialect, const char *native, 
     } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "NUMERIC") == 0) {
         ZVAL_STRING(&kind, "decimal");
         ok = cat_grid_text(v, &value);
+        /* PostgreSQL writes NaN and the infinities of numeric as text. */
+        if (ok && (strcmp(Z_STRVAL(value), "NaN") == 0 || strstr(Z_STRVAL(value), "Infinity") != NULL)) {
+            cat_refuse("PostgreSQL numeric is not finite");
+            ok = false;
+        }
     } else if (strcmp(dialect, "postgres") == 0 && (strcmp(native, "TIMESTAMPTZ") == 0 || strcmp(native, "TIMETZ") == 0)) {
         cat_refuse("PostgreSQL timestamptz and timetz are unsupported");
         ok = false;
