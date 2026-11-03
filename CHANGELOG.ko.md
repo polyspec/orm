@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0439dd40c1a67936e35104141de991c1b03c143105b28f623ccac3fa51cbfd4d -->
+<!-- source-sha256: ff258a023d4d898a3a2188b4ce90c748fdb4e70ff6fc309953c7f1e2aca0867b -->
 # 변경 이력
 
 ## Unreleased
 
+- 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)
 - feature checker는 Go owner를 일반 go test의 tag로 build하므로, 일반 실행이 담는 시험을 정확한 이름으로 읽는다 (#T334-3-6-2)
 - 함수와 subquery가 같은 output 이름을 쓰면 COLUMN_ALIAS_CONFLICT로 답한다는 것을 모든 runtime의 compile case `planner_function_and_subquery_share_an_output_name`이 시험한다. scalar aggregate 타입의 사본과 확장의 native planner 시험은 사라졌고, 확장의 planner target은 compile recipe를 실행한다 (#T334-3-6-2)
