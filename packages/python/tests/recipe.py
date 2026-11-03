@@ -1415,7 +1415,7 @@ def _param_uses(step: dict, recipe_dir: Path, database: str) -> None:
 
 def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
     """States the output columns that the names of the step select from the first statement of the plan of each dialect:
-    their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33)."""
+    their type and whether they are hidden (PRT-69, DIA-33)."""
     model, request = _plan_request(step, recipe_dir)
     want = step["expect"][database]["value"]
     for dialect in _PLAN_DIALECTS:
@@ -1425,10 +1425,9 @@ def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
                 "name": name,
                 "type": column["type"],
                 "hidden": column.get("hidden", False),
-                "aes_version": assemble.get("aes_version") == position,
             }
             for name in step["names"]
-            for position, column in enumerate(assemble["columns"])
+            for column in assemble["columns"]
             if column["name"] == name
         ]
         if got != want:

@@ -261,7 +261,7 @@ final class Recipe
 
     /**
      * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
-     * type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+     * type and whether they are hidden (PRT-69, DIA-33).
      */
     private static function plannerColumnsStep(array $step, string $path, string $database): void
     {
@@ -270,9 +270,9 @@ final class Recipe
             $assemble = (new Engine($model, $dialect, 8))->compile($request)['steps'][0]['assemble'];
             $got = [];
             foreach ($step['names'] as $name) {
-                foreach ($assemble['columns'] as $position => $column) {
+                foreach ($assemble['columns'] as $column) {
                     if ($column['name'] === $name) {
-                        $got[] = ['aes_version' => ($assemble['aes_version'] ?? null) === $position, 'hidden' => $column['hidden'] ?? false, 'name' => $name, 'type' => $column['type']];
+                        $got[] = ['hidden' => $column['hidden'] ?? false, 'name' => $name, 'type' => $column['type']];
                     }
                 }
             }

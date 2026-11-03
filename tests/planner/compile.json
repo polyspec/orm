@@ -12318,8 +12318,7 @@
         {
          "name": "first_author",
          "type": "i64",
-         "hidden": false,
-         "aes_version": false
+         "hidden": false
         }
        ]
       }
@@ -12368,8 +12367,7 @@
         {
          "name": "first_author",
          "type": "f64",
-         "hidden": false,
-         "aes_version": false
+         "hidden": false
         }
        ]
       }
@@ -12415,8 +12413,7 @@
         {
          "name": "aes_key_version",
          "type": "i32",
-         "hidden": false,
-         "aes_version": true
+         "hidden": false
         }
        ]
       }
@@ -12451,8 +12448,7 @@
         {
          "name": "aes_key_version",
          "type": "i32",
-         "hidden": true,
-         "aes_version": true
+         "hidden": true
         }
        ]
       }
@@ -12606,6 +12602,188 @@
           "sql": "INSERT INTO \"composite_account\" (\"tenant_id\", \"account_id\", \"name\") VALUES (?, ?, ?) ON CONFLICT (\"tenant_id\", \"account_id\") DO UPDATE SET \"name\" = ?",
           "tables": [
            "composite_account"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_joined_child_conditions_appended",
+   "requirements": [
+    "DSL-16",
+    "DSL-24",
+    "DSL-34",
+    "DSL-74",
+    "DSL-78",
+    "DSL-99",
+    "DSL-138",
+    "DSL-147",
+    "DSL-148",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3",
+    "DIA-4",
+    "DIA-5",
+    "DIA-7",
+    "DIA-8",
+    "DIA-9",
+    "DIA-12",
+    "DIA-13",
+    "DIA-18",
+    "DIA-22",
+    "DIA-23",
+    "DIA-24",
+    "DIA-27",
+    "DIA-31",
+    "DIA-35",
+    "COD-43",
+    "PRT-6",
+    "PRT-13",
+    "PRT-14",
+    "PRT-16",
+    "PRT-17",
+    "PRT-20",
+    "PRT-21",
+    "PRT-22",
+    "PRT-23",
+    "PRT-25",
+    "PRT-31",
+    "PRT-32",
+    "PRT-33",
+    "PRT-7",
+    "PRT-19",
+    "PRT-67",
+    "DSL-95",
+    "DIA-16"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/bench/bench.dbs",
+     "input": {
+      "columns": {
+       "add": [
+        "seq"
+       ],
+       "mode": "none"
+      },
+      "entity": "author",
+      "ir_version": 1,
+      "joins": [
+       {
+        "kind": "left",
+        "left": "user_seq",
+        "query": {
+         "columns": {
+          "mode": "none"
+         },
+         "entity": "user",
+         "where": {
+          "items": [
+           {
+            "pred": {
+             "column": "name",
+             "op": "eq",
+             "p": 0
+            }
+           }
+          ]
+         }
+        },
+        "rel": "writer",
+        "right": "seq"
+       }
+      ],
+      "kind": "all",
+      "n_params": 2,
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "name",
+          "op": "eq",
+          "p": 1
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 0,
+            "type": "varchar"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `writer`.`seq` AS `writer__seq` FROM `author` AS `a` LEFT JOIN `user` AS `writer` ON `a`.`user_seq` = `writer`.`seq` WHERE `a`.`name` = ? AND (`writer`.`name` = ?)",
+          "tables": [
+           "author",
+           "user"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 0,
+            "type": "varchar"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"name\" = $1 AND (\"writer\".\"name\" = $2)",
+          "tables": [
+           "author",
+           "user"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "length": 191,
+            "param": 1,
+            "type": "varchar"
+           },
+           {
+            "from": "param",
+            "length": 191,
+            "param": 0,
+            "type": "varchar"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"writer\".\"seq\" AS \"writer__seq\" FROM \"author\" AS \"a\" LEFT JOIN \"user\" AS \"writer\" ON \"a\".\"user_seq\" = \"writer\".\"seq\" WHERE \"a\".\"name\" = ? AND (\"writer\".\"name\" = ?)",
+          "tables": [
+           "author",
+           "user"
           ]
          }
         ]

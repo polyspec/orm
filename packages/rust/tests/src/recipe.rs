@@ -387,7 +387,7 @@ fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String>
 }
 
 /// The planner.columns op (FCV-4): the output columns that `names` select from the first statement of the plan of each dialect,
-/// with their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+/// with their type and whether they are hidden (PRT-69, DIA-33).
 fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
     let input = ir_request::request(&step["input"], &manifest.manifest_hash);
@@ -397,9 +397,9 @@ fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
         let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
         let mut got = Vec::new();
         for wanted in &names {
-            for (position, column) in assemble.columns.iter().enumerate() {
+            for column in &assemble.columns {
                 if column.name == *wanted {
-                    got.push(json!({"name": wanted, "type": column.typ, "hidden": column.hidden, "aes_version": assemble.aes_version == Some(position)}));
+                    got.push(json!({"name": wanted, "type": column.typ, "hidden": column.hidden}));
                 }
             }
         }

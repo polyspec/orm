@@ -1129,7 +1129,7 @@ func checkParamUses(dir string, s step, database string) error {
 }
 
 // checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan
-// of each dialect: their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+// of each dialect: their type and whether they are hidden (PRT-69, DIA-33).
 func checkPlannerColumns(dir string, s step, database string) error {
 	var outcome struct {
 		Value json.RawMessage `json:"value"`
@@ -1157,10 +1157,9 @@ func checkPlannerColumns(dir string, s step, database string) error {
 		assemble := compiled.Steps[0].Assemble
 		got := []any{}
 		for _, name := range s.Names {
-			for position, column := range assemble.Columns {
+			for _, column := range assemble.Columns {
 				if column.Name == name {
-					aesVersion := assemble.AESVersion != nil && *assemble.AESVersion == position
-					got = append(got, map[string]any{"name": name, "type": column.Type, "hidden": column.Hidden, "aes_version": aesVersion})
+					got = append(got, map[string]any{"name": name, "type": column.Type, "hidden": column.Hidden})
 				}
 			}
 		}

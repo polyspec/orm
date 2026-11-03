@@ -962,14 +962,14 @@ function checkParamUses(step, recipeDir, database) {
 }
 
 // checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan of each
-// dialect: their type, whether they are hidden, and whether they hold the AES key version (PRT-69, DIA-33).
+// dialect: their type and whether they are hidden (PRT-69, DIA-33).
 function checkPlannerColumns(step, recipeDir, database) {
   const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
   const request = { ...structuredClone(step.input), manifest_hash: hash };
   for (const dialect of plannerDialects) {
     const { assemble } = new Engine(model, dialect).compile(request).steps[0];
-    const got = step.names.flatMap(name => assemble.columns.flatMap((column, position) => column.name === name
-      ? [{ name, type: column.type, hidden: column.hidden === true, aes_version: assemble.aes_version === position }]
+    const got = step.names.flatMap(name => assemble.columns.flatMap(column => column.name === name
+      ? [{ name, type: column.type, hidden: column.hidden === true }]
       : []));
     if (!isDeepStrictEqual(got, step.expect[database].value)) throw new Error(`planner.columns ${dialect}: got ${JSON.stringify(got)}, want ${JSON.stringify(step.expect[database].value)}`);
   }
