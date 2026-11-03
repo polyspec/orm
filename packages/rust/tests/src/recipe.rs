@@ -121,6 +121,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
         None | Some("case") => Ok(case_dsn.to_owned()),
+        Some(dsn) if dsn.starts_with("case?") => {
+            let separator = if case_dsn.contains('?') { '&' } else { '?' };
+            Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));

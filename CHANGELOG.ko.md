@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 51531d6eabcf136de603a00461f1d98a53866e7f2c91dad6bab37505fe3b89cb -->
+<!-- source-sha256: b39ea483c58679cf97fc7935c2f90597ff6a2120977749e001091396b8f7e103 -->
 # 변경 이력
 
 ## Unreleased
@@ -41,7 +41,6 @@
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
-- Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
 - 함수와 subquery가 같은 output 이름을 쓰면 COLUMN_ALIAS_CONFLICT로 답한다는 것을 모든 runtime의 compile case `planner_function_and_subquery_share_an_output_name`이 시험한다. scalar aggregate 타입의 사본과 확장의 native planner 시험은 사라졌고, 확장의 planner target은 compile recipe를 실행한다 (#T334-3-6-2)
 - PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - `make perf-check`는 PERF-1의 Go 측정을 MySQL, PostgreSQL, SQLite에서 실행하고, `client-db-check`의 Go lane은 클라이언트 결과를 검증하지 않는 그 시험을 건너뛴다.
@@ -58,6 +57,11 @@
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - AES envelope와 blind index case, param_uses case는 여섯 런타임 모두에서 recipe로 실행한다. suite authenticated-encryption과 planner-params, 그 fixture를 삭제했고, authenticated_encryption과 planner의 owner는 tests/codec/codec.json과 tests/planner/compile.json을 가리킨다. 자기 case database를 쓰는 native test는 bench DSN 대신 `case_database`를 적는다.
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
+- Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
+- markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
+- 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
+- PHP, TypeScript, Go의 runtime model native를 값별로 비교해 없앴다. recipe에 외부 문서가 있는 bench set, 주석과 diagram이 없는 manifest text, select explicit 표시, i16 조건, 삽입 행별 clock, 할당된 `default now` 컬럼, rule로 거부되는 반복 문서와 빈 text를 더했다. PRT-81에 PRT-33의 `default now` 예외를 적었다.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
@@ -335,6 +339,8 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.
+- Go `DriverFromDSN`은 별도 요구사항(CFG-40)이 되고, Go와 Rust의 generated model 연결은 그 연결을 하는 recipe 밖에 시험을 더 두지 않는다.
 - 공백이 든 `ip` column의 조건 값은 Go와 TypeScript처럼 PHP, PHP extension, Python, Rust에서도 조건을 만들 때 `CODEC_ENCODE`로 실패한다(COD-38). `INET6_ATON`으로 SQL에서 인코딩하는 MySQL에서는 NULL로 읽혀 어떤 행과도 맞지 않았고, SQLite와 PostgreSQL의 Python은 `OrmError`가 아닌 `CodecError`를 올렸다.
 - `model-ip-input-rejects-whitespace`, `model-codec-columns`, `coverage-model-create-parts`의 native 시험을 없앤다. recipe `model_writes_chain`이 그 값을 담으며, 거부되는 count, SQL NULL 쓰기, `IS NULL` 조건을 더했다.
 - 값 타입, styled SQL NULL 읽기, decimal 왕복의 native 시험은 typed getter가 돌려주는 값만 남긴다. 저장된 값, 거부, 조건, row 출력은 `conformance_verification`의 case `core_value_types`, `core_styled_null`, `core_styled_states`, `core_decimal_values`로, `i16`에 넣는 소수는 bind vector `i16-fraction`으로 옮긴다.
