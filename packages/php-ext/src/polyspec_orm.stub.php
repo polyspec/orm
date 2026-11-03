@@ -1968,7 +1968,9 @@ final class Registry
     private static array $externals = [];
     private static array $models = [];
     private static array $runtime = [];
+    private static array $parsed = [];
     public static function generated(string $hash, string $text, string $external = ''): void {}
+    public static function parsed(string $hash, int $format, array $entities): void {}
     public static function schema(Schema $schema): void {}
     public static function register(string $class): void {}
     public static function loaded(string $hash): bool {}
@@ -2037,7 +2039,7 @@ final class RuntimeModel
     /** @param array $documents */
     public static function build(array $documents): RuntimeModel {}
     /** @param array $classes */
-    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): RuntimeModel {}
+    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = '', ?array $parsed = null): RuntimeModel {}
     public function entity(string $name): ?array {}
     public static function column(array $entity, string $name): ?array {}
     public static function styled(array $column): bool {}

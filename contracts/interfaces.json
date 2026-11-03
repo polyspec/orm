@@ -40,7 +40,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:c26262b440668387ae2359608fcc79eec761d27a539f55b3fae812231e84b618",
-    "php": "sha256:820cad74dba5070a4611b01172ce0df1f4cbce8d03f541031573373e69e8b10a",
+    "php": "sha256:c8e1029d17127d1e2b62fa161e88870536edd317046acf778d671188b28a47cf",
     "rust": "sha256:f15c729406d9722963382a92599c3862b66603f26ba44796d7e96411ef74f27c",
     "typescript": "sha256:beaf26c1425542e8149b0d667a7d297265dc37e8adff964db34352c12cb4656b",
     "python": "sha256:9aeacb3d89d25278389ef336498978481a40d5611932fbc5032d3cc719545c7e"
@@ -152,7 +152,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:34e6bcf9e8c7d80cd9189f030f6e9489e17f97971d6a65e29649c2d0612a383f",
+      "symbol_hash": "sha256:a9e6ddebcf99c455d9b6b4bcd9d406d97e000c52c30275e564f176634ab9e7fb",
       "rules": [
         "Model.connect",
         "Model.and",

@@ -1,0 +1,180 @@
+<?php
+
+// The parsed runtime model of generated PHP code: a new process that reads the generated bootstrap does not parse the
+// manifest, and it parses when the data is not the data of the manifest it reads.
+// Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist \
+//   packages/php/tests/OrmGenParsedModelTest.php
+declare(strict_types=1);
+
+namespace Polyspec\Orm\Tests;
+
+use PHPUnit\Framework\Attributes\Small;
+use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\RuntimeModel;
+
+// Requirements: DBS-177.
+// Each case changes the generated files, then reads the generated bootstrap in a new process. The manifest text of a
+// case that must not parse is no dbspec document, so a parse of it fails with SCHEMA_INVALID on either PHP runtime.
+#[Small]
+class OrmGenParsedModelTest extends TestCase
+{
+    private const NAMESPACE = 'Polyspec\\Orm\\Tests\\ParsedModel';
+    private const UNPARSABLE = 'not a dbspec document';
+    /** The sha256 of the JSON of the entities of the bench set, in RuntimeModel::FORMAT 1. */
+    private const FORMAT_FINGERPRINT = '750c57b875ca2628f3876b6b4480c1b9e1ab29053533554c9b5802e5b46709ec';
+    /** Reads the runtime model of the set in the directory of the first argument and prints the result as JSON. */
+    private const READER = <<<'READER'
+    <?php
+    declare(strict_types=1);
+    require $argv[1];
+    require $argv[2] . '/Item.php';
+    require $argv[2] . '/bootstrap.php';
+    try {
+        $model = Polyspec\Orm\Registry::model(constant($argv[3] . '\MANIFEST_HASH'));
+        echo json_encode([
+            'entities' => array_keys($model->entities),
+            'same' => $model->entities === constant($argv[3] . '\PARSED_ENTITIES'),
+            'parser' => class_exists(Polyspec\Orm\Dbspec\Parser::class, false),
+        ]);
+    } catch (Polyspec\Orm\OrmException $e) {
+        echo json_encode(['code' => $e->code_, 'message' => $e->getMessage()]);
+    }
+    READER;
+
+    private static string $work;
+
+    public static function setUpBeforeClass(): void
+    {
+        self::$work = OrmGenTestSupport::createWorkDirectory('orm-php-parsed-model-');
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        OrmGenTestSupport::removeWorkDirectory(self::$work);
+    }
+
+    /** Generates the models of a set of one document into a new directory and returns the directory of the models. */
+    private static function generate(string $name): string
+    {
+        $dir = self::$work . "/$name";
+        mkdir("$dir/model", 0o700, true);
+        file_put_contents(
+            "$dir/parsed.dbs",
+            "dbspec 1 parsed\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n"
+        );
+        [$code, $out, $err] = OrmGenTestSupport::run([
+            'gen', '--set', OrmGenTestSupport::setFile($dir, ['parsed.dbs']),
+            '--out', "$dir/model", '--namespace', self::NAMESPACE,
+        ]);
+        self::assertSame(0, $code, "$out $err");
+        return "$dir/model";
+    }
+
+    /** Reads the generated models of $model in a new process and returns what the reader printed. */
+    private static function read(string $model): array
+    {
+        $reader = dirname($model) . '/reader.php';
+        file_put_contents($reader, self::READER);
+        $root = dirname(__DIR__, 3);
+        $result = OrmGenTestSupport::runProcess(
+            [PHP_BINARY, $reader, "$root/vendor-php/autoload.php", $model, self::NAMESPACE],
+            $root
+        ) ?? throw new \RuntimeException('cannot start the reader');
+        [$code, $out, $err] = $result;
+        self::assertSame(0, $code, "$out $err");
+        return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Makes the manifest of the generated files text that does not parse, under its own hash, and writes the hash of
+     * the parsed data as $parsedHash, by default the same new hash.
+     */
+    private static function replaceManifest(string $model, ?string $parsedHash = null): void
+    {
+        $declarations = "$model/schema_declarations.php";
+        $source = (string) file_get_contents($declarations);
+        self::assertSame(1, preg_match("/const MANIFEST_HASH = '([^']+)';/", $source, $found));
+        $old = $found[1];
+        $new = 'sha256:' . hash('sha256', self::UNPARSABLE);
+        $source = (string) preg_replace(
+            "/const MANIFEST_TEXT = .*?;\n/s",
+            "const MANIFEST_TEXT = '" . self::UNPARSABLE . "';\n",
+            $source,
+            1
+        );
+        file_put_contents($declarations, $source);
+        foreach ((array) glob("$model/*.php") as $file) {
+            file_put_contents($file, str_replace($old, $new, (string) file_get_contents($file)));
+        }
+        if ($parsedHash !== null) {
+            file_put_contents($declarations, (string) preg_replace(
+                "/const PARSED_HASH = '[^']+';/",
+                "const PARSED_HASH = '$parsedHash';",
+                (string) file_get_contents($declarations)
+            ));
+        }
+    }
+
+    public function testAGeneratedSetIsReadWithoutParsingItsManifest(): void
+    {
+        $model = self::generate('valid');
+        $result = self::read($model);
+        self::assertSame(['item'], $result['entities'] ?? null, json_encode($result));
+        self::assertTrue($result['same']);
+        if (getenv('ORM_PHP_MODE') !== 'extension') {
+            self::assertFalse($result['parser'], 'the process loaded the dbspec parser');
+        }
+    }
+
+    public function testAManifestThatDoesNotParseIsNotParsedThroughItsOwnData(): void
+    {
+        $model = self::generate('unparsable');
+        self::replaceManifest($model);
+        self::assertSame(['item'], self::read($model)['entities'] ?? null);
+    }
+
+    public function testDataOfAnotherManifestMakesTheProcessParse(): void
+    {
+        $model = self::generate('changed');
+        self::replaceManifest($model, 'sha256:' . str_repeat('0', 64));
+        self::assertSame(Code::SCHEMA_INVALID, self::read($model)['code'] ?? null);
+    }
+
+    public function testDataOfAnotherFormatMakesTheProcessParse(): void
+    {
+        $model = self::generate('format');
+        self::replaceManifest($model);
+        $declarations = "$model/schema_declarations.php";
+        file_put_contents($declarations, str_replace(
+            'const PARSED_FORMAT = ' . RuntimeModel::FORMAT . ';',
+            'const PARSED_FORMAT = ' . (RuntimeModel::FORMAT + 1) . ';',
+            (string) file_get_contents($declarations)
+        ));
+        self::assertSame(Code::SCHEMA_INVALID, self::read($model)['code'] ?? null);
+    }
+
+    public function testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest(): void
+    {
+        $model = self::generate('differs');
+        $class = "$model/Item.php";
+        $source = (string) file_get_contents($class);
+        $changed = str_replace("'length' => 32", "'length' => 33", $source);
+        self::assertNotSame($source, $changed);
+        file_put_contents($class, $changed);
+        $result = self::read($model);
+        self::assertSame(Code::CONFIG, $result['code'] ?? null);
+        self::assertStringContainsString('columns.name.length', $result['message']);
+    }
+
+    public function testTheFormatNamesWhatBuildMakes(): void
+    {
+        $set = dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json';
+        self::assertSame(1, RuntimeModel::FORMAT);
+        self::assertSame(
+            self::FORMAT_FINGERPRINT,
+            hash('sha256', json_encode(RuntimeModel::build(RuntimeModel::set($set))->entities, JSON_THROW_ON_ERROR)),
+            'what RuntimeModel::build makes changed: raise RuntimeModel::FORMAT and record this fingerprint under it'
+        );
+    }
+}

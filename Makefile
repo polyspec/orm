@@ -1668,7 +1668,7 @@ php-go-text-check: php-vendor-check
 php-gen-unit-check: php-vendor-check lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenCliTest.php packages/php/tests/OrmGenScanTest.php packages/php/tests/OrmGenScanParityTest.php packages/php/tests/OrmGenPackageTest.php packages/php/tests/OrmGenParsedModelTest.php
 
 # generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
 .PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-field-types/generated-field-types generator-consumer-check/rust-field-types/fixed-method-list generator-consumer-check/rust-emission generator-consumer-check/rust-chain-scan generator-consumer-check/rust-chain-scan/generates-called-methods generator-consumer-check/rust-chain-scan/stored-column-name generator-consumer-check/rust-integration

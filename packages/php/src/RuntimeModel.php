@@ -28,6 +28,11 @@ final class RuntimeModel
     public const STYLED_STAGES = ['ordered_json', 'serialize', 'yaml', 'gz', 'base64'];
     /** The codec stage that a dialect or executor applies around a bind value. */
     public const HOST_STAGES = ['aes', 'hex', 'ip'];
+    /**
+     * The format of the entities that build makes. Generated code holds them with this number, and data of another
+     * number is not used. A change of what build makes raises it (OrmGenParsedModelTest holds the fingerprint).
+     */
+    public const FORMAT = 1;
 
     /**
      * @param array<string, array> $entities entity name => entity
@@ -258,9 +263,10 @@ final class RuntimeModel
         string $manifestHash,
         string $manifestText,
         array $classes,
-        string $externalText = ''
+        string $externalText = '',
+        ?array $parsed = null
     ): self {
-        $manifest = self::build(self::loadSet($manifestText, $externalText))->entities;
+        $manifest = $parsed ?? self::build(self::loadSet($manifestText, $externalText))->entities;
         $entities = [];
         foreach ($classes as $class) {
             $meta = $class::meta();
