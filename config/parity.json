@@ -6800,7 +6800,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testJoinsAndRelations"
+          "id": "ModelTest::testLoadedRowShortConnectionCall"
         }
       ],
       "owner": {

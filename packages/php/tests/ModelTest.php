@@ -953,6 +953,22 @@ class ModelTest extends TestCase
         }
     }
 
+    // The call form of connect on a loaded row and the JSON of a row with its relation are PHP's own (FCV-2).
+    // Requirements: DSL-8.
+    #[DataProvider('drivers')]
+    public function testLoadedRowShortConnectionCall(string $driver): void
+    {
+        $dsn = self::caseDsn($driver);
+        $db = self::database($driver, $dsn);
+        self::seed($db);
+        $b = (new Author())($db)
+            ->relation((new User())->matchUserSeqWithSeq()->aliasWriter())
+            ->orderBySeqAsc()->gets()->first();
+        self::check($b($db) === $b, 'loaded row short connection call');
+        $json = json_decode((string) json_encode($b), true);
+        self::check(($json['writer']['name'] ?? null) === 'kim', 'json');
+    }
+
     #[DataProvider('drivers')]
     // Requirements: CFG-4, CFG-5.
     // This no-pool assertion covers INT-92's applicability: the PHP client has
