@@ -4,13 +4,14 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
-import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
+import { parseFeatures, type ManifestFeature } from './manifest.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
 import { readCheckInputs } from '../check/inputs.mts';
 import { readManifest as readInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
-const manifest = readFeatures(root);
+// The manifest as written: readFeatures adds the cases of the recipe owners, which the schema refuses in the file.
+const manifest = parseFeatures(readFileSync(new URL('../../contracts/features.json', import.meta.url), 'utf8'), 'contracts/features.json');
 const first = manifest.features[0];
 assert.ok(first, 'contracts/features.json declares a feature');
 
@@ -56,6 +57,15 @@ function unresolvedCfg9Contract() {
 caseTest('the schema of contracts/features.json accepts the repository manifest', COMPUTE, () => {
   assert.deepEqual(refused(manifest), []);
   assert.deepEqual(refused(withFeature(feature => ({ ...feature, status: 'planned', verification: [] }))), []);
+});
+
+caseTest('the schema refuses a list of cases on a recipe owner and requires one on a native owner', COMPUTE, () => {
+  const owner = (command: Record<string, unknown>) => withFeature(feature => ({ ...feature, coverage: {
+    kind: 'independent', dependents: [], owners: { go: { part: 'p', tests: ['t'], commands: { none: [{ runner: 'go', test: 't', ...command }] } } },
+  } }));
+  assert.deepEqual(refused(owner({ recipe: 'r' })).filter(path => path.includes('/commands/')), []);
+  assert.ok(refused(owner({ recipe: 'r', cases: ['a'] })).some(path => path.endsWith('/commands/none/0/cases')));
+  assert.ok(refused(owner({})).some(path => path.endsWith('/commands/none/0')));
 });
 
 caseTest('coverage execution modes are explicit and reject unknown values', COMPUTE, () => {
