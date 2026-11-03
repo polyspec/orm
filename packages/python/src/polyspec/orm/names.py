@@ -43,7 +43,7 @@ OPS_BY_TYPE = {
     "date": COMPARABLE,
     "time": COMPARABLE,
     "datetime": COMPARABLE,
-    "uuid": COMPARABLE,
+    "uuid": EQUALITY,
     "varchar": (
         "eq",
         "not_eq",

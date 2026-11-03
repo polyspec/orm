@@ -136,7 +136,7 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
       for (const [database, list] of commands) {
         for (const command of list ?? []) {
           if (!command.recipe) continue;
-          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), database);
+          const ids = recipeCaseIds(readFileSync(resolve(root, command.recipe), 'utf8'), command.database ?? database);
           ids.forEach(id => whole.add(id));
           if (JSON.stringify([...command.cases].sort()) !== JSON.stringify([...ids].sort()))
             differences.push(`${feature.id}/${language}/${database}: ${command.cases.length} declared, ${ids.length} in ${command.recipe}`);
