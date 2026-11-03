@@ -5748,9 +5748,10 @@
         },
         {
           "id": "param-uses-typescript",
-          "command": "node packages/ts/tests/param-uses.mjs",
+          "command": "node packages/ts/tests/coverage_planner.mjs",
           "shard": "other",
           "inputs": [
+            "packages/ts/tests/coverage_planner.mjs",
             "packages/ts/src/engine/params.ts"
           ]
         },
@@ -12242,7 +12243,6 @@
       ],
       "tests": [
         "packages/go/orm/request_hook_test.go",
-        "packages/go/orm/coverage_request_hook_test.go",
         "packages/ts/tests/request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",

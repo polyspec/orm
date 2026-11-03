@@ -140,7 +140,7 @@ async function main(args: string[]): Promise<void> {
   const flag = (name: string): string => {
     const index = rest.indexOf(name);
     const value = index < 0 ? undefined : rest[index + 1];
-    if (value === undefined) throw new Error(`${name} is required`);
+    if (value === undefined) throw new Error(`${name} is required; run make conformance-generated-methods-check or make conformance-fixed-clock-check, which pass it`);
     return value;
   };
   const language = flag('--language');

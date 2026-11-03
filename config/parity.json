@@ -213,10 +213,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/request_hook_test.go",
-          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/orm/split_plan_test.go",
           "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
@@ -1039,7 +1035,6 @@
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
-        "packages/rust/tests/tests/common/coverage_database.rs",
         "packages/rust/build/src/test_support.rs",
         "packages/rust/build/tests/common/grid_open.rs",
         "packages/rust/build/tests/common/physical_dialects.rs",
@@ -5637,19 +5632,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookWithoutHook",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookWithoutHook",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/without_hook"
         },
         {
           "implementation": "php",
@@ -5672,11 +5656,6 @@
           "id": "without_hook"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_without_hook"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::without_hook"
@@ -5693,19 +5672,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookReadFilter",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookReadFilter",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/read_filter"
         },
         {
           "implementation": "php",
@@ -5743,19 +5711,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookInvalidParam",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookInvalidParam",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/invalid_param"
         },
         {
           "implementation": "php",
@@ -5793,19 +5750,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreNoKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreNoKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_no_key"
         },
         {
           "implementation": "php",
@@ -5843,19 +5789,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreRewrittenKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreRewrittenKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_rewritten_key"
         },
         {
           "implementation": "php",
@@ -5893,19 +5828,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreHookSetKey",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreHookSetKey",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_hook_set_key"
         },
         {
           "implementation": "php",
@@ -5943,19 +5867,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRestoreRewrittenKeySetScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRestoreRewrittenKeySetScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/restore_rewritten_key_set_scope"
         },
         {
           "implementation": "php",
@@ -5993,19 +5906,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookRelationScope",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRequestHookRelationScope",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/relation_scope"
         },
         {
           "implementation": "php",
@@ -6217,8 +6119,96 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_request_hook_test.go",
-          "id": "TestCoverageRequestHookReadsParams"
+          "test": "packages/go/orm/recipe_request_hook_test.go",
+          "id": "TestRecipeRequestHookSqlite/reads_params"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"reads_params\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"reads_params\""
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::reads_params"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook-sqlite.test.mjs",
+          "id": "reads_params"
+        }
+      ]
+    },
+    {
+      "id": "request-hook-root-is-the-connection",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/request_hook_test.go",
+          "id": "TestRequestHook/without_hook"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook.mjs",
+          "id": "request-hook/without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
+          "id": "test_without_hook"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
+          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
+          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
+          "id": "request_hook_sqlite::without_hook"
+        }
+      ]
+    },
+    {
+      "id": "request-hook-params-are-read-only",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/request_hook_test.go",
+          "id": "TestRequestHook/reads_params"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/request_hook.mjs",
+          "id": "request-hook/reads_params"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "php",
@@ -6231,24 +6221,9 @@
           "id": "RequestHookTestExtensionTest::testRequestHook with data set \"reads_params\""
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook_sqlite.py",
-          "id": "reads_params"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_params_are_read_only"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
           "id": "request_hook_sqlite::reads_params"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/reads_params"
         }
       ]
     },
@@ -9524,13 +9499,31 @@
         "DSL-109",
         "INT-38",
         "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67",
         "DSL-115",
         "DSL-155",
         "CPX-5",
         "DSL-128",
         "CPX-4",
         "PRT-2",
-        "PRT-34"
+        "PRT-34",
+        "PRT-33",
+        "PRT-25",
+        "DSL-111",
+        "PRT-8",
+        "DSL-108",
+        "DSL-114",
+        "PRT-20",
+        "PRT-22",
+        "INT-60",
+        "INT-75",
+        "DSL-87"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9663,13 +9656,31 @@
         "DSL-109",
         "INT-38",
         "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67",
         "DSL-115",
         "DSL-155",
         "CPX-5",
         "DSL-128",
         "CPX-4",
         "PRT-2",
-        "PRT-34"
+        "PRT-34",
+        "PRT-33",
+        "PRT-25",
+        "DSL-111",
+        "PRT-8",
+        "DSL-108",
+        "DSL-114",
+        "PRT-20",
+        "PRT-22",
+        "INT-60",
+        "INT-75",
+        "DSL-87"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9802,13 +9813,31 @@
         "DSL-109",
         "INT-38",
         "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67",
         "DSL-115",
         "DSL-155",
         "CPX-5",
         "DSL-128",
         "CPX-4",
         "PRT-2",
-        "PRT-34"
+        "PRT-34",
+        "PRT-33",
+        "PRT-25",
+        "DSL-111",
+        "PRT-8",
+        "DSL-108",
+        "DSL-114",
+        "PRT-20",
+        "PRT-22",
+        "INT-60",
+        "INT-75",
+        "DSL-87"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -29221,8 +29250,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-          "id": "coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
+          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+          "id": "complex_query_sqlite::page_plan_steps"
         }
       ]
     },
