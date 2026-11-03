@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
 - The Rust test `coverage_conformance_verification`, which read the vector files, is gone; the bindings of its units name the recipe test `conformance_verification` of each database. The binary `conformance` stays: the `generated` and `fixed-clock` checks run it.
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.

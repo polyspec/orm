@@ -1724,14 +1724,13 @@ PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateEx
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 
 # The memory check of T334-3-4-7 runs the group of PHP_EXT_MEMORY_CASES in one php-ext process, so its memory accumulates as the 128M
-# memory_limit of the gate. The gate classes assert that ORM_FEATURE_DATABASE is their own driver (PerformanceGateCoverageCase), so one
-# process cannot run them all: the mysql gate runs with the group, and the Postgres and SQLite gates run in one process each, with the
-# DSN of their database from the TEST_ENV of this run (BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN), as perf-check does for mysql.
+# memory_limit of the gate. Each gate class names its database and reads its BENCH_<DATABASE>_DSN from the TEST_ENV of this run: the
+# mysql gate runs with the group, and the Postgres and SQLite gates run in one process each.
 .PHONY: php-ext-memory-check
 php-ext-memory-check: php-vendor-check orm-install-php-extension-tools
-	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CASES)'
-	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$BENCH_POSTGRES_DSN" ORM_FEATURE_DATABASE=postgres && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_POSTGRES)'
-	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$BENCH_SQLITE_DSN" ORM_FEATURE_DATABASE=sqlite && $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_SQLITE)'
+	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_CASES)'
+	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_POSTGRES)'
+	$(WITH_TEST_ENV) $(MAKE) --no-print-directory test-php-ext CASES='$(PHP_EXT_MEMORY_GATE_SQLITE)'
 
 # python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
 # Python client on SQLite, MySQL and PostgreSQL (packages/python/tests/install_changed_database.py).
@@ -2129,7 +2128,7 @@ ts-model-check: lease-tool orm-codes-typescript
 	$(NODE) --test packages/ts/tests/model-new-output-name.mjs
 
 perf-check:
-	$(WITH_TEST_ENV) export ORM_FEATURE_DSN="$$ORM_BENCH_MYSQL_DSN" ORM_FEATURE_DATABASE=mysql && $(NODE) scripts/perf-test.mts
+	$(WITH_TEST_ENV) $(NODE) scripts/perf-test.mts
 
 # scripts-typecheck checks the repository's TypeScript-based scripts (the .mts files of scripts/ and tests/, tsconfig.json) with tsc.
 # Some scripts import the build output of packages/ts and packages/dbspec-language (through docs/.vitepress/dbs.ts), so

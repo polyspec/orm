@@ -1083,7 +1083,7 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     }
     if (arity == 0 || !paren) {
         error(p, "type", p->line, column, simple ? fmt("type `%S` has no parameters", name)
-            : arity > 0 ? fmt("type `%S` needs its parameters", name) : fmt("unknown type `%S`", name));
+            : arity > 0 ? fmt("type `%S` needs its parameters", name) : fmt("type \"%S\" is not a dbspec type", name));
         *next = paren ? skip_parentheses(p, i + 1) : i + 1;
         return NULL;
     }
