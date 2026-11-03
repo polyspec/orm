@@ -165,7 +165,7 @@ trait RecipeModel
         if ($dsn === 'case-pooler') {
             $pooler = getenv('ORM_TEST_PGBOUNCER_DSN');
             if (!is_string($pooler) || $pooler === '') {
-                Assert::fail('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip');
+                Assert::fail('dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it');
             }
             $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $pooler);
             if (!is_string($replaced)) {
@@ -177,7 +177,7 @@ trait RecipeModel
             $variable = 'ORM_TEST_' . strtoupper($database) . '_SERVER_DSN';
             $server = getenv($variable);
             if (!is_string($server) || $server === '') {
-                Assert::fail("dsn case-server: $variable is required; database tests never skip");
+                Assert::fail("dsn case-server: $variable is required; run make orm-test-servers, which starts the databases and writes it");
             }
             $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $server);
             if (!is_string($replaced)) {
@@ -189,7 +189,7 @@ trait RecipeModel
             $variable = 'ORM_TEST_' . strtoupper($database) . '_REPLICA_DSN';
             $replica = getenv($variable);
             if (!is_string($replica) || $replica === '') {
-                Assert::fail("dsn case-replica: $variable is required; database tests never skip");
+                Assert::fail("dsn case-replica: $variable is required; run make orm-test-servers, which starts the databases and writes it");
             }
             $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $replica);
             if (!is_string($replaced)) {

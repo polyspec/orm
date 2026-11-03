@@ -97,7 +97,7 @@ final class RecipeApply
     {
         $value = (string) getenv($name);
         if ($value === '') {
-            Assert::fail("$name is required; database tests never skip");
+            Assert::fail("$name is required; run make orm-test-servers, which starts the databases and writes it");
         }
         return $value;
     }

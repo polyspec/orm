@@ -346,7 +346,7 @@ var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 func casePoolerDSN(caseDSN string) (string, error) {
 	pooler, err := url.Parse(os.Getenv("ORM_TEST_PGBOUNCER_DSN"))
 	if err != nil || pooler.Host == "" {
-		return "", errors.New("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip")
+		return "", errors.New("dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it")
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -362,7 +362,7 @@ func caseReplicaDSN(database, caseDSN string) (string, error) {
 	variable := "ORM_TEST_" + strings.ToUpper(database) + "_REPLICA_DSN"
 	replica, err := url.Parse(os.Getenv(variable))
 	if err != nil || replica.Host == "" {
-		return "", fmt.Errorf("dsn case-replica: %s is required; database tests never skip", variable)
+		return "", fmt.Errorf("dsn case-replica: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -377,7 +377,7 @@ func caseServerDSN(database, caseDSN string) (string, error) {
 	variable := "ORM_TEST_" + strings.ToUpper(database) + "_SERVER_DSN"
 	server, err := url.Parse(os.Getenv(variable))
 	if err != nil || server.Host == "" {
-		return "", fmt.Errorf("dsn case-server: %s is required; database tests never skip", variable)
+		return "", fmt.Errorf("dsn case-server: %s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	target, err := url.Parse(caseDSN)
 	if err != nil {
@@ -1502,7 +1502,7 @@ func endSession(table string, c *databaseContext) error {
 	variable := "ORM_TEST_" + strings.ToUpper(c.database) + "_SERVER_DSN"
 	server := os.Getenv(variable)
 	if server == "" {
-		return fmt.Errorf("%s is required; database tests never skip", variable)
+		return fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", variable)
 	}
 	raw := testdb.Open(c.t, c.database, testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, c.dsn)))
 	defer testcase.Close(c.t, raw)
@@ -1555,7 +1555,7 @@ func awaitReplica(c *databaseContext) error {
 	}
 	replica := os.Getenv("ORM_TEST_MYSQL_REPLICA_DSN")
 	if replica == "" {
-		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it")
 	}
 	target := testdb.Open(c.t, c.database, replica)
 	defer testcase.Close(c.t, target)

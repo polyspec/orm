@@ -5309,7 +5309,7 @@
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$db": {
     "exported": false,
-    "signature": "private readonly Polyspec\\Orm\\Db"
+    "signature": "private Polyspec\\Orm\\Db"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$dialect": {
     "exported": false,
@@ -5318,6 +5318,14 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$dsn": {
     "exported": false,
     "signature": "private readonly string"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$netWriteTimeout": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::$streamLeft": {
+    "exported": false,
+    "signature": "private bool"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::__construct": {
     "exported": false,
@@ -5382,6 +5390,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::close": {
     "exported": true,
     "signature": "public function close(): void"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::closeConnection": {
+    "exported": false,
+    "signature": "private function closeConnection(): void"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::columnMetas": {
     "exported": false,
@@ -5562,6 +5574,10 @@
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::kind": {
     "exported": false,
     "signature": "private static function kind(string $dialect, string $native): string"
+  },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::leaveStream": {
+    "exported": false,
+    "signature": "private function leaveStream(): void"
   },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::lockOriginalRow": {
     "exported": false,
@@ -8931,6 +8947,10 @@
     "exported": false,
     "signature": "private function optionalRequire(): array"
   },
+  "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::parametersMessage": {
+    "exported": false,
+    "signature": "private static function parametersMessage(string $name): string"
+  },
   "packages/php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::positiveCount": {
     "exported": false,
     "signature": "private static function positiveCount(string $text): bool"
@@ -12278,6 +12298,10 @@
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::update": {
     "exported": true,
     "signature": "public function update(bool $optimistic=false): static"
+  },
+  "packages/php/src/Model.php::Polyspec\\Orm\\Model::validateHostInput": {
+    "exported": false,
+    "signature": "private static function validateHostInput(array $columns, array $pred): void"
   },
   "packages/php/src/Model.php::Polyspec\\Orm\\Model::value": {
     "exported": false,

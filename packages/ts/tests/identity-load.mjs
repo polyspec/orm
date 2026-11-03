@@ -28,7 +28,7 @@ const cases = doc.cases.filter(c => selected.length === 0 || selected.includes(c
 for (const c of cases) if (c.operation !== 'compile' && c.operation !== 'execute') throw new Error(`case ${c.id}: unknown operation ${c.operation}`);
 if (cases.some(c => c.operation === 'execute')) {
   for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-    if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
+    if (!process.env[env]) throw new Error(`${env} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
   }
 }
 

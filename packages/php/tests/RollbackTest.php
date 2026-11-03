@@ -67,7 +67,7 @@ class RollbackTest extends TestCase
         $server = requiredDsn($env);
         if ($server === false || $server === '') {
             throw new RuntimeException(
-                "$env is required; database tests never skip; run the test through its make target, which reads the "
+                "$env is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the "
                 . "environment of make orm-test-servers"
             );
         }

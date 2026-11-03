@@ -75,7 +75,7 @@ class ModelTest extends TestCase
             $v = requiredDsn($env);
             if ($v === false || $v === '') {
                 throw new RuntimeException(
-                    "$env is required; database tests never skip; run the test through its make target, which reads "
+                    "$env is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads "
                     . "the environment of make orm-test-servers"
                 );
             }

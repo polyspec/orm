@@ -56,7 +56,7 @@ class ConnectionConfigTest(unittest.TestCase):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
         if not single:
             raise AssertionError(
-                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run make orm-test-servers"
+                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; run make orm-test-servers, which starts the databases and writes it; run make orm-test-servers"
             )
         table = f"pooler_{uuid.uuid4().hex[:8]}"
         catalog = connect_catalog(single)

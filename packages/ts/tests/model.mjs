@@ -34,7 +34,7 @@ async function code(promise) {
 /** The DSN of a server dialect; a database test never skips, so a missing one fails the case. */
 function dsnOf(dialect) {
   const name = `ORM_TEST_${dialect.toUpperCase()}_DSN`;
-  if (!process.env[name]) throw new Error(`${name} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
+  if (!process.env[name]) throw new Error(`${name} is required; run make orm-test-servers, which starts the databases and writes it; run the test through its make target, which reads the environment of make orm-test-servers`);
   return process.env[name];
 }
 

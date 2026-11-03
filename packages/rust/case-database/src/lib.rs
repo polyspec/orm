@@ -45,7 +45,7 @@ pub struct CaseDatabase {
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
+        _ => panic!("{var} is required; run make orm-test-servers, which starts the databases and writes it"),
     }
 }
 

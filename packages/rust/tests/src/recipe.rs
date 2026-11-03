@@ -129,8 +129,9 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
         }
         Some("case-pooler") => {
-            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN")
-                .map_err(|_| "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; database tests never skip".to_owned())?;
+            let pooler = std::env::var("ORM_TEST_PGBOUNCER_DSN").map_err(|_| {
+                "dsn case-pooler: ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it".to_owned()
+            })?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = pooler.split_once('?').unwrap_or((&pooler, ""));
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
@@ -138,7 +139,8 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
         }
         Some("case-server") => {
             let variable = format!("ORM_TEST_{}_SERVER_DSN", database.to_uppercase());
-            let server = std::env::var(&variable).map_err(|_| format!("dsn case-server: {variable} is required; database tests never skip"))?;
+            let server = std::env::var(&variable)
+                .map_err(|_| format!("dsn case-server: {variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = server.split_once('?').unwrap_or((&server, ""));
             let (base, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-server: {server} names no database"))?;
@@ -146,7 +148,8 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
         }
         Some("case-replica") => {
             let variable = format!("ORM_TEST_{}_REPLICA_DSN", database.to_uppercase());
-            let replica = std::env::var(&variable).map_err(|_| format!("dsn case-replica: {variable} is required; database tests never skip"))?;
+            let replica = std::env::var(&variable)
+                .map_err(|_| format!("dsn case-replica: {variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
             let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
             let (head, query) = replica.split_once('?').unwrap_or((&replica, ""));
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-replica: {replica} names no database"))?;
@@ -4765,7 +4768,8 @@ mod database {
     /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
     async fn await_replica(context: &Context<'_>) -> Result<(), String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
-        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let server =
+            std::env::var(&variable).map_err(|_| format!("{variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
         let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
         let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
         let source = Db::connect(&polyspec_orm_case_database::with_database(&server, name), 1, Config::default()).await.map_err(|e| e.to_string())?;
@@ -4795,8 +4799,9 @@ mod database {
 
     /// The wait of `await_replica` on MySQL.
     async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
-        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN")
-            .map_err(|_| "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip".to_owned())?;
+        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|_| {
+            "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it".to_owned()
+        })?;
         let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
         let file: String = sqlx::Row::get(&row, 0);
         let position: u64 = sqlx::Row::get(&row, 1);
@@ -4811,7 +4816,8 @@ mod database {
 
     async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
-        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let server =
+            std::env::var(&variable).map_err(|_| format!("{variable} is required; run make orm-test-servers, which starts the databases and writes it"))?;
         let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
         let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
         let session = polyspec_orm_case_database::with_database(&server, name);

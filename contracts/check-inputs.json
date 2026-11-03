@@ -2952,7 +2952,8 @@
         "node-modules",
         "php-extension-tools",
         "python",
-        "databases"
+        "databases",
+        "mysql-privilege-server"
       ],
       "inputs": [
         "Makefile",

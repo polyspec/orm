@@ -3154,7 +3154,7 @@ final class Recipe
                     return [];
                 }
                 $replica = (string) getenv('ORM_TEST_MYSQL_REPLICA_DSN');
-                Assert::assertNotSame('', $replica, 'ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip');
+                Assert::assertNotSame('', $replica, 'ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it');
                 $status = $source->query('SHOW BINARY LOG STATUS')->fetch(\PDO::FETCH_NUM);
                 $wait = case_admin($replica)->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
                 $wait->execute([$status[0], (int) $status[1]]);
@@ -3197,7 +3197,7 @@ final class Recipe
                 // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
                 $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
                 $server = (string) getenv($variable);
-                Assert::assertNotSame('', $server, "$variable is required; database tests never skip");
+                Assert::assertNotSame('', $server, "$variable is required; run make orm-test-servers, which starts the databases and writes it");
                 $pdo = case_admin(
                     case_dsn_with_database($server, ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'))
                 );

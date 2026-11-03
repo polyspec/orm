@@ -225,7 +225,7 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$db": {
     "exported": false,
-    "signature": "private readonly Polyspec\\Orm\\Db"
+    "signature": "private Polyspec\\Orm\\Db"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$dialect": {
     "exported": false,
@@ -234,6 +234,14 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$dsn": {
     "exported": false,
     "signature": "private readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$netWriteTimeout": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::$streamLeft": {
+    "exported": false,
+    "signature": "private bool"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog::close": {
     "exported": true,
@@ -968,8 +976,8 @@
     "signature": "public ?Closure"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$catalogOwner": {
-    "exported": true,
-    "signature": "public ?Polyspec\\Orm\\Catalog"
+    "exported": false,
+    "signature": "private ?Polyspec\\Orm\\Catalog"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$closed": {
     "exported": true,
@@ -4402,10 +4410,6 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::fromModels": {
     "exported": true,
     "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
-  },
-  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::fromParsed": {
-    "exported": true,
-    "signature": "public static function fromParsed(string $manifestHash, string $manifestText, array $entities, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\RuntimeModel::loadSet": {
     "exported": true,

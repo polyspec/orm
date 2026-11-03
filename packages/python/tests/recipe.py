@@ -2732,7 +2732,7 @@ def _op_replica_await(step: dict, context: dict) -> dict:
         return {}
     replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
     if not replica:
-        raise AssertionError("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+        raise AssertionError("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it")
     status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
     file, position = status["File"], int(status["Position"])
     waited = native_query("mysql", replica, [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"])[0][0]["waited"]
@@ -2805,7 +2805,7 @@ def _op_session_end(step: dict, context: dict) -> dict:
     variable = f"ORM_TEST_{database.upper()}_SERVER_DSN"
     server = os.environ.get(variable)
     if not server:
-        raise AssertionError(f"{variable} is required; database tests never skip")
+        raise AssertionError(f"{variable} is required; run make orm-test-servers, which starts the databases and writes it")
     session = with_database(server, urlsplit(context["dsn"]).path.lstrip("/"))
     query = (
         f"SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1"

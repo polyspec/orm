@@ -75,7 +75,7 @@ func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
 	}
 	server := os.Getenv(applyServerEnv[c.database])
 	if server == "" {
-		return "", fmt.Errorf("%s is required; database tests never skip", applyServerEnv[c.database])
+		return "", fmt.Errorf("%s is required; run make orm-test-servers, which starts the databases and writes it", applyServerEnv[c.database])
 	}
 	return testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, dsn)), nil
 }
@@ -85,7 +85,7 @@ func applyDirectDSN(c *databaseContext, dsn string) (string, error) {
 func applyPoolerDSN(c *databaseContext) (string, error) {
 	pooler := os.Getenv("ORM_TEST_PGBOUNCER_DSN")
 	if pooler == "" {
-		return "", errors.New("ORM_TEST_PGBOUNCER_DSN is required; database tests never skip")
+		return "", errors.New("ORM_TEST_PGBOUNCER_DSN is required; run make orm-test-servers, which starts the databases and writes it")
 	}
 	u, err := url.Parse(testdb.Retarget(c.t, pooler, testdb.DatabaseOf(c.t, c.dsn)))
 	if err != nil {

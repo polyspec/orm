@@ -871,7 +871,7 @@ const OPS = {
       return {};
     }
     const replica = process.env.ORM_TEST_MYSQL_REPLICA_DSN;
-    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip');
+    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; run make orm-test-servers, which starts the databases and writes it');
     const [[status]] = await nativeQuery('mysql', context.dsn, ['SHOW BINARY LOG STATUS']);
     const [[row]] = await nativeQuery('mysql', replica, [`SELECT SOURCE_POS_WAIT('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
     if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
@@ -925,7 +925,7 @@ const OPS = {
   async 'session.end'(s, context) {
     const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
     const server = process.env[variable];
-    if (!server) throw new Error(`${variable} is required; database tests never skip`);
+    if (!server) throw new Error(`${variable} is required; run make orm-test-servers, which starts the databases and writes it`);
     const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
     const postgres = context.database === 'postgres';
     const [rows] = await nativeQuery(context.database, session, [postgres
