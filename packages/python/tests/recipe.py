@@ -1857,6 +1857,11 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
             raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+        session_read = (config or {}).get("session_read")
+        if session_read is not None:
+            read = db.utils().run(lambda frame: frame.run(session_read["sql"], [], "utility"))["rows"]
+            if [[str(cell) for cell in row] for row in read] != [session_read["row"]]:
+                raise AssertionError(f"{session_read['sql']} returned {read!r}, want {session_read['row']!r}")
         if (config or {}).get("tls_version"):
             status = db.utils().run(
                 lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")

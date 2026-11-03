@@ -342,7 +342,6 @@
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
-        "packages/php/tests/MysqlTlsCases.php",
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/php/tests/OrmGenProcessCase.php",
@@ -7804,6 +7803,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-3",
         "CFG-16",
         "CFG-2",
         "CFG-19",
@@ -15204,41 +15204,6 @@
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "uses the MySQL statement insertId for an omitted automatic key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "uses PostgreSQL INSERT RETURNING for a literal-default composite key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "inserts an omitted SQLite AUTOINCREMENT key and returns the stored row"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_sqlite_automatic_primary_key_insert_returns_stored_row"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_mysql_automatic_key_uses_insert_acknowledgement"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_auto_key.py",
-          "id": "test_postgres_default_composite_key_uses_insert_returning"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_insert_identity.rs",
-          "id": "generated_keys_return_the_inserted_row_on_each_database"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15247,8 +15212,57 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_keys"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_keys"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_keys"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_key_lifecycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_key_lifecycle"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_key_lifecycle"
         }
       ]
+    },
+    {
+      "id": "rust-insert-phases-and-joined-keys",
+      "kind": "feature",
+      "requirements": [
+        "INT-123a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_insert_identity.rs",
+          "id": "insert_phases_and_joined_keys_follow_the_transaction"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
@@ -17834,45 +17848,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/ir_answers.rs",
           "symbol": "ir_answers"
-        }
-      ]
-    },
-    {
-      "id": "mysql-session",
-      "kind": "feature",
-      "requirements": [
-        "CFG-3"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLSessionSQLMode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testSessionSqlMode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "id": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/session_sql_mode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py",
-          "id": "test_session_sql_mode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "session_sql_mode_is_the_declared_one"
         }
       ]
     },

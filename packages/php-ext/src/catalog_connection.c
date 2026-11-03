@@ -576,7 +576,8 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     bool mysql = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "mysql");
     zval_ptr_dtor(&driver);
-    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
+    /* A cursor holds a read, never a write: an insert with no assignment has no argument either (INT-123). */
+    if (postgres && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 && strncmp(sql, "INSERT ", 7) != 0) {
         return cat_cursor_query(db, pdo, sql, max_rows, max_bytes, names, types, rows, convert);
     }
     zend_long connection_id = 0;
