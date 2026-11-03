@@ -5018,7 +5018,12 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
         },
         {
@@ -5086,8 +5091,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_read_filter"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "read_filter"
         },
         {
           "implementation": "rust",
@@ -5153,8 +5158,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_invalid_param"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "invalid_param"
         },
         {
           "implementation": "rust",
@@ -5220,8 +5225,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_no_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_no_key"
         },
         {
           "implementation": "rust",
@@ -5287,8 +5292,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key"
         },
         {
           "implementation": "rust",
@@ -5354,8 +5359,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_hook_set_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_hook_set_key"
         },
         {
           "implementation": "rust",
@@ -5421,8 +5426,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key_set_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key_set_scope"
         },
         {
           "implementation": "rust",
@@ -5488,8 +5493,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_relation_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "relation_scope"
         },
         {
           "implementation": "rust",
@@ -5531,6 +5536,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5588,6 +5594,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5645,6 +5652,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5710,8 +5718,13 @@
         },
         {
           "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_reads_params"
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "rust",
@@ -16036,46 +16049,6 @@
       ]
     },
     {
-      "id": "group-result-exact-i64",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "INT-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountPreservesExactI64Value"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupResultPreservesExactI64Value"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/exact_i64_preserved"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_result_preserves_exact_i64_value"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::exact_i64_tests::grouped_result_preserves_exact_i64_value"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -24028,203 +24001,6 @@
       ]
     },
     {
-      "id": "parent-slot-padding-repeats-last-composite-key",
-      "kind": "feature",
-      "requirements": [
-        "PRT-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestParentSlotExpansionPadsCompositeKeysAndRenumbersFollowingSlots"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ParentSlotPaddingTest.php",
-          "id": "ParentSlotPaddingTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testTuplePredicatePadsByRepeatingTheLastRow"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/parent-slot-expansion.mjs",
-          "id": "parent-slot-expansion/pads-composite-keys"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_query_methods.py",
-          "id": "test_tuple_predicate_pads_by_repeating_the_last_row"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::tuple_padding_tests::composite_tuple_padding_repeats_the_last_row"
-        }
-      ]
-    },
-    {
-      "id": "collection-identity-from-fixture",
-      "kind": "feature",
-      "requirements": [
-        "INT-11",
-        "INT-63",
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyIdentityFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testFixtureKeysKeepTheirNativeTypesAndLookupValue"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/identity-from-fixture"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_every_fixture_key_has_its_own_identity"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "every_fixture_key_has_its_own_identity"
-        }
-      ]
-    },
-    {
-      "id": "split-root-merge-rejects-sql-null-identity",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestSplitQueryRowKeyRejectsSQLNull"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/split-null.test.mjs",
-          "id": "split root merge rejects SQL NULL identity"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_split_null.py",
-          "id": "test_split_root_merge_rejects_sql_null_identity"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
-        }
-      ]
-    },
-    {
-      "id": "split-root-merge-retains-falsey-non-null-identities",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestSplitQueryRowKeyRejectsSQLNull"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/split-null.test.mjs",
-          "id": "split root merge retains falsey non-NULL identities"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_split_null.py",
-          "id": "test_split_root_merge_retains_falsey_non_null_identities"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
-        }
-      ]
-    },
-    {
-      "id": "collection-key-null-is-codec-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-35"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionKeyNullIsCodecDecodeFromFixture"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
-          "id": "CollectionIdentityTestExtensionTest::testANullKeyIsCodecDecode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-key/null-is-codec-decode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_a_null_key_is_codec_decode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/collection_identity.rs",
-          "id": "a_null_key_is_codec_decode"
-        }
-      ]
-    },
-    {
       "id": "collection-null-identity-from-physical-row",
       "kind": "feature",
       "requirements": [
@@ -26057,6 +25833,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -26097,6 +25874,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -26137,6 +25915,7 @@
       "kind": "suite",
       "requirements": [
         "PLN-44",
+        "PRT-35",
         "PRT-76"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
@@ -26637,8 +26416,43 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_events.py",
-          "id": "test_statement_events"
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "model_statements"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_savepoint"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "savepoint_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "failed_statement"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "subscriber_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "unsubscribe"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "install"
         },
         {
           "implementation": "python",
@@ -28477,9 +28291,6 @@
           "test": "packages/python/tests/coverage_performance_gate_mysql.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28584,9 +28395,6 @@
           "test": "packages/python/tests/coverage_performance_gate_postgres.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28691,9 +28499,6 @@
           "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -29388,51 +29193,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/model.rs",
           "id": "model::page_order_tests::collection_views_preserve_model_order_and_connect_every_model"
-        }
-      ]
-    },
-    {
-      "id": "collection-get-fetched-value-typed-key",
-      "kind": "feature",
-      "requirements": [
-        "INT-80",
-        "INT-86"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_identity_test.go",
-          "id": "TestCollectionGetAndFetchedValueUseTypedKey"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CollectionTest.php",
-          "id": "CollectionTest::testGetAndFetchedValueUseTheTypedKey"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection/get-fetched-value-use-typed-key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/collection_get_fetched.rs",
-          "id": "get_and_fetched_value_use_the_typed_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection.py",
-          "id": "test_get_has_and_fetched_read_the_stored_key"
         }
       ]
     },
@@ -41774,8 +41534,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_runner.py",
-          "id": "test_statement_runner"
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "rust",
@@ -42381,6 +42151,45 @@
       ]
     },
     {
+      "id": "immutable_write-mysql",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWriteMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_mysql.rs",
+          "symbol": "immutable_write_mysql"
+        }
+      ]
+    },
+    {
       "id": "constraints_and_relations-postgres",
       "kind": "suite",
       "requirements": [
@@ -42428,6 +42237,45 @@
       ]
     },
     {
+      "id": "immutable_write-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWritePostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_postgres.rs",
+          "symbol": "immutable_write_postgres"
+        }
+      ]
+    },
+    {
       "id": "constraints_and_relations-sqlite",
       "kind": "suite",
       "requirements": [
@@ -42471,6 +42319,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
           "symbol": "constraints_and_relations_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "immutable_write-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-84"
+      ],
+      "file": "contracts/fixtures/immutable_write/immutable_write.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_immutable_write_test.go",
+          "symbol": "TestRecipeImmutableWriteSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ImmutableWriteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ImmutableWriteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/immutable_write-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_immutable_write_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "symbol": "immutable_write_sqlite"
         }
       ]
     },
@@ -43878,11 +43765,20 @@
       "id": "collection-recipe",
       "kind": "suite",
       "requirements": [
+        "INT-1",
+        "INT-11",
+        "INT-62",
+        "INT-63",
         "INT-68",
         "INT-69",
         "INT-70",
         "INT-71",
+        "INT-80",
+        "INT-81",
+        "INT-84",
+        "INT-86",
         "INT-90",
+        "PRT-35",
         "PRT-69"
       ],
       "file": "tests/collection/collection.json",
@@ -44095,6 +43991,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_rules_recipe_none.rs",
           "symbol": "dbspec_rules_recipe_none"
+        }
+      ]
+    },
+    {
+      "id": "collection-composite-key-encoding",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_identity_test.go",
+          "id": "TestCompositeCollectionKeyTypedComponentsFromFixture"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionIdentityTest.php",
+          "id": "CollectionIdentityTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
+          "id": "CollectionIdentityTestExtensionTest::testCompositeComponentsPreserveTypedIdentityAndSharedEncoding"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/collection_identity.mjs",
+          "id": "collection-key/composite-typed-components"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_collection_identity.py",
+          "id": "test_composite_components_preserve_typed_identity_and_shared_encoding"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/collection_identity.rs",
+          "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
     }
