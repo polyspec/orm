@@ -1837,13 +1837,6 @@ python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 
-# python-clock-check runs the Python clock cases of the update time, the soft deletion and the now condition on SQLite,
-# MySQL and PostgreSQL (packages/python/tests/clock.py); it needs the database variables of make orm-test-servers
-# (WITH_TEST_ENV).
-.PHONY: python-clock-check
-python-clock-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.clock
-
 # replica-check runs the primary and replica cases (CFG-21, CFG-22, CFG-23, CFG-24, CFG-25) of every client: a connection to the primary
 # and one to its replica on MySQL and PostgreSQL, and a SQLite file opened read-only. It needs the primary and replica
 # servers of make orm-test-servers (WITH_TEST_ENV).

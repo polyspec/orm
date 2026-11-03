@@ -895,6 +895,10 @@
         {
           "glob": "packages/ts/tests/scalar_subquery_type.mjs",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/ts/tests/clock.mjs",
+          "reason": "test: calls the module-private wallMicros of dist/clock.js with a wall clock and a monotonic clock that the case sets, which no public call or recipe step can set; what a stored value holds is the case clock_microseconds of the recipe conformance_verification (K313)"
         }
       ]
     },
@@ -1288,6 +1292,14 @@
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/time_precision.rs",
+          "reason": "test: calls the crate-private check_param, time_value, bound_time_value and clock_digits directly, reached through super; the values that a write can hold are the bind_time and bind_datetime cases of tests/bind/messages.json (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/engine/mod.rs",
+          "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
         }
       ]
     }
@@ -14737,75 +14749,129 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_p0_roundtrip\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_p0_roundtrip\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
           "id": "datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_p0_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"time_p3_roundtrip\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
           "id": "time_p3_roundtrip"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
           "id": "time_p3_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::time_p3_roundtrip"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::time_p3_roundtrip"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_precision_rejected\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_precision_rejected"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/time_precision_test.go",
-          "id": "TestSQLiteTimePrecision"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/temporal_stored_text"
         },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"temporal_stored_text\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"temporal_stored_text\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "temporal_stored_text"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "temporal_stored_text"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::temporal_stored_text"
+        }
+      ]
+    },
+    {
+      "id": "go-time-setter-records-the-first-bad-text",
+      "kind": "feature",
+      "requirements": [
+        "PRT-67a"
+      ],
+      "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/model/time_text_test.go",
           "id": "TestTimeSetterRecordsBadText"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::sqlite_insert_binds_the_clock_for_default_now"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/go"
+      }
     },
     {
       "id": "catalog-connection-requires-an-existing-sqlite-database",
@@ -16531,11 +16597,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/bind_vectors.rs",
           "id": "bind_check::bind_vectors::bind_vectors"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/time_precision.rs",
-          "id": "db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved"
         },
         {
           "implementation": "go",
@@ -27513,73 +27574,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockMicrosecondsSQLite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockMicrosecondsMySQL"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockMicrosecondsPostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/clock_microseconds"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockMicroseconds"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"clock_microseconds\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
-          "id": "ClockTestExtensionTest::testClockMicroseconds"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"clock_microseconds\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_microseconds/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_microseconds/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_microseconds/postgres"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "clock_microseconds"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_microseconds_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_microseconds_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_microseconds_postgres"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "clock_microseconds"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::clock_microseconds"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/clock_microseconds"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"clock_microseconds\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"clock_microseconds\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::clock_microseconds"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/clock_microseconds"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"clock_microseconds\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"clock_microseconds\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::clock_microseconds"
         }
       ]
     },
@@ -27592,73 +27653,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockSoftDeleteMicrosecondsSQLite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockSoftDeleteMicrosecondsMySQL"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockSoftDeleteMicrosecondsPostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/clock_soft_delete_microseconds"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockSoftDeleteMicroseconds"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"clock_soft_delete_microseconds\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
-          "id": "ClockTestExtensionTest::testClockSoftDeleteMicroseconds"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"clock_soft_delete_microseconds\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_soft_delete_microseconds/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_soft_delete_microseconds/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_soft_delete_microseconds/postgres"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "clock_soft_delete_microseconds"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_soft_delete_microseconds_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_soft_delete_microseconds_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_soft_delete_microseconds_postgres"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "clock_soft_delete_microseconds"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::clock_soft_delete_microseconds"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/clock_soft_delete_microseconds"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"clock_soft_delete_microseconds\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"clock_soft_delete_microseconds\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::clock_soft_delete_microseconds"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/clock_soft_delete_microseconds"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"clock_soft_delete_microseconds\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"clock_soft_delete_microseconds\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::clock_soft_delete_microseconds"
         }
       ]
     },
@@ -27672,73 +27733,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockNowConditionSQLite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockNowConditionMySQL"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockNowConditionPostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/clock_now_condition"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockNowCondition"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"clock_now_condition\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ClockTestExtensionTest.php",
-          "id": "ClockTestExtensionTest::testClockNowCondition"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"clock_now_condition\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_now_condition/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_now_condition/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/clock.mjs",
-          "id": "clock/clock_now_condition/postgres"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "clock_now_condition"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_now_condition_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_now_condition_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/clock.py",
-          "id": "test_clock_now_condition_postgres"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "clock_now_condition"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::clock_now_condition"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/clock_now_condition"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"clock_now_condition\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"clock_now_condition\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::clock_now_condition"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/clock_now_condition"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"clock_now_condition\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"clock_now_condition\""
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::clock_now_condition"
         }
       ]
     },
