@@ -3451,6 +3451,7 @@ def _collection_connect(step: dict, context: dict) -> dict:
 def _table_model_delete(step: dict, context: dict) -> dict:
     recursive = step.get("recursive") is True
     if "row" in step and isinstance(_bound_value(step["row"], context), Collection):
+        _connection_of(step, context)
         _bound_value(step["row"], context).delete(recursive)
         return {}
     if "where" in step:
