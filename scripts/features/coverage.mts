@@ -416,7 +416,7 @@ async function recipeTest(item: Item, command: NativeCommand, root: string): Pro
   const keys = ['runner', 'test', 'cases', 'recipe', 'symbol', 'database'];
   const named = command.runner === 'go' || command.runner === 'php';
   if (Object.keys(command).some(key => !keys.includes(key)) || !item.tests.includes(command.test) ||
-      !recipe.startsWith('contracts/fixtures/') || !recipe.endsWith('.json') ||
+      !(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json') ||
       (named ? !/^[A-Za-z_][A-Za-z0-9_]*$/.test(command.symbol ?? '') : command.symbol !== undefined))
     throw new Error('invalid recipe test command');
   const testPath = resolve(root, command.test);

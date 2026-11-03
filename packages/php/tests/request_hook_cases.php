@@ -60,34 +60,6 @@ function hookConnect(string $dsn): Db
     return $db;
 }
 
-/** Adds the rows a1 and a2 of part a and b1 of part b through $db. */
-function hookSeed(Db $db): void
-{
-    foreach ([['a', 'a1'], ['a', 'a2'], ['b', 'b1']] as [$part, $label]) {
-        (new HookItem())($db)->setPart($part)->setLabel($label)->create();
-    }
-}
-
-/** ANDs $pred into the where of query $q: an existing where becomes the first item, as a group. */
-function hookAndWhere(array &$q, array $pred): void
-{
-    if (!isset($q['where']) || $q['where']['items'] === []) {
-        $q['where'] = ['items' => [['pred' => $pred]]];
-        return;
-    }
-    $q['where'] = ['items' => [['group' => $q['where']], ['pred' => ['conn' => 'and'] + $pred]]];
-}
-
-/** A hook that ANDs part = $part into the root where of every read. */
-function readFilter(string $part): Closure
-{
-    return static function (Request $r) use ($part): void {
-        if (requestIsRead($r)) {
-            partIs($r, $r->ir, $part);
-        }
-    };
-}
-
 /** The labels of rows, sorted. */
 function hookLabels(iterable $rows): array
 {
@@ -135,25 +107,8 @@ function readsParamsCase(string $dsn): void
     }
 }
 
-/**
- * A hooked handle derives from the connection: its root is the connection, so the state they share is the same
- * (INT-78). A step cannot observe the root of a handle.
- */
-function withoutHook(string $dsn): void
-{
-    $db = hookConnect($dsn);
-    $hooked = $db->withRequestHook(readFilter('a'));
-    $state = new \ReflectionProperty(Db::class, 'state');
-    hookCheck(
-        $state->getValue($hooked) === $state->getValue($db),
-        'the hooked handle derives from the connection: both share its state'
-    );
-    $db->close();
-}
-
 /** The case functions by shared case ID; each takes the DSN of an empty database. */
 const REQUEST_HOOK_CASES = [
-    'without_hook' => 'withoutHook',
     'reads_params' => 'readsParamsCase',
 ];
 

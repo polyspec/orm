@@ -49,7 +49,7 @@ func gateDSN(t *testing.T, driver string) string {
 	name := map[string]string{"mysql": "BENCH_MYSQL_DSN", "postgres": "BENCH_POSTGRES_DSN", "sqlite": "BENCH_SQLITE_DSN"}[driver]
 	dsn := os.Getenv(name)
 	if dsn == "" {
-		t.Fatalf("%s is required; it is the seeded bench database of %s", name, driver)
+		t.Fatalf("%s is required; it is the seeded bench database of %s; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run", name, driver)
 	}
 	return dsn
 }

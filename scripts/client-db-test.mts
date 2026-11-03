@@ -189,18 +189,11 @@ export function rustDatabaseCoverageSkipArguments(manifest: FeatureManifest, rep
 
 /**
  * Returns the exact Rust symbols that a target other than the feature matrix owns, for the generic client test run to skip: the
- * cases that a binding of config/parity.json runs through feature-rust-database, which sets the database they need
- * (T334-3-28), and the markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server.
+ * markdown conformance cases, which markdown-conformance-check/rust runs against the flowmark server.
  */
 export function rustOwnedElsewhereSkipArguments(repository: string): string[] {
-  const parity = readParityConfig(resolve(repository, 'config/parity.json'));
-  const featureTests = parity.units
-    .flatMap(unit => unit.bindings ?? [])
-    .filter(binding => binding.implementation === 'rust' && binding.command?.includes('feature-rust-database'))
-    .flatMap(binding => (binding.command ?? []).filter(part => part.startsWith('FEATURE_TEST=')).map(part => part.slice('FEATURE_TEST='.length)));
   const markdown = readJsonFile<{ cases: { id: string }[] }>(resolve(repository, 'tests/markdown/cases.json'), MARKDOWN_CASES_SCHEMA);
-  const symbols = new Set([...featureTests, ...markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`)]);
-  return [...symbols].sort().flatMap(symbol => ['--skip', symbol]);
+  return markdown.cases.map(testCase => `markdown_conformance::${testCase.id}`).sort().flatMap(symbol => ['--skip', symbol]);
 }
 
 // tests/cargo-test.mts builds the test binaries under the lease of the shared target directory as a long operation with no

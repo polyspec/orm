@@ -75,8 +75,8 @@ caseTest('the Go lane leaves the measurements of PERF-1 to perf-check, which rea
   }
 });
 
-// A case that needs what another target passes (the database of feature-rust-database, the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
-caseTest('the Rust lane skips the cases that parity bindings and markdown-conformance-check own', COMPUTE, () => {
+// A case that needs what another target passes (the server of FLOWMARK) stays out of the Rust lane (T334-3-28).
+caseTest('the Rust lane skips the cases that markdown-conformance-check owns', COMPUTE, () => {
   const skipped = rustOwnedElsewhereSkipArguments(root).filter((_, index) => index % 2 === 1);
   assert.ok(skipped.includes('markdown_conformance::insert_one'), 'a markdown conformance case');
 });
