@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce7508f88ff1dbdddccf5cfe064d835f508d7ad91b262c28c6c341c3756b3a68 -->
+<!-- source-sha256: f5612f65b80f7f6ca3d6fa9e5e793d0aeed39b1a4a644ca142b543f22595d706 -->
 # 변경 이력
 
 ## Unreleased
 
+- feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
 - request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
 - request_hook recipe는 각 runtime의 native test가 지키던 내용을 담는다: hook이 걸린 handle은 연결의 subscriber를 공유하고 원래 handle은 hook 없이 남으며, hook은 바인딩된 parameter를 읽고, 계획된 read는 hook이 더한 값을 바인딩하고, 잘못된 parameter 번호와 key 없는 restore는 문을 실행하지 않으며, handle 없는 자식은 부모의 scope로 읽고, restore key를 다시 쓰는 세 사례가 있다. `as`를 받는 `hook.install`과 hook action `assign_first`, `rewrite`, `invalid_param`, `record_param`은 여섯 runtime 모두에 있다.
 - 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).

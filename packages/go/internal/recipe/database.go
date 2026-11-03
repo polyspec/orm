@@ -209,6 +209,7 @@ func runDatabase(t *testing.T, path, database string) {
 		t.Run(c.ID, func(t *testing.T) {
 			testcase.Start(t, testcase.Database)
 			runCase(t, path, f, c, database, schema, external)
+			reportCase(t, c.ID, database)
 		})
 	}
 }
