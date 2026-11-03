@@ -106,7 +106,6 @@ require_once __DIR__ . '/dbspec_limit_cases.php';
 require_once __DIR__ . '/DbspecSqliteLockCases.php';
 require_once __DIR__ . '/DbspecApplyLockWaitPDO.php';
 require_once __DIR__ . '/request_hook_cases.php';
-require_once __DIR__ . '/statement_events_run.php';
 require_once __DIR__ . '/case_clock.php';
 require_once dirname(__DIR__, 3) . '/tests/dbspec/vectors.php';
 require_once __DIR__ . '/dbspec_cases.php';

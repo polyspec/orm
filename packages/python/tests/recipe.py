@@ -3661,6 +3661,7 @@ _DATABASE_OPS = {
     "transaction": lambda step, context: _op_transaction(step, context),
     "transaction.attempts": lambda step, context: _op_transaction_attempts(step, context),
     "transaction.deadlock": lambda step, context: _op_transaction_deadlock(step, context),
+    "events.server_transactions": lambda step, context: _op_server_transactions(step, context),
     "dsn.connect": _op_dsn_connect,
     "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
@@ -4065,6 +4066,53 @@ def _op_transaction(step: dict, context: dict) -> dict:
 
 def _op_transaction_attempts(_: dict, context: dict) -> dict:
     return {"value": {"int": str(context["attempts"])}}
+
+
+def _op_server_transactions(step: dict, context: dict) -> dict:
+    """events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+    server transactions of each run. The probe runs in a frame of its own, so its cost is measured first."""
+    db = _connection_of(step, context)
+
+    def frame_rows(text: str) -> list:
+        return db.utils().run(
+            lambda frame: frame.run(text, [], kind="utility", tables=[])
+        )["rows"]
+
+    def probe() -> int:
+        return int(frame_rows(step["probe"])[0][0])
+
+    fields: dict = {}
+    if context["database"] == "postgres":
+        [[setting, source]] = frame_rows(
+            "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'"
+        )
+        # Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+        pooled = os.environ.get("ORM_TEST_POSTGRES_DSN") != os.environ.get(
+            "ORM_TEST_POSTGRES_SERVER_DSN"
+        )
+        fields["time_zone"] = setting
+        fields["time_zone_from_startup"] = pooled or source == "client"
+    first = probe()
+    before = probe()
+    cost = before - first
+    for run in ("first", "second"):
+        texts: list = []
+        stop = db.subscribe(lambda event: texts.append(event.sql))
+        try:
+            for nested in step["steps"]:
+                _run_database_step(nested, context)
+        finally:
+            stop()
+        after = probe()
+        spent = after - before - cost
+        before = after
+        distinct = len(set(texts))
+        prepares = run == "first" and "python" in step["first_run_prepare_clients"]
+        fields[f"{run}_excess"] = spent - len(texts) - (distinct if prepares else 0)
+        fields["events"] = len(texts)
+        fields["texts"] = distinct
+    fields["probe_cost"] = cost
+    return fields
 
 
 def _op_transaction_deadlock(step: dict, context: dict) -> dict:

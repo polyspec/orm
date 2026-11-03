@@ -136,6 +136,9 @@ type databaseStep struct {
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
 	Connections []string `json:"connections"`
 	Unconnected bool     `json:"unconnected"`
+	// The fields of events.server_transactions (INT-149).
+	Probe                  string   `json:"probe"`
+	FirstRunPrepareClients []string `json:"first_run_prepare_clients"`
 	Amount    json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
@@ -999,6 +1002,8 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "events.server_transactions":
+		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err

@@ -3700,7 +3700,6 @@
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/php-ext/tests/CatalogPageMutationPdo.php",
         "packages/php-ext/tests/CatalogPageMutationStatement.php",

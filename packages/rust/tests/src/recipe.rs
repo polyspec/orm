@@ -2894,6 +2894,18 @@ mod database {
     }
 
     /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
+    /// The rows of one utility statement in a frame of its own on the connection (INT-150).
+    async fn frame_rows(db: &Db, text: &str) -> polyspec_orm::Result<Vec<Vec<polyspec_orm::Val>>> {
+        db.utils().run(async |frame| frame.run("utility", &[], text, &[]).await).await
+    }
+
+    /// The single integer cell of a probe of events.server_transactions.
+    async fn probe_value(db: &Db, text: &str) -> Result<i64, String> {
+        let rows = frame_rows(db, text).await.map_err(|e| format!("{text}: {e}"))?;
+        let cell = rows.first().and_then(|row| row.first()).map(super::statement::cell_wrapper).ok_or_else(|| format!("{text}: no cell"))?;
+        cell["int"].as_str().or_else(|| cell["text"].as_str()).and_then(|digits| digits.parse().ok()).ok_or_else(|| format!("{text}: the cell {cell} is no integer"))
+    }
+
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
         let name = step["connection"].as_str().ok_or_else(|| format!("{} names no connection", step["op"]))?;
         context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
@@ -3339,6 +3351,56 @@ mod database {
                     .map_err(orm)?;
                 let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
                 Output::fields(json!({ "value": { "array": rows } }))
+            }
+            // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts
+            // the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+            "events.server_transactions" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let probe_text = step["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
+                let mut fields = serde_json::Map::new();
+                if context.database == "postgres" {
+                    let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
+                    let cells: Vec<Value> = rows[0].iter().map(super::statement::cell_wrapper).collect();
+                    // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+                    let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+                    fields.insert("time_zone".into(), cells[0]["text"].clone());
+                    fields.insert("time_zone_from_startup".into(), json!(pooled || cells[1]["text"] == "client"));
+                }
+                let first = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let mut before = probe_value(&db, &probe_text).await.map_err(fault)?;
+                let cost = before - first;
+                let prepares = step["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
+                for run in ["first", "second"] {
+                    let texts = Arc::new(Mutex::new(Vec::<String>::new()));
+                    let sink = Arc::clone(&texts);
+                    let subscription = db
+                        .subscribe(move |event: &StatementEvent<'_>| {
+                            sink.lock().unwrap().push(event.sql.to_owned());
+                            Ok(())
+                        })
+                        .map_err(orm)?;
+                    let mut outcome = Ok(());
+                    for nested in step["steps"].as_array().into_iter().flatten() {
+                        if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
+                            outcome = Err(message);
+                            break;
+                        }
+                    }
+                    subscription.unsubscribe();
+                    outcome.map_err(fault)?;
+                    let after = probe_value(&db, &probe_text).await.map_err(fault)?;
+                    let spent = after - before - cost;
+                    before = after;
+                    let texts = texts.lock().unwrap();
+                    let distinct = texts.iter().collect::<std::collections::HashSet<_>>().len() as i64;
+                    let events = texts.len() as i64;
+                    let extra = if run == "first" && prepares { distinct } else { 0 };
+                    fields.insert(format!("{run}_excess"), json!(spent - events - extra));
+                    fields.insert("events".into(), json!(events));
+                    fields.insert("texts".into(), json!(distinct));
+                }
+                fields.insert("probe_cost".into(), json!(cost));
+                Output::fields(Value::Object(fields))
             }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;

@@ -3412,22 +3412,13 @@
       ],
       "parity": [
         "statement-events-server-transactions",
-        "coverage-statement-events-statement-events"
+        "coverage-statement-events-statement-events",
+        "statement-event-subscription-php-extension"
       ],
       "fixtures": [
-        "contracts/fixtures/statement_events/statement_events.dbs",
-        "tests/events/vectors.json",
-        "packages/ts/tests/statement-events-run.mjs",
-        "packages/php/tests/statement_events_run.php"
+        "contracts/fixtures/statement_events/statement_events.dbs"
       ],
       "tests": [
-        "packages/go/orm/statement_events_test.go",
-        "packages/go/orm/statement_events_export_test.go",
-        "packages/ts/tests/statement_events_server_transactions.mjs",
-        "packages/php/tests/StatementEventsTest.php",
-        "packages/rust/orm/tests/statement_events.rs",
-        "packages/python/tests/statement_events.py",
-        "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_statement_events_mysql.py",
         "packages/python/tests/test_statement_events_postgres.py",
         "packages/python/tests/test_statement_events_sqlite.py",
@@ -3450,16 +3441,6 @@
       ],
       "verification": [
         {
-          "id": "statement-events-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestStatementEvents' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/statement_events_export_test.go",
-            "packages/go/orm/statement_events_test.go",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
           "id": "transaction-failure-python",
           "command": "make transaction-failure-python-check",
           "shard": "other",
@@ -3481,50 +3462,6 @@
             "packages/rust/orm/tests/rollback.rs",
             "contracts/fixtures/rollback.dbs"
           ]
-        },
-        {
-          "id": "statement-events-server-transactions-typescript",
-          "command": "node packages/ts/tests/statement_events_server_transactions.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/statement_events_server_transactions.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "packages/ts/tests/statement-events-run.mjs",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/StatementEventsTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/StatementEventsTest.php",
-            "packages/php/tests/statement_events_run.php",
-            "packages/php/tests/case_database.php",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts statement-events-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/statement_events.rs",
-            "contracts/fixtures/statement_events/statement_events.dbs",
-            "tests/events/vectors.json"
-          ]
-        },
-        {
-          "id": "statement-events-python",
-          "command": "make python-statement-events-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/statement_events.py",
-            "packages/python/tests/statement_events_server_transactions.py",
-            "tests/events/vectors.json"
-          ]
         }
       ],
       "public_constraints": [
@@ -3533,22 +3470,6 @@
       ],
       "coverage": {
         "kind": "database",
-        "cases": [
-          "model_statements",
-          "transaction_savepoint",
-          "transaction_rollback",
-          "savepoint_rollback",
-          "failed_statement",
-          "subscriber_error",
-          "subscriber_orm_error",
-          "unsubscribe",
-          "install",
-          "schema_set_several_fixture_first",
-          "schema_set_several_other_first",
-          "schema_set_unregistered",
-          "schema_set_edited_manifest",
-          "notify"
-        ],
         "owners": {
           "go": {
             "part": "packages/go/orm",

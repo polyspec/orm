@@ -2082,6 +2082,42 @@ Object.assign(OPS, {
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
   },
+  // events.server_transactions (FCV-4, INT-149): the nested steps run twice, and the difference of the probe counts the
+  // server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
+  async 'events.server_transactions'(s, context) {
+    const db = connectionOf(s, context);
+    const frameRows = async text => (await db.utils().run(frame => frame.run('utility', [], text, []))).rows;
+    const probe = async () => Number((await frameRows(s.probe))[0][0]);
+    const fields = {};
+    if (context.database === 'postgres') {
+      const [[setting, source]] = await frameRows("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+      // Through a pooler the pooler applies the startup parameters with SET, so the source says nothing about the client.
+      const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+      fields.time_zone = setting;
+      fields.time_zone_from_startup = pooled || source === 'client';
+    }
+    const first = await probe();
+    let before = await probe();
+    const cost = before - first;
+    for (const run of ['first', 'second']) {
+      const texts = [];
+      const stop = db.subscribe(event => { texts.push(event.sql); });
+      try {
+        for (const nested of s.steps) await runStep(nested, context);
+      } finally {
+        stop();
+      }
+      const after = await probe();
+      const spent = after - before - cost;
+      before = after;
+      const distinct = new Set(texts).size;
+      fields[`${run}_excess`] = spent - texts.length - (run === 'first' && s.first_run_prepare_clients.includes('typescript') ? distinct : 0);
+      fields.events = texts.length;
+      fields.texts = distinct;
+    }
+    fields.probe_cost = cost;
+    return fields;
+  },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
