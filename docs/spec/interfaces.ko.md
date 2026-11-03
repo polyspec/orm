@@ -576,7 +576,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-123a** `polyspec-orm-build`의 `insert_row`는 성공하면 `Committed`를 마지막에 알리고, `Applied`에서 취소되면 `RolledBack`을 알리며 행은 그대로 남는다. MySQL과 PostgreSQL의 `Locked` 단계에서는 다른 연결이 테이블 잠금을 본다. 한 연결에서 join된 두 insert는 각자의 행과 서로 다른 키를 돌려주며, 변동하는 expression default에서도 같다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림, 취소 flag, 한 연결에서 join된 insert가 없다.
 - **INT-123b** `@polyspec/orm` TypeScript package는 MySQL insert의 자동 키를 한 번의 `INSERT` 응답에서 얻으며, `MAX`와 `LAST_INSERT_ID()` 문장을 쓰지 않는다. 가짜 driver가 이를 관찰한다. FCV-2: MySQL에서 catalog의 문장을 보는 recipe step이 없기 때문이다.
 - **INT-123c** `polyspec-orm` Python package는 MySQL insert의 자동 키를 한 번의 `INSERT` 응답에서 얻고 그 키로 행을 읽으며, `MAX`와 `LAST_INSERT_ID()` 문장을 쓰지 않는다. 가짜 driver가 이를 관찰한다. FCV-2: MySQL에서 catalog의 문장을 보는 recipe step이 없기 때문이다.
-- **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB에 문장 길이(서버가 문장의 글을 열 이름으로 돌려줄 수 있다)를 더한 값을 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
+- **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB에 문장 길이(서버가 문장의 글을 열 이름에 담아 돌려줄 수 있다)를 더한 값을 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.
 - **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부한다. statement의 길이, 중첩, 피연산자와 항의 개수는 거부 사유가 아니다.

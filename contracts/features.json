@@ -588,8 +588,7 @@
             "part": "packages/go/orm",
             "tests": [
               "packages/go/orm/recipe_dsn_connection_test.go",
-              "packages/go/orm/recipe_connection_pool_test.go",
-              "packages/go/orm/sqlite_crashed_holder_test.go"
+              "packages/go/orm/recipe_connection_pool_test.go"
             ],
             "commands": {
               "mysql": [

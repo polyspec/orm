@@ -194,19 +194,6 @@ export function databaseDsn(env: NodeJS.ProcessEnv, item: { database: string; ds
   return dsn;
 }
 
-/** The environment of one database item of a feature: ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are the item's database
- * and DSN, and both are absent when the item has no DSN, so no native test reads a stale value from the base environment. */
-export function featureEnvironment(base: NodeJS.ProcessEnv, database: string, dsn: string | null | undefined): NodeJS.ProcessEnv {
-  const env = { ...base };
-  delete env.ORM_FEATURE_DATABASE;
-  delete env.ORM_FEATURE_DSN;
-  if (dsn) {
-    env.ORM_FEATURE_DATABASE = database;
-    env.ORM_FEATURE_DSN = dsn;
-  }
-  return env;
-}
-
 // coverageItems resolves every database item listed by the manifest by default. A native owner can instead request the exact
 // database assigned by the feature runner, without resolving other DSNs. Unset selected DSNs still fail by name.
 export function coverageItems(
@@ -496,8 +483,7 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
       (item.language === 'rust' && command.runner !== 'cargo') ||
       (command.case_database !== undefined && (command.case_database !== true || command.dsn_env !== undefined)) ||
       (item.database !== 'none' && command.case_database === undefined && (typeof command.dsn_env !== 'string' ||
-        !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env) ||
-        ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN'].includes(command.dsn_env))) ||
+        !/^[A-Z][A-Z0-9_]*$/.test(command.dsn_env))) ||
       !validSymbols ||
       Object.keys(command).some(key => !['runner', 'test', 'cases', 'dsn_env', 'case_database', 'symbols'].includes(key)))
     throw new Error('invalid native test command');
@@ -1154,8 +1140,7 @@ export async function executeCoverage(
         if (!shared || !command) continue;
         const executions: Report[] = [];
         reports[key] = executions;
-        const testEnv = featureEnvironment(process.env, item.database, dsn);
-        let processes: Prepared[][];
+                let processes: Prepared[][];
         try { processes = native.map(spec => prepared(spec, shared)); }
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
         // The deadline of one run is the sum of the deadlines of the processes that run starts. Two state readers and native
@@ -1177,7 +1162,7 @@ export async function executeCoverage(
                 const recipeResults = spec.recipe ? join(directory, `${key.replaceAll('/', '_')}-${index}.results`) : undefined;
                 for (const child of processes[index] ?? []) {
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
-                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env, ...(recipeResults ? { ORM_RECIPE_RESULTS: recipeResults } : {}) }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
+                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...process.env, ...child.env, ...(recipeResults ? { ORM_RECIPE_RESULTS: recipeResults } : {}) }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
                   if (feature.id === 'performance_gate') {
                     const measurements = performanceMeasurementsFromOutput(

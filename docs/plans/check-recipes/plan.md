@@ -243,7 +243,7 @@
       that check still names, by the same recipe rules. So no unit is left, whatever the map of the rows.
   - The other open T334-3 rows (the Go build-tag rows T334-3-6-2 to -6-6, T334-3-13 and the open fixes T334-3-3-3 to -5 and -3-3-7 to -9)
     are outside this plan; T334-3-6-2 is [!], held as registered: they convert no shared unit, and they stay as registered.
-  - T334-3-12 removes the selection mechanisms (ORM_FEATURE_DATABASE and the rest) once those rows are done.
+  - T334-3-12 removes the selection mechanisms (the feature database variables) once those rows are done.
   - The conformance part of B2-6 is T334-3-5.
   - New rows of this plan in B2:
     - B2-2a, the database-op rule: a recipe without a fixture carries no database op. It adds only that rule; the op table and

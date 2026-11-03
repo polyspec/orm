@@ -90,10 +90,16 @@ if (import.meta.main) {
   if (values.driver === undefined || !['mysql', 'postgres', 'sqlite'].includes(values.driver) || !values.dsn) {
     throw new Error('usage: state.mts --driver mysql|postgres|sqlite --dsn <DSN>');
   }
-  const db = await openStateDatabase(values.driver, values.dsn);
   try {
-    console.log(`${values.driver} state ${await snapshotDatabase(db, values.driver)}`);
-  } finally {
-    await db.close();
+    const db = await openStateDatabase(values.driver, values.dsn);
+    try {
+      console.log(`${values.driver} state ${await snapshotDatabase(db, values.driver)}`);
+    } finally {
+      await db.close();
+    }
+  } catch (error) {
+    // The reader of this digest reports the line, so a failure is one line and not a stack.
+    console.error(`check: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
   }
 }

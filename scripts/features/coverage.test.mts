@@ -489,20 +489,6 @@ caseTest('selecting a coverage owner, database and cases reports only that subse
   assert.throws(() => selectFeatures(manifest, 'constraints_and_relations', [], 'mysql', ['missing_case']), /unknown coverage case/);
 });
 
-caseTest('the feature runner does not inherit a database subset from the environment', COMPUTE, () => {
-  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
-  const before = process.env.ORM_FEATURE_DATABASE;
-  process.env.ORM_FEATURE_DATABASE = 'sqlite';
-  try {
-    const selected = selectFeatures(manifest, 'constraints_and_relations', ['owner/typescript']);
-    assert.deepEqual(checkCoverage(selected, {}).toSorted(),
-      databases.map(database => `constraints_and_relations/owner/typescript/${database}: no executed report`).toSorted());
-  } finally {
-    if (before === undefined) delete process.env.ORM_FEATURE_DATABASE;
-    else process.env.ORM_FEATURE_DATABASE = before;
-  }
-});
-
 caseTest('coverage item selection runs one declared database and defaults to all', COMPUTE, () => {
   const file = 'packages/ts/tests/a.mjs';
   const command = (dsn_env: string) => [{ runner: 'node', test: file, cases: ['c'], dsn_env }];
@@ -517,7 +503,6 @@ caseTest('coverage item selection runs one declared database and defaults to all
     { database: 'sqlite', dsn_env: 'DSN_SQLITE', dsn: 'sqlite:///selected.sqlite' },
   ]);
   assert.throws(() => coverageItems(manifest, file, sqliteEnv), /DSN_MYSQL/);
-  assert.throws(() => coverageItems(manifest, file, { ...sqliteEnv, ORM_FEATURE_DATABASE: 'sqlite' }), /DSN_MYSQL/);
   assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'mysql'), /DSN_MYSQL/);
   assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'oracle'), /unknown coverage database oracle/);
   assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'postgres'), /has no coverage item for postgres/);
@@ -839,9 +824,7 @@ caseTest('every Go execution runs the test instead of reading the test cache', P
     await mkdir(join(root, 'packages/go/sample'), { recursive: true });
     await mkdir(runs);
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
-    await writeFile(join(root, owner), `//go:build featurecoverage
-
-package sample
+    await writeFile(join(root, owner), `package sample
 
 import (
 	"os"
@@ -892,7 +875,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
     await chmod(join(root, 'bin/go'), 0o755);
     await mkdir(join(root, 'packages/go/sample'), { recursive: true });
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
-    await writeFile(join(root, owner), '//go:build featurecoverage\n\npackage sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\n');
+    await writeFile(join(root, owner), 'package sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\n');
     process.env.PATH = `${join(root, 'bin')}:${path}`;
     const started = performance.now();
     assert.deepEqual(await runSelected(manifest, root, ['owner/go']), []);

@@ -54,15 +54,13 @@ async function runItems(items, file, cases, timeoutMs, suite) {
 }
 
 /**
- * The coverage items of this test file from the feature manifest: every listed database by default, or the exact
- * database assigned by the feature runner for one owner execution.
+ * The coverage items of this test file from the feature manifest: every listed database.
  */
 export function featureItems(file) {
   const items = coverageItems(
     readFeatures(repositoryRoot),
     `packages/ts/tests/${file}`,
     process.env,
-    process.env.ORM_FEATURE_DATABASE,
   );
   // A case takes { driver, dsn, database }: driver is the database name the manifest lists.
   return (items.length ? items : [{ database: 'none', dsn: null }]).map(item => ({ ...item, driver: item.database, dsn: item.dsn }));

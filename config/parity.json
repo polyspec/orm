@@ -26151,9 +26151,9 @@
         }
       ],
       "owner": {
-        "kind": "coverage-part",
-        "feature": "dsn_connection",
-        "part": "owner/go"
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
       }
     },
     {
@@ -28399,8 +28399,6 @@
           "id": "CoveragePerformanceGateTest::testHotPathGate",
           "command": [
             "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
             "--teamcity",
             "--configuration",
@@ -28417,8 +28415,6 @@
           "command": [
             "env",
             "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "php",
             "-d",
             "extension=${ORM_PARITY_PHP_EXTENSION}",
@@ -28490,8 +28486,6 @@
           "id": "CoveragePerformanceGatePostgresTest::testHotPathGate",
           "command": [
             "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
             "--teamcity",
             "--configuration",
@@ -28508,8 +28502,6 @@
           "command": [
             "env",
             "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "php",
             "-d",
             "extension=${ORM_PARITY_PHP_EXTENSION}",
@@ -28581,8 +28573,6 @@
           "id": "CoveragePerformanceGateSqliteTest::testHotPathGate",
           "command": [
             "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
             "--teamcity",
             "--configuration",
@@ -28599,8 +28589,6 @@
           "command": [
             "env",
             "ORM_PHP_MODE=extension",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "php",
             "-d",
             "extension=${ORM_PARITY_PHP_EXTENSION}",
