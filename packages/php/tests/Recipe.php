@@ -294,6 +294,12 @@ final class Recipe
      * names (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool:
      * true}} for an accepted request, {error: CODE} for a request that fails with CODE.
      */
+    private static function userFromDatabaseDsn(string $dsn, string $prefix): string
+    {
+        preg_match('#/([^/?]+)(?:\?.*)?$#', $dsn, $name);
+        return (string) preg_replace('#^mysql://[^@]+@#', 'mysql://' . $prefix . substr($name[1], -28) . '@', $dsn);
+    }
+
     private static function validateStep(array $step, string $path, string $database): void
     {
         $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
@@ -2703,14 +2709,18 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = $context['dsn'];
-                if (isset($s['user_from_database'])) {
-                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
-                    $reconnectDsn = (string) preg_replace(
-                        '#^mysql://[^@]+@#',
-                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
-                        $reconnectDsn
-                    );
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                    : $context['dsn'];
+                if (isset($s['refused_message'])) {
+                    try {
+                        Catalog::connect($reconnectDsn);
+                    } catch (OrmException $error) {
+                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                        return [];
+                    }
+                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
@@ -3102,6 +3112,12 @@ final class Recipe
                         throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
                     }
                 }
+                return [];
+            case 'sql.hold_connection':
+                $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
+                return [];
+            case 'sql.release_connection':
+                unset($context['held']);
                 return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
