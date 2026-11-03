@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class ConnectionTimeoutCleanupTest extends TestCase
 {
-    // Requirements: CFG-6.
+    // Requirements: CFG-6a.
     public function testNativeFailedStatementClosesCursorAndReusesConnection(): void
     {
         $pdo = new ConnectionTimeoutCleanupPdo();
