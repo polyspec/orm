@@ -3965,7 +3965,9 @@
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
-        "packages/python/tests/coverage_statement_events.py",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
         "packages/php-ext/tests/StatementEventSurfaceTest.php",
         "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
         "packages/ts/tests/statement_events-mysql.test.mjs",
@@ -4341,19 +4343,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_events.py"
+              "packages/python/tests/test_statement_events_mysql.py",
+              "packages/python/tests/test_statement_events_postgres.py",
+              "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/case_database.py",
-              "packages/python/tests/statement_events.py",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/statement_events.json",
+              "contracts/fixtures/statement_events/statement_events.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_mysql.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4363,7 +4365,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_postgres.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4373,7 +4375,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_sqlite.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4428,6 +4430,8 @@
       "parity": [
         "generator",
         "php-generator-scan-vector-in-both-php-modes",
+        "php-phpstan-finds-the-query-methods-in-both-php-modes",
+        "generated-external-model-reads-its-table",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -12408,7 +12412,9 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
-        "packages/python/tests/coverage_request_hook.py",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
         "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
       ],
       "docs": [
@@ -12957,18 +12963,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_request_hook.py"
+              "packages/python/tests/test_request_hook_mysql.py",
+              "packages/python/tests/test_request_hook_postgres.py",
+              "packages/python/tests/test_request_hook_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/test_request_hook.py",
-              "packages/python/tests/case_database.py",
+              "contracts/fixtures/request_hook/request_hook.json",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_mysql.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -12991,7 +12998,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_postgres.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13014,7 +13021,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_sqlite.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13833,8 +13840,7 @@
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/php/tests/CoverageStatementRunnerTest.php",
         "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
-        "packages/ts/tests/coverage_statement_runner.mjs",
-        "packages/python/tests/coverage_statement_runner.py"
+        "packages/ts/tests/coverage_statement_runner.mjs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -14136,13 +14142,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_runner.py"
+              "packages/python/tests/test_statement_runner_mysql.py",
+              "packages/python/tests/test_statement_runner_postgres.py",
+              "packages/python/tests/test_statement_runner_sqlite.py"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_sqlite.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14152,7 +14160,7 @@
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_mysql.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14162,7 +14170,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_postgres.py",
                   "cases": [
                     "statement_runner"
                   ],

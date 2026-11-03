@@ -4042,6 +4042,13 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "derived_integers": {
+                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
               "as": {
                 "$ref": "#/$defs/name"
               },
@@ -4227,7 +4234,7 @@
             "$ref": "#/$defs/expect"
           },
           "masks": {
-            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value.",
+            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value, with the reason.",
             "type": "object",
             "propertyNames": {
               "enum": [
@@ -4243,7 +4250,8 @@
                 "required": [
                   "event",
                   "bind",
-                  "value"
+                  "value",
+                  "reason"
                 ],
                 "additionalProperties": false,
                 "properties": {
@@ -4261,6 +4269,11 @@
                       "$TS",
                       "$NOW"
                     ]
+                  },
+                  "reason": {
+                    "description": "Why no recipe can fix this value.",
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
@@ -5708,6 +5721,10 @@
             "const": "hook.install"
           },
           "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "as": {
+            "description": "The name of the hooked handle; the connection keeps its name, unhooked.",
             "$ref": "#/$defs/name"
           },
           "hooks": {
@@ -7490,6 +7507,94 @@
     },
     "hook": {
       "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign_first"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "rewrite"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "invalid_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
         {
           "type": "object",
           "required": [

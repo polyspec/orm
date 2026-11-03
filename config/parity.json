@@ -5009,7 +5009,12 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "without_hook"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
         },
         {
@@ -5077,8 +5082,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_read_filter"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "read_filter"
         },
         {
           "implementation": "rust",
@@ -5144,8 +5149,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_invalid_param"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "invalid_param"
         },
         {
           "implementation": "rust",
@@ -5211,8 +5216,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_no_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_no_key"
         },
         {
           "implementation": "rust",
@@ -5278,8 +5283,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key"
         },
         {
           "implementation": "rust",
@@ -5345,8 +5350,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_hook_set_key"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_hook_set_key"
         },
         {
           "implementation": "rust",
@@ -5412,8 +5417,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_restore_rewritten_key_set_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "restore_rewritten_key_set_scope"
         },
         {
           "implementation": "rust",
@@ -5479,8 +5484,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_request_hook.py",
-          "id": "test_relation_scope"
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "relation_scope"
         },
         {
           "implementation": "rust",
@@ -5522,6 +5527,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5579,6 +5585,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5636,6 +5643,7 @@
         "PLN-16",
         "DIA-161",
         "INT-38",
+        "PRT-65",
         "FCV-8",
         "FCV-9",
         "FCV-10",
@@ -5701,8 +5709,13 @@
         },
         {
           "implementation": "python",
+          "test": "packages/python/tests/test_request_hook_sqlite.py",
+          "id": "reads_params"
+        },
+        {
+          "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_reads_params"
+          "id": "test_params_are_read_only"
         },
         {
           "implementation": "rust",
@@ -17244,6 +17257,85 @@
       }
     },
     {
+      "id": "php-phpstan-finds-the-query-methods-in-both-php-modes",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
+          "id": "ModelMethodsTestExtensionTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
+        }
+      ]
+    },
+    {
+      "id": "generated-external-model-reads-its-table",
+      "kind": "feature",
+      "requirements": [
+        "DBS-110",
+        "DBS-173"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GeneratedExternalModelTest.php",
+          "id": "GeneratedExternalModelTest::testGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GeneratedExternalModelTestExtensionTest.php",
+          "id": "GeneratedExternalModelTestExtensionTest::testGeneratedExternalModelReadsItsTable"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated external model reads its table"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_external_model_reads_its_table"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration_program/main.rs",
+          "id": "generated_external_model_reads_its_table",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration_program",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=generated_external_model_reads_its_table"
+          ]
+        }
+      ]
+    },
+    {
       "id": "php-internal-model-methods-phpstan-finds-every-query-method-of-a-generated-model",
       "kind": "feature",
       "requirements": [
@@ -26342,8 +26434,43 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_events.py",
-          "id": "test_statement_events"
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "model_statements"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_savepoint"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "transaction_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "savepoint_rollback"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "failed_statement"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "subscriber_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "unsubscribe"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_events_sqlite.py",
+          "id": "install"
         },
         {
           "implementation": "python",
@@ -28227,9 +28354,6 @@
           "test": "packages/python/tests/coverage_performance_gate_mysql.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28334,9 +28458,6 @@
           "test": "packages/python/tests/coverage_performance_gate_postgres.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28441,9 +28562,6 @@
           "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -41479,8 +41597,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_runner.py",
-          "id": "test_statement_runner"
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py",
+          "id": "failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "rust",
