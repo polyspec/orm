@@ -25398,9 +25398,9 @@
         }
       ],
       "owner": {
-        "kind": "coverage-part",
-        "feature": "transactions",
-        "part": "owner/php-extension"
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
       }
     },
     {
