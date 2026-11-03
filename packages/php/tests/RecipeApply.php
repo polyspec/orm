@@ -54,7 +54,7 @@ final class RecipeApply
      * @param Closure(array<string, mixed>): void $runStep
      * @return array<string, mixed>
      */
-    public static function op(array $s, array &$context, Closure $runStep): array
+    public static function op(RecipeStep $s, array &$context, Closure $runStep): array
     {
         switch ($s['op']) {
             case 'dbspec.plan':
@@ -138,7 +138,7 @@ final class RecipeApply
     }
 
     /** @param array<string, mixed> $context */
-    private static function session(array $s, array $context): PDO
+    private static function session(RecipeStep $s, array $context): PDO
     {
         $session = $context['bound'][$s['connection']] ?? null;
         if (!$session instanceof PDO) {
@@ -152,7 +152,7 @@ final class RecipeApply
      * @param array<string, mixed> $context
      * @return array<string, mixed>
      */
-    private static function exec(array $s, array $context): array
+    private static function exec(RecipeStep $s, array $context): array
     {
         $text = is_string($s['sql']) ? $s['sql'] : $s['sql'][$context['database']];
         $text = str_replace('{step}', (string) ($context['applyStep'] ?? 0), $text);
@@ -174,7 +174,7 @@ final class RecipeApply
      * @param array<string, mixed> $context
      * @return array<string, mixed>
      */
-    private static function schema(array $s, array $context): array
+    private static function schema(RecipeStep $s, array $context): array
     {
         $result = Dbspec::introspect(self::session($s, $context), $context['database'], 'x');
         if ($result->unsupported !== []) {
@@ -199,7 +199,7 @@ final class RecipeApply
      * @param Closure(array<string, mixed>): void $runStep
      * @return array<string, mixed>
      */
-    private static function command(array $s, array &$context, Closure $runStep): array
+    private static function command(RecipeStep $s, array &$context, Closure $runStep): array
     {
         $session = self::session($s, $context);
         $plans = [];
@@ -254,7 +254,7 @@ final class RecipeApply
             Assert::fail("the command took $elapsed ms, want at least {$s['elapsed']['at_least_ms']} and below {$s['elapsed']['below_ms']}");
         }
         $members = [['code', ['text' => $code]]];
-        if (!array_key_exists('count', $s)) {
+        if (!$s->has('count')) {
             $members[] = ['events', ['int' => (string) $events]];
         }
         foreach ($s['count'] ?? [] as $kind) {

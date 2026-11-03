@@ -4800,6 +4800,10 @@
             ],
             "additionalProperties": false,
             "properties": {
+                            "json_output": {
+                              "description": "The result is the model JSON output text of the row: its members in row order, and each styled value with its stored document text (COD-26).",
+                              "const": true
+                            },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"
@@ -4846,6 +4850,10 @@
             ],
             "additionalProperties": false,
             "properties": {
+                            "json_output": {
+                              "description": "The result is the model JSON output text of the row: its members in row order, and each styled value with its stored document text (COD-26).",
+                              "const": true
+                            },
                             "ordered_text": {
                 "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
                 "$ref": "#/$defs/name"

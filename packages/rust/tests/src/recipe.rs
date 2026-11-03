@@ -4072,6 +4072,7 @@ mod database {
             Val::Float(f) => json!({ "float": f.to_string() }),
             Val::Text(text) => json!({ "text": text }),
             Val::Bool(b) => json!({ "bool": b }),
+            Val::Binary(bytes) => json!({ "bytes_hex": bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>() }),
         }
     }
 
@@ -5716,6 +5717,9 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    if step["json_output"] == json!(true) {
+                        return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
+                    }
                     if let Some(column) = step["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),

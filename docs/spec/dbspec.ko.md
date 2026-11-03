@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: e1ea43420d48b38639832693affc1d2b1859c998c2ac83366c2b18fab8a3b111 -->
+<!-- source-sha256: 776f62fc5e31d93cf4c2279ca46817867a1aa82f24f3cb891b8858af9aba8361 -->
 # dbspec
 
 [English](dbspec.md)
@@ -99,7 +99,7 @@ table users {
 - **DBS-25** `set.path`: 경로에 정규형이 없거나, `documents` 경로에 `..` segment가 있거나, `external` 경로에서 다른 segment 뒤에 `..`이 있다
 - **DBS-26** `set.duplicate`: 경로의 파일이 앞의 경로의 파일과 같다
 
-- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하되 parse된 문서의 diagnostic은 파일이나 set 이름 뒤에 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
+- **DBS-27** 오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하되 parse된 문서의 diagnostic은 파일이나 set 이름 뒤에 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력하고, 아무것도 쓰지 않는다. 어떤 type도 가리키지 않는 단어의 message는 `type "<word>" is not a dbspec type`이다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
 
 
 ### Set parse {#parsing-a-set}
@@ -534,7 +534,7 @@ make build-php-ext
 php -d extension=var/php-ext/polyspec_orm.so your-script.php
 ```
 
-선언은 `packages/php-ext/src/polyspec_orm.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 이를 읽는다. Native build는 설치된 `gen_stub.php`와 PHP-Parser를 offline으로 temporary source copy에서 실행해 `polyspec_orm_arginfo.h`를 생성하고, `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/polyspec_orm.c`가 등록한다. `make php-ext-arginfo`는 ignored `var/` 아래에 확인용 output을 쓴다. `make dbspec-php-extension-check`는 stub 선언을 확인하고 확장을 실행 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 문서, syntax, statement, plan, Mermaid vector, 변경 문서, 메모리 SQLite database introspection, 실패하는 catalog query, SQLite file의 apply, recover, rollback, finalize script에서 PHP client와 같은 결과, message, exception을 내는지, public class가 PHP client의 public dbspec class와 같은 선언을 가지는지 확인한다. `make dbspec-compare-check`, `make dbspec-introspect-compare-check`, `make dbspec-apply-pairs-check`는 이를 다섯 번째 runner로 실행하고, `make dbspec-introspect-php-extension-check`와 `make dbspec-apply-php-extension-check`는 PHP client의 introspection과 apply test를 MySQL, PostgreSQL, SQLite에서 실행한다.
+선언은 `packages/php-ext/src/polyspec_orm.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 이를 읽는다. Native build는 설치된 `gen_stub.php`와 PHP-Parser를 offline으로 temporary source copy에서 실행해 `polyspec_orm_arginfo.h`를 생성하고, `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/polyspec_orm.c`가 등록한다. `make php-ext-arginfo`는 ignored `var/` 아래에 확인용 output을 쓴다. `make dbspec-php-extension-check`는 stub 선언을 확인하고 확장을 실행 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 문서, syntax, statement, plan, Mermaid vector, 변경 문서, 메모리 SQLite database introspection, 실패하는 catalog query, SQLite file의 apply, recover, rollback, finalize script에서 PHP client와 같은 결과, message, exception을 내는지, public class가 PHP client의 public dbspec class와 같은 선언을 가지는지 확인한다. `make dbspec-compare-check`, `make dbspec-introspect-compare-check`, `make dbspec-apply-pairs-check`는 이를 다섯 번째 runner로 실행하고, `make dbspec-introspect-php-extension-check`와 suite unit `dbspec_apply-*`는 PHP client의 introspection test와 apply recipe를 MySQL, PostgreSQL, SQLite에서 실행한다.
 
 ## 검증
 

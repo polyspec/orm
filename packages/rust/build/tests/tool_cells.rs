@@ -26,8 +26,8 @@ async fn physical_tool_cells() {
             failures.push(format!("{dialect}:unsupported-type"));
         }
         let bytes = if dialect == "postgres" { "SELECT decode('ff','hex')" } else { "SELECT X'FF'" };
-        if connection.query(bytes, &[]).await.is_ok() {
-            failures.push(format!("{dialect}:invalid-utf8"));
+        if !matches!(connection.query(bytes, &[]).await.as_deref(), Ok([row]) if row.as_slice() == [tool_db::Val::Binary(vec![0xff])]) {
+            failures.push(format!("{dialect}:binary-value"));
         }
         if dialect == "mysql" && connection.query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[]).await.is_ok() {
             failures.push("mysql:unsigned-overflow".into());

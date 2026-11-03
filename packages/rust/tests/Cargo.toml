@@ -26,13 +26,6 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-# One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
-# seeded bench databases of the run (BENCH_*_DSN), which make orm-check and the runner of a run give.
-[[test]]
-name = "coverage_conformance_verification"
-path = "tests/coverage_conformance_verification.rs"
-harness = false
-
 # Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
 name = "collection_none"

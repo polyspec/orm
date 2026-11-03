@@ -399,7 +399,6 @@
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
-        "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
         "packages/php/tests/PostgresSessionSettings.php",
@@ -413,6 +412,7 @@
         "packages/php/tests/RecipeSubscription.php",
         "packages/php/tests/RecipeModel.php",
         "packages/php/tests/RecipeApply.php",
+        "packages/php/tests/RecipeStep.php",
         "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
@@ -720,7 +720,6 @@
         "packages/ts/tests/mysql-test-options.mjs",
         "packages/ts/tests/bench-set.mjs",
         "packages/ts/tests/codec_case.mjs",
-        "packages/ts/tests/conformance_case.mjs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/plan_case.mjs",
@@ -739,6 +738,7 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
+        "packages/ts/tests/recipe_reads.mjs",
         "packages/ts/tests/recipe_apply.mjs",
         "packages/ts/tests/recipe_introspect.mjs",
         "packages/ts/tests/recipe_keys.mjs",
@@ -831,10 +831,6 @@
         {
           "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
           "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/conformance_vector_count.test.mts",
-          "reason": "harness: an internal test that verifies the TypeScript conformance runner covers every declared vector, not ORM behaviour itself (K313)"
         },
         {
           "glob": "packages/ts/tests/parse_documents.test.mjs",
@@ -1002,7 +998,6 @@
         "packages/python/tests/models/__init__.py",
         "packages/python/tests/bench_set.py",
         "packages/python/tests/case_database.py",
-        "packages/python/tests/conformance_case.py",
         "packages/python/tests/coverage_case.py",
         "packages/python/tests/dbspec_apply_runner.py",
         "packages/python/tests/dbspec_introspect.py",
@@ -1017,6 +1012,7 @@
         "packages/python/tests/coverage_performance_gate.py",
         "packages/python/tests/recipe.py",
         "packages/python/tests/recipe_model.py",
+        "packages/python/tests/recipe_reads.py",
         "packages/python/tests/recipe_apply.py",
         "packages/python/tests/recipe_introspect.py",
         "packages/python/tests/recipe_keys.py",
@@ -1284,11 +1280,15 @@
         },
         {
           "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
-          "reason": "test: calls the private validate for its parser failure cause and its PostgreSQL operand limit; read_statements and read_only_grid_shapes hold the shapes"
+          "reason": "test: calls the private validate for the cause its parser failure keeps; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        },
+        {
+          "glob": "packages/rust/build/src/catalog/temporal.rs",
+          "reason": "test: calls the private is_temporal, fraction and precision with forms no server stores, such as datetime(7); temporal_write_and_limits and described_temporal_matrix hold what a server reaches"
         },
         {
           "glob": "packages/rust/orm/tests/unit/time_precision.rs",
@@ -3213,137 +3213,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
           "symbol": "dbspec_apply_verification_errors_none"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-chain",
-      "kind": "feature",
-      "requirements": [
-        "PLN-90",
-        "PLN-93",
-        "PLN-95",
-        "PLN-96"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_wait_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-history-state",
-      "kind": "feature",
-      "requirements": [
-        "PLN-91",
-        "PLN-92"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_history_and_state_on_every_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-lock-scope",
-      "kind": "feature",
-      "requirements": [
-        "PLN-89"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyChain"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testScenario"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testScenario"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "every apply scenario runs on its dialects"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_lock_scope_on_every_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_chain_on_three_databases"
         }
       ]
     },
@@ -8087,6 +7956,9 @@
       "id": "catalog_connection-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -8151,6 +8023,9 @@
       "id": "catalog_connection-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -8215,6 +8090,9 @@
       "id": "catalog_connection-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-8",
+        "INT-4",
+        "COD-31",
         "DBS-113",
         "INT-101",
         "INT-102",
@@ -8742,12 +8620,13 @@
       "id": "utils-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8786,12 +8665,13 @@
       "id": "utils-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -8830,12 +8710,13 @@
       "id": "utils-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-134",
         "INT-51",
         "INT-52",
         "INT-53",
         "INT-61",
-        "INT-73",
-        "INT-134"
+        "INT-72",
+        "INT-73"
       ],
       "file": "contracts/fixtures/utils/utils.json",
       "cases": "$.cases[*].id",
@@ -10104,6 +9985,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -10158,6 +10041,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -10212,6 +10097,8 @@
         "COD-11",
         "COD-12",
         "COD-15",
+        "COD-16",
+        "COD-26",
         "COD-38",
         "DIA-26",
         "DSL-104",
@@ -10689,26 +10576,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs"
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py"
+          "test": "packages/python/tests/test_conformance_verification_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_mysql"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "symbol": "conformance_verification_mysql"
         }
       ]
     },
@@ -10901,26 +10788,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationPostgresRecipeTest::testPostgres"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs"
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py"
+          "test": "packages/python/tests/test_conformance_verification_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_postgres"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "symbol": "conformance_verification_postgres"
         }
       ]
     },
@@ -11114,26 +11001,26 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "Polyspec\\Orm\\Tests\\CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\ConformanceVerificationSqliteRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "symbol": "conformance_sqlite"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "symbol": "conformance_verification_sqlite"
         }
       ]
     },
@@ -14238,124 +14125,6 @@
       }
     },
     {
-      "id": "dbspec-apply-chain-finalization",
-      "kind": "feature",
-      "requirements": [
-        "PLN-94"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
-          "id": "TestRecipeDbspecApplySqlite/rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
-          "id": "DbspecApplyRecipeTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
-          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"rows_between_rollback_apply_and_finalize\""
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
-          "id": "rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
-          "id": "rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
-          "id": "dbspec_apply_sqlite::rows_between_rollback_apply_and_finalize"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_dbspec_apply_test.go",
-          "id": "TestRecipeDbspecApplySqlite/finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
-          "id": "DbspecApplyRecipeTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
-          "id": "DbspecApplyRecipeTestExtensionTest::testSqlite with data set \"finalize_of_a_plan_that_hides_nothing\""
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs",
-          "id": "finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_apply_sqlite.py",
-          "id": "finalize_of_a_plan_that_hides_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
-          "id": "dbspec_apply_sqlite::finalize_of_a_plan_that_hides_nothing"
-        }
-      ]
-    },
-    {
-      "id": "dbspec-apply-stress",
-      "kind": "feature",
-      "requirements": [
-        "PLN-104"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_stress_physical_test.go",
-          "id": "TestApplyStressPlan"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "mysql.apply.stress_plan"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.stress_plan"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "sqlite.apply.stress_plan"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_stress_plan_on_three_databases"
-        }
-      ]
-    },
-    {
       "id": "temporal-column-precision-mysql",
       "kind": "feature",
       "requirements": [
@@ -14379,58 +14148,78 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testMysql"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testMysql"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "datetime_p0_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_p0_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "time_p3_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::time_p3_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "test": "packages/ts/tests/conformance_verification-mysql.test.mjs",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_mysql.py",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_mysql.py",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_mysql::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::datetime_precision_rejected"
         }
       ]
     },
@@ -14458,58 +14247,78 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testPostgres"
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testPostgres"
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_p0_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres with data set \"datetime_precision_rejected\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "datetime_p0_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_p0_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "time_p3_roundtrip"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::time_p3_roundtrip"
-        },
-        {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "test": "packages/ts/tests/conformance_verification-postgres.test.mjs",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_postgres.py",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_postgres.py",
           "id": "datetime_precision_rejected"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_postgres::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::datetime_precision_rejected"
         }
       ]
     },
@@ -16241,50 +16050,6 @@
       ]
     },
     {
-      "id": "dbspec-apply-pooler",
-      "kind": "feature",
-      "requirements": [
-        "PLN-105"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/apply_physical_test.go",
-          "id": "TestApplyThroughTransactionPooler"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.pooler.lock_shared"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
-          "id": "postgres.apply.pooler.session_changed"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_apply_through_a_transaction_pooler"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply.rs",
-          "id": "apply_through_a_transaction_pooler"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::testPooler"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
-          "id": "DbspecApplyTestExtensionTest::testPooler"
-        }
-      ]
-    },
-    {
       "id": "rust-array-output-of-an-unrepresentable-number-is-an-error",
       "kind": "feature",
       "requirements": [
@@ -16302,51 +16067,6 @@
         "artifact": "git-tag",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "model-ordered-json-output-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-16",
-        "COD-26"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/styled_state_test.go",
-          "id": "TestModelOrderedJSONOutputPreservesExactText"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelJsonTextTest.php",
-          "id": "ModelJsonTextTest::testModelJsonTextPreservesOrderedJsonNumberText"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testNativeModelJsonPreservesOrderedJsonNumberText"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_json_output.test.mts",
-          "id": "model/ordered-json-output-text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_json_text.py",
-          "id": "test_model_output_preserves_ordered_json_number_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_json_text.py",
-          "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/model_output.rs",
-          "id": "json_output_keeps_the_ordered_json_text"
-        }
-      ]
     },
     {
       "id": "rust-rollback-fault-entry",
@@ -16619,21 +16339,6 @@
           "id": "catalog_plain_values"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::temporal_text_follows_the_dbspec_forms"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::fraction_keeps_exactly_p_digits_and_rejects_dropped_digits"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_temporal.rs",
-          "id": "temporal_grid_cells_follow_the_declared_precision"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -16642,6 +16347,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::temporal_write_and_limits"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "temporal_write_and_limits"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "temporal_write_and_limits"
         }
       ]
     },
@@ -25620,11 +25340,6 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::lock_not_held_at_transaction_end_is_reported"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
           "id": "tx::tests::panicking_callback_ends_its_transaction"
         },
         {
@@ -26670,13 +26385,43 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"creates_and_save\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "conditions_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "relations"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
         },
         {
           "implementation": "python",
@@ -26700,23 +26445,43 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_TEST=coverage_conformance_vector_sqlite"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::conditions_values"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::relations"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::functions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::creates_and_save"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"conditions_values\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"relations\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"creates_and_save\""
         }
       ]
     },
@@ -29389,52 +29154,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_queries_chain_sqlite.rs",
           "id": "model_queries_chain_sqlite::removing_an_added_column_keeps_the_function_column"
-        }
-      ]
-    },
-    {
-      "id": "model-read-null-and-empty-text",
-      "kind": "feature",
-      "requirements": [
-        "COD-31",
-        "INT-4",
-        "INT-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
-          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
-          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
-          "id": "catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
-          "id": "catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
-          "id": "catalog_connection_sqlite::catalog_null_and_empty_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/val_text.rs",
-          "id": "sql_null_and_empty_text_are_two_values"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_catalog_connection_test.go",
-          "id": "TestRecipeCatalogConnectionSqlite"
         }
       ]
     },
@@ -43696,6 +43415,74 @@
           "id": "StatementEventsTestExtensionTest::testStatementEventEntryPointsAreNative"
         }
       ]
+    },
+    {
+      "id": "python-model-json-text",
+      "kind": "feature",
+      "requirements": [
+        "COD-68"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_key_that_javascript_reorders_keeps_its_place"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_collection_writes_the_texts_of_its_rows"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_related_row_is_written_under_its_relation_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_other_values_are_written_as_json_stringify_writes_them"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_a_value_that_json_cannot_write_fails_with_codec_encode"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_json_dumps_cannot_encode_a_model"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "py-dbspec-apply-sqlite-lock-faults",
+      "kind": "feature",
+      "requirements": [
+        "PLN-107"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_statement_lock_timeout_is_failed_at_its_step"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/python"
+      }
     }
   ],
   "errors": {

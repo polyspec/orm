@@ -31,6 +31,7 @@ import { applyOps } from './recipe_apply.mjs';
 import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
+import { readStep } from './recipe_reads.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
@@ -70,7 +71,9 @@ export function runRecipe(path, database) {
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
     registerRecipeCase(recipeCase, database, COMPUTE, async () => {
       const bound = new Map();
-      for (const [index, step] of recipeCase.steps.entries()) {
+      for (const [index, rawStep] of recipeCase.steps.entries()) {
+        const reads = readStep(rawStep, database);
+        const step = reads.step;
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
@@ -95,6 +98,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
           else if (step.op === 'model.assign') await checkAssign(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect'));
           else run(step, bound, database);
+          reads.check();
         } catch (error) {
           throw new Error(`recipe ${path} case ${recipeCase.id} step ${index} (${step.op}) on ${database}: ${error.message}`, { cause: error });
         }
@@ -918,7 +922,9 @@ const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runSt
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
 const OP_DEADLINE_MS = 20000;
 
-async function runStep(s, context) {
+async function runStep(rawStep, context) {
+  const reads = readStep(rawStep, context.database);
+  const s = reads.step;
   const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
@@ -928,7 +934,7 @@ async function runStep(s, context) {
     const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
     if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
   }
-  const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
+  const expected = rawStep.expect === undefined ? undefined : reads.outcome(resolveRefs(rawStep.expect[context.database], context));
   let actual;
   try {
     actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
@@ -946,6 +952,7 @@ async function runStep(s, context) {
     }
     if (expected.keeps_callback === true) assert.equal(error.cause, callbackError, `the error ${JSON.stringify(error.message)} keeps the error of the callback`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
+    reads.checkOutcome();
     return;
   }
   if (s.as !== undefined) {
@@ -953,10 +960,14 @@ async function runStep(s, context) {
     // A dotted ref reads the fields of the result, as the Go helper does (FCV-4).
     context.fields.set(s.as, actual);
   }
-  if (expected === undefined) return;
+  if (expected === undefined) {
+    reads.check();
+    return;
+  }
   if (expected.error !== undefined && actual.error === undefined) throw new Error(`expected ${expected.error}, and the op succeeded`);
   const compared = Object.fromEntries(Object.keys(expected).map(key => [key, actual[key]]));
   assert.deepEqual(normalized(compared), normalized(expected));
+  reads.check();
 }
 
 /** A field that holds SQL or a database-decided value: the string itself, or the entry of the database. */
@@ -1443,6 +1454,8 @@ async function checkAnswer(step, database, answer) {
   if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
   const chain = conformanceCases[step.chain];
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
+  // The answer goes on the wire as its recipe writes it, from answerText.
+  if (step.answer === undefined && step.answers === undefined) throw new Error('ir.answer has no answer');
   if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
   const sent = [];
   const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(answer, sent);
@@ -1849,7 +1862,12 @@ function chainBuilt(s, context) {
     return m[CORE].by(members.map(([column], i) => ({ ...chainKey(column), conn: i === 0 ? '' : 'and' })), members.map(([, value]) => chainValue(value, context))).self;
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
-  if (s.from !== undefined) return byKey(refOf(s.from, context));
+  if (s.from !== undefined) {
+    // The step names the chain that it continues, on that connection and model, which must exist.
+    connectionOf(s, context);
+    if (s.model !== undefined) coreModel(s.model, context);
+    return byKey(refOf(s.from, context));
+  }
   const model = coreModel(s.model, context);
   const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
@@ -1890,6 +1908,8 @@ async function chainWrite(s, context, terminal) {
 
 /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
 function chainTarget(s, context) {
+  // A write through a bound row names the connection of that row, which must be bound.
+  if (s.row !== undefined && s.connection !== undefined) connectionOf(s, context);
   // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
   const m = s.row !== undefined ? refOf(s.row, context) : chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.key ?? s.values, context);
   if (s.revision !== undefined) m.expectRevision(s.revision.column, chainValue(s.revision.value, context));
@@ -1901,6 +1921,7 @@ const countFields = n => ({ json: n, value: { int: String(n) } });
 const TABLE_OPS = {
   'model.chain': (s, context) => ({ bind: chainBuilt(s, context) }),
   async 'model.query'(s, context) {
+    const { pick } = s;
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
@@ -1933,7 +1954,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
-    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
+    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, pick)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
   },
@@ -1942,6 +1963,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.json_output === true && row !== null) return { json: row.toJSONText() };
     if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
@@ -1972,6 +1994,7 @@ const TABLE_OPS = {
     return { value: { bool: rows.connect(connectionOf(s, context)) === rows } };
   },
   async 'model.delete'(s, context) {
+    if (s.row !== undefined && s.connection !== undefined) connectionOf(s, context);
     if (s.row !== undefined && refOf(s.row, context) instanceof Collection) {
       await refOf(s.row, context).delete(s.recursive === true);
       return {};
@@ -2154,9 +2177,10 @@ Object.assign(OPS, {
     return {};
   },
   async 'events.fail_subscriber'(s, context) {
+    const { kind, refusal } = s;
     const stop = connectionOf(s, context).subscribe(event => {
-      if (event.kind === s.kind) {
-        throw s.refusal === undefined ? new Error('subscriber refused the event') : new OrmError(s.refusal.code, s.refusal.message);
+      if (event.kind === kind) {
+        throw refusal === undefined ? new Error('subscriber refused the event') : new OrmError(refusal.code, refusal.message);
       }
     });
     return { bind: { stop } };
