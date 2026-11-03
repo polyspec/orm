@@ -501,3 +501,9 @@ harness = false
 name = "dsl_none"
 path = "tests/dsl_none.rs"
 harness = false
+
+# Each case of The limit and stress recipe, tests/dbspec/limits.json, is the trial dbspec_limits_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_limits_none"
+path = "tests/dbspec_limits_none.rs"
+harness = false

@@ -33,54 +33,8 @@ final class DbspecRulesNativeTest extends TestCase
         Dbspec::planSteps(null, $plan->plan, 'oracle');
     }
 
-    // Requirements: DBS-144, DBS-170.
-    public function testNativeGlobalColumnLimit(): void
-    {
-        [$text, $want] = rules_limit('columns');
-        $this->assertNativeLimit($text, $want);
-    }
-
-    // Requirements: DBS-144, DBS-170.
-    public function testNativeForeignKeyCountLimit(): void
-    {
-        [$text, $want] = rules_limit('foreign-keys');
-        $this->assertNativeLimit($text, $want);
-    }
-
-    // Requirements: DBS-144, DBS-151, DBS-170.
-    public function testNativeDocumentAndTableLimits(): void
-    {
-        foreach (['size', 'tables', 'table-columns'] as $id) {
-            $clock = cpuCaseBegin(20.0);
-            [$text, $want] = rules_limit($id);
-            $this->assertNativeLimit($text, $want);
-            cpuCaseEnd("limit/$id", $clock);
-        }
-    }
-
-    /** @param array{string, int, int} $want */
-    private function assertNativeLimit(string $text, array $want): void
-    {
-        self::assertTrue((new \ReflectionMethod(Dbspec::class, 'parse'))->isInternal());
-        $previousMemoryLimit = ini_get('memory_limit');
-        self::assertIsString($previousMemoryLimit);
-        self::assertNotFalse(ini_set('memory_limit', '512M'));
-        try {
-            $result = Dbspec::parse($text, []);
-        } finally {
-            self::assertNotFalse(ini_set('memory_limit', $previousMemoryLimit));
-        }
-        self::assertNull($result->document);
-        self::assertSame(
-            [$want],
-            array_map(
-                static fn($diagnostic): array => [$diagnostic->rule, $diagnostic->line, $diagnostic->column],
-                $result->diagnostics
-            )
-        );
-    }
-
     // Requirements: DBS-32, DBS-36, DBS-38, DBS-39, DBS-42, DBS-43, DBS-46, DBS-48, DBS-50, DBS-58.
+    // Requirements: DBS-144.
     public function testNativeRuleDiagnosticsMatchGoCoordinatesAndOrdering(): void
     {
         self::assertTrue((new \ReflectionMethod(Dbspec::class, 'parse'))->isInternal());
