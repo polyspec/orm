@@ -1,4 +1,4 @@
-// Requirements: CFG-2, CFG-17, CFG-19, CFG-26.
+// Requirements: CFG-2, CFG-17, CFG-19, CFG-26, FCV-15.
 // The suite unit dsn_reject-none (docs/spec/feature-coverage.md FCV-3): the refused DSN recipe on no database.
 import { runRecipe, NONE } from './recipe.mjs';
 

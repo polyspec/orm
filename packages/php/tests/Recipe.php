@@ -44,6 +44,24 @@ final class Recipe
 {
     use RecipeModel;
 
+    /** The ops that RecipeModel runs, by their full names (FCV-15). */
+    private const MODEL_OPS = [
+        'model.arithmetic',
+        'model.assign',
+        'model.connect',
+        'model.count',
+        'model.create',
+        'model.creates',
+        'model.delete',
+        'model.duplicate_create',
+        'model.get_by',
+        'model.query',
+        'model.read_bind_cell',
+        'model.restore',
+        'model.save',
+        'model.update',
+    ];
+
     /** The table models of the statement-event fixture that have no generated class: each names its table (FCV-4). */
     public const TABLE_MODELS = [
         'EventProbe' => 'event_probe',
@@ -2093,7 +2111,7 @@ final class Recipe
                 $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
                 return ['value' => ['text' => self::connectDriver($dsn)]];
         }
-        if (str_starts_with($s['op'], 'model.')) {
+        if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");

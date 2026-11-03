@@ -42515,7 +42515,8 @@
         "CFG-11",
         "CFG-17",
         "CFG-19",
-        "CFG-26"
+        "CFG-26",
+        "FCV-15"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",

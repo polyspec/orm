@@ -752,10 +752,7 @@
             "dbspec.compare",
             "dbspec.emit_plan",
             "dbspec.plan_steps",
-            "utils.set_local",
-            "utils.local",
             "utils.aes_status",
-            "utils.lock",
             "dbspec.parse_emit",
             "dbspec.manifest",
             "dbspec.render",
@@ -937,16 +934,7 @@
           "$ref": "#/$defs/ops/events.captured"
         },
         {
-          "$ref": "#/$defs/ops/utils.set_local"
-        },
-        {
-          "$ref": "#/$defs/ops/utils.local"
-        },
-        {
           "$ref": "#/$defs/ops/utils.aes_status"
-        },
-        {
-          "$ref": "#/$defs/ops/utils.lock"
         },
         {
           "$ref": "#/$defs/ops/dbspec.parse_emit"
@@ -3408,54 +3396,6 @@
           }
         }
       },
-      "utils.set_local": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "name",
-          "value"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "utils.set_local"
-          },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "name": {
-            "$ref": "#/$defs/qualifiedName"
-          },
-          "value": {
-            "$ref": "#/$defs/argument"
-          }
-        }
-      },
-      "utils.local": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "name",
-          "expect"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "utils.local"
-          },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "name": {
-            "$ref": "#/$defs/qualifiedName"
-          },
-          "expect": {
-            "$ref": "#/$defs/expect"
-          }
-        }
-      },
       "utils.aes_status": {
         "type": "object",
         "required": [
@@ -3516,29 +3456,6 @@
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/value"
             }
-          }
-        }
-      },
-      "utils.lock": {
-        "type": "object",
-        "required": [
-          "op",
-          "connection",
-          "name"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "op": {
-            "const": "utils.lock"
-          },
-          "connection": {
-            "$ref": "#/$defs/name"
-          },
-          "name": {
-            "$ref": "#/$defs/name"
-          },
-          "expect": {
-            "$ref": "#/$defs/expect"
           }
         }
       },

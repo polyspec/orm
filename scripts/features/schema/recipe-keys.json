@@ -394,29 +394,11 @@
       "plan",
       "source"
     ],
-    "utils.set_local": [
-      "connection",
-      "name",
-      "op",
-      "value"
-    ],
-    "utils.local": [
-      "connection",
-      "expect",
-      "name",
-      "op"
-    ],
     "utils.aes_status": [
       "connection",
       "expect",
       "keyring",
       "model",
-      "op"
-    ],
-    "utils.lock": [
-      "connection",
-      "expect",
-      "name",
       "op"
     ],
     "dbspec.parse_emit": [

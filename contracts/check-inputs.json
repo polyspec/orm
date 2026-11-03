@@ -4236,6 +4236,22 @@
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
+    "recipe-runners-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/features/recipe-runners.mts",
+        "scripts/features/recipe-runners.test.mts",
+        "scripts/features/recipe-keys.mts",
+        "scripts/features/schema/recipe-keys.json",
+        "config/parity.json",
+        "contracts/fixtures/**",
+        "packages/**"
+      ]
+    },
     "recipe-unknown-key-check": {
       "scope": "owner",
       "needs": [

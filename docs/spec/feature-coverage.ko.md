@@ -84,7 +84,6 @@
   - `model.delete`의 `recursive: true`(F14)는 적재한 relation 행을 재귀적으로 삭제하되 `delete_lock`으로 표시한 relation은 제외한다. API: DSL-111.
   - `model.update`와 `model.delete`의 `affected` expect(F15)는 `{"value": {"int": <count>}}`이며, 연결의 마지막 쓰기가 일치시킨 행 수로, runtime의 test entry point가 보고한다(PRT-58 ~ PRT-62): Go `orm.LastAffected`, Rust `polyspec_orm::testing::last_affected`, TypeScript `lastAffected`, PHP와 PHP extension `Faults::lastAffected`, Python `polyspec.orm.testing.last_affected`. 공개 쓰기 호출은 개수를 반환하지 않는다. MySQL의 개수는 found rows이므로(CFG-10) 행이 이미 가진 값을 쓰는 쓰기도 그 행을 포함한다. API unit: client-model-terminal-write(INT-35, INT-37).
   - 시간 창 expect(F16): `{"within": {"seconds": <정수>}}`은 step 결과의 시각 값에 대한 expect 형식 하나다. 값이 database의 현재 시각과 `seconds` 이하의 절댓값 차이이면 통과한다. database의 현재 시각은 expect를 검사할 때 같은 연결에서 읽으며, 어떤 runtime도 값을 자기 벽시계와 비교하지 않는다. API: DSL-137(clock-now-condition).
-  - `utils.set_local {connection, name, value}`와 `utils.local {connection, name}`(F18)은 transaction 로컬 값을 읽고 쓴다. 없는 name의 `local`은 `NO_ROWS`를 expect한다. API unit: client-utils-set-local(INT-51)과 client-utils-local(INT-51).
   - `utils.aes_status {connection, model, keyring}`(F19)는 공개 생성자가 `keyring`(`model.connect`의 객체)으로 만든 키링과 함께 연결의 AES 유틸리티(`Utils().Aes()`, API unit `aes-utils-status`, INT-60, `aes-rotation-status`, INT-75)의 `Status`를 모델에 대해 호출한다. 생성 오류가 그 step의 오류다. expect는 `{"value": {"object": [["current", <int>], ["total", <int>], ["pending", <int>], ["versions", {"object": [["<version>", <int>], ...]}]]}}` 또는 `{"error": <code>}`다.
   - `transaction` step 안의 중첩 `transaction` step(F20)은 savepoint다. 안쪽 실패는 바깥 callback이 오류를 돌려주지 않는 한 안쪽 작업만 되돌린다. API unit: coverage-transactions-transaction-savepoint(INT-46).
   - T334-3-5 1b 단계의 query field와 op. 각 field는 그것을 지정하는 op에서 선택 사항이며 추가만 된다. 각 field는 API unit의 공개 호출에 대응하며, 어떤 field도 SQL을 담지 않는다.
@@ -93,7 +92,7 @@
   - `model.query`의 `expect`는 `{"page": {"total": <정수>, "pages": <정수>, "rows": [...]}}`일 수 있다. `getsPage`의 page 결과이며 전체 개수와 쪽 수를 담는다(`rows`는 선택 사항). API unit: client-page(INT-64).
   - `model.count`는 `model.query`와 같이 `joins`를 받는다. API unit: model-connection-and-join-methods(DSL-90부터 DSL-93까지).
   - join의 `on`은 join이 model relation을 따를 때 선택 사항이다. `as`는 필수이며 `kind`의 기본값은 `inner`다. API unit: model-connection-and-join-methods(DSL-90, DSL-91).
-  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있고, `utils.set_local`의 name도 점을 포함할 수 있다(`ormtest.actor`). API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
+  - predicate의 key와 `expr`의 column은 joined alias의 `alias.column`일 수 있다. API unit: model-connection-and-join-methods(DSL-91, DSL-92), client-utils-set-local(INT-51).
   - `in`과 `not_in` 목록은 비어 있을 수 있으며, 그 경우 case의 expect는 `{"error": "EMPTY_IN"}`이다. API: DSL-47과 PLN-28.
   - `{"sub": <subquery>}`는 `expr`이므로 predicate의 열 값이나 `in` 피연산자가 된다. subquery는 `model`을 지정하고 `where`, `order`, `limit`, `agg`를 지정할 수 있으며, `limit`은 호출이 지정할 때만 지정한다. API: coverage-model-scalar-subquery-column(DSL-74), DSL-53과 DSL-54.
   - `{"outer": <name>}`은 subquery 안에서 바깥 query의 열을 가리키는 `expr`이다(상관 참조). `column`은 subquery 자신의 모델 열을 뜻한다. API: DSL-53과 DSL-54.
@@ -106,7 +105,6 @@
   - `model.update`와 `model.delete`의 `revision`의 `value`는 정수 또는 `ref`일 수 있다. API unit: error-code-revision-changed(INT-65)와 DSL-114.
   - `model.delete`는 `relations`를 받는다. 이는 `model.query`가 받는 행의 적재된 relation이다. `recursive: true`이면 적재된 행을 삭제하되, `delete_lock: true`인 relation의 행은 제외한다. API unit: DSL-111, DSL-87, client-model-terminal-write(INT-37).
   - `transaction`은 `audit: {"request_id": <text>}`(감사 기록의 요청 ID, DBS-87)와 음이 아닌 정수 `retry`를 받는다. API unit: client-db-transaction(INT-72)과 coverage-audit-triggers-audit-transaction-entry-points(INT-44); `retry`는 PLN-24.
-  - `utils.lock {connection, name}`은 transaction이 끝날 때까지 유지되는 이름 있는 advisory lock을 잡으며, `expect`는 `{"error": <code>}` 또는 생략이다. API unit: client-utils-lock(INT-50).
   - `model.create`의 `as`, `model.update`의 `row`, `model.delete`의 `row`는 묶인 행을 지정한다. `schema.install`은 `connection`을 받아 그 연결에 recipe fixture를 설치한다(FCV-9). API unit: coverage-model-create-parts(INT-35), client-model-terminal-write(INT-35와 INT-37), client-schema-utils-add-tables-and-columns(INT-56).
   - 값의 `null`은 `{"null": <type>}`이며 `<type>`은 recipe schema의 열 type 가운데 하나다: `int`, `text`, `date`, `time`, `datetime`, `decimal`, `bytes_hex`, `bool`, `float`. 어휘는 닫혀 있다. API: contains_null(INT-20, PRT-67)과 null_into_not_null(PRT-67, PRT-5)의 타입이 있는 NULL, 그리고 styled value의 null인 COD-20.
   - `model.create`의 `attached: {<name>: <argument>}`는 열이 아닌 값을 만들어진 행에 붙인다(DSL-101). 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 쓰지 않으며, 만들어진 모델이 그 값을 갖는다(DSL-115). API: write_cycle vector(`NewLabel("created")`), DSL-101과 DSL-115. parity unit이 명명하지 않으므로 vector와 requirement로 선언한다.
@@ -152,6 +150,7 @@
 - **FCV-12** feature 검사기는 각 runtime의 결과를 recipe 실행의 사례 결과에서 사례 id로 읽으며, recipe를 두 번 실행하지 않는다. suite unit의 각 binding은 사례를 `$.cases[*].id`(FCV-3)로 적으므로, 사례 결과는 unit(recipe와 database)과 사례 id로 식별된다. 지금 `catalog-connection-check/<runtime>`은 각 runtime의 test entry를 실행하고 그 종료 상태를 읽으며, feature 검사기를 위한 사례별 결과를 기록하지 않는다. 사례별 결과를 검사기에 주는 것은 그 경로의 확장이며, T334-3의 recipe row들이 검사기가 처음 recipe를 읽을 때 그 확장을 더한다.
 - **FCV-13** recipe의 seed 데이터는 recipe 파일에 속하며, run마다가 아니라 사례마다 설치되고, 공유 database에 담지 않는다. 사례마다 helper는 fixture set을 사례 database에 설치한 뒤, 파일 수준의 `seed`와 그다음 사례 자신의 `seed`를 recipe의 순서대로 `describe_table`이 읽는 metadata를 거쳐 `insert_row`로 넣는다(Go `insertSeed`, 그리고 TypeScript, Python, PHP, Rust도 같은 순서). seed 행 하나가 실패하면 사례가 실패한다.
 - **FCV-14** runtime은 database 동작의 네이티브 테스트를, FCV-2가 그 동작을 runtime 고유로 적은 곳에서만 유지하고, 그 테스트 파일이 그 이유를 적는다. 다른 runtime이 가진 database 동작은 recipe 사례이며, 그 네이티브 테스트는 recipe를 더하는 commit에서 지운다. 네이티브 테스트가 유효한 이유를 가졌는지는 검토의 판단이며 검사가 아니다.
+- **FCV-15** 각 runtime의 recipe runner는 하나다. Go `packages/go/internal/recipe`, TypeScript `packages/ts/tests/recipe.mjs`, Python `packages/python/tests/recipe.py`, PHP `packages/php/tests/Recipe.php`(PHP extension도 이것을 실행), Rust `packages/rust/tests/src/recipe.rs`이며, Rust의 trial binary는 runner가 이름을 알 수 없는 fixture의 생성 model을 위해 그 model의 dispatcher를 더한다. recipe suite unit의 binding은 그 파일을 자기 runtime의 runner에 넘기고 op를 구현하지 않는다. runner는 자기 목록의 전체 op 이름과 맞추어 dispatch하고, 목록에 없는 op는 `OP_UNKNOWN`으로 거부한다. recipe schema의 모든 op는 어떤 recipe의 step이므로, op가 없는 runtime은 그 recipe에서 실패한다. `make recipe-runners-check`가 이를 강제한다.
 
 ## Owner 검사 {#owner-checks}
 

@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- `make recipe-runners-check`가 runtime마다 recipe runner가 하나임을 강제한다(FCV-15). PHP runner는 `model.` 접두사로 dispatch하지 않고 model op의 이름을 적으며, 어떤 recipe와 runner도 쓰지 않던 `utils.set_local`, `utils.local`, `utils.lock`을 schema에서 뺐다(T334-3-25).
 - Author model의 생성된 fulltext method `fulltextBooleanNameWithDescription`과 `fulltextNameWithDescription`은 새 op `query.search_chain`으로 모든 runtime이 세 database에서 실행하는 recipe 사례다. 전에는 어떤 recipe도 이 method에 닿지 않았다(T334-3-17-9).
 - CFG-17이 거부하는 DSN은 모든 runtime이 실행하는 recipe 사례이며 전보다 3개 늘었다. 한 번도 실행되지 않던 Rust recipe 시험 `dsn_reject_none`과 `dbspec_plan_comparisons_none`도 이제 실행된다. Cargo 항목에 `harness = false`가 없어 각 recipe의 Rust 시험이 0개였다(T334-3-23-1).
 - orm-gen이 생성하는 PHP 코드는 집합의 parse된 runtime model을 가지므로, 새 PHP process의 요청은 manifest를 parse하지 않는다. bench 집합의 model을 읽는 php-fpm 요청은 opcode cache에서 5.04 ms 대신 0.53 ms가 걸린다. 다른 manifest hash나 다른 runtime model 형식의 데이터는 무시하고 전처럼 parse하며, `meta()` 검사는 유지한다(DBS-177, DBS-178, T357).

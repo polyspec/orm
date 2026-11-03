@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make recipe-runners-check` enforces one recipe runner per runtime (FCV-15). The PHP runner names its model ops in place of dispatching by the prefix `model.`, and the schema no longer holds `utils.set_local`, `utils.local` and `utils.lock`, which no recipe and no runner used (T334-3-25).
 - The generated fulltext methods of the Author model, `fulltextBooleanNameWithDescription` and `fulltextNameWithDescription`, are recipe cases that every runtime runs on the three databases through the new op `query.search_chain`; before, no recipe reached them (T334-3-17-9).
 - The refused DSNs of CFG-17 are recipe cases that every runtime runs, three more than before, and two Rust recipe tests that never ran, `dsn_reject_none` and `dbspec_plan_comparisons_none`, now run: their Cargo entries lacked `harness = false`, so the recipe of each had zero tests in Rust (T334-3-23-1).
 - The PHP code that orm-gen generates holds the parsed runtime model of its set, so a request of a new PHP process does not parse the manifest: a php-fpm request that reads the model of the bench set takes 0.53 ms instead of 5.04 ms with the opcode cache. Data of another manifest hash or another runtime model format is ignored and the process parses as before; the check of `meta()` holds (DBS-177, DBS-178, T357).
