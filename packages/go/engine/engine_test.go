@@ -402,18 +402,6 @@ func TestCompileErrors(t *testing.T) {
 	}
 }
 
-func BenchmarkCompileList(b *testing.B) {
-	e := testEngine(&testing.T{})
-	in := []byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `","kind":"all","entity":"author","n_params":8,
-	 "where":{"items":[` + selectAllItems + `]},"order":[{"column":"seq","desc":true}],"limit":{"offset":0,"count":100}}`)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		if _, err := e.Compile(in); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func TestRelations(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)

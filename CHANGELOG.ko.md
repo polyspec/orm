@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8d4f7cb33d413401e9f44119827a104b202b6a6a645e8e1cb96a4f918bb33709 -->
+<!-- source-sha256: a9f684e0bb3dca4815c6bb9cda667b84b274583308071d1398d763e0b33a5605 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
 - `make client-db-rust-check`는 다른 target이 소유하지 않은 case만 실행하고, crate의 public connection 시험은 외부 변수가 필요 없으며, compiler fixture는 순서대로 실행되고, generate.mjs는 임시 디렉터리를 남기지 않는다.
 - generator scan recipe의 사례 8개가 여섯 runtime 모두에서 돈다: 모든 recipe runner가 `generator.generate`를 구현하고, 각 사례는 언어마다 native 시험이 쓰던 형식의 source를 담으며, 옵션 `before`가 다른 set을 먼저 생성하므로 imported-set 사례에 native 시험이 필요 없다(T334-3-22-2). model이 아닌 호출의 TypeScript 시험은 DSL-154가 모든 column에 선언하는 column method를 더 이상 적지 않는다.
 - scan의 generator 거부는 docs/spec/errors.yaml의 code를 가진다: 아무것도 붙이지 않는 getter 호출은 `GENERATOR_SCAN_UNATTACHED`(DSL-44), parse되지 않는 source는 `GENERATOR_SCAN_PARSE`(DSL-152)이다. TypeScript, PHP, Python은 code 있는 오류로 올리고, Go는 `generator.ScanRefusedError`를 돌려주며, text를 돌려주는 Rust generator는 message를 그 code로 시작한다. 거부된 Rust 생성은 더 이상 출력 디렉터리와 manifest를 남기지 않는다(T334-3-22-1-1).

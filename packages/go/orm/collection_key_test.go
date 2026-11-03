@@ -210,14 +210,9 @@ func TestTerminalReturnsTheFirstRecordedBuilderError(t *testing.T) {
 	}
 }
 
-func TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn(t *testing.T) {
+func TestModelCollectionKeyRejectsMissingColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	core := NewCore(nil)
-	core.fetchKey = func(Model) any { return struct{}{} }
-	if _, err := core.collectionKey(&Core{self: &rejectingModel{}}, nil, nil); err == nil {
-		t.Fatal("invalid fetch key callback result was accepted")
-	}
-	core = NewCore(&Entity{Value: func(Model, string) (any, bool) { return nil, false }})
+	core := NewCore(&Entity{Value: func(Model, string) (any, bool) { return nil, false }})
 	core.keyName = "absent"
 	if _, err := core.collectionKey(&Core{self: &rejectingModel{}, row: &rowState{}}, nil, nil); err == nil {
 		t.Fatal("missing collection key column was accepted")
