@@ -148,7 +148,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return outcome{fields: map[string]any{}}, db.Notify(s.k("channel").Channel, s.k("payload").Payload)
+		return outcome{fields: map[string]any{}}, db.Notify(repeated(s.k("channel").Channel, s.k("channel_repeat").ChannelRepeat), repeated(s.k("payload").Payload, s.k("payload_repeat").PayloadRepeat))
 	case "utils.aes_status", "utils.aes_rotate":
 		db, err := connectionOf(s, c)
 		if err != nil {

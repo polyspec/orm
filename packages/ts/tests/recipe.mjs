@@ -27,7 +27,7 @@ import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
-import { modelOps } from './recipe_model.mjs';
+import { connectDsn, modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
 import { introspectStep } from './recipe_introspect.mjs';
 import { classesFromModel } from './registered_models.mjs';
@@ -877,6 +877,37 @@ const OPS = {
   // The file of the case database becomes one that the process may only read (CFG-24).
   'database.read_only'(s, context) {
     chmodSync(context.dsn.slice('sqlite://'.length).split('?')[0], 0o444);
+    return {};
+  },
+  // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195). The TypeScript form of a receive with a deadline is a signal
+  // that aborts, so each subscription listens on a handle with a signal of its own.
+  async 'db.listen'(s, context) {
+    const controller = new AbortController();
+    const subscription = await connectionOf(s, context).withSignal(controller.signal).listen(s.channel.repeat(s.channel_repeat ?? 1));
+    context.closers.push(() => subscription.close());
+    return { bind: { subscription, controller } };
+  },
+  async 'subscription.receive'(s, context) {
+    const { subscription, controller } = refOf(s.ref, context);
+    const deadline = setTimeout(() => controller.abort(), s.within_ms ?? 10000);
+    try {
+      const { channel, payload } = await subscription.receive();
+      return { json: [channel, s.payload_bytes === true ? Buffer.byteLength(payload) : payload] };
+    } finally { clearTimeout(deadline); }
+  },
+  async 'subscription.unlisten'(s, context) {
+    await refOf(s.ref, context).subscription.unlisten(s.channel);
+    return {};
+  },
+  async 'subscription.close'(s, context) {
+    await refOf(s.ref, context).subscription.close();
+    return {};
+  },
+  async 'session.end_listener'(s, context) {
+    const session = connectDsn('case-server', context.database, context.dsn);
+    const [rows] = await nativeQuery(context.database, session, [`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = 'LISTEN "${s.channel}"' LIMIT 1`]);
+    if (rows.length !== 1) throw new Error(`the listener session of ${s.channel}: ${rows.length} rows`);
+    await nativeQuery(context.database, session, [`SELECT pg_terminate_backend(${Number(rows[0].pid)}, 5000)`]);
     return {};
   },
   'wait.start'(s, context) {
@@ -2080,7 +2111,7 @@ const TABLE_OPS = {
   },
   'db.last_affected': (s, context) => ({ value: { int: String(lastAffected(connectionOf(s, context))) } }),
   async 'db.notify'(s, context) {
-    await connectionOf(s, context).notify(s.channel, s.payload);
+    await connectionOf(s, context).notify(s.channel.repeat(s.channel_repeat ?? 1), s.payload.repeat(s.payload_repeat ?? 1));
     return {};
   },
   async 'utils.lock'(s, context) {

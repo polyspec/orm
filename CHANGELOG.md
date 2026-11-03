@@ -556,6 +556,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - Several processes writing one SQLite file are a requirement (CFG-42), tested in the six runtimes.
 - A primary and its replica connections run as a recipe case in the six runtimes, with the DSN `case-replica` and the ops `replica.await` and `row.connect`.
 - A write through a replica and to a read-only SQLite file run as recipe cases in the six runtimes, with the op `database.read_only`; the native replica tests are gone.
+- LISTEN and NOTIFY run as recipe cases in the six runtimes, with the DSN `case-server` and the ops `db.listen`, `subscription.receive`, `subscription.unlisten`, `subscription.close` and `session.end_listener`; the native tests are gone.
 
 ## 0.0.21
 

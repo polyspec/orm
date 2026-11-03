@@ -818,6 +818,11 @@
             "sql.exec",
             "session.end",
             "transaction.writers",
+            "db.listen",
+            "subscription.receive",
+            "subscription.unlisten",
+            "subscription.close",
+            "session.end_listener",
             "replica.await",
             "database.read_only",
             "row.connect",
@@ -1009,6 +1014,21 @@
         },
         {
           "$ref": "#/$defs/ops/replica.await"
+        },
+        {
+          "$ref": "#/$defs/ops/db.listen"
+        },
+        {
+          "$ref": "#/$defs/ops/subscription.receive"
+        },
+        {
+          "$ref": "#/$defs/ops/subscription.unlisten"
+        },
+        {
+          "$ref": "#/$defs/ops/subscription.close"
+        },
+        {
+          "$ref": "#/$defs/ops/session.end_listener"
         },
         {
           "$ref": "#/$defs/ops/database.read_only"
@@ -3638,6 +3658,41 @@
         "required": ["op"],
         "additionalProperties": false,
         "properties": { "op": { "const": "database.read_only" } }
+      },
+      "db.listen": {
+        "description": "Calls listen of the connection and binds the subscription with as.",
+        "type": "object",
+        "required": ["op", "connection", "channel"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "db.listen" }, "connection": { "$ref": "#/$defs/name" }, "channel": { "type": "string" }, "channel_repeat": { "type": "integer", "minimum": 1 }, "as": { "$ref": "#/$defs/name" }, "expect": { "$ref": "#/$defs/expect" } }
+      },
+      "subscription.receive": {
+        "description": "The next notification of the subscription, as its channel and its payload or the size of its payload, within the deadline of within_ms.",
+        "type": "object",
+        "required": ["op", "ref", "expect"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "subscription.receive" }, "ref": { "$ref": "#/$defs/name" }, "within_ms": { "type": "integer", "minimum": 1 }, "payload_bytes": { "const": true }, "expect": { "$ref": "#/$defs/expect" } }
+      },
+      "subscription.unlisten": {
+        "description": "Calls unlisten of the subscription.",
+        "type": "object",
+        "required": ["op", "ref", "channel"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "subscription.unlisten" }, "ref": { "$ref": "#/$defs/name" }, "channel": { "type": "string", "minLength": 1 } }
+      },
+      "subscription.close": {
+        "description": "Calls close of the subscription.",
+        "type": "object",
+        "required": ["op", "ref"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "subscription.close" }, "ref": { "$ref": "#/$defs/name" } }
+      },
+      "session.end_listener": {
+        "description": "Ends the server session that listens on the channel, through the server DSN.",
+        "type": "object",
+        "required": ["op", "channel"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "session.end_listener" }, "channel": { "type": "string", "minLength": 1 } }
       },
       "replica.await": {
         "description": "Returns after the replica has applied every change that the primary committed before the step.",
@@ -7724,8 +7779,18 @@
             "$ref": "#/$defs/name"
           },
           "channel": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
+          },
+          "channel_repeat": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "payload_repeat": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           },
           "payload": {
             "type": "string"

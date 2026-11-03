@@ -7315,8 +7315,7 @@
         "contracts/interfaces.json",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py",
-        "packages/php/tests/ListenNotifyCases.php"
+        "packages/python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/go/engine/interface_test.go",
@@ -7345,14 +7344,9 @@
         "packages/python/tests/test_python_natives.py",
         "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
         "packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
-        "packages/go/orm/listen_notify_test.go",
         "packages/go/orm/package_entry_test.go",
-        "packages/php/tests/ListenNotifyTest.php",
         "packages/php/tests/PackageEntryPointTest.php",
-        "packages/ts/tests/listen-notify.mjs",
-        "packages/rust/orm/tests/listen_notify.rs",
         "packages/rust/orm/tests/package_entry.rs",
-        "packages/python/tests/listen_notify.py",
         "packages/python/tests/test_package_entry.py",
         "packages/python/tests/test_orm_gen.py",
         "packages/python/tests/test_driver_cells.py",
@@ -7363,7 +7357,6 @@
         "packages/python/tests/test_sqlite_row_lock_restore.py",
         "packages/python/tests/test_rollback_fault.py",
         "packages/php-ext/tests/DriverErrorTest.php",
-        "packages/php-ext/tests/ListenNotifyNativeTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php-ext/tests/CodeCatalogTestExtensionTest.php",
         "packages/rust/orm/src/value.rs",

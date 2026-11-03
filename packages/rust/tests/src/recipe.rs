@@ -135,6 +135,14 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
             Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
         }
+        Some("case-server") => {
+            let variable = format!("ORM_TEST_{}_SERVER_DSN", database.to_uppercase());
+            let server = std::env::var(&variable).map_err(|_| format!("dsn case-server: {variable} is required; database tests never skip"))?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = server.split_once('?').unwrap_or((&server, ""));
+            let (base, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-server: {server} names no database"))?;
+            Ok(if query.is_empty() { format!("{base}/{name}") } else { format!("{base}/{name}?{query}") })
+        }
         Some("case-replica") => {
             let variable = format!("ORM_TEST_{}_REPLICA_DSN", database.to_uppercase());
             let replica = std::env::var(&variable).map_err(|_| format!("dsn case-replica: {variable} is required; database tests never skip"))?;
@@ -2711,6 +2719,8 @@ mod database {
         apply: crate::recipe_apply::ApplyOps,
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
+        /// The LISTEN subscriptions of the case, by the name of their step (FCV-4).
+        listeners: HashMap<String, polyspec_orm::listen::Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
         /// The callback runs of the transaction step that ended last (transaction.attempts).
         attempts: u64,
@@ -2957,7 +2967,7 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+            Context { held: None, namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), listeners: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         let closed = context.apply.close();
         context.models.close().await;
@@ -3851,6 +3861,40 @@ mod database {
                 std::fs::set_permissions(&path, permissions).map_err(|e| fault(format!("{path}: {e}")))?;
                 Output::fields(json!({}))
             }
+            // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
+            "db.listen" => {
+                let name = bound_name(step).map_err(fault)?;
+                let db = connection_db(step, context).map_err(fault)?;
+                let times = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
+                let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(times).unwrap_or(1));
+                let listener = db.listen(&channel).await.map_err(orm)?;
+                context.listeners.insert(name, listener);
+                Output::fields(json!({}))
+            }
+            "subscription.receive" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.get_mut(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                let within = crate::recipe_reads::read(step, "within_ms")["within_ms"].as_u64().unwrap_or(10000);
+                let notification = listener.receive_within(std::time::Duration::from_millis(within)).await.map_err(orm)?;
+                let payload = if crate::recipe_reads::read(step, "payload_bytes")["payload_bytes"].as_bool() == Some(true) { json!(notification.payload.len()) } else { json!(notification.payload) };
+                Output::fields(json!({ "json": [notification.channel, payload] }))
+            }
+            "subscription.unlisten" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.get_mut(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                listener.unlisten(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
+            "subscription.close" => {
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().unwrap_or_default();
+                let listener = context.listeners.remove(name).ok_or_else(|| fault(format!("no listener {name}")))?;
+                listener.close().await.map_err(orm)?;
+                Output::fields(json!({}))
+            }
+            "session.end_listener" => {
+                end_listener(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
             "wait.start" => {
                 *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
                 Output::fields(json!({}))
@@ -4514,6 +4558,22 @@ mod database {
     /// Runs DDL or DML through the native driver on one connection of its own.
     /// Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
     /// handle KILL on its own. The test connection is a client connection, so it sends no parameter a pooler rejects.
+    /// Ends the server session that listens on the channel (DIA-194), through the server DSN.
+    async fn end_listener(channel: &str, context: &Context<'_>) -> Result<(), String> {
+        let session = super::connect_dsn(Some("case-server"), context.database, &context.dsn, None)?;
+        let pool = sqlx::PgPool::connect(&session).await.map_err(|e| e.to_string())?;
+        let pid: Result<i32, _> = sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = $1 LIMIT 1")
+            .bind(format!("LISTEN \"{channel}\""))
+            .fetch_one(&pool)
+            .await;
+        let ended = match pid {
+            Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(&pool).await.map(|_| ()).map_err(|e| e.to_string()),
+            Err(error) => Err(format!("the listener session of {channel}: {error}")),
+        };
+        pool.close().await;
+        ended
+    }
+
     /// Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
     /// transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
     /// standby has applied it; the case connection opens on the server DSN, since a raw SQLx connection sends a startup parameter
@@ -5866,7 +5926,11 @@ mod tables {
                     Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
-                    db.notify(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    let channel_repeat = crate::recipe_reads::read(step, "channel_repeat")["channel_repeat"].as_u64().unwrap_or(1);
+                    let payload_repeat = crate::recipe_reads::read(step, "payload_repeat")["payload_repeat"].as_u64().unwrap_or(1);
+                    let channel = crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default().repeat(usize::try_from(channel_repeat).unwrap_or(1));
+                    let payload = crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default().repeat(usize::try_from(payload_repeat).unwrap_or(1));
+                    db.notify(&channel, &payload).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.lock" => {

@@ -59,6 +59,13 @@ export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST
     pooler.pathname = new URL(caseDsn).pathname;
     return pooler.toString();
   }
+  if (dsn === 'case-server') {
+    const variable = `ORM_TEST_${database.toUpperCase()}_SERVER_DSN`;
+    if (!process.env[variable]) throw new Error(`dsn case-server: ${variable} is required; database tests never skip`);
+    const server = new URL(process.env[variable]);
+    server.pathname = new URL(caseDsn).pathname;
+    return server.toString();
+  }
   if (dsn === 'case-replica') {
     const variable = `ORM_TEST_${database.toUpperCase()}_REPLICA_DSN`;
     if (!process.env[variable]) throw new Error(`dsn case-replica: ${variable} is required; database tests never skip`);

@@ -339,7 +339,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
         "packages/php/tests/NativeByteCellFixture.php",
@@ -2731,33 +2730,203 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/listen_notify_test.go",
-          "id": "TestListenNotify"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/channel_outside_its_range_is_config"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ListenNotifyTest.php",
-          "id": "ListenNotifyTest::testListenNotify"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"channel_outside_its_range_is_config\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ListenNotifyNativeTest.php",
-          "id": "ListenNotifyNativeTest::testListenNotifyNative"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"channel_outside_its_range_is_config\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/listen-notify.mjs",
-          "id": "listen-notify/postgres"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "channel_outside_its_range_is_config"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/listen_notify.py",
-          "id": "test_listen_notify"
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "channel_outside_its_range_is_config"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/listen_notify.rs",
-          "id": "listen_notify"
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::channel_outside_its_range_is_config"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/payload_outside_its_range_is_driver"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"payload_outside_its_range_is_driver\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"payload_outside_its_range_is_driver\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "payload_outside_its_range_is_driver"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "payload_outside_its_range_is_driver"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::payload_outside_its_range_is_driver"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/notification_arrives_with_its_commit_in_order"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"notification_arrives_with_its_commit_in_order\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"notification_arrives_with_its_commit_in_order\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "notification_arrives_with_its_commit_in_order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "notification_arrives_with_its_commit_in_order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::notification_arrives_with_its_commit_in_order"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/unlisten_stops_delivery_and_a_receive_past_its_deadline_closes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"unlisten_stops_delivery_and_a_receive_past_its_deadline_closes\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"unlisten_stops_delivery_and_a_receive_past_its_deadline_closes\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "unlisten_stops_delivery_and_a_receive_past_its_deadline_closes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "unlisten_stops_delivery_and_a_receive_past_its_deadline_closes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::unlisten_stops_delivery_and_a_receive_past_its_deadline_closes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/lost_listener_connection_ends_the_subscription"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"lost_listener_connection_ends_the_subscription\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"lost_listener_connection_ends_the_subscription\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "lost_listener_connection_ends_the_subscription"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "lost_listener_connection_ends_the_subscription"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::lost_listener_connection_ends_the_subscription"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/other_databases_refuse_notify_and_listen"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/other_databases_refuse_notify_and_listen"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"other_databases_refuse_notify_and_listen\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"other_databases_refuse_notify_and_listen\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"other_databases_refuse_notify_and_listen\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"other_databases_refuse_notify_and_listen\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "other_databases_refuse_notify_and_listen"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "other_databases_refuse_notify_and_listen"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::other_databases_refuse_notify_and_listen"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::other_databases_refuse_notify_and_listen"
         }
       ]
     },

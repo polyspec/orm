@@ -170,6 +170,34 @@
       "writers",
       "writes"
     ],
+    "db.listen": [
+      "as",
+      "channel",
+      "channel_repeat",
+      "connection",
+      "expect",
+      "op"
+    ],
+    "subscription.receive": [
+      "expect",
+      "op",
+      "payload_bytes",
+      "ref",
+      "within_ms"
+    ],
+    "subscription.unlisten": [
+      "channel",
+      "op",
+      "ref"
+    ],
+    "subscription.close": [
+      "op",
+      "ref"
+    ],
+    "session.end_listener": [
+      "channel",
+      "op"
+    ],
     "replica.await": [
       "op"
     ],
@@ -860,9 +888,12 @@
     ],
     "db.notify": [
       "channel",
+      "channel_repeat",
       "connection",
+      "expect",
       "op",
-      "payload"
+      "payload",
+      "payload_repeat"
     ],
     "utils.was_inserted": [
       "connection",

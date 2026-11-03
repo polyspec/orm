@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8cebc9fb1b3c765ead10c5e508a3cae34a06b2976ce8143b0b4193c8b62f3ef6 -->
+<!-- source-sha256: 39893be8426952c31d6723ff9686516e5bbb0085b8d389b4a75b511671635e68 -->
 # 변경 이력
 
 ## Unreleased
@@ -551,6 +551,7 @@
 - 한 SQLite 파일에 쓰는 여러 process를 요구사항(CFG-42)으로 두고 여섯 runtime에서 시험한다.
 - primary와 replica 연결을 여섯 runtime의 recipe case로 실행하고, DSN `case-replica`와 op `replica.await`, `row.connect`를 둔다.
 - replica를 통한 쓰기와 읽기 전용 SQLite 파일에 대한 쓰기를 여섯 runtime의 recipe case로 실행하고, op `database.read_only`를 두며, native replica 시험은 없앤다.
+- LISTEN과 NOTIFY를 여섯 runtime의 recipe case로 실행하고, DSN `case-server`와 op `db.listen`, `subscription.receive`, `subscription.unlisten`, `subscription.close`, `session.end_listener`를 두며, native 시험은 없앤다.
 
 ## 0.0.21
 

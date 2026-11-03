@@ -3160,6 +3160,27 @@ final class Recipe
                 // The file of the case database becomes one that the process may only read (CFG-24).
                 Assert::assertTrue(chmod(explode('?', substr($context['dsn'], strlen('sqlite://')))[0], 0o444));
                 return [];
+            // The ops of a LISTEN subscription (FCV-4, DIA-194, DIA-195).
+            case 'db.listen':
+                return ['bind' => self::connectionOf($s, $context)->listen(str_repeat($s['channel'], $s['channel_repeat'] ?? 1))];
+            case 'subscription.receive':
+                $notification = self::boundValue($s['ref'], $context)->receive(($s['within_ms'] ?? 10000) / 1000);
+                $payload = ($s['payload_bytes'] ?? false) === true ? strlen($notification->payload) : $notification->payload;
+                return ['json' => [$notification->channel, $payload]];
+            case 'subscription.unlisten':
+                self::boundValue($s['ref'], $context)->unlisten($s['channel']);
+                return [];
+            case 'subscription.close':
+                self::boundValue($s['ref'], $context)->close();
+                return [];
+            case 'session.end_listener':
+                $pdo = case_admin(self::connectDsn('case-server', $context['database'], $context['dsn']));
+                $find = $pdo->prepare('SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query = ? LIMIT 1');
+                $find->execute(['LISTEN "' . $s['channel'] . '"']);
+                $pid = $find->fetchColumn();
+                Assert::assertNotFalse($pid, "the listener session of {$s['channel']}");
+                $pdo->exec('SELECT pg_terminate_backend(' . (int) $pid . ', 5000)');
+                return [];
             case 'wait.start':
                 self::$waitStart = hrtime(true);
                 return [];
@@ -4401,7 +4422,10 @@ final class Recipe
                 require_once dirname(__DIR__) . '/testing/Faults.php';
                 return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context))]];
             case 'db.notify':
-                self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
+                self::connectionOf($s, $context)->notify(
+                    str_repeat($s['channel'], $s['channel_repeat'] ?? 1),
+                    str_repeat($s['payload'], $s['payload_repeat'] ?? 1),
+                );
                 return [];
             case 'utils.lock':
                 self::connectionOf($s, $context)->utils()->lock($s['name']);
