@@ -14,7 +14,6 @@ use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
 use crate::markdown::{begin_message, MdControl, MdPool};
-use crate::row::read_row;
 use crate::schema::Schema;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
@@ -334,7 +333,7 @@ impl TxFrame {
         }
         let rows = Executor::Tx(Arc::clone(&self.tx)).query_as(Some(kind), Some(&tables), &st, params, Vec::new()).await?;
         let zone = self.tx.db.inner.zone;
-        rows.iter().map(|r| read_row(r, r.len(), zone)).collect()
+        rows.iter().map(|r| crate::row::read_frame_row(r, zone)).collect()
     }
 }
 

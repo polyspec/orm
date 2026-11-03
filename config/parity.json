@@ -9083,6 +9083,231 @@
       ]
     },
     {
+      "id": "statement_runner-mysql",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_mysql.rs",
+          "symbol": "statement_runner_mysql"
+        }
+      ]
+    },
+    {
+      "id": "statement_runner-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_postgres.rs",
+          "symbol": "statement_runner_postgres"
+        }
+      ]
+    },
+    {
+      "id": "statement_runner-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
+          "symbol": "statement_runner_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "statement-runner-frame-after-its-transaction-ended",
+      "kind": "feature",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "statement_runner",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "requirements": [
+        "INT-150a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/statement_runner_test.go",
+          "id": "TestStatementRunnerFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerTest.php",
+          "id": "StatementRunnerTest::testFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerExtensionTest.php",
+          "id": "StatementRunnerExtensionTest::testFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_frame_after_its_transaction_ended_is_config_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner_refusals/sqlite"
+        }
+      ]
+    },
+    {
+      "id": "statement-runner-non-text-statement",
+      "kind": "feature",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "statement_runner",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "requirements": [
+        "INT-150b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerTest.php",
+          "id": "StatementRunnerTest::testStatementRunnerNonText"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerExtensionTest.php",
+          "id": "StatementRunnerExtensionTest::testStatementRunnerRefusesNonTextStatementWithConfig"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_frame_run_returns_rows_and_a_non_text_statement_is_config_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner_refusals/sqlite"
+        }
+      ]
+    },
+    {
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
@@ -41696,8 +41921,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/statement_runner_test.go",
-          "id": "TestStatementRunnerSQLite"
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "php",
@@ -41745,19 +41980,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_runner_test.go",
-          "id": "TestCoverageStatementRunner",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageStatementRunner",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "php",
