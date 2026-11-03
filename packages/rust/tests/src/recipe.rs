@@ -3181,7 +3181,7 @@ mod database {
 
     /// A DSN that the catalog refuses fails with its code. A SQLite file that the case does not create is refused, and the
     /// connect does not create it.
-    async fn connect_check(dsn: &Value) -> Result<(), Failure> {
+    async fn connect_check(dsn: &Value, file_created: bool) -> Result<(), Failure> {
         if let Some(url) = dsn["url"].as_str() {
             let connection = CatalogConnection::connect(url).await.map_err(Failure::Call)?;
             connection.close().await;
@@ -3194,8 +3194,8 @@ mod database {
         let outcome = CatalogConnection::connect(&format!("sqlite://{}", path.display())).await;
         let created = path.exists();
         std::fs::remove_dir_all(&directory).map_err(|e| Failure::Step(e.to_string()))?;
-        if created {
-            return Err(Failure::Step("the connect created the SQLite file".into()));
+        if created != file_created {
+            return Err(Failure::Step(format!("file_created is {created}, want {file_created}")));
         }
         match outcome {
             Ok(connection) => {
@@ -3464,7 +3464,7 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&step["dsn"]).await?;
+                connect_check(&step["dsn"], step["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {
