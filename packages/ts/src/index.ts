@@ -7,7 +7,7 @@ export type * from './ir.js';
 export { Engine } from './engine/index.js';
 export type { Entity, Field, FieldType, RuntimeModel } from './engine/index.js';
 export { loadSet } from './engine/index.js';
-export { OrmError } from './runtime_error.js';
+export { OrmError, transactionConflict } from './runtime_error.js';
 export { CatalogConnection, CatalogRowSnapshot, connectCatalog } from './catalog.js';
 export type { CatalogAssignment, CatalogColumn, CatalogGridCell, CatalogGridResult, CatalogMutationResult, CatalogQueryLimits, CatalogQueryResult, CatalogTableKind, CatalogTableMetadata, CatalogTablePage, CatalogTableRef, CatalogValue } from './catalog.js';
 export { Db, TxFrame, registerModel } from './database.js';

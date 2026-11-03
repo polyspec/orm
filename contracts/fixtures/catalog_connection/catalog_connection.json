@@ -2269,14 +2269,11 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "mysql",
-            "postgres"
-          ],
-          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection",
+          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
-            "postgres": "SELECT pg_sleep(2)"
+            "postgres": "SELECT pg_sleep(2)",
+            "sqlite": "SELECT 1"
           }
         },
         {
@@ -2338,14 +2335,11 @@
         },
         {
           "op": "sql.exec",
-          "only": [
-            "mysql",
-            "postgres"
-          ],
-          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection",
+          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection; SQLite has no server, so it has nothing to wait for",
           "sql": {
             "mysql": "DO SLEEP(2)",
-            "postgres": "SELECT pg_sleep(2)"
+            "postgres": "SELECT pg_sleep(2)",
+            "sqlite": "SELECT 1"
           }
         },
         {

@@ -61,19 +61,15 @@ export function featureItems(file) {
 }
 
 /**
- * Runs statements on the database of a DSN through its native driver, outside
- * the client under test, and returns the rows of each statement.
+ * Opens one connection on the database of a DSN through its native driver, outside the client under test:
+ * query runs a statement and returns its rows, and close ends the connection.
  */
-export async function nativeQuery(driver, dsn, statements) {
+export async function nativeSession(driver, dsn) {
   const url = new URL(dsn);
-  const results = [];
   if (driver === 'sqlite') {
     const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(decodeURIComponent(url.pathname));
-    try {
-      for (const sql of statements) results.push(db.prepare(sql).all());
-    } finally { db.close(); }
-    return results;
+    return { query: async sql => db.prepare(sql).all(), close: async () => db.close() };
   }
   if (driver === 'mysql') {
     const conn = await require('mysql2/promise').createConnection({
@@ -81,10 +77,7 @@ export async function nativeQuery(driver, dsn, statements) {
       socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname,
       port: url.port ? Number(url.port) : undefined, database: decodeURIComponent(url.pathname.slice(1)),
     });
-    try {
-      for (const sql of statements) results.push((await conn.query(sql))[0]);
-    } finally { await conn.end(); }
-    return results;
+    return { query: async sql => (await conn.query(sql))[0], close: () => conn.end() };
   }
   const { Client } = require('pg');
   const client = new Client({
@@ -93,9 +86,19 @@ export async function nativeQuery(driver, dsn, statements) {
     password: decodeURIComponent(url.password) || undefined,
   });
   await client.connect();
+  return { query: async sql => (await client.query(sql)).rows, close: () => client.end() };
+}
+
+/**
+ * Runs statements on the database of a DSN through its native driver, outside
+ * the client under test, and returns the rows of each statement.
+ */
+export async function nativeQuery(driver, dsn, statements) {
+  const session = await nativeSession(driver, dsn);
+  const results = [];
   try {
-    for (const sql of statements) results.push((await client.query(sql)).rows);
-  } finally { await client.end(); }
+    for (const sql of statements) results.push(await session.query(sql));
+  } finally { await session.close(); }
   return results;
 }
 
