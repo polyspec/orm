@@ -160,11 +160,23 @@
       "refused_message",
       "sql"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "transaction.writers": [
       "expect",
       "op",
       "writers",
       "writes"
+    ],
+    "replica.await": [
+      "op"
+    ],
+    "row.connect": [
+      "connection",
+      "op",
+      "row"
     ],
     "wait.start": [
       "op"
@@ -172,10 +184,6 @@
     "wait.at_least": [
       "ms",
       "op"
-    ],
-    "session.end": [
-      "op",
-      "table"
     ],
     "fault.next_rollback": [
       "connection",

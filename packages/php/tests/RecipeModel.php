@@ -168,6 +168,18 @@ trait RecipeModel
             }
             return $replaced;
         }
+        if ($dsn === 'case-replica') {
+            $variable = 'ORM_TEST_' . strtoupper($database) . '_REPLICA_DSN';
+            $replica = getenv($variable);
+            if (!is_string($replica) || $replica === '') {
+                Assert::fail("dsn case-replica: $variable is required; database tests never skip");
+            }
+            $replaced = preg_replace('~^(\w+://[^/]*)/[^?]*~', '$1' . (string) parse_url($caseDsn, PHP_URL_PATH), $replica);
+            if (!is_string($replaced)) {
+                Assert::fail("dsn case-replica: $replica is not a DSN");
+            }
+            return $replaced;
+        }
         if ($dsn !== 'case-socket') {
             return $dsn;
         }

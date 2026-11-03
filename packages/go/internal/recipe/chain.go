@@ -24,6 +24,7 @@ var chainOps = map[string]bool{
 	"model.save": true, "model.duplicate_create": true, "model.update": true, "model.delete": true, "model.restore": true,
 	"model.chain":        true,
 	"collection.connect": true,
+	"row.connect":        true,
 }
 
 // chainQuery holds the fields of a query at any depth: a step, a join, a relation or a subquery.
@@ -934,6 +935,14 @@ func chainOp(raw json.RawMessage, c *databaseContext, reads *stepReads) (outcome
 		}
 	}
 	switch s.k("op").Op {
+	case "row.connect":
+		// connect of a bound row (CFG-21): a later write of the row runs on that connection.
+		row, ok := c.bound[refName(s.k("row").Row)].api.(*tableRow)
+		if !ok {
+			return outcome{}, fmt.Errorf("row.connect: %s is not a bound row", refName(s.k("row").Row))
+		}
+		row.m.Connect(db)
+		return outcome{fields: map[string]any{}}, nil
 	case "collection.connect":
 		// connect of a bound collection (INT-85): true when it returns that collection.
 		rows, ok := c.bound[refName(s.k("row").Row)].api.(*orm.Collection[*tableRow])

@@ -63,6 +63,7 @@ final class Recipe
         'model.creates',
         'model.delete',
         'collection.connect',
+        'row.connect',
         'model.duplicate_create',
         'model.get_by',
         'model.query',
@@ -3130,6 +3131,31 @@ final class Recipe
                 } finally {
                     $writersDb->close();
                 }
+            case 'replica.await':
+                // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
+                // PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical
+                // message, commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary
+                // log position of the primary, on the database of the environment, since the case database reaches the replica
+                // only by this wait. The 60 seconds are the deadline of the wait: the replica applies the writes of every client.
+                $source = case_admin($context['dsn']);
+                if ($context['database'] === 'postgres') {
+                    $source->beginTransaction();
+                    $source->exec('SET LOCAL synchronous_commit = remote_apply');
+                    $mode = $source->query(
+                        "SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')"
+                    )->fetchColumn();
+                    Assert::assertSame('remote_apply', $mode, 'synchronous_commit of the barrier transaction');
+                    $source->commit();
+                    return [];
+                }
+                $replica = (string) getenv('ORM_TEST_MYSQL_REPLICA_DSN');
+                Assert::assertNotSame('', $replica, 'ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip');
+                $status = $source->query('SHOW BINARY LOG STATUS')->fetch(\PDO::FETCH_NUM);
+                $wait = case_admin($replica)->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
+                $wait->execute([$status[0], (int) $status[1]]);
+                $waited = $wait->fetchColumn();
+                Assert::assertTrue($waited !== null && (int) $waited >= 0, "the replica did not reach {$status[0]}:{$status[1]}");
+                return [];
             case 'wait.start':
                 self::$waitStart = hrtime(true);
                 return [];
@@ -4339,6 +4365,10 @@ final class Recipe
             case 'model.update':
                 $model = self::chainTarget($s, $context);
                 self::chainAssign($model, $s['set'] ?? [], $context)->update(($s['optimistic'] ?? false) === true);
+                return [];
+            case 'row.connect':
+                // connect of a bound row (CFG-21): a later write of the row runs on that connection.
+                self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)->connect(self::connectionOf($s, $context));
                 return [];
             case 'collection.connect':
                 // connect of a bound collection (INT-85): true when it returns that collection.

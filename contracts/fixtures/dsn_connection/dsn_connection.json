@@ -2593,6 +2593,216 @@
           }
         }
       ]
+    },
+    {
+      "id": "primary_and_replica_use_their_own_connections",
+      "requirements": [
+        "CFG-21",
+        "CFG-22",
+        "CFG-23",
+        "CFG-25"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "as": "primary"
+        },
+        {
+          "op": "model.create",
+          "connection": "primary",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 2,
+          "dsn": "case-replica",
+          "as": "replica"
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "as": "read"
+        },
+        {
+          "op": "row.connect",
+          "connection": "primary",
+          "row": "read"
+        },
+        {
+          "op": "model.update",
+          "row": "read",
+          "set": {
+            "name": {
+              "text": "renamed"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "primary",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "primary",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "in_transaction"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "primary",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "in_transaction"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": 1
+                },
+                "postgres": {
+                  "json": 1
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "replica",
+              "model": "Author",
+              "where": {
+                "name": {
+                  "text": "in_transaction"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "json": 0
+                },
+                "postgres": {
+                  "json": 0
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "renamed"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "in_transaction"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
     }
   ]
 }

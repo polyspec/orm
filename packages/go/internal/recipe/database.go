@@ -347,6 +347,22 @@ func casePoolerDSN(caseDSN string) (string, error) {
 	return pooler.String(), nil
 }
 
+// caseReplicaDSN is the DSN of the case database on the replica of the environment, which replicates the database of the
+// primary under the same name (CFG-23).
+func caseReplicaDSN(database, caseDSN string) (string, error) {
+	variable := "ORM_TEST_" + strings.ToUpper(database) + "_REPLICA_DSN"
+	replica, err := url.Parse(os.Getenv(variable))
+	if err != nil || replica.Host == "" {
+		return "", fmt.Errorf("dsn case-replica: %s is required; database tests never skip", variable)
+	}
+	target, err := url.Parse(caseDSN)
+	if err != nil {
+		return "", err
+	}
+	replica.Path = target.Path
+	return replica.String(), nil
+}
+
 // connectDSN resolves the DSN of a model.connect step (FCV-4): an absent DSN or "case" is the case database, "case-socket" is
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
@@ -362,6 +378,8 @@ func connectDSN(dsn, database, caseDSN string) (string, error) {
 		return caseDSN, nil
 	case "case-pooler":
 		return casePoolerDSN(caseDSN)
+	case "case-replica":
+		return caseReplicaDSN(database, caseDSN)
 	case "case-socket":
 		if database != "mysql" {
 			return "", fmt.Errorf("dsn case-socket needs mysql, not %s", database)
@@ -1164,6 +1182,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return okOutcome(), nil
 	case "transaction.writers":
 		return transactionWriters(s, c)
+	case "replica.await":
+		if err := awaitReplica(c); err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{}}, nil
 	case "wait.start":
 		c.waitStart = time.Now()
 		return outcome{fields: map[string]any{}}, nil
@@ -1461,6 +1484,54 @@ func endSession(table string, c *databaseContext) error {
 	}
 	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
 	return err
+}
+
+// awaitReplica returns after the replica has applied every change that the primary committed before the call (CFG-23). On
+// PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits
+// after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on
+// the database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
+// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+func awaitReplica(c *databaseContext) error {
+	source := testdb.Open(c.t, c.database, c.dsn)
+	defer testcase.Close(c.t, source)
+	if c.database == "postgres" {
+		tx, err := source.Begin()
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
+		if _, err := tx.Exec("SET LOCAL synchronous_commit = remote_apply"); err != nil {
+			return err
+		}
+		var mode, message string
+		if err := tx.QueryRow("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')::text").Scan(&mode, &message); err != nil {
+			return err
+		}
+		if mode != "remote_apply" {
+			return fmt.Errorf("synchronous_commit of the barrier transaction is %s", mode)
+		}
+		return tx.Commit()
+	}
+	var file string
+	var position int64
+	var ignored [3]any
+	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
+		return err
+	}
+	replica := os.Getenv("ORM_TEST_MYSQL_REPLICA_DSN")
+	if replica == "" {
+		return errors.New("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+	}
+	target := testdb.Open(c.t, c.database, replica)
+	defer testcase.Close(c.t, target)
+	var waited *int64
+	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
+		return err
+	}
+	if waited == nil || *waited < 0 {
+		return fmt.Errorf("the replica did not reach %s:%d", file, position)
+	}
+	return nil
 }
 
 func runNested(raw []json.RawMessage, c *databaseContext) error {

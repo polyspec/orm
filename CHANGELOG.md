@@ -554,6 +554,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The SQLite lock wait, read during a write and concurrent writers run as recipe cases in the six runtimes; the native tests of those behaviours are gone.
 - A failed SQLite BEGIN in Go reports only its error, and a SQLite message names its result code once.
 - Several processes writing one SQLite file are a requirement (CFG-42), tested in the six runtimes.
+- A primary and its replica connections run as a recipe case in the six runtimes, with the DSN `case-replica` and the ops `replica.await` and `row.connect`.
 
 ## 0.0.21
 

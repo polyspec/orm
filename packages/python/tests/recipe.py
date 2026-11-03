@@ -2707,6 +2707,34 @@ def _op_transaction_writers(step: dict, context: dict) -> dict:
         db.close()
 
 
+def _op_replica_await(step: dict, context: dict) -> dict:
+    """Returns after the replica has applied every change that the primary committed before the call (CFG-23). On
+    PostgreSQL a transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message,
+    commits after the standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of
+    the primary, on the database of the environment, since the case database reaches the replica only by this wait. The 60
+    seconds are the deadline of the wait: the replica applies the writes of every client that runs in parallel."""
+    if context["database"] == "postgres":
+        with native_session("postgres", context["dsn"]) as run:
+            run("BEGIN")
+            run("SET LOCAL synchronous_commit = remote_apply")
+            mode = run(
+                "SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '') AS message"
+            )[0]["mode"]
+            run("COMMIT")
+        if mode != "remote_apply":
+            raise AssertionError(f"synchronous_commit of the barrier transaction is {mode}")
+        return {}
+    replica = os.environ.get("ORM_TEST_MYSQL_REPLICA_DSN")
+    if not replica:
+        raise AssertionError("replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip")
+    status = native_query("mysql", context["dsn"], ["SHOW BINARY LOG STATUS"])[0][0]
+    file, position = status["File"], int(status["Position"])
+    waited = native_query("mysql", replica, [f"SELECT SOURCE_POS_WAIT('{file}', {position}, 60) AS waited"])[0][0]["waited"]
+    if waited is None or int(waited) < 0:
+        raise AssertionError(f"the replica did not reach {file}:{position}")
+    return {}
+
+
 def _op_wait_start(step: dict, context: dict) -> dict:
     context["wait_start"] = time.monotonic()
     return {}
@@ -3490,6 +3518,12 @@ def _table_model_update(step: dict, context: dict) -> dict:
     return {}
 
 
+def _row_connect(step: dict, context: dict) -> dict:
+    """connect of a bound row (CFG-21): a later write of the row runs on that connection."""
+    _bound_value(step["row"], context).connect(_connection_of(step, context))
+    return {}
+
+
 def _collection_connect(step: dict, context: dict) -> dict:
     """connect of a bound collection (INT-85): true when it returns that collection."""
     rows = _bound_value(step["row"], context)
@@ -4015,6 +4049,7 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
+    "replica.await": _op_replica_await,
     "wait.start": _op_wait_start,
     "transaction.writers": _op_transaction_writers,
     "wait.at_least": _op_wait_at_least,
@@ -4568,6 +4603,7 @@ _TABLE_OPS = {
     "model.get_by": _table_model_get_by,
     "model.update": _table_model_update,
     "model.delete": _table_model_delete,
+    "row.connect": _row_connect,
     "collection.connect": _collection_connect,
     "model.count": _table_model_count,
     "model.creates": _table_model_creates,

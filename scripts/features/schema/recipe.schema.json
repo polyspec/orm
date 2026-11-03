@@ -818,6 +818,8 @@
             "sql.exec",
             "session.end",
             "transaction.writers",
+            "replica.await",
+            "row.connect",
             "wait.start",
             "wait.at_least",
             "fault.next_rollback",
@@ -1003,6 +1005,12 @@
         },
         {
           "$ref": "#/$defs/ops/transaction.writers"
+        },
+        {
+          "$ref": "#/$defs/ops/replica.await"
+        },
+        {
+          "$ref": "#/$defs/ops/row.connect"
         },
         {
           "$ref": "#/$defs/ops/wait.start"
@@ -3619,6 +3627,20 @@
           "writes": { "type": "integer", "minimum": 1 },
           "expect": { "$ref": "#/$defs/expect" }
         }
+      },
+      "replica.await": {
+        "description": "Returns after the replica has applied every change that the primary committed before the step.",
+        "type": "object",
+        "required": ["op"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "replica.await" } }
+      },
+      "row.connect": {
+        "description": "Calls connect of the row that row holds, with the connection that connection names.",
+        "type": "object",
+        "required": ["op", "connection", "row"],
+        "additionalProperties": false,
+        "properties": { "op": { "const": "row.connect" }, "connection": { "$ref": "#/$defs/name" }, "row": { "$ref": "#/$defs/name" } }
       },
       "wait.start": {
         "description": "Records the time for the next wait.at_least.",

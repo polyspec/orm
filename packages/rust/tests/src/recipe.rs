@@ -135,6 +135,14 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
             let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-pooler: {pooler} names no database"))?;
             Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
         }
+        Some("case-replica") => {
+            let variable = format!("ORM_TEST_{}_REPLICA_DSN", database.to_uppercase());
+            let replica = std::env::var(&variable).map_err(|_| format!("dsn case-replica: {variable} is required; database tests never skip"))?;
+            let name = case_dsn.split('?').next().unwrap_or_default().rsplit('/').next().unwrap_or_default();
+            let (head, query) = replica.split_once('?').unwrap_or((&replica, ""));
+            let (server, _) = head.rsplit_once('/').ok_or_else(|| format!("dsn case-replica: {replica} names no database"))?;
+            Ok(if query.is_empty() { format!("{server}/{name}") } else { format!("{server}/{name}?{query}") })
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
@@ -3181,6 +3189,7 @@ mod database {
         "utils.local",
         "utils.was_inserted",
         "collection.connect",
+        "row.connect",
         "utils.backend_waiting_for_lock",
         "utils.groups",
         "utils.stats",
@@ -3829,6 +3838,10 @@ mod database {
                 let writes = crate::recipe_reads::read(step, "writes")["writes"].as_u64().unwrap_or_default();
                 let count = transaction_writers(&context.dsn, writers, writes).await.map_err(fault)?;
                 Output::fields(json!({ "value": { "int": count.to_string() } }))
+            }
+            "replica.await" => {
+                await_replica(context).await.map_err(fault)?;
+                Output::fields(json!({}))
             }
             "wait.start" => {
                 *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
@@ -4493,6 +4506,56 @@ mod database {
     /// Runs DDL or DML through the native driver on one connection of its own.
     /// Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
     /// handle KILL on its own. The test connection is a client connection, so it sends no parameter a pooler rejects.
+    /// Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
+    /// transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
+    /// standby has applied it; the case connection opens on the server DSN, since a raw SQLx connection sends a startup parameter
+    /// that PgBouncer rejects. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
+    /// database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the deadline
+    /// of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+    async fn await_replica(context: &Context<'_>) -> Result<(), String> {
+        let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
+        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
+        let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
+        let source = Db::connect(&polyspec_orm_case_database::with_database(&server, name), 1, Config::default()).await.map_err(|e| e.to_string())?;
+        let awaited = match source.pool() {
+            Pool::Postgres(pool) => postgres_barrier(pool).await,
+            Pool::MySql(pool) => mysql_replica_wait(pool).await,
+            Pool::Sqlite(_) | Pool::Markdown(_) => Err("replica.await runs on a server database".to_owned()),
+        };
+        source.close().await;
+        awaited
+    }
+
+    /// The barrier transaction of `await_replica` on PostgreSQL.
+    async fn postgres_barrier(pool: &sqlx::PgPool) -> Result<(), String> {
+        let mut tx = pool.begin().await.map_err(|e| format!("barrier begin: {e}"))?;
+        sqlx::raw_sql("SET LOCAL synchronous_commit = remote_apply").execute(&mut *tx).await.map_err(|e| format!("barrier mode: {e}"))?;
+        let mode: String = sqlx::query_scalar("SELECT current_setting('synchronous_commit') FROM (SELECT pg_logical_emit_message(true, 'orm-test-barrier', '')) AS barrier")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| format!("barrier message: {e}"))?;
+        if mode != "remote_apply" {
+            return Err(format!("synchronous_commit of the barrier transaction is {mode}"));
+        }
+        tx.commit().await.map_err(|e| format!("barrier commit: {e}"))
+    }
+
+    /// The wait of `await_replica` on MySQL.
+    async fn mysql_replica_wait(pool: &sqlx::MySqlPool) -> Result<(), String> {
+        let replica = std::env::var("ORM_TEST_MYSQL_REPLICA_DSN").map_err(|_| "replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip".to_owned())?;
+        let row = sqlx::query("SHOW BINARY LOG STATUS").fetch_one(pool).await.map_err(|e| format!("binary log status: {e}"))?;
+        let file: String = sqlx::Row::get(&row, 0);
+        let position: u64 = sqlx::Row::get(&row, 1);
+        let target = sqlx::MySqlPool::connect(&replica).await.map_err(|e| format!("replica wait connection: {e}"))?;
+        let waited: Result<Option<i64>, _> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(&target).await;
+        target.close().await;
+        match waited.map_err(|e| format!("replica wait: {e}"))? {
+            Some(n) if n >= 0 => Ok(()),
+            other => Err(format!("the replica did not reach {file}:{position}: {other:?}")),
+        }
+    }
+
     async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
         let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
         let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
@@ -5809,6 +5872,12 @@ mod tables {
                 }
                 "utils.local" => Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? })),
                 // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
+                "row.connect" => {
+                    // connect of a bound row (CFG-21): a later write of the row runs on that connection.
+                    let name = row_name(step)?;
+                    self.rows.get_mut(name).ok_or_else(|| format!("row.connect: {name} is not a bound row"))?.core.connect(&db);
+                    Ok(json!({}))
+                }
                 "collection.connect" => {
                     let name = row_name(step)?.to_owned();
                     let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;

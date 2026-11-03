@@ -851,6 +851,29 @@ const OPS = {
       return { value: { int: String(await new Service().connect(db).getCount()) } };
     } finally { await db.close(); }
   },
+  // Returns after the replica has applied every change that the primary committed before the call (CFG-23). On PostgreSQL a
+  // transaction with synchronous_commit=remote_apply that writes WAL, here a transactional logical message, commits after the
+  // standby has applied it. On MySQL SOURCE_POS_WAIT on the replica waits for the binary log position of the primary, on the
+  // database of the environment, since the case database reaches the replica only by this wait. The 60 seconds are the
+  // deadline of the wait: the replica applies the writes of every client that runs in parallel, one after another.
+  async 'replica.await'(s, context) {
+    if (context.database === 'postgres') {
+      const [, , [{ mode }]] = await nativeQuery('postgres', context.dsn, [
+        'BEGIN',
+        'SET LOCAL synchronous_commit = remote_apply',
+        "SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '') AS message",
+        'COMMIT',
+      ]);
+      if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
+      return {};
+    }
+    const replica = process.env.ORM_TEST_MYSQL_REPLICA_DSN;
+    if (!replica) throw new Error('replica.await: ORM_TEST_MYSQL_REPLICA_DSN is required; database tests never skip');
+    const [[status]] = await nativeQuery('mysql', context.dsn, ['SHOW BINARY LOG STATUS']);
+    const [[row]] = await nativeQuery('mysql', replica, [`SELECT SOURCE_POS_WAIT('${status.File}', ${Number(status.Position)}, 60) AS waited`]);
+    if (row.waited === null || Number(row.waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    return {};
+  },
   'wait.start'(s, context) {
     context.waitStart = performance.now();
     return {};
@@ -2024,6 +2047,11 @@ const TABLE_OPS = {
     const m = chainTarget(s, context);
     chainAssign(m, s.set, context);
     await m.update(s.optimistic === true);
+    return {};
+  },
+  // connect of a bound row (CFG-21): a later write of the row runs on that connection.
+  'row.connect': (s, context) => {
+    refOf(s.row, context).connect(connectionOf(s, context));
     return {};
   },
   // connect of a bound collection (INT-85): true when it returns that collection.

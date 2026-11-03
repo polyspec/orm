@@ -27587,48 +27587,53 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/replica_test.go",
-          "id": "TestPrimaryAndReplica"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/primary_and_replica_use_their_own_connections"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/primary_and_replica_use_their_own_connections"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"primary_and_replica_use_their_own_connections\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"primary_and_replica_use_their_own_connections\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testPrimaryAndReplica"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"primary_and_replica_use_their_own_connections\""
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/replica.py",
-          "id": "test_primary_and_replica_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/replica.py",
-          "id": "test_primary_and_replica_postgres"
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"primary_and_replica_use_their_own_connections\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/replica.mjs",
-          "id": "replica/primary_and_replica/mysql"
+          "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
+          "id": "primary_and_replica_use_their_own_connections"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/replica.mjs",
-          "id": "replica/primary_and_replica/postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/replica.rs",
-          "id": "primary_and_replica_mysql"
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_postgres.py",
+          "id": "primary_and_replica_use_their_own_connections"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/replica.rs",
-          "id": "primary_and_replica_postgres"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::primary_and_replica_use_their_own_connections"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::primary_and_replica_use_their_own_connections"
         }
       ]
     },

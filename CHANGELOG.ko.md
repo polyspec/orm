@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 983b05ccdf5d587e71b8735c41e6a3e859bff9c959c2b5f9b169922d8d2b0c31 -->
+<!-- source-sha256: 4a3b7b9e02d1a61a7b297fe4afc0ff48bc990ceaa58df16dde78d257a594fc95 -->
 # 변경 이력
 
 ## Unreleased
@@ -549,6 +549,7 @@
 - SQLite 잠금 대기, 쓰기 중 읽기, 동시 쓰기는 여섯 runtime의 recipe case로 실행하고, 그 동작의 native 시험은 없앤다.
 - Go에서 실패한 SQLite BEGIN은 자기 오류만 보고하고, SQLite message는 result code를 한 번만 적는다.
 - 한 SQLite 파일에 쓰는 여러 process를 요구사항(CFG-42)으로 두고 여섯 runtime에서 시험한다.
+- primary와 replica 연결을 여섯 runtime의 recipe case로 실행하고, DSN `case-replica`와 op `replica.await`, `row.connect`를 둔다.
 
 ## 0.0.21
 
