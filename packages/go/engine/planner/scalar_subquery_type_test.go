@@ -7,8 +7,67 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testmodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
+
+const runtimeDocument = `dbspec 1 runtime
+
+table note {
+  id i64 identity
+  rank i16
+  body text
+  payload bytes null
+  meta text null
+  secret_note text null
+  created_at datetime(6) default now
+  primary key (id)
+  settings {
+    select explicit secret_note
+    codec meta ordered_json
+  }
+}
+
+table item {
+  seq i64 identity
+  title varchar(191)
+  audit_seq i64
+  deleted_at datetime(6) null
+  primary key (seq)
+  index ix_item_audit (audit_seq)
+  foreign key fk_item_audit (audit_seq) references audit (seq) on delete restrict on update restrict
+  settings {
+    soft_delete deleted_at
+    audit into item_history column audit_seq references audit action change previous previous_audit_seq
+  }
+}
+
+table item_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  seq i64
+  title varchar(191)
+  audit_seq i64
+  deleted_at datetime(6) null
+  primary key (history_id)
+  index ix_item_history_row (seq)
+}
+
+table audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
+}
+`
+
+// testModel is the runtime model of one dbspec document.
+func testModel(t *testing.T, document string) *runtimemodel.Model {
+	return testmodel.Load(t, document)
+}
+
+func intp(i int) *int { return &i }
 
 func TestScalarSubqueryMissingColumnIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

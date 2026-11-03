@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d262a2919f7941c2644c33745b10b33c2c3bf07c2760c25d55b64f651c2a3329 -->
+<!-- source-sha256: 72331764d26247f374c5150b8c9bec4484efd80dc463c0d129028fbe10875c7e -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe `tests/dbspec/runtime-model.json`과 새 op `dbspec.runtime_model`은 Rust `dbspec_runtime.rs`가 entity 이름, 테이블, key, setting, field 값에 대해 검사하던 내용을 담고 여섯 런타임이 모두 실행한다(DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set`은 manifest text를 다시 읽어 그 hash가 나오는지도 검사한다(DBS-100, DBS-103). Rust만 노출하는 것은 native로 남고 FCV-2에 적었다.
+- recipe `tests/planner/runtime-model.json`은 Go `runtime_model_test.go`가 담던 내용을 담고 여섯 런타임이 모두 실행한다. i16 read와 plus, default 또는 빠진 필수 컬럼의 insert(PRT-81), audit 쓰기의 audit slot(PRT-32, PRT-82)이다. `planner.compile`은 audit slot을 `name`과 함께, `assemble_types`이면 출력 타입도 비교한다.
 - 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
 - markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
 - 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
@@ -34,13 +36,6 @@
 - feature 검사기는 recipe owner를 그 runner가 쓴 결과로 읽는다(FCV-12): 모든 recipe runner가 사례가 통과하면 `ORM_RECIPE_RESULTS`의 파일에 `CASE` 줄을 덧붙이고, owner는 자기 recipe를 적으며 recipe가 사례 목록이므로 request_hook은 열네 개가 아니라 열여섯 개 사례를 적는다.
 - 문 실행기는 여섯 런타임에서 recipe `statement_runner`로만 실행되며, FCV-2의 거부를 뺀 native 시험과 coverage 시험은 사라졌다.
 - 유틸리티 그룹, 트랜잭션의 local 값, `wasInserted`, waiter 없는 보고는 여섯 런타임의 recipe `utils`이며, flow와 disposal 단위와 waiter는 FCV-2대로 native로 남는다.
-- recipe op `dbspec.analyze`의 inline 형태는 analysis가 `parse`의 document, position, diagnostic을 그대로 담는지 검사한다(DBS-134). Go, TypeScript, Python, PHP가 Rust처럼 이를 검사하므로 Go `TestAnalyzeIsParse`를 없앴다.
-- Go `runtimemodel.LoadSet`는 SCH-12가 정한 code `SCHEMA_INVALID`로 실패하고(`*SetLoadError`), recipe helper는 diagnostics를 옮겨 읽지 않고 그 code를 읽는다.
-- Go `rules_test.go`의 canonical 형식, state machine 규칙, markdown storage 규칙은 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다.
-- Go `TestAnalyzeClasses`와 Python `test_dbspec_analyze.py`의 token과 format case는 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다. JSON 줄에 담을 수 없는 text만 native에 남는다.
-- SCH-12의 문서 set 읽기는 새 op `dbspec.load_set`으로 여섯 runtime 모두에서 recipe `tests/dbspec/load-set.json`이고, native 시험은 사라진다.
-- PRT-9의 기본 select 집합은 여섯 runtime 모두에서 recipe `tests/planner/default-select-set.json`이고, native 시험은 사라진다.
-- Go 분석 시험의 token 예제는 `tests/dbspec/rules.json`의 case `analyze-worked-example`이고, TypeScript와 Python의 native header token 시험은 `analyze-header`가 담으므로 사라진다.
 - 추가 열은 모든 runtime에서 plan 열의 타입으로 읽는다(INT-160). MySQL에서 추가한 SUM은 text "906"이 아니라 모두 정수 906이고, 그 타입의 정수가 정확히 아닌 text는 PHP처럼 cast하지 않고 `CODEC_DECODE`로 실패하며, `i16`이나 `i32` 열의 SUM은 plan 타입이 `i64`다.
 - schema 변경 뒤 Rust 재시도는 서버가 추론한 타입으로 문을 parse하고 각 값을 그 타입으로 bind하므로, 컬럼 타입이 바뀐 parameter가 다른 클라이언트처럼 유지된다.
 - 트랜잭션 밖에서 pool로 실행되는 Go 문은 schema 변경 뒤 model 문과 같은 재시도를 하므로 `Aes().Status`가 그 뒤에도 유지된다.
@@ -50,6 +45,13 @@
 - Rust catalog 읽기의 예산 중단은 ProxySQL을 거쳐도 즉시 `CATALOG_LIMIT`을 반환한다: MySQL과 PostgreSQL에서 읽기는 `ROLLBACK` 없이 반환하고 그 연결은 닫힌다.
 - `composite_keys`는 이제 recipe만으로 검증한다. 모든 runtime의 검사을 recipe와 비교한 뒤 여섯 native coverage 시험을 지웠다. group rows의 Rust 시험은 자기 SQLite case database를 쓰고 행을 직접 만든다. (#T334-3-4-17)
 - `packages/go/internal/buildconstraints`의 Go test는 `go.work` module의 모든 Go 파일을 읽고, platform 제약이나 `GO_TEST_TAGS`의 tag가 아닌 build tag에서 실패한다. 실패하는 dbspec harness fixture는 tag 없이 `packages/go/engine/dbspec/testdata/fixture`로 옮겼다.
+- recipe op `dbspec.analyze`의 inline 형태는 analysis가 `parse`의 document, position, diagnostic을 그대로 담는지 검사한다(DBS-134). Go, TypeScript, Python, PHP가 Rust처럼 이를 검사하므로 Go `TestAnalyzeIsParse`를 없앴다.
+- Go `runtimemodel.LoadSet`는 SCH-12가 정한 code `SCHEMA_INVALID`로 실패하고(`*SetLoadError`), recipe helper는 diagnostics를 옮겨 읽지 않고 그 code를 읽는다.
+- Go `rules_test.go`의 canonical 형식, state machine 규칙, markdown storage 규칙은 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다.
+- Go `TestAnalyzeClasses`와 Python `test_dbspec_analyze.py`의 token과 format case는 `tests/dbspec/rules.json`의 case로 여섯 runtime이 모두 돌린다. JSON 줄에 담을 수 없는 text만 native에 남는다.
+- SCH-12의 문서 set 읽기는 새 op `dbspec.load_set`으로 여섯 runtime 모두에서 recipe `tests/dbspec/load-set.json`이고, native 시험은 사라진다.
+- PRT-9의 기본 select 집합은 여섯 runtime 모두에서 recipe `tests/planner/default-select-set.json`이고, native 시험은 사라진다.
+- Go 분석 시험의 token 예제는 `tests/dbspec/rules.json`의 case `analyze-worked-example`이고, TypeScript와 Python의 native header token 시험은 `analyze-header`가 담으므로 사라진다.
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.

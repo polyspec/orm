@@ -451,6 +451,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -571,6 +572,11 @@
       "external",
       "op",
       "owned"
+    ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
     ],
     "dbspec.read_file": [
       "expect",

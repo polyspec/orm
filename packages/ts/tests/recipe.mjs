@@ -16,6 +16,7 @@ import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, r
 import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
+import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
@@ -1022,6 +1023,7 @@ function plannerSlot(slot) {
   if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
   if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
   if (slot.not_null === true) out.not_null = true;
+  if (slot.from === 'audit') out.name = slot.name;
   return out;
 }
 
@@ -1071,7 +1073,13 @@ function checkPlanner(step, recipeDir, database) {
   const got = {};
   for (const dialect of plannerDialects) {
     const plan = new Engine(model, dialect).compile(request);
-    got[dialect] = plan.steps.map(planStep => ({ role: planStep.role, sql: planStep.sql, slots: planStep.bind_slots.map(plannerSlot), tables: planStep.tables }));
+    got[dialect] = plan.steps.map(planStep => ({
+      role: planStep.role,
+      sql: planStep.sql,
+      slots: planStep.bind_slots.map(plannerSlot),
+      tables: planStep.tables,
+      ...(step.assemble_types === true ? { assemble_types: Object.fromEntries(planStep.assemble.columns.map(column => [column.name, column.type])) } : {}),
+    }));
   }
   const actual = JSON.parse(JSON.stringify(got));
   if (!isDeepStrictEqual(actual, outcome.value)) throw new Error(`planner.compile: got ${JSON.stringify(actual)}, want ${JSON.stringify(outcome.value)}`);
@@ -2108,7 +2116,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.runtime_model', 'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2191,6 +2199,27 @@ async function checkDbspecFiles(step, dir, database) {
       }
       assert.equal(expect.error, undefined, 'the set loaded');
       assert.deepEqual(documents.map(d => ({ name: d.name, external: d.external === true })), expect.documents, 'documents');
+      if (expect.manifest_hash !== undefined) assert.equal(dbspecManifest(documents).manifest.manifestHash, expect.manifest_hash, 'manifest hash');
+      break;
+    }
+    case 'dbspec.runtime_model': {
+      const texts = await Promise.all(step.documents.map(path => readFile(resolve(dir, path), 'utf8')));
+      const model = modelOfDocuments(parseDocumentSet(texts));
+      assert.deepEqual([...model.entities.keys()], expect.entities, 'entities');
+      for (const [name, values] of Object.entries(expect.models ?? {})) {
+        const entity = model.entities.get(name);
+        const got = {
+          table: entity.table, primary_key: [...entity.primaryKey], identity: entity.identity, updated: entity.updated, soft_delete: entity.softDelete,
+          aes_version: entity.aesVersion, audit_column: entity.auditColumn, audit_record: entity.auditRecord,
+          key_names: [...entity.indexes].sort(),
+          fields: Object.fromEntries(entity.fields.map(f => [f.name, {
+            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, codec: [...f.stages],
+            blind_index: f.blindIndex, primary_key: f.primary, foreign_key: f.foreign,
+          }])),
+        };
+        const named = (have, want) => Object.fromEntries(Object.entries(want).map(([key, value]) => [key, value !== null && typeof value === 'object' && !Array.isArray(value) ? named(have[key], value) : have[key]]));
+        assert.deepEqual(named(got, values), values, `entity ${name}`);
+      }
       break;
     }
     case 'dbspec.parse_set': {

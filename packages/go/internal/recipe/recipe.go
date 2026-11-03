@@ -60,16 +60,18 @@ type step struct {
 	Config  dsnConfig              `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
+	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
+	AssembleTypes bool `json:"assemble_types"`
 	// Names are the output names of a planner.columns step.
 	Names []string `json:"names"`
 	// ManifestHash is the hash an ir.validate request holds in place of the hash of the schema of the recipe.
-	ManifestHash string `json:"manifest_hash"`
-	Lines   []string                   `json:"lines"`
-	Plan    json.RawMessage            `json:"plan"`
-	Plans   []json.RawMessage          `json:"plans"`
-	Source  json.RawMessage            `json:"source"`
-	Target  json.RawMessage            `json:"target"`
-	Dialect string                     `json:"dialect"`
+	ManifestHash string            `json:"manifest_hash"`
+	Lines        []string          `json:"lines"`
+	Plan         json.RawMessage   `json:"plan"`
+	Plans        []json.RawMessage `json:"plans"`
+	Source       json.RawMessage   `json:"source"`
+	Target       json.RawMessage   `json:"target"`
+	Dialect      string            `json:"dialect"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
 	Documents []string  `json:"documents"`
 	Document  string    `json:"document"`
@@ -249,7 +251,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
-		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.read_file", "dbspec.read_bytes":
+		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)
@@ -1178,6 +1180,8 @@ type plannerStatement struct {
 	SQL    string        `json:"sql"`
 	Slots  []plannerSlot `json:"slots"`
 	Tables []string      `json:"tables"`
+	// AssembleTypes is the type of each output column of the step, by name, when the step asks for it.
+	AssembleTypes map[string]string `json:"assemble_types,omitempty"`
 }
 
 // plannerSlot is the source and type of one bind slot. A param slot carries the request value's number, a parent slot
@@ -1193,6 +1197,8 @@ type plannerSlot struct {
 	// NotNull marks a param slot that assigns a non-null column.
 	NotNull  bool     `json:"not_null,omitempty"`
 	KeyTypes []string `json:"key_types,omitempty"`
+	// Name is the audit record table of an audit slot (PRT-32).
+	Name string `json:"name,omitempty"`
 }
 
 // checkPlanner compiles the request of a planner.compile step with the engine of each dialect, against the manifest of the
@@ -1382,6 +1388,14 @@ func checkPlanner(dir string, s step, database string) error {
 			return err
 		}
 		statements := plannerStatements(compiled)
+		if s.AssembleTypes {
+			for i, step := range compiled.Steps {
+				statements[i].AssembleTypes = map[string]string{}
+				for _, column := range step.Assemble.Columns {
+					statements[i].AssembleTypes[column.Name] = column.Type
+				}
+			}
+		}
 		got[dialect] = statements
 	}
 	body, err := json.Marshal(got)
@@ -1415,6 +1429,9 @@ func plannerStatements(compiled plan.Plan) []plannerStatement {
 				s.KeyTypes = slot.KeyTypes
 			default:
 				s.Type = slot.ColType
+			}
+			if slot.From == "audit" {
+				s.Name = slot.Name
 			}
 			if slot.ColType == "datetime" || slot.ColType == "time" {
 				precision := slot.Precision

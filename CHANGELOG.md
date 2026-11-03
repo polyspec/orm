@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
+- The recipe `tests/planner/runtime-model.json` holds what Go `runtime_model_test.go` held and all six runtimes run it: i16 read and plus, the insert of a default or a missing required column (PRT-81), and the audit slot of audited writes (PRT-32, PRT-82). `planner.compile` compares an audit slot with its `name` and, with `assemble_types`, the output types.
 - AES rotation of every AES column, of the rows not at the current version, its status, and the write with the key of the current version are cases of the aes_rotation recipe in all six runtimes, and the native rotation tests are gone.
 - The refusal of a markdown connect (PRT-64) is a recipe case, `markdown.connect`, on a listener each runtime runs, and the native tests it replaces are gone. A refused TLS connection in Rust names no database in its message (CFG-16).
 - A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.
@@ -33,13 +35,6 @@
 - The feature checker reads a recipe owner from the results its runner writes (FCV-12): every recipe runner appends a `CASE` line to the file of `ORM_RECIPE_RESULTS` when a case passes, the owner names its recipe, and the recipe is its list of cases, so request_hook lists its sixteen cases rather than fourteen.
 - The statement runner runs in the recipe `statement_runner` alone in the six runtimes: its native and coverage tests are gone, except the refusals of FCV-2.
 - The utility groups, the local value of a transaction, `wasInserted` and the report with no waiter are the recipe `utils` in the six runtimes; the flow and disposal units and the waiter stay native, as FCV-2 states.
-- The inline form of the recipe op `dbspec.analyze` checks that the analysis holds the document, positions and diagnostics of `parse` (DBS-134), so Go, TypeScript, Python and PHP check it as Rust did, and Go `TestAnalyzeIsParse` is gone.
-- Go `runtimemodel.LoadSet` fails with the code `SCHEMA_INVALID` that SCH-12 states, as a `*SetLoadError`, and the recipe helper reads that code instead of translating diagnostics.
-- The canonical forms, state machine rules and markdown storage rules of the Go `rules_test.go` are cases of `tests/dbspec/rules.json`, so all six runtimes run them.
-- The token and format cases of Go `TestAnalyzeClasses` and Python `test_dbspec_analyze.py` are cases of `tests/dbspec/rules.json`, so all six runtimes run them; only a text that a JSON line cannot hold stays native.
-- The load of a document set of SCH-12 is the recipe `tests/dbspec/load-set.json` in all six runtimes, through the new op `dbspec.load_set`, and its native tests go.
-- The default select set of PRT-9 is the recipe `tests/planner/default-select-set.json` in all six runtimes, and its native tests go.
-- The worked token example of the Go analysis test is the case `analyze-worked-example` of `tests/dbspec/rules.json`, and the native header token tests of TypeScript and Python go, because `analyze-header` holds them.
 - An added column reads by the type of its plan column in every runtime (INT-160): an added MySQL SUM is the integer 906 in all of them, not the text "906"; a text that is not exactly an integer of the type fails with `CODEC_DECODE`, where PHP cast it; and a SUM of an `i16` or `i32` column has the plan type `i64`.
 - The Rust retry after a schema change parses the statement with the types the server infers and binds each value as that type, so a parameter whose column changed type holds as in the other clients.
 - A Go statement on the pool outside a transaction takes the same retry as a model statement after a schema change, so `Aes().Status` holds through it.
@@ -49,6 +44,13 @@
 - A budget stop of a read of the Rust catalog returns `CATALOG_LIMIT` at once, through ProxySQL too: on MySQL and PostgreSQL the read returns without a `ROLLBACK` and its connection closes.
 - `composite_keys` is held by its recipe alone: its six native coverage tests are gone after their assertions were compared with the recipe in every runtime. The Rust test of group rows takes its own SQLite case database and writes its rows. (#T334-3-4-17)
 - A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
+- The inline form of the recipe op `dbspec.analyze` checks that the analysis holds the document, positions and diagnostics of `parse` (DBS-134), so Go, TypeScript, Python and PHP check it as Rust did, and Go `TestAnalyzeIsParse` is gone.
+- Go `runtimemodel.LoadSet` fails with the code `SCHEMA_INVALID` that SCH-12 states, as a `*SetLoadError`, and the recipe helper reads that code instead of translating diagnostics.
+- The canonical forms, state machine rules and markdown storage rules of the Go `rules_test.go` are cases of `tests/dbspec/rules.json`, so all six runtimes run them.
+- The token and format cases of Go `TestAnalyzeClasses` and Python `test_dbspec_analyze.py` are cases of `tests/dbspec/rules.json`, so all six runtimes run them; only a text that a JSON line cannot hold stays native.
+- The load of a document set of SCH-12 is the recipe `tests/dbspec/load-set.json` in all six runtimes, through the new op `dbspec.load_set`, and its native tests go.
+- The default select set of PRT-9 is the recipe `tests/planner/default-select-set.json` in all six runtimes, and its native tests go.
+- The worked token example of the Go analysis test is the case `analyze-worked-example` of `tests/dbspec/rules.json`, and the native header token tests of TypeScript and Python go, because `analyze-header` holds them.
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - The complex product search is one recipe, `complex_query`, in all six runtimes on the three databases: its full-text OR filters, plan steps through `getPagePlanSteps`, page, six relations and statement events. The 18 pre-seeded complex query databases are gone: `make complex-query-check` runs the recipe, and each runtime keeps only its native test of `getPagePlanSteps` refusals.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.

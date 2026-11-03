@@ -327,6 +327,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         | "dbspec.parse_set"
         | "dbspec.set"
         | "dbspec.load_set"
+        | "dbspec.runtime_model"
         | "dbspec.read_file"
         | "dbspec.read_bytes" => return dbspec_step(step, dir, database),
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
@@ -439,6 +440,10 @@ fn planner_statement(step: &polyspec_orm::plan::Step) -> Value {
             if slot.not_null {
                 out["not_null"] = serde_json::json!(true);
             }
+            // An audit slot names its audit record table (PRT-32).
+            if slot.from == "audit" {
+                out["name"] = serde_json::json!(slot.name);
+            }
             out
         })
         .collect();
@@ -464,7 +469,13 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     }
     for (name, dialect) in PLAN_DIALECTS {
         let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
-        let got = Value::Array(plan.steps.iter().map(planner_statement).collect());
+        let mut got = Value::Array(plan.steps.iter().map(planner_statement).collect());
+        if step["assemble_types"] == true {
+            for (statement, planned) in got.as_array_mut().into_iter().flatten().zip(&plan.steps) {
+                let columns = planned.assemble.iter().flat_map(|assemble| &assemble.columns);
+                statement["assemble_types"] = columns.map(|column| (column.name.clone(), Value::from(column.typ.clone()))).collect();
+            }
+        }
         if got != want["value"][name] {
             return Err(format!("{name}:\n got {got}\nwant {}", want["value"][name]));
         }
@@ -923,6 +934,7 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
         "dbspec.parse_set" => dbspec_parse_set(step, want),
         "dbspec.set" => dbspec_set(step, want),
         "dbspec.load_set" => dbspec_load_set(step, want),
+        "dbspec.runtime_model" => dbspec_runtime_model(step, dir, want),
         "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
@@ -1124,11 +1136,66 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
         let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
         return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
+    if let Some(hash) = want["manifest_hash"].as_str() {
+        if built.manifest_hash != hash {
+            return Err(format!("manifest hash {}, want {hash}", built.manifest_hash));
+        }
+    }
     let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
     let schema = polyspec_orm::Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash));
     let documents = schema.documents().map_err(|error| error.to_string())?;
     let got: Vec<Value> = documents.iter().map(|d| json!({"name": d.name.text, "external": d.external})).collect();
     if want["documents"].as_array() == Some(&got) { Ok(()) } else { Err(format!("documents {got:?}, want {want}")) }
+}
+
+/// The dbspec.runtime_model op (FCV-4): the entity names of the runtime model of the documents, and the values that the expect
+/// names of the entities and fields it names.
+fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
+    let (_, documents) = read_documents(dir, &step_documents(step))?;
+    let refs: Vec<&Document> = documents.iter().collect();
+    let model = dbspec::runtime_model(&refs).map_err(|errors| format!("{errors:?}"))?;
+    let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
+    if json!(names) != want["entities"] {
+        return Err(format!("entities {names:?}, want {}", want["entities"]));
+    }
+    fn named(have: &Value, want: &Value) -> Value {
+        match want.as_object() {
+            Some(keys) => Value::Object(keys.iter().map(|(key, value)| (key.clone(), named(&have[key], value))).collect()),
+            None => have.clone(),
+        }
+    }
+    for (name, values) in want["models"].as_object().into_iter().flatten() {
+        let entity = model.entity(name).ok_or_else(|| format!("no entity {name}"))?;
+        let fields: serde_json::Map<String, Value> = entity
+            .fields
+            .iter()
+            .map(|f| {
+                let view = json!({
+                    "type": f.ty.name(), "nullable": f.nullable, "default": f.default.is_some(),
+                    "default_now": f.default == Some(dbspec::FieldDefault::Now), "codec": f.codec,
+                    "blind_index": f.blind_index.clone().unwrap_or_default(), "primary_key": f.primary_key, "foreign_key": f.foreign_key,
+                });
+                (f.name.clone(), view)
+            })
+            .collect();
+        let audit = entity.audit.as_ref();
+        let mut key_names: Vec<&str> = entity.uniques.iter().chain(&entity.indexes).map(|k| k.name.as_str()).collect();
+        key_names.sort_unstable();
+        let got = json!({
+            "table": entity.table, "primary_key": entity.primary_key, "identity": entity.identity.clone().unwrap_or_default(),
+            "updated": entity.updated.clone().unwrap_or_default(), "soft_delete": entity.soft_delete.clone().unwrap_or_default(),
+            "aes_version": entity.aes_version.clone().unwrap_or_default(),
+            "audit_column": audit.map(|a| a.column.clone()).unwrap_or_default(),
+            "audit_record": audit.map(|a| a.record.clone()).unwrap_or_default(),
+            "key_names": key_names,
+            "fields": fields,
+        });
+        let view = named(&got, values);
+        if &view != values {
+            return Err(format!("entity {name}: {view}, want {values}"));
+        }
+    }
+    Ok(())
 }
 
 fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {

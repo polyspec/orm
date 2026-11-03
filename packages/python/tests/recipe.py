@@ -633,6 +633,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.parse_set",
     "dbspec.set",
     "dbspec.load_set",
+    "dbspec.runtime_model",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -754,6 +755,47 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 expect.get("documents"),
                 "documents",
             )
+            if "manifest_hash" in expect:
+                built, _ = dbspec_manifest(documents)
+                _expect_equal(built.manifest_hash, expect["manifest_hash"], "manifest hash")
+    elif op == "dbspec.runtime_model":
+        texts = [(directory / path).read_bytes().decode("utf-8") for path in step["documents"]]
+        model = model_of_documents(parse_document_set(texts))
+        _expect_equal(list(model.entities), expect["entities"], "entities")
+        for name, values in expect.get("models", {}).items():
+            entity = model.entities[name]
+            got = {
+                "table": entity.table,
+                "primary_key": list(entity.primary_key),
+                "identity": entity.identity,
+                "updated": entity.updated,
+                "soft_delete": entity.soft_delete,
+                "aes_version": entity.aes_version,
+                "audit_column": entity.audit_column,
+                "audit_record": entity.audit_record,
+                "key_names": sorted(entity.indexes),
+                "fields": {
+                    f.name: {
+                        "type": f.type,
+                        "nullable": f.nullable,
+                        "default": f.has_default,
+                        "default_now": f.default_now,
+                        "codec": list(f.stages),
+                        "blind_index": f.blind_index,
+                        "primary_key": f.primary,
+                        "foreign_key": f.foreign,
+                    }
+                    for f in entity.fields
+                },
+            }
+
+            def named(have, want):
+                return {
+                    key: named(have[key], value) if isinstance(value, dict) else have[key]
+                    for key, value in want.items()
+                }
+
+            _expect_equal(named(got, values), values, f"entity {name}")
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
@@ -1206,6 +1248,8 @@ def _plan_slot(slot: dict) -> dict:
         out["length"] = slot.get("length", 0)
     if slot.get("not_null"):
         out["not_null"] = True
+    if slot["from"] == "audit":
+        out["name"] = slot["name"]
     return out
 
 
@@ -1248,6 +1292,11 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
                 "slots": [_plan_slot(s) for s in planned["bind_slots"]],
                 "sql": planned["sql"],
                 "tables": planned["tables"],
+                **(
+                    {"assemble_types": {c["name"]: c["type"] for c in planned["assemble"]["columns"]}}
+                    if step.get("assemble_types")
+                    else {}
+                ),
             }
             for planned in plan["steps"]
         ]

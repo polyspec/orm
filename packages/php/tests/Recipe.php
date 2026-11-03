@@ -88,7 +88,7 @@ final class Recipe
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.runtime_model', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -346,7 +346,9 @@ final class Recipe
                 'slots' => array_map(self::planSlot(...), $planned['bind_slots']),
                 'sql' => $planned['sql'],
                 'tables' => $planned['tables'],
-            ], $plan['steps']);
+            ] + (($step['assemble_types'] ?? false) === true ? [
+                'assemble_types' => array_column($planned['assemble']['columns'], 'type', 'name'),
+            ] : []), $plan['steps']);
         }
         Assert::assertSame(self::sortedKeys($outcome['value']), self::sortedKeys($got), 'planner.compile statements');
     }
@@ -370,6 +372,9 @@ final class Recipe
         }
         if ($type === 'datetime' || $type === 'time') {
             $out['precision'] = $slot['precision'] ?? 0;
+        }
+        if ($slot['from'] === 'audit') {
+            $out['name'] = $slot['name'];
         }
         $out['type'] = $type;
         return $out;
@@ -1035,6 +1040,52 @@ final class Recipe
                     array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
                     'documents',
                 );
+                if (array_key_exists('manifest_hash', $expect)) {
+                    Assert::assertSame($expect['manifest_hash'], Dbspec::manifest($documents)->manifest->manifestHash, 'manifest hash');
+                }
+                return;
+            case 'dbspec.runtime_model':
+                $texts = array_map(static fn(string $path): string => self::dbspecFile($dir, $path), $step['documents']);
+                $model = RuntimeModel::build(RuntimeModel::parse($texts));
+                Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
+                $named = static function (array $have, array $want) use (&$named): array {
+                    $out = [];
+                    foreach ($want as $key => $value) {
+                        $out[$key] = is_array($value) && !array_is_list($value) ? $named($have[$key], $value) : $have[$key];
+                    }
+                    return $out;
+                };
+                foreach ($expect['models'] ?? [] as $name => $values) {
+                    $entity = $model->entities[$name];
+                    $fields = [];
+                    foreach ($entity['columns'] as $column) {
+                        $fields[$column['name']] = [
+                            'type' => $column['type'],
+                            'nullable' => $column['nullable'],
+                            'default' => $column['default'],
+                            'default_now' => $column['default_now'],
+                            'codec' => $column['codec'],
+                            'blind_index' => $column['blind_index'],
+                            'primary_key' => $column['pk'],
+                            'foreign_key' => $column['foreign_key'],
+                        ];
+                    }
+                    $keyNames = [...array_keys($entity['unique']), ...array_keys($entity['indexes'])];
+                    sort($keyNames);
+                    $got = [
+                        'table' => $entity['table'],
+                        'primary_key' => $entity['pk'],
+                        'identity' => $entity['identity'],
+                        'updated' => $entity['updated'],
+                        'soft_delete' => $entity['soft_delete'],
+                        'aes_version' => $entity['aes_version'],
+                        'audit_column' => $entity['audit'],
+                        'audit_record' => $entity['audit_record'],
+                        'key_names' => $keyNames,
+                        'fields' => $fields,
+                    ];
+                    Assert::assertEquals($values, $named($got, $values), "entity $name");
+                }
                 return;
             case 'dbspec.parse_set':
                 $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));
