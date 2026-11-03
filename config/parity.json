@@ -300,6 +300,10 @@
         {
           "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/go/orm/values_test.go",
+          "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
         }
       ]
     },
@@ -394,6 +398,7 @@
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
+        "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
         "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
@@ -629,6 +634,10 @@
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
+        {
+          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
         },
         {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
@@ -2575,26 +2584,6 @@
             {
               "test": "packages/go/orm/catalog_sqlite_sequence_test.go",
               "id": "TestCatalogSQLiteSequenceRestoration"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "files": [
-        "packages/php-ext/tests/DbspecReleaseHooksTest.php"
-      ],
-      "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks; it tests the build, not ORM client behavior.",
-      "units": [
-        {
-          "id": "php-extension-release-omits-private-hooks",
-          "requirements": [
-            "PRT-18"
-          ],
-          "bindings": [
-            {
-              "test": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
-              "id": "testReleaseExtensionOmitsPrivateHooks"
             }
           ]
         }
@@ -6262,159 +6251,6 @@
       ]
     },
     {
-      "id": "coverage-transactions-transaction-rollback",
-      "kind": "feature",
-      "requirements": [
-        "DSL-118",
-        "INT-45",
-        "PLN-13",
-        "PLN-20",
-        "PLN-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-          "id": "AuditLazyFakePdoTest::testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        }
-      ]
-    },
-    {
-      "id": "model-transaction-unconnected-model-context",
-      "kind": "feature",
-      "requirements": [
-        "PLN-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        }
-      ]
-    },
-    {
       "id": "handle-disposal-abort-or-unwind-rolls-back",
       "kind": "feature",
       "requirements": [
@@ -6550,92 +6386,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/model.mjs",
           "id": "cancellation"
-        }
-      ]
-    },
-    {
-      "id": "coverage-transactions-transaction-savepoint",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119",
-        "DSL-123",
-        "DSL-125",
-        "DSL-126",
-        "INT-40",
-        "INT-41",
-        "INT-42",
-        "INT-43",
-        "INT-45",
-        "INT-46",
-        "INT-47",
-        "INT-48",
-        "PLN-17",
-        "PLN-21",
-        "PLN-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
         }
       ]
     },
@@ -7704,7 +7454,8 @@
         "SCH-12",
         "DBS-156",
         "DBS-100",
-        "DBS-103"
+        "DBS-103",
+        "DBS-99"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -7866,38 +7617,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumn"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/ordered_json_column_round_trip_and_rotation"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/AesJsonTest.php",
-          "id": "AesJsonTest::testAesJsonColumn"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AesJsonTestExtensionTest.php",
-          "id": "AesJsonTestExtensionTest::testAesJsonColumn"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesJsonColumn"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_json.py",
-          "id": "test_aes_json_column_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_json.rs",
-          "id": "aes_json_column"
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::ordered_json_column_round_trip_and_rotation"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumnSchema"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "ordered_json_column_round_trip_and_rotation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::ordered_json_column_round_trip_and_rotation"
         }
       ]
     },
@@ -9061,16 +8847,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -9114,16 +8901,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -9167,16 +8955,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -14336,7 +14125,8 @@
       "id": "transaction-flow-overlap-rejected",
       "kind": "feature",
       "requirements": [
-        "DSL-121"
+        "DSL-121",
+        "INT-47"
       ],
       "bindings": [
         {
@@ -14368,449 +14158,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/transaction_flow.rs",
           "id": "overlapping_statements_on_the_transaction_connection_return_config"
-        }
-      ]
-    },
-    {
-      "id": "transaction-savepoint-nested-rollback",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::sqlite_send_savepoint"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::mysql_send_savepoint"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::postgres_send_savepoint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "transaction-timeout-options",
-      "kind": "feature",
-      "requirements": [
-        "DSL-125"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::transaction_timeout_is_the_postgres_statement_timeout"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "transaction-callback-error-rolls-back",
-      "kind": "feature",
-      "requirements": [
-        "DSL-118"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        }
-      ]
-    },
-    {
-      "id": "transaction-retry-on-deadlock",
-      "kind": "feature",
-      "requirements": [
-        "PLN-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionDeadlockRetry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_deadlock_retry"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_deadlock_retry",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "transaction-retry-on-deadlock-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "PLN-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionDeadlockRetry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_deadlock_retry"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_deadlock_retry",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
-          ]
         }
       ]
     },
@@ -15540,11 +14887,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generated manifest text and hash match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadRebuildsTheModelOfTheManifestText"
         },
         {
           "implementation": "php",
@@ -17785,43 +17127,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/values_test.go",
-          "id": "TestFuncIR"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/value_function_parameter_indexes"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testValueFunctionIrCarriesNameAndParameterIndexes"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeValueFunctionIrCarriesNameAndParameterIndexes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/value_function_ir.mjs",
-          "id": "value_function_ir_parameter_indexes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_ir_carry_name_and_parameters"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--lib",
-            "FEATURE_TEST=request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "value_function_parameter_indexes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "value_function_parameter_indexes"
         }
       ]
     },
@@ -26637,6 +26009,54 @@
       ]
     },
     {
+      "id": "transaction-audit-lazy-fake-pdo",
+      "kind": "feature",
+      "requirements": [
+        "INT-44b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+          "id": "AuditLazyFakePdoTest::testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "transaction-send-savepoint",
+      "kind": "feature",
+      "requirements": [
+        "INT-46a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::sqlite_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::mysql_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::postgres_send_savepoint"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "coverage-parameter-chunking-native",
       "kind": "feature",
       "requirements": [
@@ -31025,7 +30445,9 @@
         "DBS-112",
         "PRT-32",
         "PRT-81",
-        "PRT-82"
+        "PRT-82",
+        "DIA-24",
+        "PRT-33"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -31067,7 +30489,9 @@
         "DBS-65",
         "DBS-85",
         "DBS-111",
-        "DBS-112"
+        "DBS-112",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -42610,6 +42034,7 @@
       "id": "transactions-mysql",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42621,8 +42046,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42668,6 +42093,7 @@
       "id": "transactions-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42679,8 +42105,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42726,6 +42152,7 @@
       "id": "transactions-sqlite",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42737,8 +42164,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",
