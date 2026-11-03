@@ -3067,7 +3067,9 @@ mod database {
         for after in [&recipe["seed"]["after"], &case["seed"]["after"]] {
             let named = after["only"].as_array().is_none_or(|only| only.iter().any(|name| name.as_str() == Some(database)));
             if after.is_object() && named {
-                run_step(catalog, after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
+                // The reads of a step are kept by its address, and the seed of the recipe is shared by the cases that run at once.
+                let after = after.clone();
+                run_step(catalog, &after, context).await.map_err(|failure| format!("seed after, database {database}: {failure:?}"))?;
             }
         }
         polyspec_orm_testcase::step("seed rows inserted");
@@ -3535,7 +3537,7 @@ mod database {
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
                 let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
-                if optioned.iter().any(|option| step.get(*option).is_some())
+                if optioned.iter().any(|option| crate::recipe_reads::read(step, option).get(*option).is_some())
                     || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true)
                 {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
@@ -3575,7 +3577,7 @@ mod database {
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
             // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
             // itself: a value written between two readings lies between their texts (FCV-4).
-            "clock.read" => match step["edge"].as_str() {
+            "clock.read" => match crate::recipe_reads::read(step, "edge")["edge"].as_str() {
                 Some("lower" | "upper") => Output::fields(json!({ "value": {
                     "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } })),
@@ -4181,15 +4183,15 @@ mod database {
     fn resolve_model_step(step: &Value, context: &Context<'_>) -> Result<Value, String> {
         let mut resolved = step.clone();
         for key in ["values", "where", "key", "set", "duplication"] {
-            if step.get(key).is_some() {
+            if crate::recipe_reads::read(step, key).get(key).is_some() {
                 resolved[key] = resolve_map(&step[key], context)?;
             }
         }
-        if let Some(rows) = step["rows"].as_array() {
+        if let Some(rows) = crate::recipe_reads::read(step, "rows")["rows"].as_array() {
             resolved["rows"] = Value::Array(rows.iter().map(|row| resolve_map(row, context)).collect::<Result<_, _>>()?);
         }
-        if step.get("amount").is_some() {
-            resolved["amount"] = database_value(argument(&step["amount"], context)?, context);
+        if crate::recipe_reads::read(step, "amount").get("amount").is_some() {
+            resolved["amount"] = database_value(argument(&crate::recipe_reads::read(step, "amount")["amount"], context)?, context);
         }
         Ok(resolved)
     }
@@ -4452,6 +4454,8 @@ mod database {
             Value::Array(items) => Value::Array(items.iter().map(normalized).collect()),
             Value::Object(map) if map.len() == 1 && map.contains_key("null") => json!({ "null": true }),
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
+            // JSON holds one number type: a sum read as 17540.0 is the 17540 of the recipe.
+            Value::Number(n) if n.is_f64() && n.as_f64().is_some_and(|f| f.fract() == 0.0 && f.abs() < 9e15) => json!(n.as_f64().map_or(0, |f| f as i64)),
             other => other.clone(),
         }
     }
@@ -5021,7 +5025,12 @@ mod tables {
             let converted = if value.is_null() {
                 Val::Null
             } else if field.codec.first().is_some_and(|stage| stage == "ordered_json") {
-                Val::Ordered(value.take_ordered()?)
+                // The styled form of SQL NULL carries no ordered value.
+                if matches!(value, Val::Json(Value::Null)) {
+                    Val::Null
+                } else {
+                    Val::Ordered(value.take_ordered()?)
+                }
             } else if field.styled_value() {
                 Val::Json(value.into_json()?)
             } else if !field.codec.is_empty() {
@@ -5371,7 +5380,7 @@ mod tables {
         /// Applies the fields of q to core, in the order that a chain writes them: the projection, the joins and relations,
         /// the conditions, the order, the limit and the lock.
         fn query(&mut self, core: &mut Core, q: &Value, with_limit: bool) -> Result<(), String> {
-            match &q["columns"] {
+            match &crate::recipe_reads::read(q, "columns")["columns"] {
                 Value::Null => {}
                 Value::String(all) if all == "all" => core.add_all_columns(),
                 Value::Array(entries) => {
@@ -5382,13 +5391,13 @@ mod tables {
                 }
                 other => return Err(format!("columns {other} is neither a list nor all")),
             }
-            for entry in q["add_columns"].as_array().into_iter().flatten() {
+            for entry in crate::recipe_reads::read(q, "add_columns")["add_columns"].as_array().into_iter().flatten() {
                 self.column_entry(core, entry)?;
             }
-            for column in names(&q["remove_columns"]) {
+            for column in names(&crate::recipe_reads::read(q, "remove_columns")["remove_columns"]) {
                 core.remove_column(&column);
             }
-            if let Some(aggregate) = q.get("aggregate") {
+            if let Some(aggregate) = crate::recipe_reads::read(q, "aggregate").get("aggregate") {
                 if let (Some(agg), Some(column)) = (aggregate["agg"].as_str(), aggregate["column"].as_str()) {
                     core.aggregate(leaked(agg), column);
                 }
@@ -5396,7 +5405,7 @@ mod tables {
                     core.group_by(&column);
                 }
             }
-            for join in q["joins"].as_array().into_iter().flatten() {
+            for join in crate::recipe_reads::read(q, "joins")["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
                 let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None, handles: self.handles.clone() };
                 if let Some(alias) = join["alias"].as_str() {
@@ -5418,14 +5427,14 @@ mod tables {
                     self.joined.insert(name.to_owned(), id);
                 }
             }
-            for relation in q["relations"].as_array().into_iter().flatten() {
+            for relation in crate::recipe_reads::read(q, "relations")["relations"].as_array().into_iter().flatten() {
                 let child = self.relation(relation)?;
                 core.relation(relation["many"].as_bool() == Some(true), child);
             }
-            if let Some(filter) = q.get("where") {
+            if let Some(filter) = crate::recipe_reads::read(q, "where").get("where") {
                 self.predicate(core, "", filter)?;
             }
-            for entry in q["order"].as_array().into_iter().flatten() {
+            for entry in crate::recipe_reads::read(q, "order")["order"].as_array().into_iter().flatten() {
                 if entry["random"].as_bool() == Some(true) {
                     core.order_by_random();
                     continue;
@@ -5442,17 +5451,17 @@ mod tables {
                 }
             }
             if with_limit {
-                if let Some((offset, count)) = limit_of(&q["limit"])? {
+                if let Some((offset, count)) = limit_of(&crate::recipe_reads::read(q, "limit")["limit"])? {
                     core.limit(offset, count);
                 }
             }
-            if let Some(mode) = q["lock"].as_str() {
+            if let Some(mode) = crate::recipe_reads::read(q, "lock")["lock"].as_str() {
                 core.lock(leaked(mode));
             }
-            if let Some(name) = q["force_index"].as_str() {
+            if let Some(name) = crate::recipe_reads::read(q, "force_index")["force_index"].as_str() {
                 core.force_index(name);
             }
-            if let Some(column) = q["key_by"].as_str() {
+            if let Some(column) = crate::recipe_reads::read(q, "key_by")["key_by"].as_str() {
                 core.key_name(column);
             }
             Ok(())
@@ -5648,6 +5657,11 @@ mod tables {
             Param::Date(at) => Val::Date(*at),
         };
         row.core.set(column, value);
+        // A text that is no time reaches the write, whose slot check refuses it (CODEC_ENCODE, PRT-67).
+        if matches!(field.map(|field| field.ty), Some(Type::DateTime(_))) && matches!(read, Val::Str(_)) && read.as_datetime().is_err() {
+            row.values.insert(column.to_owned(), read);
+            return Ok(());
+        }
         row.assign(column, read).map_err(orm)?;
         Ok(())
     }
@@ -5703,6 +5717,8 @@ mod tables {
 
         /// The core of a read: the fields of the step applied, then the key of a terminal by.
         fn built(&self, step: &Value, db: &Db) -> Result<Core, String> {
+            // pick narrows the rows of the answer: an answer without a row asserts the same with or without it.
+            crate::recipe_reads::read(step, "pick");
             let core = if let Some(from) = crate::recipe_reads::read(step, "from")["from"].as_str() {
                 // A bound chain is read again: a terminal leaves it as it was (DSL-98).
                 self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
@@ -5862,13 +5878,14 @@ mod tables {
 
         /// model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its terminal.
         /// The written model is bound with as, and its toArray is the result.
-        async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
+        async fn write(&mut self, op: &str, step: &Value, db: Option<&Db>) -> Result<Value, String> {
             let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
             let mut row = if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
                 let mut row = TableRow::from_core(core_of(model)?);
                 assign_values(&mut row, &crate::recipe_reads::read(step, "values")["values"])?;
                 row
             } else {
+                let db = db.ok_or_else(|| format!("{op} names no connection"))?;
                 self.row(model, db, &crate::recipe_reads::read(step, "values")["values"])?
             };
             for (name, value) in members(&crate::recipe_reads::read(step, "attached")["attached"]) {
@@ -6063,6 +6080,7 @@ mod tables {
                 return match op {
                     "model.update" => self.update_row(step, None).await,
                     "model.delete" => self.delete_rows(step, None).await,
+                    "model.create" => self.write(op, step, None).await,
                     other => Err(format!("{other} names no connection")),
                 };
             }
@@ -6143,9 +6161,9 @@ mod tables {
                 "utils.privilege" => {
                     let utils = db.utils();
                     let privileges = utils.privileges();
-                    let table = step["table"].as_str().unwrap_or_default();
-                    let role = step["role"].as_str().unwrap_or_default();
-                    match step["call"].as_str().unwrap_or_default() {
+                    let table = crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default();
+                    let role = crate::recipe_reads::read(step, "role")["role"].as_str().unwrap_or_default();
+                    match crate::recipe_reads::read(step, "call")["call"].as_str().unwrap_or_default() {
                         "inspect" => {
                             let got = privileges.inspect_table(table).await.map_err(orm)?;
                             Ok(json!({ "json": {
@@ -6157,7 +6175,10 @@ mod tables {
                             Ok(json!({ "value": { "bool": true } }))
                         }
                         "revoke" => {
-                            privileges.revoke_table(table, step["privilege"].as_str().unwrap_or_default(), role).await.map_err(orm)?;
+                            privileges
+                                .revoke_table(table, crate::recipe_reads::read(step, "privilege")["privilege"].as_str().unwrap_or_default(), role)
+                                .await
+                                .map_err(orm)?;
                             Ok(json!({ "value": { "bool": true } }))
                         }
                         other => Err(format!("utils.privilege has no call {other}")),
@@ -6240,7 +6261,7 @@ mod tables {
                     }
                     Ok(json!({}))
                 }
-                "model.create" | "model.save" | "model.duplicate_create" | "model.restore" => self.write(op, step, &db).await,
+                "model.create" | "model.save" | "model.duplicate_create" | "model.restore" => self.write(op, step, Some(&db)).await,
                 "model.creates" => self.creates(step, &db).await,
                 "model.update" => self.update_row(step, Some(&db)).await,
                 "model.delete" => self.delete_rows(step, Some(&db)).await,

@@ -175,7 +175,8 @@ fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
 
 fn raw_bool(r: &MySqlRow, i: usize) -> Result<bool> {
     Ok(match type_name(r, i) {
-        "BOOLEAN" => required_cell(r.try_get::<Option<bool>, _>(i)?, i)?,
+        // The driver reads any nonzero TINYINT(1) as true; a cell neither 0 nor 1 is no boolean (PRT-67).
+        "BOOLEAN" => Val::I64(i64::from(required_cell(r.try_get::<Option<i8>, _>(i)?, i)?)).as_bool()?,
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_bool()?,
         _ => read_cell_mysql(r, i)?.as_bool()?,
     })
@@ -223,7 +224,12 @@ pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
         "DATETIME" => row.try_get::<Option<NaiveDateTime>, _>(i)?.map(Val::DateTime),
         "TIMESTAMP" => row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(i)?.map(|t| Val::DateTime(t.naive_utc())),
         "DATE" => row.try_get::<Option<NaiveDate>, _>(i)?.map(Val::Date),
-        "BOOLEAN" => row.try_get::<Option<bool>, _>(i)?.map(Val::Bool),
+        // The driver reads any nonzero TINYINT(1) as true; a cell neither 0 nor 1 stays a number, which a boolean field refuses.
+        "BOOLEAN" => row.try_get::<Option<i8>, _>(i)?.map(|n| match n {
+            0 => Val::Bool(false),
+            1 => Val::Bool(true),
+            other => Val::I64(i64::from(other)),
+        }),
         // MySQL JSON columns arrive parsed; the json style then keeps the value as is.
         "JSON" => row.try_get::<Option<serde_json::Value>, _>(i)?.map(Val::Json),
         // Authenticated AES envelopes are BLOB values; decode them as text when possible.
