@@ -30512,11 +30512,6 @@
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/orm/conversion_error_test.go",
           "id": "TestTimeTextHasExactlyPrecisionDigits"
         },
@@ -30534,36 +30529,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeI16ValuesAndDefaults"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an omitted column takes the database default and a required column is checked"
         },
         {
           "implementation": "typescript",
@@ -30596,11 +30561,6 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/model/styled_state_test.go",
           "id": "TestStyledStatesAcrossDatabases"
         },
@@ -30623,21 +30583,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: selected styled SQL NULL survives a database read"
         },
         {
           "implementation": "python",

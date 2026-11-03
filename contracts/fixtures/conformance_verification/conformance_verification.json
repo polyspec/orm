@@ -76285,7 +76285,9 @@
       "label",
       "address",
       "packed",
-      "note"
+      "note",
+      "clock",
+      "day"
      ],
      "expect": {
       "mysql": {
@@ -76301,7 +76303,9 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       },
       "postgres": {
@@ -76317,7 +76321,9 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       },
       "sqlite": {
@@ -76333,7 +76339,9 @@
          "kind": "value",
          "value": "compressed text"
         },
-        "note": "plain text"
+        "note": "plain text",
+        "clock": "10:20:30.500000",
+        "day": "2026-02-03"
        }
       }
      }
@@ -76619,6 +76627,150 @@
       },
       "sqlite": {
        "error": "IR_INVALID"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.5001"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "3"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "small": {
+       "int": "32767"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "1"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "small": {
+       "lt": {
+        "int": "0"
+       }
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "2"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "2"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "postgres": {
+       "value": {
+        "int": "3"
+       }
+      },
+      "sqlite": {
+       "value": {
+        "int": "3"
+       }
       }
      }
     }
@@ -76996,6 +77148,645 @@
         "amount": "-0.0012",
         "large": "0"
        }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "decimal_value"
+       ],
+       "sql": {
+        "mysql": "SELECT CAST(`amount` AS CHAR), CAST(`large` AS CHAR) FROM `decimal_value` ORDER BY `seq`",
+        "postgres": "SELECT CAST(\"amount\" AS TEXT), CAST(\"large\" AS TEXT) FROM \"decimal_value\" ORDER BY \"seq\"",
+        "sqlite": "SELECT CAST(\"amount\" AS TEXT), CAST(\"large\" AS TEXT) FROM \"decimal_value\" ORDER BY \"seq\""
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "48.0450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-0.0012"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "48.0450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-0.0012"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "480450"
+           },
+           {
+            "text": "9007199254740993"
+           }
+          ]
+         },
+         {
+          "array": [
+           {
+            "text": "-12"
+           },
+           {
+            "text": "0"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_styled_states",
+   "requirements": [
+    "COD-20"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "styled": {
+        "null": "text"
+       }
+      },
+      "jsons_tags": {
+       "styled": {
+        "null": "text"
+       }
+      },
+      "serialize_data": {
+       "styled": {
+        "null": "text"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": null
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           },
+           {
+            "text": "null"
+           },
+           {
+            "text": "N;"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "kind",
+         {
+          "text": "sql-null"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"kind\":\"sql-null\"}"
+      },
+      "postgres": {
+       "json": "{\"kind\":\"sql-null\"}"
+      },
+      "sqlite": {
+       "json": "{\"kind\":\"sql-null\"}"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "value",
+         "value": {
+          "kind": "sql-null"
+         }
+        },
+        "jsons_tags": {
+         "kind": "value",
+         "value": null
+        },
+        "serialize_data": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "null": "text"
+      },
+      "jsons_tags": {
+       "null": "text"
+      },
+      "serialize_data": {
+       "null": "text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "json_setting": {
+         "kind": "sql-null"
+        },
+        "jsons_tags": {
+         "kind": "sql-null"
+        },
+        "serialize_data": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting`, `jsons_tags`, `serialize_data` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\", \"jsons_tags\", \"serialize_data\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           },
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "update",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "UPDATE `author` SET `json_setting` = '' WHERE `seq` = 1",
+        "postgres": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1",
+        "sqlite": "UPDATE \"author\" SET \"json_setting\" = '' WHERE \"seq\" = 1"
+       }
+      }
+     ]
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "json_setting",
+      "jsons_tags",
+      "serialize_data"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      },
+      "postgres": {
+       "error": "CODEC_DECODE"
+      },
+      "sqlite": {
+       "error": "CODEC_DECODE"
       }
      }
     }
