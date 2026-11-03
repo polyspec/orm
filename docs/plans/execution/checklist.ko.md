@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 5f4217dc67bcb3fff7039249a2c7d1681a58bfeba6c1ba9109702e100db52926 -->
+<!-- source-sha256: 9ad70153ca5ed8b424db5cf2184348534e1b3c67e3fe371e9418bb16f09ecf51 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -1553,7 +1553,7 @@
 | T334-3-12-3-2 | parameter_chunking recipe가 limit에 대한 PRT-76 규칙 전체를 담는다: 분할된 목록의 limit은 어떤 statement도 보내기 전에 IR_INVALID로 실패한다. 원인: step이 code만 기대해서, statement를 보낸 뒤 실패하는 runtime도 통과했다. | contracts/fixtures/parameter_chunking/parameter_chunking.json, CHANGELOG.md, CHANGELOG.ko.md | `make run-databases TARGETS=parity-check UNITS='parameter_chunking-mysql parameter_chunking-postgres parameter_chunking-sqlite'` | [~] |
 | T334-3-12-3-3 | transactions recipe가 native coverage가 잡던 것을 잡는다: 연결 없는 model, 모든 lock mode, isolation level, read_only, timeoutMs, retry 횟수, 기본 retry, retry 0, 두 흐름 deadlock, SQLite busy writer를 여섯 runtime과 세 database에서, Rust coverage_transactions는 제거한다. | contracts/fixtures/transactions/transactions.json, the recipe helpers, config/parity.json | `go test -run TestRecipeTransactions ./orm` alone; the other runtimes in the central run | [~] |
 | T334-3-12-3-4 | Statement event native 시험을 recipe로 옮긴다: subscriber의 ORM error 실패, clock 표식, vector의 여덟 case. Go coverage 시험과 Python native 시험은 사라진다. | contracts/fixtures/statement_events/statement_events.json | `make statement-events-check` | [~] |
-| T334-3-12-3-5 | 만들어 내는 곳이 없는 secret bind slot과 `$SECRET` 표식을 명세와 모든 client에서 뺀다. | docs/spec/interfaces.md | `make docs-rules-check` | [~] |
+| T334-3-12-3-5 | 만들어 내는 곳이 없는 secret bind slot과 `$SECRET` 표식을 명세와 모든 client에서 뺀다. | docs/spec/interfaces.md | `make docs-rules-check` | [v] |
 | T334-3-12-3-6 | Recipe `statement_events`가 INT-149(statement event의 server transaction)를 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라진다. | contracts/fixtures/statement_events/statement_events.json | `make statement-events-check` | [~] |
 | T334-3-12-3-7 | recipe `transactions`가 다음 실패 rollback이 소비하는 rollback fault(INT-72)를 여섯 helper의 op `fault.next_rollback`으로 담고, 그 단위의 native는 사라진다. | contracts/fixtures/transactions/transactions.json | `make transactions-check` | [~] |
 | T334-3-12-3-8 | transaction이 끝나기 전에 풀린 lock은 모든 runtime에서 `CONFIG`(INT-72)이고 recipe `utils`의 case이며, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다. | contracts/fixtures/utils/utils.json | `make transactions-check` | [~] |
