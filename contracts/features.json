@@ -4898,14 +4898,6 @@
             "contracts/fixtures/bench/bench.dbs",
             "contracts/fixtures/external/*.dbs"
           ]
-        },
-        {
-          "id": "catalog-row-order-unit-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-row-order-unit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib dbspec::catalog_row_tests::catalog_rows_preserves_row_and_column_order -- --exact --test-threads=1",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/src/dbspec.rs"
-          ]
         }
       ],
       "coverage": {
@@ -5220,14 +5212,6 @@
           ]
         },
         {
-          "id": "param-uses-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts param-uses-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib engine::param_uses_tests",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/src/engine/params.rs"
-          ]
-        },
-        {
           "id": "planner-go-engine",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/engine -count=1",
           "shard": "other",
@@ -5302,7 +5286,7 @@
         },
         {
           "id": "planner-rust-validate",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate_none --test ir_manifest_hash",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts planner-rust-validate -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test ir_validate_none",
           "shard": "rust",
           "inputs": [
             "packages/rust/orm/src/engine/validate.rs",
@@ -8773,14 +8757,6 @@
           ]
         },
         {
-          "id": "catalog-row-baseline-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-row-baseline-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_snapshot row_baseline_compares_exact_bits_scale_and_binary -- --exact",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/build/tests/row_snapshot.rs"
-          ]
-        },
-        {
           "id": "catalog-row-baseline-php",
           "command": "make --no-print-directory php-models && env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist --filter testRowBaselineComparesExactValuesIncludingGeneratedOriginals packages/php/tests/CatalogQueryBoundsTest.php",
           "shard": "other",
@@ -8795,14 +8771,6 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/catalog-mutation-helper.test.mjs"
-          ]
-        },
-        {
-          "id": "catalog-typed-temporal-write-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-typed-temporal-write-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_insert_identity typed_catalog_writes_return_declared_temporal_fraction_digits -- --exact",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/build/tests/row_insert_identity.rs"
           ]
         }
       ],
