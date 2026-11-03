@@ -9096,6 +9096,231 @@
       ]
     },
     {
+      "id": "statement_runner-mysql",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_mysql.rs",
+          "symbol": "statement_runner_mysql"
+        }
+      ]
+    },
+    {
+      "id": "statement_runner-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_postgres.rs",
+          "symbol": "statement_runner_postgres"
+        }
+      ]
+    },
+    {
+      "id": "statement_runner-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-150",
+        "INT-77",
+        "FCV-8",
+        "FCV-9",
+        "FCV-10",
+        "FCV-11",
+        "FCV-12",
+        "FCV-13",
+        "FCV-14"
+      ],
+      "file": "contracts/fixtures/statement_runner/statement_runner.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "symbol": "TestRecipeStatementRunnerSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\StatementRunnerRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_runner_sqlite.rs",
+          "symbol": "statement_runner_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "statement-runner-frame-after-its-transaction-ended",
+      "kind": "feature",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "statement_runner",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "requirements": [
+        "INT-150a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/statement_runner_test.go",
+          "id": "TestStatementRunnerFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerTest.php",
+          "id": "StatementRunnerTest::testFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerExtensionTest.php",
+          "id": "StatementRunnerExtensionTest::testFrameAfterItsTransactionEnded"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_frame_after_its_transaction_ended_is_config_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner_refusals/sqlite"
+        }
+      ]
+    },
+    {
+      "id": "statement-runner-non-text-statement",
+      "kind": "feature",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "statement_runner",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "requirements": [
+        "INT-150b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerTest.php",
+          "id": "StatementRunnerTest::testStatementRunnerNonText"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerExtensionTest.php",
+          "id": "StatementRunnerExtensionTest::testStatementRunnerRefusesNonTextStatementWithConfig"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_runner.py",
+          "id": "test_frame_run_returns_rows_and_a_non_text_statement_is_config_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-runner.mjs",
+          "id": "statement-runner/statement_runner_refusals/sqlite"
+        }
+      ]
+    },
+    {
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
@@ -29517,46 +29742,6 @@
       ]
     },
     {
-      "id": "aes-keyring-version-order",
-      "kind": "feature",
-      "requirements": [
-        "INT-74",
-        "INT-130"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestAESKeyringExposesCurrentVersionAndSortedVersions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testKeyringExposesCurrentVersionAndSortedVersions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testAesKeyringValidatesVersionsAndRotatesEveryNonNullColumn"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/aes-version-codes.mjs",
-          "id": "aes keyring: versions are ascending and current version is retained"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_aes_version_codes.py",
-          "id": "test_keyring_exposes_current_version_and_sorted_versions"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/utils.rs",
-          "id": "utils::keyring_tests::versions_lists_the_declared_versions_in_ascending_order"
-        }
-      ]
-    },
-    {
       "id": "collection-get-fetched-value-typed-key",
       "kind": "feature",
       "requirements": [
@@ -29598,84 +29783,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_collection.py",
           "id": "test_get_has_and_fetched_read_the_stored_key"
-        }
-      ]
-    },
-    {
-      "id": "query-terminal-first-builder-error",
-      "kind": "feature",
-      "requirements": [
-        "INT-88"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "model-terminal/returns-first-builder-error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_terminal_returns_the_first_recorded_builder_error"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/result_chains.rs",
-          "id": "result_chains::generated_terminal_returns_first_builder_error_without_sending_sql"
-        }
-      ]
-    },
-    {
-      "id": "client-errors-carry-stable-code",
-      "kind": "feature",
-      "requirements": [
-        "INT-89"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::testTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "model-terminal/returns-first-builder-error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_terminal_returns_the_first_recorded_builder_error"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testTerminalReturnsTheFirstRecordedBuilderError"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/result_chains.rs",
-          "id": "result_chains::generated_terminal_returns_first_builder_error_without_sending_sql"
         }
       ]
     },
@@ -41933,8 +42040,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/statement_runner_test.go",
-          "id": "TestStatementRunnerSQLite"
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "php",
@@ -41982,19 +42099,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_runner_test.go",
-          "id": "TestCoverageStatementRunner",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageStatementRunner",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_runner_test.go",
+          "id": "TestRecipeStatementRunnerSqlite/failed_statement_is_its_database_code_and_rolls_back"
         },
         {
           "implementation": "php",
@@ -42020,6 +42136,93 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_statement_runner.mjs",
           "id": "statement_runner"
+        }
+      ]
+    },
+    {
+      "id": "public-interface",
+      "kind": "suite",
+      "requirements": [
+        "INT-74",
+        "INT-88",
+        "INT-89",
+        "INT-130"
+      ],
+      "file": "contracts/fixtures/public_interface/public_interface.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/bind_messages_test.go",
+          "symbol": "TestRecipePublicInterfaceNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PublicInterfaceRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PublicInterfaceRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PublicInterfaceRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PublicInterfaceRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/public_interface-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_public_interface_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/public_interface_none.rs",
+          "symbol": "public_interface_none"
+        }
+      ]
+    },
+    {
+      "id": "public-interface-signed",
+      "kind": "suite",
+      "requirements": [
+        "INT-159"
+      ],
+      "file": "contracts/fixtures/public_interface/public_interface_signed.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "interface_contract",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_public_interface_signed_test.go",
+          "symbol": "TestRecipePublicInterfaceSignedNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PublicInterfaceSignedRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\PublicInterfaceSignedRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PublicInterfaceSignedRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\PublicInterfaceSignedRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/public_interface_signed-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_public_interface_signed_none.py"
         }
       ]
     },
@@ -43547,7 +43750,7 @@
         ]
       },
       "requirements": [
-        "DSL-159"
+        "DSL-160"
       ],
       "bindings": [
         {

@@ -19,6 +19,16 @@
     "steps"
   ],
   "step": {
+    "keyring.versions": [
+      "expect",
+      "keyring",
+      "op"
+    ],
+    "markdown.builder": [
+      "calls",
+      "expect",
+      "op"
+    ],
     "dsn.connect": [
       "dsn",
       "expect",
@@ -366,6 +376,12 @@
     "events.unsubscribe": [
       "op",
       "ref"
+    ],
+    "utils.run": [
+      "connection",
+      "expect",
+      "op",
+      "statements"
     ],
     "events.captured": [
       "compare",

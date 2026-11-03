@@ -2626,6 +2626,32 @@ def _op_events_stop(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_utils_run(step: dict, context: dict) -> dict:
+    """utils.run (FCV-4, INT-150): one utils().run whose function runs the statements in order on its frame; the value is
+    the rows of the last."""
+
+    def run(frame):
+        last = {"rows": []}
+        for statement in step["statements"]:
+            last = frame.run(
+                _sql(statement["sql"], context),
+                [_to_value(raw) for raw in statement.get("params", [])],
+                kind=statement["kind"],
+                tables=statement["tables"],
+            )
+        return last
+
+    result = _connection_of(step, context).utils().run(run)
+    return {
+        "value": {
+            "array": [
+                {"array": [_plain(cell, None) for cell in row]}
+                for row in result["rows"]
+            ]
+        }
+    }
+
+
 def _op_events_captured(step: dict, context: dict) -> dict:
     subscription = _bound_value(step["ref"], context)
     if subscription.recording is None:
@@ -2920,6 +2946,7 @@ _DATABASE_OPS = {
     "events.fail_subscriber": _op_events_fail_subscriber,
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
+    "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,

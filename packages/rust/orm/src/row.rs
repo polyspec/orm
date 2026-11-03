@@ -293,6 +293,20 @@ pub fn read_row(row: &DriverRow, n: usize, zone: Zone) -> Result<Vec<Val>> {
     (0..n).map(|i| read_cell(row, i, zone)).collect()
 }
 
+/// Reads one row of a statement of the frame (INT-150), which has no plan to declare its columns. The MySQL driver names a text
+/// column of a binary collation as binary, and only the `binary` collation is byte data, so such a column reads as text.
+pub fn read_frame_row(row: &DriverRow, zone: Zone) -> Result<Vec<Val>> {
+    let mut cells = read_row(row, row.len(), zone)?;
+    if let DriverRow::MySql(r) = row {
+        for (i, cell) in cells.iter_mut().enumerate() {
+            if matches!(cell, Val::Bytes(_)) && <str as sqlx::Type<sqlx::MySql>>::compatible(r.column(i).type_info()) {
+                *cell = Val::Str(r.try_get::<String, _>(i)?);
+            }
+        }
+    }
+    Ok(cells)
+}
+
 /// Decodes styled cells of every positional row of a step in place: the host stages a
 /// dialect left to the executor (aes/hex/ip, with the AES secret) first, then the codec
 /// stages (docs/spec/codec.md).

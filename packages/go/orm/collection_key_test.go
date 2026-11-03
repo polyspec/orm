@@ -198,18 +198,6 @@ func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 	}
 }
 
-// Requirements: INT-88, INT-89.
-func TestTerminalReturnsTheFirstRecordedBuilderError(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	core := NewCore(&Entity{})
-	core.Limit(-1, 1)
-	core.Limit(0, 0)
-	_, err := core.GetCount()
-	if ErrorCode(err) != CodeConfig || err.Error() != "CONFIG: limit requires a non-negative offset and a positive count" {
-		t.Fatalf("terminal error = %v, want the first builder error", err)
-	}
-}
-
 func TestModelCollectionKeyRejectsMissingColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	core := NewCore(&Entity{Value: func(Model, string) (any, bool) { return nil, false }})
