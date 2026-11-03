@@ -1,5 +1,5 @@
 // The shared steps of the physical checks (scripts/*-physical-check.mts): each runs owner tests against an isolated database
-// and compares the database state before and after with the state reader of tests/conformance/check/main.mts.
+// and compares the database state before and after with the state reader tests/conformance/check/state.mts.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { endGroup } from './check/step.mts';
@@ -49,7 +49,7 @@ export function run(program: string, args: string[], env: NodeJS.ProcessEnv = pr
 export async function state(database: string, dsn: string): Promise<string> {
   let output = '';
   let redacted: string | undefined;
-  try { output = await run(process.execPath, [join(import.meta.dirname, '../tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn]); }
+  try { output = await run(process.execPath, [join(import.meta.dirname, '../tests/conformance/check/state.mts'), '--driver', database, '--dsn', dsn]); }
   catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
   if (redacted !== undefined) throw new Error(redacted);
   const match = new RegExp(`^${database} state ([a-f0-9]{64})\\n$`).exec(output);

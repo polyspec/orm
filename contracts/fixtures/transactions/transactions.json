@@ -1,6 +1,7 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "CFG-6",
     "CFG-15",
     "CFG-24",
     "DSL-118",
@@ -1941,6 +1942,161 @@
                 [
                   {
                     "text": "before timeout"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_lock_wait_expiry_is_canceled",
+      "only": [
+        "mysql"
+      ],
+      "requirements": [
+        "CFG-6"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.create",
+          "model": "CompositeAccount",
+          "values": {
+            "tenant_id": {
+              "int": "990015"
+            },
+            "account_id": {
+              "int": "7"
+            },
+            "name": {
+              "text": "before expiry"
+            }
+          },
+          "connection": "connection"
+        },
+        {
+          "op": "utils.run",
+          "connection": "connection",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": "SET SESSION innodb_lock_wait_timeout = 1"
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.query",
+              "connection": "holder",
+              "model": "CompositeAccount",
+              "where": {
+                "tenant_id": {
+                  "int": "990015"
+                },
+                "account_id": {
+                  "int": "7"
+                }
+              },
+              "order": [
+                "account_id"
+              ],
+              "lock": "update",
+              "columns": [
+                "account_id"
+              ],
+              "expect": {
+                "mysql": {
+                  "rows": [
+                    [
+                      {
+                        "int": "7"
+                      }
+                    ]
+                  ]
+                }
+              }
+            },
+            {
+              "op": "model.update",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "key": {
+                "tenant_id": {
+                  "int": "990015"
+                },
+                "account_id": {
+                  "int": "7"
+                }
+              },
+              "set": {
+                "name": {
+                  "text": "expired"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CANCELED",
+                  "driver_cause": true,
+                  "message_holds": "Lock wait timeout exceeded"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990015"
+            },
+            "account_id": {
+              "int": "7"
+            }
+          },
+          "order": [
+            "account_id"
+          ],
+          "columns": [
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "before expiry"
                   }
                 ]
               ]

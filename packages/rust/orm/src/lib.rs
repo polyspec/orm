@@ -291,18 +291,6 @@ macro_rules! models {
 mod or_panic;
 
 #[cfg(test)]
-mod mysql_code_tests {
-    use super::*;
-
-    #[test]
-    // Requirements: CFG-6.
-    fn mysql_lock_wait_timeout_is_canceled() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(mysql_code(1205), Some(codes::CANCELED));
-    }
-}
-
-#[cfg(test)]
 mod sqlite_code_tests {
     use super::*;
 
