@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 7d423f41a07ff02fde673063dfbef138199e7f7ce77693ce42add1ba371251fa -->
+<!-- source-sha256: d3fee04f72758ecae79c242769e9180941151127c9b2937a82dde48a0fd081c6 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -81,7 +81,7 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 PgBouncer 설정:
 
 - **CFG-27** `pool_mode`: `transaction`. 서버 연결 하나가 한 번에 클라이언트 트랜잭션 하나 또는 트랜잭션 밖의 문 하나를 처리한다.
-- **CFG-28** `max_prepared_statements`: 0보다 큰 값(PgBouncer 기본값 200). Go 클라이언트, Rust 클라이언트, TypeScript 클라이언트, Python 클라이언트(`prepare_threshold=0`인 psycopg)는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. PgBouncer는 이름 있는 문을 그 text로 서버 연결에 유지하며, 서버 연결이 이미 가진 text의 Parse는 서버에 닿지 않는다. 그래서 설계상 schema 변경 뒤에 실행되는 catalog session(SCH-6a)은 문에 이름을 붙이는 모든 클라이언트에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행한다. transaction이 session 동안 서버 연결을 잡고, session의 모든 문은 그 시점 뒤에 서버가 parse하며, PgBouncer는 다른 클라이언트가 아직 쓰는 문을 그 서버 연결에 다시 준비한다. PgBouncer를 거치는 `DEALLOCATE ALL`은 1.22 이상이 필요하다.
+- **CFG-28** `max_prepared_statements`: 0보다 큰 값(PgBouncer 기본값 200). Go 클라이언트, Rust 클라이언트, TypeScript 클라이언트, Python 클라이언트(`prepare_threshold=0`인 psycopg)는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. PgBouncer는 이름 있는 문을 그 text로 서버 연결에 유지하며, 서버 연결이 이미 가진 text의 Parse는 서버에 닿지 않는다. 그래서 설계상 schema 변경 뒤에 실행되는 catalog session(SCH-6a)은 문에 이름을 붙이는 모든 클라이언트에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행한다. transaction이 session 동안 서버 연결을 잡고, session의 모든 문은 그 시점 뒤에 서버가 parse하며, PgBouncer는 다른 클라이언트가 아직 쓰는 문을 그 서버 연결에 다시 준비한다. PgBouncer를 거치는 `DEALLOCATE ALL`은 1.22 이상이 필요하다. 클라이언트 연결이나 그 text를 가진 서버 연결에 있는 schema 변경 이전의 문은 직접 연결에서도 PgBouncer를 거쳐도 똑같이 실패한다. 결과 타입이 바뀌었거나(`0A000`, `cached plan must not change result type`), parameter가 새 컬럼에 대해 옛 타입을 유지하거나(`42883`, `42804`), 값을 그 옛 타입으로 읽는다(`22P02`, `22003`, `22007`, `22008`). 트랜잭션 밖에서 실패한 문은 아무것도 바꾸지 않았으므로, 이 중 하나로 실패한 model 문은 `DEALLOCATE ALL`로 시작하는 트랜잭션 하나 안에서 서버 연결 하나로 한 번 더 실행된다. 다른 이유로 실패한 문은 같은 방식으로 다시 실패하고 그 오류가 호출자에게 전달된다. 호출자의 트랜잭션 안에서는 서버가 트랜잭션을 중단했으므로 오류는 `DRIVER`로 호출자에게 전달된다.
 - **CFG-29** `track_extra_parameters`: `statement_timeout`. 연결이 `statementTimeoutMs`를 설정할 때 필요하다. 클라이언트는 `statement_timeout`을 startup 매개변수로 전달한다. PgBouncer는 추적하지 않는 startup 매개변수를 거부하고, 추적하는 매개변수는 그 클라이언트 연결에 배정하는 모든 서버 연결에만 설정한다.
 
 - **CFG-30** 클라이언트가 트랜잭션 밖에서 정하는 PostgreSQL 세션 상태는 시간대뿐이다. 모든 클라이언트는 시간대를 startup 매개변수 `TimeZone=UTC`로 보내며, PgBouncer는 `TimeZone`을 기본으로 추적한다. 트랜잭션 옵션(`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal`(`set_config(…, true)`), `utils().lock`(`pg_advisory_xact_lock`)은 트랜잭션과 함께 끝난다.

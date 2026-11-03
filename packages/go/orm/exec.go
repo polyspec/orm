@@ -395,7 +395,8 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 	if err := d.takeStatementFault(); err != nil {
 		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	_, err = stmt.ExecContext(ctx, args...)
+	result, err := stmt.ExecContext(ctx, args...)
+	_, err = d.execAgain(ctx, ex, st.SQL, args, result, err)
 	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErrContext(err, ctx))
 }
 
@@ -831,7 +832,7 @@ func (c *cell) Scan(src any) error {
 	return nil
 }
 
-func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *request, parentVals []any) ([][]any, error) {
+func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *request, parentVals []any) (_ [][]any, retErr error) {
 	d := ex.base()
 	sqlText := st.SQL
 	if parentVals != nil {
@@ -854,9 +855,17 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
 	rows, err := stmt.QueryContext(ctx, args...)
+	rows, endAgain, err := d.queryAgain(ctx, ex, sqlText, args, rows, err)
 	err = mapDriverErrContext(err, ctx)
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
+	}
+	if endAgain != nil {
+		defer func() {
+			if endErr := endAgain(nil); endErr != nil && retErr == nil {
+				retErr = mapDriverErrContext(endErr, ctx)
+			}
+		}()
 	}
 	si := c.scans[st]
 	buf := si.get()
@@ -1146,7 +1155,8 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	err = mapDriverErrContext(stmt.QueryRowContext(ctx, args...).Scan(&v), ctx)
+	err = stmt.QueryRowContext(ctx, args...).Scan(&v)
+	err = mapDriverErrContext(d.scanAgain(ctx, ex, st.SQL, args, err, &v), ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
@@ -1272,13 +1282,15 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
-		err = mapDriverErrContext(stmt.QueryRowContext(ctx, args...).Scan(&lastID), ctx)
+		err = stmt.QueryRowContext(ctx, args...).Scan(&lastID)
+		err = mapDriverErrContext(d.scanAgain(ctx, ex, st.SQL, args, err, &lastID), ctx)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
 		return lastID, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
+	res, err = d.execAgain(ctx, ex, st.SQL, args, res, err)
 	err = mapDriverErrContext(err, ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, 0, err

@@ -77,10 +77,14 @@ impl CatalogConnection {
         &self.dialect
     }
     pub async fn current_namespace(&mut self) -> Result<String, String> {
-        metadata::current_namespace(&mut self.connection, &self.dialect).await
+        let mut connection = self.read_only_connection("SELECT 1").await?;
+        let result = metadata::current_namespace(&mut connection, &self.dialect).await;
+        finish_read_only(&mut connection, result).await
     }
     pub async fn describe_table(&mut self, table: &TableRef) -> Result<TableMetadata, String> {
-        metadata::describe(&mut self.connection, &self.dialect, table).await
+        let mut connection = self.read_only_connection("SELECT 1").await?;
+        let result = metadata::describe(&mut connection, &self.dialect, table).await;
+        finish_read_only(&mut connection, result).await
     }
     /// Reads one bounded table page; this does not authorize row mutations.
     pub async fn table_page(&mut self, table: &TableRef, limit: usize, offset: u64) -> Result<TablePage, String> {
@@ -91,7 +95,24 @@ impl CatalogConnection {
     }
     /// Executes one caller-authorized statement; this does not impose read-only isolation.
     pub async fn query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {
-        self.connection.query_result_bounded(sql, params, limits).await.map_err(|error| error.to_string())
+        let first = self.connection.query_result_bounded(sql, params, limits).await;
+        match first {
+            Err(error) if stale_plan(&error) => {
+                // The statement may be one that cannot run in a transaction, so only a statement that failed this way, which has
+                // changed nothing, runs in one (CFG-28).
+                self.connection.exec("BEGIN", &[]).await.map_err(|error| error.to_string())?;
+                self.connection.forget_statements().await.map_err(|error| error.to_string())?;
+                self.connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
+                match self.connection.query_result_bounded(sql, params, limits).await {
+                    Ok(result) => {
+                        self.connection.exec("COMMIT", &[]).await.map_err(|error| error.to_string())?;
+                        Ok(result)
+                    }
+                    Err(error) => finish_read_only(&mut self.connection, Err(error.to_string())).await,
+                }
+            }
+            result => result.map_err(|error| error.to_string()),
+        }
     }
     /// Validates read query structure and enforces a fresh database read-only scope.
     pub async fn read_only_query(
@@ -184,6 +205,18 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
         connection.exec("DEALLOCATE ALL", &[]).await.map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+/// An error that a statement named before a schema change can raise on PostgreSQL (CFG-28).
+fn stale_plan(error: &sqlx::Error) -> bool {
+    let Some(database) = error.as_database_error() else {
+        return false;
+    };
+    match database.code().as_deref() {
+        Some("0A000") => database.message().contains("cached plan must not change result type"),
+        Some("42883" | "42804" | "22P02" | "22003" | "22007" | "22008") => true,
+        _ => false,
+    }
 }
 
 /// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so on MySQL and

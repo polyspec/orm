@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A model statement from before a schema change runs again once outside a transaction in Go, Rust, TypeScript and Python, in one transaction that opens with `DEALLOCATE ALL`, for a changed result type and for a parameter that keeps its old type; CFG-28 states it. The Rust catalog `query` retries the same way, and `current_namespace` and `describe_table` run in a read-only session.
 - A client that stops reading a result can no longer take ProxySQL down: the test servers set `mysql-threshold_resultset_size` to 65536, CFG-34 and CFG-35 state the ProxySQL settings for users, and `catalog_read_budgets` reads on another connection that a statement a budget stopped is gone. The Rust catalog closes the socket of a stopped read at once.
 - Every lane of `client-pooler-check` runs the recipe units with a database through the poolers: the PHP, PHP extension, TypeScript and Python lanes take them from `config/parity.json`, one command per unit.
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)

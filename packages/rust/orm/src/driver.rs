@@ -452,9 +452,47 @@ pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str
     Ok(pg_query(sql, args, types)?.fetch_all(e).await?)
 }
 
+/// An error that a named statement from before a schema change can raise: the result type changed (0A000), a parameter keeps its old
+/// type against the new column (42883, 42804), or a value is read as that old type (22P02, 22003, 22007, 22008). A statement outside a
+/// transaction that fails has changed nothing, so it can run again, and one that fails for another reason fails the same way the
+/// second time (CFG-28).
+fn stale_plan(error: &sqlx::Error) -> bool {
+    let Some(database) = error.as_database_error() else {
+        return false;
+    };
+    match database.code().as_deref() {
+        Some("0A000") => database.message().contains("cached plan must not change result type"),
+        Some("42883" | "42804" | "22P02" | "22003" | "22007" | "22008") => true,
+        _ => false,
+    }
+}
+
+/// Opens the one transaction in which a statement that failed with stale_plan runs again. The transaction holds one server connection
+/// through PgBouncer, and DEALLOCATE ALL makes the server parse the statement after the change on it; the connection forgets its names
+/// first, while PgBouncer still lists them. A failure leaves the connection uncompleted, so it closes with its transaction.
+async fn begin_again(connection: &mut sqlx::PgConnection) -> Result<()> {
+    sqlx::raw_sql("BEGIN").execute(&mut *connection).await?;
+    sqlx::Connection::clear_cached_statements(&mut *connection).await?;
+    sqlx::raw_sql("DEALLOCATE ALL").execute(&mut *connection).await?;
+    Ok(())
+}
+
+async fn commit_again(connection: &mut sqlx::PgConnection) -> Result<()> {
+    sqlx::raw_sql("COMMIT").execute(connection).await?;
+    Ok(())
+}
+
 pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<Vec<PgRow>> {
     let mut connection = CancellableConnection::new(pool.acquire().await?);
-    let result = fetch_pg(sql, args, types, &mut *connection).await;
+    let result = match pg_query(sql, args, types)?.fetch_all(&mut *connection).await {
+        Err(error) if stale_plan(&error) => {
+            begin_again(&mut connection).await?;
+            let rows = pg_query(sql, args, types)?.fetch_all(&mut *connection).await?;
+            commit_again(&mut connection).await?;
+            Ok(rows)
+        }
+        result => result.map_err(Error::from),
+    };
     if result.is_ok() {
         connection.completed();
     }
@@ -468,7 +506,15 @@ pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str,
 
 pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<(u64, u64)> {
     let mut connection = CancellableConnection::new(pool.acquire().await?);
-    let result = exec_pg(sql, args, types, &mut *connection).await;
+    let result = match pg_query(sql, args, types)?.execute(&mut *connection).await {
+        Err(error) if stale_plan(&error) => {
+            begin_again(&mut connection).await?;
+            let done = pg_query(sql, args, types)?.execute(&mut *connection).await?;
+            commit_again(&mut connection).await?;
+            Ok((0, done.rows_affected()))
+        }
+        result => result.map(|done| (0, done.rows_affected())).map_err(Error::from),
+    };
     if result.is_ok() {
         connection.completed();
     }
