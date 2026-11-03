@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 912b2ffcc26877f3efca8a2d3709070cf1beb847f614ceddd0b8ced8af87713f -->
+<!-- source-sha256: 4552c01c544a7ef60c83391e1c3ac8ec9abbfb2d31a65098cb97d4beadf47b22 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -148,7 +148,7 @@ Key   = [Operator] Column
 
 - **DSL-66** `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. SQL `SUM`과 `AVG`는 null 값을 건너뛰고, 남은 값이 없으면 일치하는 행이 없든 모든 값이 null이든 null scalar를 준다. 그러면 `getSum()`은 값이 없는 합인 0을, `getAvg()`는 null을 반환한다. 값이 없는 평균은 정의되지 않으며 0은 지어낸 평균이기 때문이다. 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
 - **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
-- **DSL-68** 방언이 SQL 문장을 정하므로 `getQuery`는 연결한 모델이나 활성 트랜잭션에서만 사용할 수 있으며 아니면 `CONFIG`를 반환한다. 비밀 값은 `$SECRET`로 표시한다.
+- **DSL-68** 방언이 SQL 문장을 정하므로 `getQuery`는 연결한 모델이나 활성 트랜잭션에서만 사용할 수 있으며 아니면 `CONFIG`를 반환한다.
 - **DSL-69** 종단 작업은 체인 값 외의 인자를 받지 않는다. 종단 작업은 모델을 바꾸지 않으므로 두 번째 종단 작업도 같은 SQL 문장을 만든다.
 - **DSL-70** `keyName<Col>()`은 컬렉션 키 컬럼을 정한다. `fetchKey(fn)`은 컬렉션 키를 계산한다. `fetchValue(fn)`은 조회한 각 행 값을 콜백 결과로 바꾼다.
 - **DSL-71** 행은 `get<Col>()` getter를 제공한다. 관계 결과는 생성된 관계 getter로 읽는다.
@@ -157,6 +157,7 @@ Key   = [Operator] Column
 
 - **DSL-72** `addColumn<Col>()` — 동작: 컬럼 하나 추가
 - **DSL-73** `addColumn<Col>Alias<Name>(fn)` — 동작: 출력 명칭을 지정한 컬럼 함수(10절) 컬럼 추가
+- **DSL-73a** PHP-extension package `polyspec/orm-php-ext`는 `Orm`의 컬럼 함수 factory를 native로 구현하고, 생성된 쿼리에 그 컬럼 함수 metadata를 유지한다(DSL-73).
 - **DSL-74** `addColumn<Name>(fn)` — 동작: 스칼라 서브쿼리 컬럼 추가. 콜백은 호출한 모델을 받아 실행하지 않은 모델을 반환한다
 - **DSL-75** `removeColumn<Col>()` — 동작: 컬럼 하나 제외
 - **DSL-76** `removeAllColumns()` — 동작: 기본 키와 외래 키만 유지

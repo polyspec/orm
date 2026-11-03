@@ -47,9 +47,6 @@ type Config struct {
 	AuditSource func(ctx context.Context) (map[string]any, error)
 }
 
-// Secret replaces a secret bind wherever binds are shown.
-const Secret = "$SECRET"
-
 // NowBind replaces an executor clock bind wherever binds are shown.
 const NowBind = "$NOW"
 
@@ -620,7 +617,7 @@ func mapDriverErr(err error) error {
 		}
 	}
 	// An error the driver reports as unable to use the connection any further is a lost-connection error.
-	if errors.Is(err, driver.ErrBadConn) {
+	if errors.Is(err, driver.ErrBadConn) || errors.Is(err, sql.ErrConnDone) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
 	}
 	// A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).

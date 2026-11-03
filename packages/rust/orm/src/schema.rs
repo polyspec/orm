@@ -20,7 +20,7 @@ fn invalid(msg: String) -> Error {
 }
 
 fn diagnostics(errors: Vec<dbspec::Diagnostic>) -> Error {
-    invalid(errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
+    invalid(errors.iter().map(|d| format!("{}:{} {}: {}", d.line, d.column, d.rule, d.message)).collect::<Vec<_>>().join("; "))
 }
 
 /// A document of manifest text and external text. The external document is `external`. The document's manifest text and external

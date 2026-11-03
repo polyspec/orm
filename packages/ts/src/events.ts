@@ -16,7 +16,7 @@ export type StatementKind = 'select' | 'insert' | 'update' | 'delete' | 'begin' 
 export interface StatementEvent {
   /** The statement as sent; a relation step carries its expanded IN list. */
   readonly sql: string;
-  /** The bound values in order; a secret is `$SECRET` and an executor clock value `$NOW`. */
+  /** The bound values in order; an executor clock value is `$NOW`. */
   readonly binds: readonly unknown[];
   readonly kind: StatementKind;
   /** The tables the statement names, sorted and without duplicates. */

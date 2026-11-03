@@ -471,7 +471,7 @@ Every client publishes one event for each statement it sends to the database: th
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`number \| null`), `error` (`OrmError \| null`) |
 
 - `sql` is the statement as sent; a relation step carries its expanded `IN` list.
-- `binds` are the bound values in order; a secret is `$SECRET` and an executor clock value `$NOW`.
+- `binds` are the bound values in order; an executor clock value is `$NOW`.
 - `kind` comes from the origin of the statement: `select`, `insert`, `update` or `delete` for a model statement, the verb that its plan step writes (a soft delete is `update`); `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` for transaction control; `schema` for the statements of schema utilities (the catalog reads and the statements of `install` and `addTablesAndColumns`, and the reads of `exists`, `installed` and `empty`); `utility` for every other statement: named locks and row locks, transaction-local values, transaction settings, privileges, AES status and rotation, and the SQLite row-lock table.
 - `tables` are sorted and without duplicates. A model statement has the `tables` of its plan step ([protocol](../spec/protocol.md#_2-plan)); a schema statement that creates or changes a table names that table; a utility statement on a table names it (`orm__row_lock` for the SQLite row lock, the table of a privilege, the table of an AES status or rotation); transaction control, catalog reads and the other statements name none.
 - `elapsed` runs from sending the statement until the client has read its result.

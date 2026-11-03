@@ -4233,7 +4233,7 @@
   },
   "packages/go/engine/dialect/dialect.go::Dialect": {
     "exported": true,
-    "signature": "type Dialect interface { Name() string Quote(ident string) string Placeholder(n int) string Like(col, ph string) string Limit(offset, count int) string LimitParams(offset, count string) string ForceIndex(name string) string RowNumber(partition, orderBy string) string InsertReturningID() bool Upsert(conflict []string, assigns string) string ReadExpr(col string, styles []string, ph func() string) (string, int) WriteExpr(ph func() string, styles []string) (string, int) ReadTime(col string, precision int) string WriteTime(ph string) string ReadUUID(col string) string WriteUUID(ph string) string Now(precision int) string HandlesStyle(style string) bool DecodesStyle(style string) bool HostNow() bool ClockOperand(col string, precision int) string RowLock(mode string) (string, bool) ColumnFunction(name, col string, arg func(int) string) (string, bool) ValueFunction(name string, arg, now func() string) (string, bool) ContainsBinary(col string, value func(transform string) string) string Fulltext(cols []string, value func(transform string) string, boolean bool) (sql string, ok bool) TupleIn(cols []string, rows [][]string, negate bool) string Random() string NullsOrder(desc bool) string RestartIdentity(table, column string) string }"
+    "signature": "type Dialect interface { Name() string Quote(ident string) string Placeholder(n int) string Like(col, ph string) string Limit(offset, count int) string LimitParams(offset, count string) string ForceIndex(name string) string RowNumber(partition, orderBy string) string InsertReturningID() bool Upsert(conflict []string, assigns string) string ReadExpr(col string, styles []string) string WriteExpr(ph string, styles []string) string ReadTime(col string, precision int) string WriteTime(ph string) string ReadUUID(col string) string WriteUUID(ph string) string Now(precision int) string HandlesStyle(style string) bool DecodesStyle(style string) bool HostNow() bool ClockOperand(col string, precision int) string RowLock(mode string) (string, bool) ColumnFunction(name, col string, arg func(int) string) (string, bool) ValueFunction(name string, arg, now func() string) (string, bool) ContainsBinary(col string, value func(transform string) string) string Fulltext(cols []string, value func(transform string) string, boolean bool) (sql string, ok bool) TupleIn(cols []string, rows [][]string, negate bool) string Random() string NullsOrder(desc bool) string RestartIdentity(table, column string) string }"
   },
   "packages/go/engine/dialect/dialect.go::Literal": {
     "exported": true,
@@ -4409,7 +4409,7 @@
   },
   "packages/go/engine/dialect/mysql.go::MySQL.ReadExpr": {
     "exported": true,
-    "signature": "receiver=MySQL func(col string, styles []string, ph func() string) (string, int)"
+    "signature": "receiver=MySQL func(col string, styles []string) string"
   },
   "packages/go/engine/dialect/mysql.go::MySQL.ReadTime": {
     "exported": true,
@@ -4437,7 +4437,7 @@
   },
   "packages/go/engine/dialect/mysql.go::MySQL.WriteExpr": {
     "exported": true,
-    "signature": "receiver=MySQL func(ph func() string, styles []string) (string, int)"
+    "signature": "receiver=MySQL func(ph string, styles []string) string"
   },
   "packages/go/engine/dialect/mysql.go::MySQL.WriteTime": {
     "exported": true,
@@ -4509,7 +4509,7 @@
   },
   "packages/go/engine/dialect/postgres.go::Postgres.ReadExpr": {
     "exported": true,
-    "signature": "receiver=Postgres func(col string, _ []string, _ func() string) (string, int)"
+    "signature": "receiver=Postgres func(col string, _ []string) string"
   },
   "packages/go/engine/dialect/postgres.go::Postgres.ReadTime": {
     "exported": true,
@@ -4537,7 +4537,7 @@
   },
   "packages/go/engine/dialect/postgres.go::Postgres.WriteExpr": {
     "exported": true,
-    "signature": "receiver=Postgres func(ph func() string, _ []string) (string, int)"
+    "signature": "receiver=Postgres func(ph string, _ []string) string"
   },
   "packages/go/engine/dialect/postgres.go::Postgres.WriteTime": {
     "exported": true,
@@ -4605,7 +4605,7 @@
   },
   "packages/go/engine/dialect/sqlite.go::SQLite.ReadExpr": {
     "exported": true,
-    "signature": "receiver=SQLite func(col string, _ []string, _ func() string) (string, int)"
+    "signature": "receiver=SQLite func(col string, _ []string) string"
   },
   "packages/go/engine/dialect/sqlite.go::SQLite.ReadTime": {
     "exported": true,
@@ -4633,7 +4633,7 @@
   },
   "packages/go/engine/dialect/sqlite.go::SQLite.WriteExpr": {
     "exported": true,
-    "signature": "receiver=SQLite func(ph func() string, _ []string) (string, int)"
+    "signature": "receiver=SQLite func(ph string, _ []string) string"
   },
   "packages/go/engine/dialect/sqlite.go::SQLite.WriteTime": {
     "exported": true,
@@ -5934,10 +5934,6 @@
   "packages/go/engine/planner/planner.go::builder.parentList": {
     "exported": false,
     "signature": "receiver=*builder func(step int, keyTypes []string) string"
-  },
-  "packages/go/engine/planner/planner.go::builder.secret": {
-    "exported": false,
-    "signature": "receiver=*builder func(name string) string"
   },
   "packages/go/engine/planner/planner.go::builder.slot": {
     "exported": false,

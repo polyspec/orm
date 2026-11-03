@@ -69,18 +69,18 @@ caseTest('the catalog PHP extension surface recipe removes its build directory o
   assert.match(recipe, /trap 'rm -rf "\$\$run_dir"' EXIT/);
 });
 
-caseTest('the GroupRows PHP extension target builds in its own run directory', COMPUTE, () => {
+caseTest('the MySQL TLS PHP extension target builds in its own run directory', COMPUTE, () => {
   const makefile = readFileSync(new URL('../../Makefile', import.meta.url), 'utf8');
-  const target = makefile.split('group-rows-db-php-extension: RUN_DIR = ')[1]?.split('\n# group-rows-db-rust')[0];
-  assert.ok(target, 'GroupRows PHP extension target is missing');
-  assert.match(target, /^\$\(abspath \.runtime\/run\)\/group-rows-db-php-extension-\$\$PPID/m);
+  const target = makefile.split('mysql-tls-php-extension-check: RUN_DIR = ')[1]?.split('\n# Runs the native PHP extension MySQL session')[0];
+  assert.ok(target, 'MySQL TLS PHP extension target is missing');
+  assert.match(target, /^\$\(abspath \.runtime\/run\)\/mysql-tls-php-extension-check-\$\$PPID/m);
   assert.match(target, /run_dir="\$\(RUN_DIR\)"/);
   assert.match(target, /trap 'rm -rf "\$\$run_dir"' EXIT/);
   assert.match(target, /\$\(call php_ext_build,"\$\$run_dir\/php-extension\/polyspec_orm\.so",release\)/);
-  assert.match(target, /\$\(PHP_EXTENSION_NATIVE_TESTS\) packages\/php-ext\/tests\/GroupRowsDbNativeTest\.php/);
+  assert.match(target, /\$\(RUN_TESTS\) phpunit --php-extension "\$\$run_dir\/php-extension\/polyspec_orm\.so"/);
 
   const root = new URL('../..', import.meta.url).pathname;
-  const directory = mkdtempSync(join(tmpdir(), 'orm-group-rows-extension-run-dir-'));
+  const directory = mkdtempSync(join(tmpdir(), 'orm-mysql-tls-extension-run-dir-'));
   const temporary = join(directory, 'step-tmp');
   const fakeBuild = join(directory, 'fake-build');
   const fakeTest = join(directory, 'fake-test');
@@ -97,7 +97,7 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
       'previous=',
       'for argument do if [ "$previous" = scripts/php/php-ext-build.mts ]; then module=$argument; fi; mode=$argument; previous=$argument; done',
       'test "$mode" = release',
-      'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 41 ;; esac',
+      'case "$module" in */mysql-tls-php-extension-check-*/php-extension/polyspec_orm.so) ;; *) exit 41 ;; esac',
       'mkdir -p "$(dirname "$module")"',
       'printf module > "$module"',
       'printf %s "$module" > "$FAKE_MODULE_RECORD"',
@@ -106,10 +106,11 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
     writeFileSync(fakeTest, [
       '#!/bin/sh',
       'set -eu',
-      'test "$1" = packages/php-ext/tests/GroupRowsDbNativeTest.php',
+      'test "$1" = phpunit',
+      'test "$2" = --php-extension',
       'module=$(cat "$FAKE_MODULE_RECORD")',
       'test -f "$module"',
-      'case "$module" in */group-rows-db-php-extension-*/php-extension/polyspec_orm.so) ;; *) exit 42 ;; esac',
+      'case "$module" in */mysql-tls-php-extension-check-*/php-extension/polyspec_orm.so) ;; *) exit 42 ;; esac',
       '',
     ].join('\n'));
     chmodSync(fakeBuild, 0o755);
@@ -117,7 +118,7 @@ caseTest('the GroupRows PHP extension target builds in its own run directory', C
 
     const result = spawnSync(
       'make',
-      ['--no-print-directory', '-o', 'php-vendor-check', 'group-rows-db-php-extension', `RUN_LONG=${fakeBuild}`, `PHP_EXTENSION_NATIVE_TESTS=${fakeTest}`],
+      ['--no-print-directory', '-o', 'php-vendor-check', '-o', 'orm-install-php-extension-tools', 'mysql-tls-php-extension-check', `RUN_LONG=${fakeBuild}`, `RUN_TESTS=${fakeTest}`, 'WITH_TEST_ENV='],
       { cwd: root, encoding: 'utf8', env: isolatedEnvironment({ TMPDIR: temporary, FAKE_MODULE_RECORD: moduleRecord }) },
     );
     assert.equal(result.status, 0, result.stdout + result.stderr);

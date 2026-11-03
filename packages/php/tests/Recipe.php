@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.last_affected',
         'db.notify',
         'utils.lock',
         'utils.set_local',
@@ -188,6 +189,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'dbspec.introspect_sqlite') {
                     self::dbspecIntrospectSqliteStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.session') {
+                    self::markdownSessionStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'markdown.connect') {
@@ -771,6 +776,64 @@ final class Recipe
         Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
     }
 
+    /**
+     * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
+     * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+     */
+    private static function markdownSessionStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
+        $db = Orm::connect($server[2], new Config());
+        $code = null;
+        $message = '';
+        $empty = static function (): void {
+        };
+        $db->transaction(static function () use ($db, $empty): void {
+            $db->transaction($empty);
+        }, readOnly: true);
+        try {
+            $db->transaction($empty);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        $db->close();
+        Assert::assertSame(
+            $step['messages'],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'], $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
+    }
+
+    /** The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189). */
+    private static function refusedSurface(string $surface, mixed $db): void
+    {
+        $empty = static function (): void {
+        };
+        $model = new \Polyspec\Orm\Tests\BindModel\Slots();
+        $keyring = new \Polyspec\Orm\AesKeyring([1 => 'key'], 1);
+        $schema = new \Polyspec\Orm\Schema('', '');
+        match ($surface) {
+            'audit' => $db->transaction($empty, audit: ['actor' => 'tester']),
+            'isolation' => $db->transaction($empty, isolation: 'serializable'),
+            'timeout_ms' => $db->transaction($empty, timeoutMs: 100),
+            'get_query' => $model->connect($db)->getQuery(),
+            'subscribe' => $db->subscribe($empty),
+            'lock' => $db->utils()->lock('k'),
+            'set_local' => $db->utils()->setLocal('k', 'v'),
+            'local' => $db->utils()->local('k'),
+            'backend_waiting_for_lock' => $db->utils()->backendWaitingForLock(),
+            'privileges' => $db->utils()->privileges()->inspectTable('public.items'),
+            'aes_status' => $db->utils()->aes()->status($model, $keyring),
+            'aes_rotate' => $db->utils()->aes()->rotate($model, $keyring),
+            'schema_install' => $db->utils()->schema()->install($schema),
+            'schema_evolution' => $db->utils()->schema()->addTablesAndColumns($schema),
+            'schema_exists' => $db->utils()->schema()->exists('orm'),
+        };
+    }
+
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
     private static function dsnConnectStep(array $step, string $database): void
     {
@@ -1049,8 +1112,15 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
-                    if (array_key_exists('rule', $expect)) {
-                        Assert::assertStringContainsString($expect['rule'], $error->getMessage());
+                    // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+                    if (array_key_exists('diagnostics', $expect)) {
+                        $prefix = "{$expect['error']}: ";
+                        Assert::assertStringStartsWith($prefix, $error->getMessage());
+                        $problems = explode('; ', substr($error->getMessage(), strlen($prefix)));
+                        Assert::assertCount(count($expect['diagnostics']), $problems, $error->getMessage());
+                        foreach ($problems as $i => $problem) {
+                            Assert::assertStringStartsWith("{$expect['diagnostics'][$i]}: ", $problem);
+                        }
                     }
                     return;
                 }
@@ -1525,7 +1595,9 @@ final class Recipe
     {
         self::loadBindModels();
         [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
-            if (array_key_exists('begin', $step)) {
+            if (array_key_exists('surface', $step)) {
+                self::refusedSurface($step['surface'], $db);
+            } elseif (array_key_exists('begin', $step)) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
@@ -1549,7 +1621,8 @@ final class Recipe
             . "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
         $plans = [self::dbspecBound($step['plan'], $bound)];
         $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable('2026-10-01T00:00:00Z');
-        $pdo = dbspec_failing_pdo('dbspec_apply_fault', []);
+        $noRow = array_fill_keys($step['no_row_queries'] ?? [], 'SELECT 1 WHERE 0');
+        $pdo = dbspec_failing_pdo('dbspec_apply_fault', [], $noRow);
         if (($step['applied_first'] ?? false) === true) {
             Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         }
@@ -1561,9 +1634,20 @@ final class Recipe
             $cause = new \PDOException('catalog read failed');
             $pdo->failQuery($master, $cause, $step['fail_catalog_read']);
         }
+        $fail = [];
+        foreach ($step['fail_statements'] ?? [] as $f) {
+            $fail[$f['statement']] = new \PDOException($f['message']);
+            if (isset($f['sqlite_result'])) {
+                $fail[$f['statement']]->errorInfo = ['HY000', $f['sqlite_result'], $f['message']];
+            }
+        }
+        $pdo->failStatements($fail);
         $kinds = [];
-        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds): void {
+        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds, $step): void {
             $kinds[] = $event->kind;
+            if (isset($step['stop_on_applied']) && $event->kind === 'applied') {
+                throw new \RuntimeException($step['stop_on_applied']);
+            }
         };
         $error = null;
         try {
@@ -1572,11 +1656,29 @@ final class Recipe
             } else {
                 Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
             }
-        } catch (\Polyspec\Orm\Dbspec\ApplyError $caught) {
+        } catch (\Throwable $caught) {
             $error = $caught;
         }
-        Assert::assertNotNull($error, "the call succeeded, want {$expect['code']}");
-        Assert::assertSame($expect['code'], $error->code_);
+        Assert::assertNotNull($error, 'the call succeeded');
+        // ApplyCleanupError holds the failure as its previous throwable and the cleanup errors in order (PLN-98, PLN-106).
+        $cleanup = [];
+        if ($error instanceof \Polyspec\Orm\Dbspec\ApplyCleanupError) {
+            $cleanup = array_map(static fn(\Throwable $e): string => $e->getMessage(), $error->cleanup);
+            $error = $error->getPrevious();
+        }
+        if (isset($expect['code'])) {
+            Assert::assertInstanceOf(\Polyspec\Orm\Dbspec\ApplyError::class, $error);
+            Assert::assertSame($expect['code'], $error->code_);
+        }
+        if (isset($expect['failure'])) {
+            Assert::assertSame($expect['failure'], $error->getMessage());
+        }
+        if (isset($expect['failure_ends_with'])) {
+            Assert::assertStringEndsWith($expect['failure_ends_with'], $error->getMessage());
+        }
+        if (isset($expect['cleanup'])) {
+            Assert::assertSame($expect['cleanup'], $cleanup);
+        }
         if ($cause !== null) {
             $previous = $error->getPrevious();
             Assert::assertTrue(
@@ -2366,6 +2468,10 @@ final class Recipe
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['rollback'])) {
+                Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
+                Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
+            }
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
@@ -2529,7 +2635,16 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnected = Catalog::connect($context['dsn']);
+                $reconnectDsn = $context['dsn'];
+                if (isset($s['user_from_database'])) {
+                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
+                    $reconnectDsn = (string) preg_replace(
+                        '#^mysql://[^@]+@#',
+                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
+                        $reconnectDsn
+                    );
+                }
+                $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
                 $context['catalog'] = $reconnected;
                 return [];
@@ -2686,10 +2801,13 @@ final class Recipe
                 return ['bind' => new RecipeSubscription($stop, $recording)];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
+                $refusal = $s['refusal'] ?? null;
                 $stop = self::connectionOf($s, $context)->subscribe(
-                    static function (StatementEvent $e) use ($kind): void {
+                    static function (StatementEvent $e) use ($kind, $refusal): void {
                         if ($e->kind === $kind) {
-                            throw new RuntimeException('subscriber refused the event');
+                            throw $refusal === null
+                                ? new RuntimeException('subscriber refused the event')
+                                : new OrmException($refusal['code'], $refusal['message']);
                         }
                     }
                 );
@@ -2815,6 +2933,21 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'session.end':
+                // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
+                $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
+                $server = (string) getenv($variable);
+                Assert::assertNotSame('', $server, "$variable is required; database tests never skip");
+                $pdo = case_admin(
+                    case_dsn_with_database($server, ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'))
+                );
+                $postgres = $context['database'] === 'postgres';
+                $id = $pdo->query($postgres
+                    ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' AND l.pid <> pg_backend_pid() LIMIT 1"
+                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{$s['table']}' LIMIT 1")->fetchColumn();
+                Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
+                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
+                return [];
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
@@ -2902,6 +3035,14 @@ final class Recipe
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
+        }
+        if (in_array($s['op'], RecipeApply::OPS, true)) {
+            return RecipeApply::op($s, $context, static function (array $nested) use (&$context): void {
+                // A nested step with only runs on the databases it names, as a step of the case does.
+                if (!isset($nested['only']) || in_array($context['database'], $nested['only'], true)) {
+                    self::databaseStep($nested, $context);
+                }
+            });
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
@@ -3431,6 +3572,10 @@ final class Recipe
                     });
                     return;
                 case 'placed':
+                    if (is_array($value)) {
+                        $model->{$conn === '' ? 'and' : $conn}(self::chainModel($value['model'], $context));
+                        return;
+                    }
                     if (!isset($build->joined[$value])) {
                         Assert::fail("placed $value names no join");
                     }
@@ -3526,7 +3671,7 @@ final class Recipe
     /** The state of building one query. */
     private static function chainState(?Model $outer = null): object
     {
-        return (object) ['joined' => [], 'outer' => $outer];
+        return (object) ['joined' => [], 'outer' => $outer, 'db' => null];
     }
 
     /** One entry of columns or add_columns: a name, a function of a column under a name, or a scalar subquery under a name. */
@@ -3595,6 +3740,9 @@ final class Recipe
                 });
             }
             self::chainQuery($child, $join, $inner, $context);
+            if (($join['connect'] ?? false) === true) {
+                $child->connect($build->db);
+            }
             $method = (($join['kind'] ?? 'inner') === 'left' ? 'leftJoin' : 'join')
                 . self::pascal($join['match'][0]) . 'With' . self::pascal($join['match'][1]);
             $model->$method($child);
@@ -3685,6 +3833,7 @@ final class Recipe
             ? self::chainModel($s['model'], $context)
             : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
+        $build->db = $db;
         $paged = ($s['page'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
         if (!$paged && isset($s['offset'], $s['limit'])) {
@@ -3929,6 +4078,9 @@ final class Recipe
                 }
                 self::chainTarget($s, $context)->delete($recursive);
                 return [];
+            case 'db.last_affected':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                return ['value' => ['int' => (string) \Polyspec\Orm\Testing\Faults::lastAffected(self::connectionOf($s, $context))]];
             case 'db.notify':
                 self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
                 return [];
@@ -3998,14 +4150,16 @@ final class Recipe
                 default => $model->getsCount()->toArray(),
             }];
         }
-        if (($s['page'] ?? false) === true) {
+        if (($s['page'] ?? false) === true || isset($s['plan_page'])) {
             $limit = $s['limit'] ?? 0;
             $count = is_int($limit) ? $limit : $limit['count'];
-            if ($count <= 0) {
+            if ($count <= 0 && !isset($s['plan_page'])) {
                 Assert::fail('a page needs a limit count above 0');
             }
             $offset = ($s['offset'] ?? 0) + (is_array($limit) ? ($limit['offset'] ?? 0) : 0);
-            $page = $model->getsPage(intdiv($offset, $count) + 1, $count);
+            $page = isset($s['plan_page'])
+                ? $model->getsPage($s['plan_page']['page'], $s['plan_page']['per_page'])
+                : $model->getsPage(intdiv($offset, $count) + 1, $count);
             $fields = ['json' => [
                 'total' => $page->totalCount,
                 'pages' => $page->totalPages,

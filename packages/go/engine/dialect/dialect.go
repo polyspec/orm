@@ -24,10 +24,10 @@ type Dialect interface {
 	InsertReturningID() bool
 	// Upsert renders the ON DUPLICATE/ON CONFLICT clause for the given conflict columns and assignments.
 	Upsert(conflict []string, assigns string) string
-	// ReadExpr wraps SQL-side stages for a style pipeline and returns the bind count.
-	ReadExpr(col string, styles []string, ph func() string) (string, int)
+	// ReadExpr wraps SQL-side stages for a style pipeline.
+	ReadExpr(col string, styles []string) string
 	// WriteExpr wraps a bound value for a style pipeline on write.
-	WriteExpr(ph func() string, styles []string) (string, int)
+	WriteExpr(ph string, styles []string) string
 	// ReadTime reads a time(p) column as its value text `HH:MM:SS` with exactly p
 	// fraction digits, which the database writes (MySQL CAST AS CHAR, PostgreSQL
 	// to_char); SQLite stores that text.

@@ -27,7 +27,6 @@ caseTest('Rust workspace dispatch skips only the database cases owned by the fea
     assert.ok(skipped.has(`catalog_connection_${database}`));
     assert.ok(skipped.has(`schema_install_${database}`));
   }
-  assert.ok(skipped.has('coverage_transactions::coverage_transaction_rollback'));
   assert.ok(!skipped.has('coverage_'));
   assert.ok(!skipped.has('coverage_request_hook_'));
   const rustCommand = CLIENT_DB_COMMANDS.find(command => command.includes('tests/cargo-test.mts workspace-tests'));
@@ -147,7 +146,7 @@ caseTest('the performance gates run every gate after a failed one and name the f
     const result = f.run(['scripts/perf-test.mts']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.deepEqual(f.ran().map(line => line.match(/-run (\S+)|tests\/(PerfGateTest)\.php/)?.slice(1).find(Boolean)), [
-      '^TestNative', '^TestHotPathGate(UnderLoad)?$', '^TestCoveragePerformanceGate$', 'PerfGateTest', 'PerfGateTest',
+      '^TestNative', '^TestHotPathGate(UnderLoad)?$', '^TestPerformanceMeasurementMysql$', '^TestPerformanceMeasurementPostgres$', '^TestPerformanceMeasurementSQLite$', 'PerfGateTest', 'PerfGateTest',
     ], f.ran().join('\n'));
     assert.match(result.stderr, /perf-test: failed:\n {2}node tests\/go-test\.mts .*TestNative.* \(exit 3\)/);
   } finally {

@@ -235,6 +235,55 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     }
 }
 
+/// The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the step, a
+/// read-only transaction that holds a nested one, then a transaction, whose error is checked against the expect of `database`.
+fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
+    use std::io::{BufRead as _, Write as _};
+    let lines = |name: &str| -> Vec<String> {
+        step[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+    };
+    let (replies, messages) = (lines("replies"), lines("messages"));
+    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let server = std::thread::spawn(move || -> Result<Vec<String>, String> {
+        let (connection, _) = listener.accept().map_err(|error| error.to_string())?;
+        let mut writer = connection.try_clone().map_err(|error| error.to_string())?;
+        let mut reader = std::io::BufReader::new(connection);
+        let mut received = Vec::new();
+        for reply in &replies {
+            let mut line = String::new();
+            if reader.read_line(&mut line).map_err(|error| error.to_string())? == 0 {
+                break;
+            }
+            received.push(line.trim_end().to_owned());
+            writeln!(writer, "{reply}").map_err(|error| error.to_string())?;
+        }
+        Ok(received)
+    });
+    let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome: polyspec_orm::Result<()> = runtime.block_on(async {
+        let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await?;
+        let nested: polyspec_orm::Result<()> = db.transaction(async || db.transaction(async || Ok(())).await).read_only().await;
+        nested?;
+        let last = db.transaction(async || Ok(())).await;
+        db.close().await;
+        last
+    });
+    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    if received != messages {
+        return Err(format!("the listener received {received:?}, want {messages:?}"));
+    }
+    let expect = &step["expect"][database];
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    match outcome {
+        Err(error) if error.code() == want && error.to_string().contains(holds) => Ok(()),
+        Err(error) => Err(format!("error {} ({error}), want {want} with {holds}", error.code())),
+        Ok(()) => Err(format!("error none, want {want}")),
+    }
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
@@ -339,6 +388,72 @@ struct FaultConnection {
     cause: Option<String>,
     fail_at: usize,
     reads: usize,
+    fail: HashMap<String, (String, Option<i64>)>,
+    no_row: Vec<String>,
+}
+
+/// An error of a SQLite result code, as the driver returns it.
+#[derive(Debug)]
+struct SqliteResult {
+    message: String,
+    code: i64,
+}
+
+impl std::fmt::Display for SqliteResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for SqliteResult {}
+
+impl sqlx::error::DatabaseError for SqliteResult {
+    fn message(&self) -> &str {
+        &self.message
+    }
+
+    fn code(&self) -> Option<std::borrow::Cow<'_, str>> {
+        Some(self.code.to_string().into())
+    }
+
+    fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+        self
+    }
+
+    fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+        self
+    }
+
+    fn kind(&self) -> sqlx::error::ErrorKind {
+        sqlx::error::ErrorKind::Other
+    }
+}
+
+/// The message of an error of a statement of the op.
+fn injected_message(error: &sqlx::Error) -> String {
+    match error {
+        sqlx::Error::Protocol(message) => message.clone(),
+        other => other.to_string(),
+    }
+}
+
+/// The failure and the cleanup errors in order: each `Cleanup` wraps the previous result as its `error` (PLN-100, PLN-106).
+fn cleanup_chain(error: &dbspec::ApplyError) -> (&dbspec::ApplyError, Vec<String>) {
+    match error {
+        dbspec::ApplyError::Cleanup { error, cleanup } => {
+            let (failure, mut messages) = cleanup_chain(error);
+            messages.push(match cleanup.as_ref() {
+                dbspec::ApplyError::Database(database) => injected_message(database),
+                other => other.to_string(),
+            });
+            (failure, messages)
+        }
+        other => (other, Vec::new()),
+    }
 }
 
 impl dbspec::CatalogQuerier for FaultConnection {
@@ -357,7 +472,11 @@ impl dbspec::CatalogQuerier for FaultConnection {
 impl dbspec::ApplyConnection for FaultConnection {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
         use dbspec::ApplyConnection as _;
-        self.inner.execute(statement).await
+        match self.fail.get(statement) {
+            Some((message, Some(code))) => Err(sqlx::Error::Database(Box::new(SqliteResult { message: message.clone(), code: *code }))),
+            Some((message, None)) => Err(sqlx::Error::Protocol(message.clone())),
+            None => self.inner.execute(statement).await,
+        }
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[dbspec::CatalogValue]) -> Result<(), sqlx::Error> {
@@ -367,6 +486,9 @@ impl dbspec::ApplyConnection for FaultConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
         use dbspec::ApplyConnection as _;
+        if self.no_row.iter().any(|no_row| no_row == query) {
+            return Ok(Vec::new());
+        }
         self.inner.query_bound(query, args).await
     }
 }
@@ -383,12 +505,12 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     use dbspec::{ApplyConnection as _, ApplyError, ApplyEvent, ApplyEventError, IntrospectError};
     use sqlx::Connection as _;
     let expect = &step["expect"][database];
-    let want = expect["code"].as_str().ok_or("the expect has no code")?;
+    let want = expect["code"].as_str();
     let plans = vec![bound_plan(&step["plan"], bound)?];
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0 };
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
         if step["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
@@ -402,11 +524,25 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
         }
+        if let Some(queries) = step["no_row_queries"].as_array() {
+            fault.no_row = queries.iter().filter_map(Value::as_str).map(str::to_owned).collect();
+        }
+        if let Some(failing) = step["fail_statements"].as_array() {
+            for f in failing {
+                let statement = f["statement"].as_str().ok_or("a failing statement has no text")?.to_owned();
+                let message = f["message"].as_str().ok_or("a failing statement has no message")?.to_owned();
+                fault.fail.insert(statement, (message, f["sqlite_result"].as_i64()));
+            }
+        }
+        let stop = step["stop_on_applied"].as_str();
         let mut kinds: Vec<String> = Vec::new();
         let result = {
             let mut events = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
                 kinds.push(event.kind.as_str().to_owned());
-                Ok(())
+                match stop {
+                    Some(message) if event.kind.as_str() == "applied" => Err(message.into()),
+                    _ => Ok(()),
+                }
             };
             if step["call"] == "rollback" {
                 dbspec::rollback(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
@@ -414,9 +550,11 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                 dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
             }
         };
-        match (&result, want) {
-            (Err(ApplyError::Drift { .. }), "drift") => {}
-            (Err(ApplyError::Verify { source, .. }), "verify") => {
+        let error = result.as_ref().err().ok_or("the call succeeded")?;
+        let (failure, cleanup) = cleanup_chain(error);
+        match (failure, want) {
+            (_, None) | (ApplyError::Drift { .. }, Some("drift")) | (ApplyError::Locked { .. }, Some("locked")) | (ApplyError::Chain { .. }, Some("chain")) => {}
+            (ApplyError::Verify { source, .. }, Some("verify")) => {
                 if let Some(cause) = &fault.cause {
                     let held = matches!(source, Some(IntrospectError::Query(sqlx::Error::Protocol(message))) if message == cause);
                     if !held {
@@ -424,7 +562,27 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                     }
                 }
             }
-            _ => return Err(format!("the call returned {result:?}, want the code {want}")),
+            _ => return Err(format!("the call returned {result:?}, want the code {want:?}")),
+        }
+        if let Some(message) = expect["failure"].as_str() {
+            let got = match failure {
+                ApplyError::Event(event) => event.to_string(),
+                other => other.to_string(),
+            };
+            if got != message {
+                return Err(format!("the failure is {got}, want {message}"));
+            }
+        }
+        if let Some(end) = expect["failure_ends_with"].as_str() {
+            if !failure.to_string().ends_with(end) {
+                return Err(format!("the failure {failure} does not end with {end}"));
+            }
+        }
+        if let Some(want_cleanup) = expect["cleanup"].as_array() {
+            let want_cleanup: Vec<&str> = want_cleanup.iter().filter_map(Value::as_str).collect();
+            if cleanup != want_cleanup {
+                return Err(format!("the cleanup errors are {cleanup:?}, want {want_cleanup:?}"));
+            }
         }
         if let Some(state) = expect["history_state"].as_str() {
             let rows = fault.query_bound("SELECT state FROM \"dbspec$plans\"", &[]).await.map_err(|error| error.to_string())?;
@@ -521,6 +679,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
         "dbspec.apply_fault" => return dbspec_apply_fault(step, bound, database),
         "markdown.connect" => return markdown_connect(step, database),
+        "markdown.session" => return markdown_session(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
@@ -1348,7 +1507,13 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     });
     let Some(built) = loaded else {
         let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
-        let named = want["rule"].as_str().is_none_or(|rule| error.to_string().contains(rule));
+        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+        let text = error.to_string();
+        let named = want["diagnostics"].as_array().is_none_or(|diagnostics| {
+            let problems: Vec<&str> = text.strip_prefix(&format!("{}: ", error.code())).unwrap_or_default().split("; ").collect();
+            problems.len() == diagnostics.len()
+                && problems.iter().zip(diagnostics).all(|(problem, want)| want.as_str().is_some_and(|want| problem.starts_with(&format!("{want}: "))))
+        });
         return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
@@ -1637,6 +1802,9 @@ fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
     let _zone = step["process_zone"].as_str().map(ProcessZone::set);
+    if let Some(surface) = step["surface"].as_str() {
+        return send_and_check(step, Call::Surface(surface.to_owned()), "markdown.send");
+    }
     let send = SendStep::parse(step)?;
     send_and_check(step, Call::Send(send), "markdown.send")
 }
@@ -1782,6 +1950,8 @@ enum Call {
     Assign(String),
     /// The builder calls of a markdown.builder step, by name.
     Builder(Vec<String>),
+    /// The public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+    Surface(String),
 }
 
 /// The call of one markdown.send step: a transaction begin with its read_only option, or a statement with its column and the
@@ -1949,6 +2119,31 @@ fn boolean(column: &str, wrapper: &str, body: &Value) -> Result<bool, String> {
 
 /// Runs one call on a connection to `dsn` with a current-thread runtime, on a thread with a stack of its own (the futures of
 /// the calls are large in a debug build), and closes the connection after the call.
+/// Runs the public call of a markdown.send surface on the connection `db`.
+async fn refused_surface(surface: &str, db: &polyspec_orm::Db) -> polyspec_orm::Result<()> {
+    let schema = polyspec_orm::Schema::new("", "");
+    let keyring = polyspec_orm::AesKeyring::new([(1, "key".to_owned())].into(), 1)?;
+    let model = bind_model::Slots::new();
+    match surface {
+        "audit" => db.transaction(async || Ok(())).audit([("actor", "tester")]).await,
+        "isolation" => db.transaction(async || Ok(())).isolation(polyspec_orm::Isolation::Serializable).await,
+        "timeout_ms" => db.transaction(async || Ok(())).timeout_ms(100).await,
+        "get_query" => bind_model::Slots::new().connect(db).get_query().await.map(drop),
+        "subscribe" => db.subscribe(|_: &polyspec_orm::StatementEvent<'_>| Ok(())).map(|subscription| subscription.unsubscribe()),
+        "lock" => db.utils().lock("k").await,
+        "set_local" => db.utils().set_local("k", "v").await,
+        "local" => db.utils().local("k").map(drop),
+        "backend_waiting_for_lock" => db.utils().backend_waiting_for_lock().await.map(drop),
+        "privileges" => db.utils().privileges().inspect_table("public.items").await.map(drop),
+        "aes_status" => db.utils().aes().status(&model, &keyring).await.map(drop),
+        "aes_rotate" => db.utils().aes().rotate(&model, &keyring).await.map(drop),
+        "schema_install" => db.utils().schema().install(&schema).await,
+        "schema_evolution" => db.utils().schema().add_tables_and_columns(&schema).await.map(drop),
+        "schema_exists" => db.utils().schema().exists("orm").await.map(drop),
+        other => panic!("markdown.send surface {other} has no call in the Rust cases"),
+    }
+}
+
 fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
     match std::thread::Builder::new()
         .stack_size(64 << 20)
@@ -1959,6 +2154,7 @@ fn call_on_connection(dsn: String, call: Call) -> polyspec_orm::Result<()> {
                 let result = match &call {
                     Call::Send(send) => send.call(&db).await,
                     Call::Assign(text) => bind_model::Slots::new().connect(&db).set_varchar_value(text.as_str()).create().await.map(drop),
+                    Call::Surface(surface) => refused_surface(surface, &db).await,
                     Call::Builder(calls) => {
                         let mut model = bind_model::Slots::new().connect(&db);
                         for call in calls {
@@ -2290,7 +2486,7 @@ mod database {
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::sync::{Arc, Mutex};
 
-    use polyspec_orm::db::{parse_dsn, ConnectOptions};
+    use polyspec_orm::db::{parse_dsn, ConnectOptions, Pool};
     use polyspec_orm::{dbspec, Config, Db, Schema, StatementEvent, Subscription, TransactionOnceError};
     use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableKind, TableMetadata, TablePage, TableRef};
     use polyspec_orm_build::tool_db::{GridCell, GridQueryResult, ParamType, Val, P};
@@ -2416,6 +2612,8 @@ mod database {
         models: Box<dyn ModelDispatcher>,
         /// The fixture of the recipe with its external documents, which schema.install of a connection installs.
         schemas: Option<&'a (Schema, Vec<Schema>)>,
+        /// The named plans and connections of the dbspec apply ops.
+        apply: crate::recipe_apply::ApplyOps,
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
@@ -2664,10 +2862,11 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
+            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
+        let closed = context.apply.close();
         context.models.close().await;
-        outcome
+        outcome.and(closed)
     }
 
     /// The seed rows of the recipe and then of the case, and the steps of the case in their order.
@@ -2870,6 +3069,7 @@ mod database {
         "model.query",
         "model.save",
         "model.chain",
+        "db.last_affected",
         "db.notify",
         "utils.lock",
         "utils.set_local",
@@ -2878,6 +3078,9 @@ mod database {
         "utils.backend_waiting_for_lock",
         "utils.groups",
     ];
+
+    /// The start of the failure of a nested step whose public call returned an error that the step does not expect.
+    const UNEXPECTED_ERROR: &str = "unexpected error ";
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
         let expected = match step.get("expect") {
@@ -2901,11 +3104,18 @@ mod database {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
-                let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
+                let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
                 let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
                 let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
                 let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                // The transaction op composes this message from the callback error and the rollback error it returns.
+                if let Some(rollback) = expected.as_ref().and_then(|e| e.get("rollback")).and_then(Value::as_str) {
+                    let kept = message.rsplit_once("and rollback failed (").map(|(_, text)| text).and_then(error_code);
+                    if kept != Some(rollback) {
+                        return Err(format!("error message {message:?} keeps the rollback error {kept:?}, want code {rollback}"));
+                    }
+                }
                 let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
@@ -3017,6 +3227,12 @@ mod database {
     async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            // The dbspec apply ops (FCV-4) run on their own connections and report their value.
+            op if crate::recipe_apply::OPS.contains(&op) => {
+                let database = context.database;
+                let dsn = context.dsn.clone();
+                Output::fields(context.apply.run(step, database, &dsn).map_err(fault)?)
+            }
             // schema.install (FCV-4): {schema} installs the set of the step on the case database; {connection} installs the
             // recipe fixture on that connection.
             "schema.install" => {
@@ -3119,8 +3335,16 @@ mod database {
                 context.attempts = ran.load(std::sync::atomic::Ordering::SeqCst);
                 result.map_err(|e| match e {
                     TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
-                    TransactionOnceError::Callback(message) => Failure::Step(message),
+                    TransactionOnceError::Callback(message) => match message.strip_prefix(UNEXPECTED_ERROR) {
+                        // The error of a public call reaches the transaction as the call returned it.
+                        Some(called) => Failure::Call(called.to_owned()),
+                        None => Failure::Step(message),
+                    },
                     TransactionOnceError::Orm(error) => orm(error),
+                    TransactionOnceError::Rollback { callback, rollback } if callback.starts_with(UNEXPECTED_ERROR) || callback == CALLBACK_FAILED => {
+                        let callback = callback.strip_prefix(UNEXPECTED_ERROR).unwrap_or(&callback);
+                        Failure::Call(format!("ROLLBACK: transaction failed ({callback}) and rollback failed ({rollback})"))
+                    }
                     TransactionOnceError::Rollback { callback, rollback } => Failure::Step(format!("{callback}; rollback: {rollback}")),
                 })?;
                 Output::fields(ok_value())
@@ -3146,10 +3370,19 @@ mod database {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
                 let kind = step["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
+                let refusal = step["refusal"].is_object().then(|| {
+                    (
+                        step["refusal"]["code"].as_str().unwrap_or_default().to_owned(),
+                        step["refusal"]["message"].as_str().unwrap_or_default().to_owned(),
+                    )
+                });
                 let subscription = db
                     .subscribe(move |event: &StatementEvent<'_>| {
                         if event.kind == kind {
-                            return Err("subscriber refused the event".into());
+                            return Err(match &refusal {
+                                Some((code, msg)) => polyspec_orm::Error::Engine { code: code.clone(), msg: msg.clone() }.into(),
+                                None => "subscriber refused the event".into(),
+                            });
                         }
                         Ok(())
                     })
@@ -3230,7 +3463,17 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.reconnect" => {
-                let mut fresh = CatalogConnection::connect(&context.dsn).await.map_err(Failure::Call)?;
+                let dsn = match step.get("user_from_database").and_then(Value::as_str) {
+                    Some(prefix) => {
+                        let path = context.dsn.split('?').next().unwrap_or(&context.dsn);
+                        let database = path.rsplit('/').next().unwrap_or(path);
+                        let name = &database[database.len().saturating_sub(28)..];
+                        let host = context.dsn.split_once('@').map_or(context.dsn.as_str(), |(_, host)| host);
+                        format!("mysql://{prefix}{name}@{host}")
+                    }
+                    None => context.dsn.clone(),
+                };
+                let mut fresh = CatalogConnection::connect(&dsn).await.map_err(Failure::Call)?;
                 context.namespace = fresh.current_namespace().await.map_err(Failure::Call)?;
                 *catalog = Some(fresh);
                 Output::fields(json!({}))
@@ -3367,6 +3610,10 @@ mod database {
                 Output::fields(json!({}))
             }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
+            "session.end" => {
+                end_session(step["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
@@ -3805,6 +4052,36 @@ mod database {
     }
 
     /// Runs DDL or DML through the native driver on one connection of its own.
+    /// Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+    /// handle KILL on its own. The test connection is a client connection, so it sends no parameter a pooler rejects.
+    async fn end_session(table: &str, context: &Context<'_>) -> Result<(), String> {
+        let variable = format!("ORM_TEST_{}_SERVER_DSN", context.database.to_uppercase());
+        let server = std::env::var(&variable).map_err(|_| format!("{variable} is required; database tests never skip"))?;
+        let name = context.dsn.split_once("://").and_then(|(_, rest)| rest.split_once('/')).map(|(_, path)| path.split('?').next().unwrap_or(path));
+        let name = name.ok_or_else(|| format!("the DSN {} names no database", context.dsn))?;
+        let session = polyspec_orm_case_database::with_database(&server, name);
+        let admin = Db::connect(&session, 1, Config::default()).await.map_err(|e| e.to_string())?;
+        let ended = match admin.pool() {
+            Pool::Postgres(pool) => {
+                let query = format!("SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{table}' AND l.pid <> pg_backend_pid() LIMIT 1");
+                match sqlx::query_scalar::<_, i32>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
+                    Ok(pid) => sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.map(|_| ()),
+                    Err(error) => Err(error),
+                }
+            }
+            Pool::MySql(pool) => {
+                let query = format!("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{table}' LIMIT 1");
+                match sqlx::query_scalar::<_, u64>(sqlx::AssertSqlSafe(query)).fetch_one(pool).await {
+                    Ok(id) => sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.map(|_| ()),
+                    Err(error) => Err(error),
+                }
+            }
+            Pool::Sqlite(_) | Pool::Markdown(_) => return Err("session.end runs on a server database".into()),
+        };
+        admin.close().await;
+        ended.map_err(|e| format!("the transaction session holds a lock on {table}: {e}"))
+    }
+
     async fn native_exec(dsn: &str, sql: &str) -> Result<(), String> {
         use sqlx::ConnectOptions as _;
         match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
@@ -4184,6 +4461,8 @@ mod tables {
     struct Build {
         joined: HashMap<String, u64>,
         outer: Option<u64>,
+        /// The connection of the step, for a join that names connect.
+        db: Option<Db>,
     }
 
     impl Build {
@@ -4201,6 +4480,10 @@ mod tables {
                         return Ok(());
                     }
                     "placed" => {
+                        if let Some(model) = value["model"].as_str() {
+                            core.place(conn, core_of(model)?.id());
+                            return Ok(());
+                        }
                         let name = value.as_str().ok_or_else(|| format!("placed {value} is not a name"))?;
                         let joined = self.joined.get(name).ok_or_else(|| format!("placed {name} names no join"))?;
                         core.place(conn, *joined);
@@ -4279,7 +4562,7 @@ mod tables {
             }
             if let Some(sub) = raw.get("sub") {
                 let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, sub, true)?;
+                Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, sub, true)?;
                 return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
             }
             if raw.get("fn").is_some() {
@@ -4329,7 +4612,7 @@ mod tables {
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()) }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -4374,7 +4657,7 @@ mod tables {
             }
             for join in q["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
-                let mut inner = Build { joined: HashMap::new(), outer: self.outer };
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None };
                 if let Some(alias) = join["alias"].as_str() {
                     child.set_alias(alias);
                 }
@@ -4384,6 +4667,9 @@ mod tables {
                     child.set_on(group);
                 }
                 inner.query(&mut child, join, true)?;
+                if join["connect"].as_bool() == Some(true) {
+                    child.connect(self.db.as_ref().ok_or_else(|| format!("join {join} has no connection"))?);
+                }
                 let id = child.id();
                 let (left, right) = (join["match"][0].as_str().unwrap_or_default(), join["match"][1].as_str().unwrap_or_default());
                 core.join(leaked(join["kind"].as_str().unwrap_or("inner")), left, right, child);
@@ -4445,7 +4731,7 @@ mod tables {
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
             }
-            Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, relation, true)?;
+            Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, relation, true)?;
             if let Some(n) = relation["group_limit"].as_u64() {
                 child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
             }
@@ -4670,7 +4956,7 @@ mod tables {
                 if step["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
-                let mut build = Build::default();
+                let mut build = Build { db: Some(db.clone()), ..Build::default() };
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
                 if !paged && !step["offset"].is_null() {
@@ -4749,7 +5035,7 @@ mod tables {
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
                 } }));
             }
-            if step["page"].as_bool() == Some(true) {
+            if step["page"].as_bool() == Some(true) || !step["plan_page"].is_null() {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
@@ -4771,10 +5057,16 @@ mod tables {
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
             let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
             let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-            if count == 0 {
-                return Err("a paged model.query needs a limit above 0".into());
-            }
-            let page = gets_page(root, offset / count + 1, count).await.map_err(orm)?;
+            let (number, size) = if step["plan_page"].is_null() {
+                if count == 0 {
+                    return Err("a paged model.query needs a limit above 0".into());
+                }
+                (offset / count + 1, count)
+            } else {
+                let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                (number("page")?, number("per_page")?)
+            };
+            let page = gets_page(root, number, size).await.map_err(orm)?;
             let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
             let mut fields = json!({
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
@@ -5016,6 +5308,9 @@ mod tables {
                         ["pending", { "int": status.pending.to_string() }],
                         ["versions", { "object": versions }],
                     ] } }))
+                }
+                "db.last_affected" => {
+                    Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
                     db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
