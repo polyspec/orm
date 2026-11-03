@@ -101,7 +101,8 @@ async fn transaction_deadlock(db: &Db, step: &Value) -> Result<Value, String> {
     let mut names = Vec::new();
     for key in keys {
         let row = account(db).get_by_tenant_id_and_account_id(key.0, key.1).await.map_err(fail)?;
-        names.push(row.ok_or_else(|| format!("composite_account {key:?} is missing"))?.get_name().map_err(fail)?);
+        let row = row.ok_or_else(|| format!("composite_account {key:?} is missing"))?;
+        names.push(row.get_name().map_err(fail)?.to_owned());
     }
     let same_flow = names[0] == names[1] && (names[0] == "flow-0" || names[0] == "flow-1");
     Ok(json!({ "attempts": attempts, "deadlocks": deadlocks, "same_flow": same_flow }))
@@ -204,8 +205,13 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             let relation = &polyspec_orm_tests::recipe_reads::read(step, "relation")["relation"];
             let mut child_columns = None;
             if !relation.is_null() {
-                let child = membership_relation(relation, db)?;
-                query = if relation["many"].as_bool() == Some(true) { query.relations(child) } else { query.relation(child) };
+                let child: CompositeMembership = membership_relation(relation, db)?;
+                query = match (relation["many"].as_bool() == Some(true), relation["alias"].as_str()) {
+                    (true, Some("memberships")) => query.relations(child.alias_memberships()),
+                    (_, Some(other)) => return Err(format!("CompositeMembership alias {other} has no recipe entry")),
+                    (true, None) => query.relations(child),
+                    (false, None) => query.relation(child),
+                };
                 child_columns = Some(names(&relation["columns"]));
             }
             // The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
@@ -366,11 +372,7 @@ fn membership_relation(relation: &Value, db: &Db) -> Result<CompositeMembership,
             other => return Err(format!("CompositeMembership match {other:?} has no recipe entry")),
         };
     }
-    match relation["alias"].as_str() {
-        None => Ok(child),
-        Some("memberships") => Ok(child.alias_memberships()),
-        Some(other) => Err(format!("CompositeMembership alias {other} has no recipe entry")),
-    }
+    Ok(child)
 }
 
 /// The CompositeMembership rows of one parent: through the generated getter of the alias, or of the result name of a
