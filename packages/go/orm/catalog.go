@@ -138,6 +138,14 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 	if _, err := conn.ExecContext(ctx, catalogBegin(c.dialect, readOnly)); err != nil {
 		return nil, s.discard(mapDriverErrContext(err, ctx))
 	}
+	if c.dialect == "postgres" {
+		// A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection
+		// already holds never reaches the server, so a plan from before the change would fail with "cached plan must not change
+		// result type". The transaction holds that server connection for the whole session (CFG-28).
+		if _, err := conn.ExecContext(ctx, "DEALLOCATE ALL"); err != nil {
+			return nil, s.discard(mapDriverErrContext(err, ctx))
+		}
+	}
 	if c.dialect == "sqlite" {
 		watch, err := watchRollback(conn)
 		s.rollbacks = watch
