@@ -544,7 +544,8 @@ final class Recipe
                 $step['dialect'],
                 static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
             );
-            Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+            $want = $expect instanceof RecipeStep ? $expect->all() : $expect;
+            Assert::assertSame(self::sortedKeys($want), self::sortedKeys($got), "$op: result differs from the expect");
             return;
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
@@ -2582,7 +2583,7 @@ final class Recipe
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
-            $step->checkOutcome($expected, 'error', 'message_suffix', 'message', 'cause', 'message_holds', 'rollback', 'driver_cause');
+            $step->checkOutcome($expected, 'error', 'file_created', 'message_suffix', 'message', 'cause', 'message_holds', 'rollback', 'driver_cause');
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).

@@ -442,7 +442,8 @@ ZEND_METHOD(Polyspec_Orm_Registry, model)
     bool ok;
     if (parsed != NULL) {
         ZVAL_COPY(&args[2], parsed);
-        ok = call_runtime("fromParsed", &result, 4, args);
+        polyspec_runtime_model_from_parsed(&result, hash, Z_STR(args[1]), &args[2], Z_STR(args[3]));
+        ok = !EG(exception);
     } else if (set != NULL && zend_hash_num_elements(Z_ARRVAL_P(set)) > 0) {
         array_init(&args[2]);
         zval *cls;

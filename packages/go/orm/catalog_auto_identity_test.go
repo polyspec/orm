@@ -64,4 +64,3 @@ func requireCatalogInsertedRow(t *testing.T, result CatalogMutationResult, want 
 		t.Fatalf("inserted row = %+v, want %v", result.Rows, want)
 	}
 }
-

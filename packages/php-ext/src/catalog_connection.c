@@ -2461,8 +2461,8 @@ static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_ro
 
 static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows);
 
-static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                         zval *names, zval *rows)
+static bool cat_grid_pdo_statement(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                                   zval *names, zval *rows)
 {
     array_init(names);
     array_init(rows);
@@ -4819,6 +4819,27 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         zval_ptr_dtor(&result);
     }
     zval_ptr_dtor(&pdo);
+}
+
+/* The grid query with the PostgreSQL placeholders of a statement with parameters rewritten, as cat_query does. */
+static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                         zval *names, zval *rows)
+{
+    if (strcmp(dialect, "postgres") != 0 || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(Z_STRVAL_P(sql))) {
+        return cat_grid_pdo_statement(db, dialect, pdo, sql, args, max_rows, max_bytes, names, rows);
+    }
+    zend_string *rewritten = NULL;
+    zval rewritten_args, rewritten_sql;
+    if (!cat_pg_rewrite(Z_STR_P(sql), args, &rewritten, &rewritten_args)) {
+        array_init(names);
+        array_init(rows);
+        return false;
+    }
+    ZVAL_STR(&rewritten_sql, rewritten);
+    bool ok = cat_grid_pdo_statement(db, dialect, pdo, &rewritten_sql, &rewritten_args, max_rows, max_bytes, names, rows);
+    zval_ptr_dtor(&rewritten_sql);
+    zval_ptr_dtor(&rewritten_args);
+    return ok;
 }
 
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)

@@ -134,6 +134,7 @@ func TestIntrospectCompare(t *testing.T) {
 }
 
 func TestIntrospectCompareRunnerEnvironment(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	got := clientRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, map[string]string{"ORM_PHP_MODE": "extension"})
 	if want := []string{"PATH=/bin", "KEEP=value", "ORM_PHP_MODE=extension"}; !sameEnvironment(got, want) {
 		t.Fatalf("runner environment = %q, want %q", got, want)

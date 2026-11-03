@@ -247,6 +247,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 }
 
 func TestApplyExtensionRunnerMode(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	runners := applyClientRunners("go-runner", "rust-runner", "extension.so", "python")
 	if got := runners["php-extension"].env["ORM_PHP_MODE"]; got != "extension" {
 		t.Fatalf("PHP extension runner mode = %q, want extension", got)

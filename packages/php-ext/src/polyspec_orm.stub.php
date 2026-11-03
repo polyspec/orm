@@ -819,7 +819,7 @@ final class DbState
     public ?\PDO $pdo = null;
     public ?\Closure $reconnect = null;
     /** @internal The catalog that owns this connection: a budget stop kills the query through its grid connection. */
-    public ?Catalog $catalogOwner = null;
+    private ?Catalog $catalogOwner = null;
     public ?\Closure $cancelConnection = null;
     public ?\Closure $cancelQuery = null;
     private bool $sqliteCancellationLoaded = false;
@@ -2030,6 +2030,7 @@ final class SchemaUtils
 /** The native runtime model of the canonical dbspec document set. */
 final class RuntimeModel
 {
+    public const int FORMAT = 1;
     public readonly string $manifestHash;
     public readonly string $manifestText;
     public readonly array $entities;
@@ -2065,7 +2066,6 @@ final class RuntimeModel
     /** @param array $classes */
     public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): RuntimeModel {}
     public static function verifyModel(string $class, array $manifest): array {}
-    public static function fromParsed(string $manifestHash, string $manifestText, array $entities, string $externalText = ''): RuntimeModel {}
     public function entity(string $name): ?array {}
     public static function column(array $entity, string $name): ?array {}
     public static function styled(array $column): bool {}

@@ -3,6 +3,8 @@ package recipe
 import (
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // testSchema names the recipe schema from this package directory, four levels below the repository root.
@@ -17,6 +19,7 @@ func recipeWith(top, steps string) string {
 // accepts a recipe whose keys the table holds.
 // Requirements: FCV-4.
 func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const file = `"fixture":"none",`
 	for _, tc := range []struct {
 		name   string
@@ -50,6 +53,7 @@ func TestCheckKeysAcceptsAndRefusesByName(t *testing.T) {
 // its ops.
 // Requirements: FCV-4.
 func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	table, err := loadKeyTable("recipe.json", testSchema)
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +66,7 @@ func TestLoadKeyTableNamesTheSchemaTable(t *testing.T) {
 // TestConnectDSN checks the DSN that model.connect opens (FCV-4, CFG-10): "case" and an absent DSN are the case database,
 // "case-socket" is the MySQL case database through the socket of the environment, and other text is opened as written.
 func TestConnectDSN(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const caseDSN = "mysql://root@127.0.0.1:3306/orm_test"
 	t.Run("absent DSN is the case database", func(t *testing.T) {
 		got, err := connectDSN("", "mysql", caseDSN)
@@ -113,6 +118,7 @@ func TestConnectDSN(t *testing.T) {
 // annotation aside, and that an outcome key of an expected error that no compare takes does too.
 // Requirements: FCV-4.
 func TestStepReadsFailsAnUnreadKeyByName(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	reads := newStepReads([]byte(`{"op":"dsn.connect","dsn":"case","reason":"for the reader","bogus":1}`))
 	reads.mark("dsn")
 	err := reads.check()

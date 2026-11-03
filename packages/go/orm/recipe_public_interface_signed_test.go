@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/bindmodel"
-	"github.com/polyspec/orm/packages/go/internal/recipe"
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/internal/recipe"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 

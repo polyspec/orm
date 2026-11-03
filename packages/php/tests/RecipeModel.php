@@ -667,6 +667,8 @@ trait RecipeModel
             || ($relation['match'] ?? null) !== [['shared_note_seq', 'seq']]
             || $s['columns'] !== ['seq']
             || ($relation['columns'] ?? null) !== ['title']
+            || $s['where'] !== []
+            || $s['order'] !== ['seq']
         ) {
             Assert::fail('NoteReader relation has no recipe entry');
         }

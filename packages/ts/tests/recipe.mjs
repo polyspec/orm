@@ -1259,6 +1259,8 @@ function requestText(literal, caseIndex, stepIndex) {
 // the outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE.
 function checkValidate(step, text, schema, database) {
   if (schema === undefined) throw new Error('ir.validate needs the schema key of the recipe');
+  // The request is the text of this step in the recipe file, which keeps its member order and repeated names.
+  void step.request;
   let got = null;
   try {
     const request = decodeRequest(text);

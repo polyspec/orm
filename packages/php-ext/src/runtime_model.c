@@ -657,14 +657,9 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, verifyModel) {
     if (!ok) RETURN_THROWS();
     RETURN_COPY_VALUE(&meta);
 }
-PHP_METHOD(Polyspec_Orm_RuntimeModel, fromParsed) {
-    zend_string *hash, *text, *external = NULL;
-    zval *entities;
-    ZEND_PARSE_PARAMETERS_START(3, 4)
-    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(entities) Z_PARAM_OPTIONAL Z_PARAM_STR(external)
-    ZEND_PARSE_PARAMETERS_END();
+void polyspec_runtime_model_from_parsed(zval *out, zend_string *hash, zend_string *text, zval *entities, zend_string *external) {
     ENTER();
-    construct_model(return_value, zs(hash), zs(text), entities, external ? zs(external) : SL(""));
+    construct_model(out, zs(hash), zs(text), entities, external ? zs(external) : SL(""));
     LEAVE();
 }
 PHP_METHOD(Polyspec_Orm_RuntimeModel, fromModels) {

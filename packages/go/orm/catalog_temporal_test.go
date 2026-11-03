@@ -104,7 +104,6 @@ func TestCatalogDescribedBool(t *testing.T) {
 	}
 }
 
-//
 // go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
 // starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
 // MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which a described read refuses.
