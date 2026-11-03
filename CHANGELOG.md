@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The native tests of the value types, the styled SQL NULL read and the decimal round trip keep only what a typed getter returns: the stored values, refusals, conditions and row output move to the `conformance_verification` cases `core_value_types`, `core_styled_null`, `core_styled_states` and `core_decimal_values`, and the fraction into an `i16` to the bind vector `i16-fraction`.
 - The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: its fifty-nine cases cover connectors, groups, chain reuse, expressions, columns, joins, relations, subqueries, aggregates, empty reads, functions, AES and hex values, a write cycle, batch creates, restores, audits, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.
 - The JSON form of a row writes a `time` or `datetime` column with six fraction digits in every client, as the array form does: TypeScript, Python and Rust wrote the column precision, Go and PHP six digits.
 - Nine more write cases of the conformance vectors run in the recipe conformance_verification (#T334-3-4-23)

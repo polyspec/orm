@@ -4013,7 +4013,11 @@ mod tables {
                 Val::Str(value.take_string()?)
             } else {
                 match field.ty {
-                    Type::I16 => Val::I64(i64::from(value.as_i16()?)),
+                    // A value past the range reaches the write, whose slot check refuses it (CODEC_ENCODE).
+                    Type::I16 => match value.as_i64() {
+                        Ok(n) if i16::try_from(n).is_err() => Val::I64(n),
+                        _ => Val::I64(i64::from(value.as_i16()?)),
+                    },
                     Type::I32 => Val::I64(i64::from(value.as_i32()?)),
                     Type::I64 => Val::I64(value.as_i64()?),
                     Type::F64 => Val::F64(value.as_f64()?),
@@ -5115,9 +5119,16 @@ mod tables {
 
     /// The cells of the columns of a row, each the recipe wrapper of its value.
     fn project(row: &TableRow, columns: &[String]) -> Result<Vec<Value>, String> {
+        let entity = fields_of(row.core.entity()).map_err(orm)?;
         columns
             .iter()
             .map(|column| {
+                // A temporal cell is the text of the value model (PRT-69), as the other runtimes read it.
+                if entity.field(column).is_some_and(|field| matches!(field.ty, Type::Date | Type::Time(_) | Type::DateTime(_))) {
+                    if let Some(text) = to_array(row).map_err(orm)?.get(column).and_then(Value::as_str) {
+                        return Ok(json!({ "text": text }));
+                    }
+                }
                 Ok(match row.value(column).ok_or_else(|| format!("the row has no column {column}"))? {
                     Val::Str(text) => json!({ "text": text }),
                     Val::I64(n) => json!({ "int": n.to_string() }),

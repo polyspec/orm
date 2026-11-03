@@ -44,11 +44,15 @@ class StyledSqlNullTest(unittest.TestCase):
         )
         return tuple(result["rows"][0])
 
-    def assert_sql_null(self, row, where: str):
+    def assert_sql_null_getters(self, row, where: str):
         for name in ("json_setting", "jsons_tags", "serialize_data"):
             value = getattr(row, f"get_{name}")()
             self.assertIsInstance(value, StyledValue, f"{where} {name}")
             self.assertEqual(value.kind, "sql-null", f"{where} {name}")
+
+    def assert_sql_null(self, row, where: str):
+        self.assert_sql_null_getters(row, where)
+        for name in ("json_setting", "jsons_tags", "serialize_data"):
             self.assertEqual(
                 row.to_array()[name], SQL_NULL, f"{where} {name} array output"
             )
@@ -56,7 +60,7 @@ class StyledSqlNullTest(unittest.TestCase):
     # The test of COD-20 (docs/spec).
     def test_root_row_reads_sql_null_as_styled_value(self):
         row = self.models.Author().connect(self.db).add_all_columns().get_by_seq(1)
-        self.assert_sql_null(row, "root row")
+        self.assert_sql_null_getters(row, "root row")
 
     def test_joined_row_reads_sql_null_as_styled_value(self):
         user = (
