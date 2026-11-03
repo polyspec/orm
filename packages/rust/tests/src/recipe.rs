@@ -2308,6 +2308,9 @@ mod database {
         "utils.lock",
         "utils.set_local",
         "utils.local",
+        "utils.was_inserted",
+        "utils.backend_waiting_for_lock",
+        "utils.groups",
     ];
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
@@ -4228,6 +4231,21 @@ mod tables {
                     Ok(json!({}))
                 }
                 "utils.local" => Ok(json!({ "json": db.utils().local(step["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                "utils.was_inserted" => {
+                    let sequence = step["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
+                    let inserted = db.utils().was_inserted(step["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
+                    Ok(json!({ "value": { "bool": inserted } }))
+                }
+                "utils.backend_waiting_for_lock" => {
+                    let waiting = db.utils().backend_waiting_for_lock().await.map_err(orm)?;
+                    Ok(json!({ "value": { "bool": waiting } }))
+                }
+                // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
+                "utils.groups" => {
+                    let utils = db.utils();
+                    let (_aes, _privileges, _schema, _stats) = (utils.aes(), utils.privileges(), utils.schema(), utils.stats());
+                    Ok(json!({ "value": { "array": [{ "text": "aes" }, { "text": "privileges" }, { "text": "schema" }, { "text": "stats" }] } }))
+                }
                 "model.chain" => {
                     let core = self.built(step, &db)?;
                     if let Some(name) = step["as"].as_str() {

@@ -69,6 +69,9 @@ final class Recipe
         'utils.lock',
         'utils.set_local',
         'utils.local',
+        'utils.was_inserted',
+        'utils.backend_waiting_for_lock',
+        'utils.groups',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -3220,6 +3223,24 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.was_inserted':
+                $utils = self::connectionOf($s, $context)->utils();
+                return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
+            case 'utils.backend_waiting_for_lock':
+                return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'utils.groups':
+                // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+                $utils = self::connectionOf($s, $context)->utils();
+                $held = [
+                    'aes' => $utils->aes(),
+                    'privileges' => $utils->privileges(),
+                    'schema' => $utils->schema(),
+                    'stats' => $utils->stats(),
+                ];
+                return ['value' => ['array' => array_map(
+                    static fn(string $text): array => ['text' => $text],
+                    array_keys(array_filter($held, static fn(mixed $group): bool => $group !== null))
+                )]];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }

@@ -1550,6 +1550,16 @@ const TABLE_OPS = {
   async 'utils.local'(s, context) {
     return { json: await connectionOf(s, context).utils().local(s.name) };
   },
+  'utils.was_inserted': (s, context) => ({ value: { bool: connectionOf(s, context).utils().wasInserted(s.table, s.sequence) } }),
+  async 'utils.backend_waiting_for_lock'(s, context) {
+    return { value: { bool: await connectionOf(s, context).utils().backendWaitingForLock() } };
+  },
+  // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+  'utils.groups'(s, context) {
+    const utils = connectionOf(s, context).utils();
+    const held = { aes: utils.aes(), privileges: utils.privileges(), schema: utils.schema(), stats: utils.stats() };
+    return { value: { array: Object.keys(held).filter(name => held[name]).map(text => ({ text })) } };
+  },
 };
 
 /** The cells of the columns of a read table row: text and integer values have a recipe wrapper (FCV-4). */

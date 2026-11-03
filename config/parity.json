@@ -9083,6 +9083,138 @@
       ]
     },
     {
+      "id": "utils-mysql",
+      "kind": "suite",
+      "requirements": [
+        "INT-51",
+        "INT-52",
+        "INT-53",
+        "INT-61",
+        "INT-73",
+        "INT-134"
+      ],
+      "file": "contracts/fixtures/utils/utils.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "symbol": "TestRecipeUtilsMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\UtilsRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\UtilsRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/utils_recipe-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils_recipe_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+          "symbol": "utils_recipe_mysql"
+        }
+      ]
+    },
+    {
+      "id": "utils-postgres",
+      "kind": "suite",
+      "requirements": [
+        "INT-51",
+        "INT-52",
+        "INT-53",
+        "INT-61",
+        "INT-73",
+        "INT-134"
+      ],
+      "file": "contracts/fixtures/utils/utils.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "symbol": "TestRecipeUtilsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\UtilsRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\UtilsRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/utils_recipe-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils_recipe_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+          "symbol": "utils_recipe_postgres"
+        }
+      ]
+    },
+    {
+      "id": "utils-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "INT-51",
+        "INT-52",
+        "INT-53",
+        "INT-61",
+        "INT-73",
+        "INT-134"
+      ],
+      "file": "contracts/fixtures/utils/utils.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "symbol": "TestRecipeUtilsSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\UtilsRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\UtilsRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/utils_recipe-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils_recipe_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "symbol": "utils_recipe_sqlite"
+        }
+      ]
+    },
+    {
       "id": "statement_runner-mysql",
       "kind": "suite",
       "requirements": [

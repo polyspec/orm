@@ -3199,7 +3199,10 @@
         "transaction-control-methods-are-private",
         "mysql-lock-wait-canceled",
         "transaction-execution-flow-context",
-        "transaction-flow-overlap-rejected"
+        "transaction-flow-overlap-rejected",
+        "utils-mysql",
+        "utils-postgres",
+        "utils-sqlite"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -3209,7 +3212,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/utils/utils.json"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -3295,7 +3299,19 @@
         "packages/php-ext/tests/RollbackTestExtensionTest.php",
         "packages/php-ext/tests/SessionStateTestExtensionTest.php",
         "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
-        "packages/php-ext/tests/StatementFaultTestExtensionTest.php"
+        "packages/php-ext/tests/StatementFaultTestExtensionTest.php",
+        "packages/go/orm/recipe_utils_test.go",
+        "packages/php/tests/UtilsRecipeTest.php",
+        "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+        "packages/ts/tests/utils_recipe-mysql.test.mjs",
+        "packages/ts/tests/utils_recipe-postgres.test.mjs",
+        "packages/ts/tests/utils_recipe-sqlite.test.mjs",
+        "packages/python/tests/test_utils_recipe_mysql.py",
+        "packages/python/tests/test_utils_recipe_postgres.py",
+        "packages/python/tests/test_utils_recipe_sqlite.py",
+        "packages/rust/tests/tests/utils_recipe_mysql.rs",
+        "packages/rust/tests/tests/utils_recipe_postgres.rs",
+        "packages/rust/tests/tests/utils_recipe_sqlite.rs"
       ],
       "docs": [
         "docs/spec/config.md",

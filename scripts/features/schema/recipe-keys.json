@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dsn.connect": [
+      "dsn",
+      "expect",
+      "op"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -26,11 +31,6 @@
     ],
     "markdown.builder": [
       "calls",
-      "expect",
-      "op"
-    ],
-    "dsn.connect": [
-      "dsn",
       "expect",
       "op"
     ],
@@ -612,6 +612,23 @@
       "connection",
       "expect",
       "name",
+      "op"
+    ],
+    "utils.was_inserted": [
+      "connection",
+      "expect",
+      "op",
+      "sequence",
+      "table"
+    ],
+    "utils.backend_waiting_for_lock": [
+      "connection",
+      "expect",
+      "op"
+    ],
+    "utils.groups": [
+      "connection",
+      "expect",
       "op"
     ]
   }

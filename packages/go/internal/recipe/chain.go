@@ -1376,7 +1376,12 @@ func chainAffected(db *orm.DB) outcome {
 	return outcome{fields: affectedFields(db)}
 }
 
-// utilsOp runs utils.lock, utils.set_local and utils.local on the connection of s (INT-50, INT-51).
+// boolOutcome is the value of an op that returns a boolean (FCV-4).
+func boolOutcome(value bool) outcome {
+	return outcome{fields: map[string]any{"value": map[string]any{"bool": value}}}
+}
+
+// utilsOp runs the utils ops on the connection of s (INT-50 to INT-53, INT-134).
 func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 	db, err := connectionOf(s, c)
 	if err != nil {
@@ -1395,6 +1400,36 @@ func utilsOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, db.Utils().SetLocal(s.Name, text)
+	case "utils.was_inserted":
+		inserted, err := db.Utils().WasInserted(s.Table, s.Sequence)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(inserted), nil
+	case "utils.backend_waiting_for_lock":
+		waiting, err := db.Utils().BackendWaitingForLock(c.ctx)
+		if err != nil {
+			return outcome{}, err
+		}
+		return boolOutcome(waiting), nil
+	case "utils.groups":
+		// The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+		utils := db.Utils()
+		names := []any{}
+		for _, group := range []struct {
+			name string
+			held bool
+		}{
+			{"aes", utils.Aes() != nil},
+			{"privileges", utils.Privileges() != nil},
+			{"schema", utils.Schema() != nil},
+			{"stats", utils.Stats() != orm.DBStats{}},
+		} {
+			if group.held {
+				names = append(names, map[string]any{"text": group.name})
+			}
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"array": names}}}, nil
 	}
 	value, err := db.Utils().Local(s.Name)
 	if err != nil {
