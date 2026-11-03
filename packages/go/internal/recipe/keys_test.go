@@ -108,3 +108,27 @@ func TestConnectDSN(t *testing.T) {
 		}
 	})
 }
+
+// TestStepReadsFailsAnUnreadKeyByName checks that a key of a step that the run does not read fails the step by name, an
+// annotation aside, and that an outcome key of an expected error that no compare takes does too.
+// Requirements: FCV-4.
+func TestStepReadsFailsAnUnreadKeyByName(t *testing.T) {
+	reads := newStepReads([]byte(`{"op":"dsn.connect","dsn":"case","reason":"for the reader","bogus":1}`))
+	reads.mark("dsn")
+	err := reads.check()
+	if err == nil || err.Error() != "the helper did not read bogus of dsn.connect" {
+		t.Fatalf("check: %v", err)
+	}
+	reads.mark("bogus")
+	if err := reads.check(); err != nil {
+		t.Fatalf("check after the read: %v", err)
+	}
+	err = reads.checkOutcome(map[string]any{"error": "X", "bogus": 1}, "dsn.connect", "error")
+	if err == nil || err.Error() != "the helper did not read expect.bogus of dsn.connect" {
+		t.Fatalf("checkOutcome: %v", err)
+	}
+	reads.mark("expect.bogus")
+	if err := reads.checkOutcome(map[string]any{"error": "X", "bogus": 1}, "dsn.connect", "error"); err != nil {
+		t.Fatalf("checkOutcome after the read: %v", err)
+	}
+}

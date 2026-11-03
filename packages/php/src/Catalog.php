@@ -1298,6 +1298,8 @@ final class Catalog
         } catch (\PDOException $rollbackFailure) {
             $rollback = $this->db->driverError($rollbackFailure);
             $message .= '; rollback failed: ' . $rollback->getMessage();
+            // The connection is gone with the commit, so the next call opens a new one (INT-118).
+            $this->streamLeft = true;
         }
         throw new OrmException(Code::ROW_COMMIT_INDETERMINATE, $message, $mapped, $rollback);
     }
@@ -1980,6 +1982,10 @@ final class Catalog
         if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
             return self::gridCell($value, $this->dialect, $native, false, false)->value;
         }
+        // A value that is not text is its bytes (INT-153): an expression reports no binary type on MySQL and SQLite.
+        if (is_string($value) && !self::isUtf8($value)) {
+            return $value;
+        }
         return self::value($value, $native, $this->dialect);
     }
 
@@ -2013,8 +2019,16 @@ final class Catalog
             if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)) {
                 $kind = strtoupper($column->nativeType) === 'TIME' ? 'time' : 'datetime';
                 foreach ($rows as $r => $row) {
-                    if (!is_string($row[$i])) {
+                    if ($row[$i] === null) {
                         continue;
+                    }
+                    // SQLite keeps a number in a temporal column, and a number is not in the dbspec form (INT-103).
+                    if (!is_string($row[$i])) {
+                        throw new OrmException(
+                            Code::GRID_TEMPORAL_VALUE,
+                            'unsupported grid value: stored value of column "' . $column->name . '" is not a dbspec '
+                            . $kind
+                        );
                     }
                     // A CHECK fixes the precision of the value; without one the column has precision 0 (Go's rule), so
                     // a non-zero fraction digit is refused as GRID_TEMPORAL_PRECISION.

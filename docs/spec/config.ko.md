@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 6d4fb65549e5c65cb38c39f76328a4bf1c701516c6e59d5ffb8305adcd865582 -->
+<!-- source-sha256: b79452b25ae855b36b4eb10b37aaae79d050d7c6acacd16393a36d6cb73ef608 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -15,7 +15,7 @@ sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
 markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 ```
 
-- **CFG-1** scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다. scheme `markdown`은 데이터베이스 대신 flowmark server의 markdown IR executor를 선택한다. 그 DSN, server 연결, 거절하는 설정은 [프로토콜](protocol.ko.md#_5-ir-executors)과 [capability 표](dialects.ko.md#markdown-ir-executor)에 있다. 모든 클라이언트가 이를 구현한다. Python 클라이언트는 이 연결에 server 연결 하나를 유지한다.
+- **CFG-1** scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다. scheme `markdown`은 데이터베이스 대신 flowmark server의 markdown IR executor를 선택한다. 그 DSN, server 연결, 거절하는 설정은 [프로토콜](protocol.ko.md#_5-ir-executors)과 [capability 표](dialects.ko.md#markdown-ir-executor)에 있다. 서버가 거부한 연결은 `max_user_connections` 초과처럼 모든 클라이언트에서 `DRIVER`로 실패하며, 서버의 메시지를 담고 네이티브 오류를 cause로 둔다. TLS 실패(CFG-16), SQLite 파일, 서버가 모르는 time zone은 `CONFIG`다. 모든 클라이언트가 이를 구현한다. Python 클라이언트는 이 연결에 server 연결 하나를 유지한다.
 - **CFG-2** 모든 연결은 서버 시간대와 상관없이 datetime 값을 UTC로 읽고 쓴다([dialects](dialects.ko.md#date-and-time)). MySQL 연결은 `time_zone = '+00:00'`을, PostgreSQL 연결은 `TimeZone`을 `UTC`로 설정하고, SQLite 값과 ORM 값 함수는 클라이언트에서 UTC를 쓴다. offset이 있는 값은 UTC wall clock으로 쓰고 UTC로 다시 읽는다. 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받으며, 다른 값은 `CONFIG`를 반환한다.
 - **CFG-3** 모든 MySQL 연결은 열릴 때 드라이버 자체 설정 뒤에 세션 `sql_mode`를 `STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION`로 정한다. 그래서 변환, 잘림, grouping 결과가 서버의 `sql_mode`에 따르지 않고, 드라이버가 더한 mode(sqlx의 `PIPES_AS_CONCAT`, client flag의 `IGNORE_SPACE`)는 대체된다. 연결은 `@@SESSION.sql_mode`를 `ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION`로 읽는다(`mysql.session.sql_mode_set`, `tests/dsn/mysql-session.json`).
 - **CFG-4** 연결 설정은 최대 연결 수 `poolSize`를 받는다. Go는 `orm.Config{PoolSize: n}`, PHP는 `new Config(poolSize: n)`, TypeScript는 `{ poolSize: n }`, Rust는 `Db::connect(dsn, n, config)`, Python은 `connect(dsn, {"poolSize": n})`이다. 0이거나 지정하지 않으면 풀을 유지하는 클라이언트는 최대 10개의 연결을 열고, 음수는 `CONFIG`를 반환한다. 풀은 최대값보다 많은 연결을 열지 않으며, 모든 연결이 사용 중일 때 연결이 필요한 문이나 트랜잭션은 연결이 반환될 때까지 기다린다. TypeScript의 SQLite 드라이버는 연결 하나를 유지한다. PHP는 요청마다 연결을 연다. 각 `Db`가 연결 하나를 열고 그 연결은 `Db`와 함께 닫히며, 요청보다 오래 남는 연결은 없다. PHP의 풀은 PgBouncer나 ProxySQL이 맡는다([연결 pooler](#connection-poolers)). PHP 클라이언트는 자기 풀을 가지지 않는다. php-fpm worker는 한 번에 요청 하나를 처리하고 다음 요청과 상태를 공유하지 않으며, 요청을 넘어 유지한 연결은 한 요청의 세션 상태를 다음 요청에 넘기고 서버 연결 수를 worker 수만큼 늘린다. 풀러는 대신 적은 서버 연결을 모든 worker가 나누어 쓰게 한다. 클라이언트가 무시하는 설정은 호출자가 연결이 풀링된다고 믿게 하므로, 0이 아닌 n의 `new Config(poolSize: n)`은 `CONFIG`를 반환한다. `stats()`는 `Db`의 연결 하나인 1을 `maxOpenConnections`로 보고한다.
@@ -98,7 +98,7 @@ PgBouncer 설정:
 ProxySQL 설정:
 
 - **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
-- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다. 중단된 읽기의 socket을 닫을 수 있는 runtime은 kill이 실패하거나 kill이 없을 때 기다리지 않고 닫는다. 서버가 그 thread를 아직 끝내지 않아 `max_user_connections`가 다음 연결을 거부하면 최대 2초까지 다시 시도한다(측정값은 40 ms 이내).
+- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다. 중단된 읽기의 socket을 닫을 수 있는 runtime은 kill이 실패하거나 kill이 없을 때 기다리지 않고 닫는다. catalog가 닫은 연결은 서버가 그 thread를 끝낼 때까지 `max_user_connections`의 자리를 차지하며 서버는 이를 아무에게도 알리지 않으므로, 그 닫기로부터 2초 안에 한도가 거부한 재연결은 그 2초가 끝날 때까지 다시 시도한다(알림이 없어 쓰는 timer이며, 측정값은 40 ms 이내). 그 catalog의 닫기 뒤가 아닌 연결은 곧바로 실패한다. 연결을 닫은 budget 중단은 rollback을 시도하지 않으며 오류는 `CATALOG_LIMIT` 하나다.
 
 ProxySQL은 기본 multiplexing으로 실행한다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 

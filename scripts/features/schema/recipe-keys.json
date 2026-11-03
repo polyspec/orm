@@ -76,6 +76,14 @@
       "op",
       "vectors"
     ],
+    "dbspec.introspect": [
+      "case",
+      "catalog_of",
+      "expect",
+      "op",
+      "paths",
+      "vectors"
+    ],
     "dbspec.introspect_shown": [
       "case",
       "expect",
@@ -426,6 +434,7 @@
       "expect",
       "from",
       "joins",
+      "json_output",
       "key",
       "limit",
       "lock",
@@ -567,6 +576,11 @@
       "plan",
       "source"
     ],
+    "dbspec.introspect_refusal": [
+      "dialect",
+      "expect",
+      "op"
+    ],
     "dbspec.add_tables_steps": [
       "dialect",
       "expect",
@@ -668,7 +682,16 @@
     ],
     "catalog.reconnect": [
       "op",
+      "refused_code",
+      "refused_message",
       "user_from_database"
+    ],
+    "sql.hold_connection": [
+      "op",
+      "user_from_database"
+    ],
+    "sql.release_connection": [
+      "op"
     ],
     "catalog.revision": [
       "as",

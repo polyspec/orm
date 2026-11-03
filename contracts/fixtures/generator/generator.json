@@ -958,7 +958,8 @@
     {
       "id": "a_document_with_a_diagnostic_prints_it_and_writes_nothing",
       "requirements": [
-        "DBS-27"
+        "DBS-27",
+        "SCH-12"
       ],
       "steps": [
         {
@@ -968,8 +969,7 @@
             "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
           },
           "parts": [
-            "5:8",
-            "type"
+            "5:8 type: document shop: type \"tinyint\" is not a dbspec type"
           ]
         }
       ]
@@ -978,7 +978,8 @@
       "id": "a_check_whose_generation_fails_reports_it_and_writes_nothing",
       "requirements": [
         "DBS-27",
-        "DBS-175"
+        "DBS-175",
+        "SCH-12"
       ],
       "steps": [
         {
@@ -988,8 +989,7 @@
             "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
           },
           "parts": [
-            "5:8",
-            "type"
+            "5:8 type: document shop: type \"tinyint\" is not a dbspec type"
           ],
           "check": true
         }

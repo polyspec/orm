@@ -1,5 +1,5 @@
-import { runCases } from './coverage_case.mjs';
+import { runCasesOn } from './coverage_case.mjs';
 import { hotPathGate } from './coverage_performance_gate.mjs';
 
 // Requirements: PERF-1.
-await runCases('coverage_performance_gate_postgres.mjs', { hot_path_gate: () => hotPathGate('postgres') }, 300_000);
+await runCasesOn('postgres', 'coverage_performance_gate_postgres.mjs', { hot_path_gate: () => hotPathGate('postgres') }, 300_000);

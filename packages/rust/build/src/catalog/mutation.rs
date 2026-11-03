@@ -1,7 +1,6 @@
 //! Native optimistic updates. No durable operation identity or wire authority.
 use super::{metadata, page::quote, CatalogConnection, RowSnapshot, TableMetadata};
 use crate::tool_db::{self, Conn, GridCell, GridQueryResult, QueryLimits, P};
-use polyspec_orm::db::Pool;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -38,12 +37,12 @@ pub(super) fn write_transaction_statement(dialect: &str) -> &'static str {
     }
 }
 
-pub(super) async fn begin_mutation(pool: &Pool, dialect: &str, cancellation: &AtomicBool) -> Result<Conn, String> {
+pub(super) async fn begin_mutation(catalog: &CatalogConnection, cancellation: &AtomicBool) -> Result<Conn, String> {
     cancelled(cancellation)?;
-    let mut connection = Conn::acquire(pool).await.map_err(|e| e.to_string())?;
+    let mut connection = catalog.open_connection().await?;
     connection.discard_on_drop();
     cancelled(cancellation)?;
-    super::begin_session(&mut connection, write_transaction_statement(dialect)).await?;
+    super::begin_session(&mut connection, write_transaction_statement(&catalog.dialect)).await?;
     Ok(connection)
 }
 
@@ -217,7 +216,8 @@ impl CatalogConnection {
         let assignments = changes.iter().map(|(name, value)| (name.clone(), cell(value))).collect::<Vec<_>>();
         original.validate_update(&assignments)?;
         let keys = prepare_mutation(original, &self.dialect, &cancellation, &publish)?;
-        let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
+        let _closes = super::ClosesOnDrop(self);
+        let mut connection = begin_mutation(self, &cancellation).await?;
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             super::temporal::check_write_precision(&mut connection, &descriptor, changes, &self.dialect).await?;

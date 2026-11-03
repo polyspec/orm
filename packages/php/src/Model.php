@@ -448,7 +448,12 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                 throw new OrmException(Code::CODEC_ENCODE, "$column requires its text form");
             }
             // The text is checked now; the getter returns the parsed time in the connection's zone (T189).
-            $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+            try {
+                $stored = self::timeValue($value, $this->conn?->zone() ?? new \DateTimeZone('UTC'));
+            } catch (OrmException $error) {
+                // A text that no time form reads is refused as a write (PRT-67); timeValue reports a read.
+                throw new OrmException(Code::CODEC_ENCODE, "$column: invalid date value $value", $error);
+            }
         }
         $this->values[$column] = $stored;
         $sqlNull = $value === null || ($value instanceof StyledValue && $value->kind === 'sql-null');

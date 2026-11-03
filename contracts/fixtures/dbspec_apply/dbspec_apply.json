@@ -670,6 +670,58 @@
               }
             }
           }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "CREATE TABLE external_drift (id integer PRIMARY KEY)"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "drift"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "drift"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "drift"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -1435,6 +1487,27 @@
                         }
                       }
                     }
+                  },
+                  {
+                    "op": "dbspec.schema",
+                    "connection": "other",
+                    "expect": {
+                      "mysql": {
+                        "value": {
+                          "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
+                        }
+                      },
+                      "postgres": {
+                        "value": {
+                          "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
+                        }
+                      },
+                      "sqlite": {
+                        "value": {
+                          "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
+                        }
+                      }
+                    }
                   }
                 ]
               }
@@ -1496,6 +1569,27 @@
                     }
                   ]
                 ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.schema",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(10,2) default 0.00\n  primary key (id)\n  index ix_orders_user (user_id)\n  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict\n}\n"
               }
             }
           }
@@ -6033,6 +6127,29 @@
                 "only": [
                   "postgres"
                 ]
+              },
+              {
+                "op": "dbspec.exec",
+                "connection": "watch",
+                "sql": "SELECT COUNT(*) FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND t.PROCESSLIST_ID <> CONNECTION_ID()",
+                "expect": {
+                  "mysql": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "0"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "only": [
+                  "mysql"
+                ]
               }
             ]
           },
@@ -6657,6 +6774,1415 @@
                       "text": "drift"
                     }
                   ]
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stop_recover_and_rollback_of_the_chain",
+      "requirements": [
+        "PLN-92",
+        "PLN-93",
+        "PLN-95",
+        "PLN-96"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "first"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "second"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "SELECT COUNT(*) FROM users",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "stopped"
+                    }
+                  ]
+                ]
+              }
+            }
+          },
+          "on": {
+            "event": "applied",
+            "plan": "rename_table_and_column",
+            "step": 1,
+            "stop": true
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applying"
+                      },
+                      {
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applying"
+                      },
+                      {
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applying"
+                      },
+                      {
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.recover",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "16"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.rollback",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": "SELECT COUNT(*) FROM users",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "0"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "recover_on_a_completed_chain_reports_no_event",
+      "requirements": [
+        "PLN-95"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "first"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "second"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.recover",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "applied"
+                      },
+                      {
+                        "text": "16"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "finalize_twice_marks_every_row_done",
+      "requirements": [
+        "PLN-94"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "first"
+        },
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 rename_table_and_column",
+            "from sha256:b1184f3bd492df8b4a98229677881905aab6d0154c5cb362e116d1563b210239",
+            "rename table users clients",
+            "rename column clients.mail email",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table clients {",
+            "  id i64 identity",
+            "  email varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (email)",
+            "  check ck_users_age (age >= 0)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references clients (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "as": "second"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "count": [
+            "finalize",
+            "done"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "2"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "2"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "16"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "first",
+            "second"
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "events",
+                    {
+                      "int": "0"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state, step FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state, step FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "create_from_empty"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "4"
+                      }
+                    ]
+                  },
+                  {
+                    "array": [
+                      {
+                        "text": "rename_table_and_column"
+                      },
+                      {
+                        "text": "done"
+                      },
+                      {
+                        "text": "16"
+                      }
+                    ]
+                  }
                 ]
               }
             }
@@ -8456,6 +9982,365 @@
             "sqlite": {
               "value": {
                 "text": "dbspec 1 schema\n\ntable clients {\n  id i64 identity\n  email varchar(64)\n  age i32 null\n  nick varchar(40) null default 'x'\n  status varchar(8) default 'new'\n  primary key (id)\n  unique uq_users_mail (email)\n  check ck_users_age (age >= 0)\n}\n\ntable events {\n  id i64 identity\n  client_id i64\n  primary key (id)\n  index ix_events_client (client_id)\n  foreign key fk_events_client (client_id) references clients (id) on delete restrict on update restrict\n  settings {\n    immutable\n  }\n}\n\ntable orders {\n  id i64 identity\n  user_id i64\n  total decimal(12,2) default 0.00\n  shipped bool null\n  primary key (id)\n  index ix_orders_user (user_id, total)\n  foreign key fk_orders_user (user_id) references clients (id) on delete cascade on update restrict\n}\n"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "finalize_of_a_plan_that_hides_nothing",
+      "requirements": [
+        "PLN-94"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 only",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table notes {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "only"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "only"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "only"
+          ],
+          "count": [
+            "finalize",
+            "statement",
+            "done"
+          ],
+          "on": {
+            "event": "finalize",
+            "steps": [
+              {
+                "op": "dbspec.exec",
+                "connection": "conn",
+                "sql": {
+                  "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+                  "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+                  "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+                },
+                "expect": {
+                  "mysql": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "postgres": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "sqlite": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
               }
             }
           }

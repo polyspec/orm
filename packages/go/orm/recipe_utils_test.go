@@ -1,4 +1,4 @@
-// Requirements: INT-51, INT-52, INT-53, INT-61, INT-73, INT-134, CFG-30, INT-50 (docs/spec/feature-coverage, INT-79.md).
+// Requirements: INT-51, INT-52, INT-53, INT-61, INT-73, INT-134, CFG-30, INT-50, INT-72, INT-79 (docs/spec/feature-coverage.md).
 package orm_test
 
 import (
