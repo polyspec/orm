@@ -59,6 +59,7 @@ final class Recipe
         'model.create',
         'model.creates',
         'model.delete',
+        'collection.connect',
         'model.duplicate_create',
         'model.get_by',
         'model.query',
@@ -4290,6 +4291,10 @@ final class Recipe
                 $model = self::chainTarget($s, $context);
                 self::chainAssign($model, $s['set'] ?? [], $context)->update(($s['optimistic'] ?? false) === true);
                 return [];
+            case 'collection.connect':
+                // connect of a bound collection (INT-85): true when it returns that collection.
+                $rows = self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context);
+                return ['value' => ['bool' => $rows->connect(self::connectionOf($s, $context)) === $rows]];
             case 'model.delete':
                 $recursive = ($s['recursive'] ?? false) === true;
                 if (isset($s['row'])) {

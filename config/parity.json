@@ -9404,7 +9404,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9576,7 +9579,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9748,7 +9754,10 @@
         "PLN-42",
         "PLN-43",
         "DBS-118",
-        "PLN-35"
+        "PLN-35",
+        "INT-85",
+        "PLN-6",
+        "INT-37"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -29004,28 +29013,12 @@
       ]
     },
     {
-      "id": "collection-output-views",
+      "id": "php-extension-collection-surface",
       "kind": "feature",
       "requirements": [
-        "INT-62",
-        "PLN-6",
-        "INT-81",
-        "INT-82",
-        "INT-83",
-        "INT-84",
-        "INT-85"
+        "INT-62a"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/collection_key_test.go",
-          "id": "TestCollectionViewsPreserveOrderAndConnectEveryModel"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testToArrayPreservesCollectionModelOrder"
-        },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CollectionTest.php",
@@ -29035,23 +29028,13 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CollectionTest.php",
           "id": "CollectionTest::testConnectAndInvokeReachEachModelAndReturnTheCollection"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/collection_identity.mjs",
-          "id": "collection-views/preserve-order-and-connect-every-model"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_collection_identity.py",
-          "id": "test_collection_views_preserve_order_and_connect_every_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/model.rs",
-          "id": "model::page_order_tests::collection_views_preserve_model_order_and_connect_every_model"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "dbspec-sqlite-lock-result-and-session-restoration",
@@ -43238,7 +43221,9 @@
         "INT-90",
         "PRT-36",
         "PRT-35",
-        "PRT-69"
+        "PRT-69",
+        "INT-82",
+        "INT-83"
       ],
       "file": "tests/collection/collection.json",
       "cases": "$.cases[*].id",
