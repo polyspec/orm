@@ -6,7 +6,7 @@
 // again from 1 in order of first appearance within the case, and for a case whose compare is "tables", only events that point to a table are compared.
 // Checks that elapsed is 0 or more.
 //
-// statement-events.mjs and coverage_statement_events.mjs use this runner.
+// statement_events_server_transactions.mjs uses this runner.
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, OrmError } from '../dist/index.js';
 import { manifestOf, models } from './registered_models.mjs';
@@ -133,25 +133,6 @@ class EventRun {
       this.check(error.cause instanceof Error && error.cause.message === 'subscriber refused the event', `SUBSCRIBER keeps the subscriber error as its cause: ${error.cause}`);
     }
   }
-}
-
-/** A value read back from JSON. Its key order and number form become the same. */
-function normalized(records) {
-  return JSON.stringify(records.map(r => ({ sql: r.sql, binds: r.binds, kind: r.kind, tables: r.tables, transaction: r.transaction, error: r.error })), null, 2);
-}
-
-/** Runs case c on the dialect's database dsn, and reports it with check if the events differ from the expected events. */
-export async function runEventCase(c, dialect, dsn, check) {
-  const db = await Db.connectSchema(dsn, schema);
-  try {
-    if (c.install !== false) await db.utils().schema().install(schema);
-    const run = new EventRun(db, check);
-    for (const s of c.steps) await run.checked(s);
-    const got = c.compare === 'tables' ? run.records.filter(r => r.tables.length > 0) : run.records;
-    const want = normalized(c.events[dialect]);
-    const have = normalized(got);
-    check(have === want, `${dialect} events\n got ${have}\nwant ${want}`);
-  } finally { await db.close(); }
 }
 
 /**

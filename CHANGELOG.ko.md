@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9f2f860ed8ef17ea87fa68e06695d0deb6fcc0aae4218db6ee385d5a4d7447cf -->
+<!-- source-sha256: c535f06dd50a15231415d62519f45eae1a11c1403e65f0d7580aaee7d761ba33 -->
 # 변경 이력
 
 ## Unreleased

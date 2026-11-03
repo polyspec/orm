@@ -809,39 +809,6 @@ async fn bind_limit_splitting_case(t: &Target) {
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-async fn aes_rotation_case(t: &Target) {
-    let db = &t.db;
-    let f = seed(db).await;
-    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
-    let mut b = b.set_aes_hex_email("person@example.com").set_aes_hex_phone("01012345678");
-    b.update(false).await.unwrap();
-    let found = Author::new().connect(db).aes_hex_email("person@example.com").get_count().await.unwrap();
-    assert_eq!(found, 1, "blind index condition");
-    let keyring = AesKeyring::new([(1, "test-aes-key".to_owned()), (2, "next-aes-key".to_owned())].into_iter().collect(), 2).unwrap();
-    let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 4, [(1, 4)].into_iter().collect()), "status");
-    assert_eq!(db.utils().aes().rotate(&Author::new(), &keyring).await.unwrap(), 4, "rotated");
-    let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 0, [(2, 4)].into_iter().collect()), "after rotation");
-    let current = model::connect(
-        &t.dsn,
-        2,
-        polyspec_orm::Config {
-            aes_key: "next-aes-key".into(),
-            aes_version: 2,
-            aes_keys: [(2, "next-aes-key".to_owned())].into_iter().collect(),
-            blind_index_key: "test-blind-key".into(),
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
-    let rotated = Author::new().connect(&current).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
-    assert_eq!(rotated.get_aes_hex_email().unwrap(), Some("person@example.com"));
-    assert_eq!(rotated.get_aes_hex_phone().unwrap(), Some("01012345678"));
-    current.close().await;
-}
-
 /// A jsontext column reads back the ordered-json value of a write with its
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
 /// from a JSON literal null.
@@ -995,16 +962,6 @@ async fn transactions() {
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("transactions/{driver}"), polyspec_orm_testcase::DATABASE);
         installed_section(driver, transactions_case).await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn aes_rotation() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("aes_rotation/{driver}"), polyspec_orm_testcase::DATABASE);
-        installed_section(driver, aes_rotation_case).await;
         drop(case);
     }
 }

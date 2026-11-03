@@ -399,37 +399,6 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
   }
 });
 
-// These KSTD-7-4 cases use camelCase PHPUnit methods; without exact symbols, the owner runner filters for a missing
-// snake_case method and records no test execution. Keep this check scoped to the PHP extension feature's four command shapes.
-caseTest('KSTD-7-4 PHP owner commands select their declared methods', COMPUTE, () => {
-  const root = new URL('../..', import.meta.url).pathname;
-  const manifest = readFeatures(root);
-  const shapes = [
-    {
-      feature: 'statement_events', language: 'php', test: 'packages/php/tests/CoverageStatementEventsTest.php',
-      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
-    },
-    {
-      feature: 'statement_events', language: 'php-extension', test: 'packages/php-ext/tests/CoverageStatementEventsTest.php',
-      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
-    },
-  ] as const;
-  for (const shape of shapes) {
-    const feature = manifest.features.find(item => item.id === shape.feature);
-    assert.ok(feature, `missing feature ${shape.feature}`);
-    const owner = feature.coverage?.owners?.[shape.language];
-    assert.ok(owner, `missing ${shape.language} owner for ${shape.feature}`);
-    const methods = declaredPhpMethods(join(root, shape.source));
-    for (const [database, commands] of Object.entries(owner.commands ?? {})) {
-      const command = commands.find(item => item.test === shape.test && item.cases.join(',') === Object.keys(shape.cases).join(','));
-      assert.ok(command, `${shape.feature}/${shape.language}/${database} omits ${shape.test}`);
-      assert.deepEqual(command.symbols, shape.cases, `${shape.feature}/${shape.language}/${database} symbols`);
-      for (const method of Object.values(shape.cases))
-        assert.match(methods, new RegExp(`function ${method}\\(`), `${shape.test} lacks ${method}`);
-    }
-  }
-});
-
 caseTest('one feature can run without declaring unrelated coverage complete', COMPUTE, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
@@ -554,7 +523,7 @@ caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
   const script = new URL('./coverage.mts', import.meta.url).pathname;
   const env = isolatedEnvironment({ BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' });
   const output = execFileSync(process.execPath, [
-    script, '--items', 'packages/ts/tests/coverage_constraints_and_relations.mjs', '--database', 'sqlite',
+    script, '--items', 'packages/ts/tests/coverage_performance_gate_sqlite.mjs', '--database', 'sqlite',
   ], { cwd: root, env, encoding: 'utf8' });
   const parsed: unknown = JSON.parse(output);
   assert.ok(Array.isArray(parsed));

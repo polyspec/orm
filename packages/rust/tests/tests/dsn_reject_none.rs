@@ -1,6 +1,6 @@
 //! The refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, without a database
 //! (docs/spec/feature-coverage.md FCV-3).
-//! Requirements: CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26, FCV-15.
+//! Requirements: CFG-1, CFG-2, CFG-11, CFG-17, CFG-19, CFG-26, FCV-15, PRT-64.
 
 use polyspec_orm_tests::recipe;
 
