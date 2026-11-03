@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- The nine refusals of the vector `errors` (a missing or dangling connector, an empty list, no connection, a lock outside a transaction, a join child with a connection, a page with a limit, a relation with a limit and an unjoined model placement) run as the case `errors` of the recipe conformance_verification in all six runtimes, with an empty event list as the proof that no request left; the recipe takes `connect` on a join, `limit` on a relation, `{"placed": {"model": <name>}}`, and `plan_page` without `plan` for `getsPage` (#T334-3-12-2)
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
+- INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.
+- The manifest, analysis and format units of the schema definition bind only their recipe: Go `TestFormat` is gone, the invalid byte joins the stated native unit `dbspec-encoding-and-limit-natives`, and the test of the origin of the extension classes is internal (#T334-3-18).
+- An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
 - - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
 - The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
@@ -20,6 +25,7 @@
 - A catalog budget stop whose kill fails no longer reads the rest of the result: PHP waits for the server to end the stream and reopens, and Python closes its socket.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
+- The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.
 - A function and a subquery on one output name answer COLUMN_ALIAS_CONFLICT as the compile case `planner_function_and_subquery_share_an_output_name` on every runtime; the scalar aggregate type copies and the extension's native planner test are gone, and the extension's planner target runs the compile recipe (#T334-3-6-2)
 - PRT-38 states the order of the page steps as they are, main, count, relations, and what the count step holds; PRT-9 states the select list; `planner_page_steps` of the compile recipe holds those statements (DSL-159).

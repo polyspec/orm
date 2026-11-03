@@ -49,7 +49,7 @@ export async function runOn(dsn, step, run) {
 }
 
 export const cases = {
-  /** The hooked handle derives from the connection: its root is the connection (INT-78). */
+  /** The hooked handle derives from the connection: its root is the connection (INT-78a). */
   async without_hook(db) {
     const hooked = db.withRequestHook(partFilter('a'));
     assert.equal(hooked.root(), db, 'the hooked handle derives from the connection');
