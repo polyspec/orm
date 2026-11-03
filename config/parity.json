@@ -332,7 +332,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
@@ -16187,50 +16186,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "id": "codec_none::sql_null_is_not_a_value"
-        }
-      ]
-    },
-    {
-      "id": "group-count-boolean-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-36"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnValueChecksDeclaredType"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/boolean_invalid_stored_value"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode"
         }
       ]
     },
@@ -43464,6 +43419,7 @@
         "INT-84",
         "INT-86",
         "INT-90",
+        "PRT-36",
         "PRT-35",
         "PRT-69"
       ],

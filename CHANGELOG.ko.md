@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30dc0afba5581531be8c4e5317c445ec08df7fbc9645d254b4e9010a7705cc1e -->
+<!-- source-sha256: 9d4c5e64974ffd97116dc88529bd516409c29e74cc4d977c5b2e1bdbebd665b8 -->
 # 변경 이력
 
 ## Unreleased
 
+- collection recipe가 float 형태까지 포함한 group boolean 저장값의 decode를 지키며, 모든 runtime의 native를 대신한다.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)
 - feature checker는 Go owner를 일반 go test의 tag로 build하므로, 일반 실행이 담는 시험을 정확한 이름으로 읽는다 (#T334-3-6-2)
