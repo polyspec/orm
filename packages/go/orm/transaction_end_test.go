@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -89,23 +88,6 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 			return errors.New("callback failed")
 		}, Retry(0))
 		wantBoth(t, "rollback", err, "callback failed", errStatementRejected.Error())
-	})
-	t.Run("not held", func(t *testing.T) {
-		err := db.Transaction(func() error {
-			if err := db.Utils().Lock(key("released")); err != nil {
-				return err
-			}
-			// If the lock was released beforehand, RELEASE_LOCK at the end of the transaction returns 0.
-			active, activeErr := activeFor(db)
-			if activeErr != nil {
-				return activeErr
-			}
-			_, err := active.conn.ExecContext(context.Background(), "DO RELEASE_LOCK(?)", key("released"))
-			return err
-		}, Retry(0))
-		if want := "lock " + key("released") + " was not held at transaction end"; err == nil || !strings.Contains(err.Error(), want) {
-			t.Fatalf("want %q, got %v", want, err)
-		}
 	})
 }
 

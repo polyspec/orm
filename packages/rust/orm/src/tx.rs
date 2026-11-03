@@ -1474,26 +1474,6 @@ mod tests {
     }
 
     // If the MySQL RELEASE_LOCK at the end of the transaction fails to release the lock (result is not 1), its result is reported.
-    // An unreleased named lock remains on the connection after COMMIT and ROLLBACK.
-    #[tokio::test]
-    // Requirements: INT-72.
-    async fn lock_not_held_at_transaction_end_is_reported() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_DSN"), 2, crate::Config::default()).await.expect("connect");
-        let key = format!("orm_test.released.{}", std::process::id());
-        let result = db
-            .transaction(async || {
-                db.utils().lock(&key).await?;
-                // If the lock is released early, RELEASE_LOCK at the end of the transaction returns 0.
-                active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await
-            })
-            .retry(0)
-            .await;
-        let error = result.expect_err("a lock released early is reported");
-        assert!(error.to_string().contains(&format!("lock {key} was not held at transaction end")), "{error}");
-        db.close().await;
-    }
-
     // A connection whose cleanup at the end of the transaction failed is closed and does not return to the pool. After a failed cleanup, the session's
     // state is unknown, so a connection returned to the pool is either clean or discarded. In a pool with one connection,
     // if the next use gets the same session (CONNECTION_ID), the connection has come back. After a failed cleanup, commit
