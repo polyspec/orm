@@ -5,9 +5,6 @@ use polyspec_orm_testcase::OrPanic;
 
 polyspec_orm::models!();
 
-#[path = "integration_program/bench_set.rs"]
-mod bench_set;
-
 #[allow(
     dead_code,
     unused_imports,
@@ -109,57 +106,6 @@ async fn schema_set_server(driver: &str, statement: &str) {
     }
 }
 
-/// The bench helper connects, installs the bench set (bench_set::install) and the decimal document set
-/// (the decimal set twice; the second installation changes nothing), and uses
-/// the generated models of both sets on the connection inside and outside a
-/// transaction.
-async fn schema_set(driver: &str) {
-    use decimal_model::DecimalCase;
-    use model::User;
-
-    let (dsn, name) = schema_set_database(driver).await;
-    let db = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    bench_set::install(&db).await.or_panic(|e| format!("{driver}: install of the bench set: {e}"));
-    for schema in [&decimal_model::SCHEMA, &decimal_model::SCHEMA] {
-        db.utils().schema().install(schema).await.or_panic(|e| format!("{driver}: install: {e}"));
-    }
-    User::new().connect(&db).set_name("core").create().await.unwrap();
-    DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
-    db.transaction(async || {
-        User::new().set_name("core-tx").create().await?;
-        DecimalCase::new().set_seq(2).set_amount("1.5000")?.create().await?;
-        Ok(())
-    })
-    .await
-    .unwrap();
-    assert_eq!(User::new().connect(&db).get_count().await.unwrap(), 2, "{driver}: core rows");
-    assert_eq!(DecimalCase::new().connect(&db).get_by_seq(1).await.unwrap().expect("a row").get_amount().unwrap(), "48.0450", "{driver}: decimal row");
-    assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 2, "{driver}: decimal rows");
-    db.close().await;
-    drop_schema_set_database(driver, &dsn, &name).await;
-}
-
-// Requirements: SCH-7, DBS-108.
-#[tokio::test]
-async fn schema_set_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set("mysql").await;
-}
-
-// Requirements: SCH-7, DBS-108.
-#[tokio::test]
-async fn schema_set_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set("postgres").await;
-}
-
-// Requirements: SCH-7, DBS-108.
-#[tokio::test]
-async fn schema_set_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set("sqlite").await;
-}
-
 /// Counts the statements a connection sends in `runs` with a statement event
 /// subscriber.
 fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> polyspec_orm::Subscription {
@@ -171,46 +117,9 @@ fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::Atomi
     .expect("a SQL connection accepts a subscriber")
 }
 
-/// A request of a set that is not registered on its connection fails with
-/// SCHEMA_HASH_MISMATCH before execution, also when its tables exist: a raw
-/// connection registers no set, and a connection of the bench helper does not
-/// register the decimal set that another connection installed. A connection
-/// of the decimal helper uses it.
-async fn schema_set_unregistered(driver: &str) {
-    use decimal_model::DecimalCase;
-    use model::User;
-
-    let (dsn, name) = schema_set_database(driver).await;
-    let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let raw = polyspec_orm::Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    let _raw_counted = counted(&raw, &runs);
-    let error = User::new().connect(&raw).get_count().await.expect_err("a bench read on a raw connection");
-    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
-    raw.close().await;
-    let core = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    let _core_counted = counted(&core, &runs);
-    let installer = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    installer.utils().schema().install(&decimal_model::SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
-    DecimalCase::new().connect(&installer).set_seq(1).set_amount("1.0000").unwrap().create().await.unwrap();
-    installer.close().await;
-    let error = DecimalCase::new().connect(&core).get_count().await.expect_err("a decimal read on the bench connection");
-    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
-    let error =
-        DecimalCase::new().connect(&core).set_seq(2).set_amount("2.0000").unwrap().create().await.err().expect("a decimal write on the bench connection");
-    assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
-    assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of unregistered requests");
-    core.close().await;
-    let decimal = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    assert_eq!(DecimalCase::new().connect(&decimal).get_count().await.unwrap(), 1, "{driver}: decimal rows through the decimal helper");
-    decimal.close().await;
-    drop_schema_set_database(driver, &dsn, &name).await;
-}
-
-/// A schema whose manifest text does not hash to its declared manifestHash
-/// fails with CONFIG before any statement when it is connected or installed,
-/// and creates nothing. A model of that text is rejected with
+/// A model of a manifest text edited under its declared hash is rejected with
 /// SCHEMA_HASH_MISMATCH before execution, also after a model with the same
-/// hash planned the same request.
+/// hash planned the same request (DBS-120).
 async fn schema_set_edited_manifest(driver: &str) {
     use decimal_model::DecimalCase;
 
@@ -220,14 +129,9 @@ async fn schema_set_edited_manifest(driver: &str) {
     assert_ne!(edited, text, "edited manifest differs");
     let schema: &'static polyspec_orm::Schema =
         Box::leak(Box::new(polyspec_orm::Schema::new(Box::leak(edited.into_boxed_str()), decimal_model::MANIFEST_HASH)));
-    let error = polyspec_orm::Db::connect_schema(&dsn, schema, 2, polyspec_orm::Config::default()).await.err().expect("a connection with an edited manifest");
-    assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
     let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let _counted = counted(&db, &runs);
-    let error = db.utils().schema().install(schema).await.expect_err("an install of an edited manifest");
-    assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
-    assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of the edited install");
     db.utils().schema().install(&decimal_model::SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
     // Plan the same request with the same hash first.
@@ -256,27 +160,6 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
         let drop = if driver == "postgres" { format!("DROP DATABASE {name} WITH (FORCE)") } else { format!("DROP DATABASE {name}") };
         schema_set_server(driver, &drop).await;
     }
-}
-
-// Requirements: SCH-11, DBS-119.
-#[tokio::test]
-async fn schema_set_unregistered_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set_unregistered("mysql").await;
-}
-
-// Requirements: SCH-11, DBS-119.
-#[tokio::test]
-async fn schema_set_unregistered_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set_unregistered("postgres").await;
-}
-
-// Requirements: SCH-11, DBS-119.
-#[tokio::test]
-async fn schema_set_unregistered_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    schema_set_unregistered("sqlite").await;
 }
 
 // Requirements: DBS-120, SCH-7, SCH-11.

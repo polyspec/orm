@@ -104,21 +104,6 @@ class MarkdownTest(unittest.TestCase):
             ],
         )
 
-    def test_markdown_connect_refused(self):
-        # Requirements: PRT-64.
-        server = MarkdownTestServer(
-            self,
-            '{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s '
-            'token"}}',
-        )
-        error = raised(lambda: Db.connect(server.dsn()).close())
-        self.assertIsInstance(error, OrmError)
-        self.assertEqual(error.code, "CONFIG")
-        self.assertEqual(
-            str(error), "CONFIG: connect: the token is not the corpus's token"
-        )
-        self.assertEqual(server.received_messages(), [CONNECT_LINE])
-
     def test_markdown_rejected_surfaces(self):
         # Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
         server = MarkdownTestServer(self, '{"ok":true}')

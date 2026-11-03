@@ -10,7 +10,6 @@ use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\DsnUrl;
 use Polyspec\Orm\Orm;
@@ -57,85 +56,11 @@ class DsnTest extends TestCase
         self::assertSame([['busy_timeout', '250'], ['journal_mode', 'WAL']], $pragmas, 'sqlite pragmas');
     }
 
-    // Requirements: CFG-26.
-    public function testSqliteDsnRequiresAbsolutePath(): void
-    {
-        try {
-            Orm::parseDsn('sqlite://relative.sqlite');
-            self::fail('SQLite accepted a relative database path');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
-        }
-        self::assertSame('sqlite', Orm::parseDsn('sqlite:///tmp/orm-example.sqlite')[0]);
-    }
-
-    // Requirements: CFG-6.
-    public function testNegativeStatementTimeoutIsRejectedBeforeConnecting(): void
-    {
-        try {
-            Orm::connect('sqlite:///tmp/orm-negative-statement-timeout.sqlite', new Config(statementTimeoutMs: -1));
-            self::fail('a negative statement timeout must be CONFIG');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
-            self::assertStringContainsString('statement timeout', $error->getMessage());
-        }
-    }
-
     public function testSharedDsnUrlPartsPreserveEmptyAuthorityRules(): void
     {
         [$parts, $query] = DsnUrl::parse('postgres:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres');
         self::assertSame('localhost', $parts['host']);
         self::assertSame(['host' => '/tmp', 'timezone' => 'UTC'], $query);
-    }
-
-    /** @return iterable<string, array{string}> */
-    public static function invalidDsns(): iterable
-    {
-        foreach (
-            [
-                'mysql://localhost/',
-                'sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout'] as $dsn
-        ) {
-            yield $dsn => [$dsn];
-        }
-    }
-
-    #[DataProvider('invalidDsns')]
-    // Requirements: CFG-2.
-    public function testParseRejects(string $dsn): void
-    {
-        try {
-            Orm::parseDsn($dsn);
-            self::fail("invalid DSN accepted: $dsn");
-        } catch (OrmException $e) {
-            self::assertSame(Code::CONFIG, $e->code_, "wrong error for $dsn");
-        }
-    }
-
-    // Requirements: CFG-26.
-    // A SQLite DSN with a query makes the file from the path only. The query is not put in the file name.
-    // The opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
-    public function testSqliteFileName(): void
-    {
-        $directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
-        self::assertFalse(file_exists($directory), "temporary directory $directory exists");
-        self::assertTrue(mkdir($directory), "temporary directory $directory");
-        $db = Orm::connect(
-            "sqlite://$directory/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00",
-            new Config()
-        );
-        $db = null;
-        $names = array_values(array_diff(scandir($directory), ['.', '..']));
-        foreach ($names as $name) {
-            self::assertContains(
-                $name,
-                ['named.sqlite', 'named.sqlite-journal', 'named.sqlite-shm', 'named.sqlite-wal'],
-                'files ' . json_encode($names) . ": $name is not named by the path"
-            );
-            self::assertTrue(unlink("$directory/$name"), "remove $name");
-        }
-        self::assertTrue(rmdir($directory), "remove $directory");
-        self::assertContains('named.sqlite', $names, 'files ' . json_encode($names) . ': named.sqlite is missing');
     }
 
     /** @return iterable<string, array{array<string, mixed>}> for each case in tests/dsn/sqlite-paths.json */

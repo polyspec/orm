@@ -323,6 +323,11 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
             if (!((text[j] >= 'A' && text[j] <= 'Z') || (text[j] >= 'a' && text[j] <= 'z')
                   || (text[j] >= '0' && text[j] <= '9') || text[j] == '_')) valid = false;
         }
+        if (valid && open == sizeof("busy_timeout") - 1 && memcmp(text, "busy_timeout", open) == 0) {
+            for (size_t j = open + 1; valid && j + 1 < len; j++) {
+                if (text[j] < '0' || text[j] > '9') valid = false;
+            }
+        }
         if (!valid) {
             zend_string *bad = zend_string_copy(Z_STR(value));
             zval_ptr_dtor(&value); zval_ptr_dtor(&key);
@@ -720,7 +725,8 @@ static void orm_connect_failure(zend_object *cause)
             cause, ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
         detail = zval_get_string(property);
     }
-    zend_string *message = strpprintf(0, "cannot connect: %s", ZSTR_VAL(detail));
+    zend_string *message = strpprintf(
+        0, strstr(ZSTR_VAL(detail), "SSL") != NULL ? "mysql TLS connection failed: %s" : "cannot connect: %s", ZSTR_VAL(detail));
     zend_string_release(detail);
     zval args[3], exception;
     ZVAL_STRING(&args[0], "CONFIG");

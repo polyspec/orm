@@ -1,13 +1,14 @@
-//! The runtime model of a document set made with `dbspec::runtime_model`
-//! (docs/spec/dbspec.md, "Runtime model"), using `dbspec::parse_manifest` on the manifest text,
-//! checks the documents read back.
+//! The public surface of the Rust runtime model that no other runtime has: the diagnostics of
+//! `dbspec::parse_manifest`, and the `foreign_keys`, unique key columns, default literal, audit history
+//! and action, and `immutable` of `dbspec::runtime_model`. tests/dbspec/runtime-model.json holds what all
+//! runtimes share.
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_schema::dbspec::{self, Document, Type};
+use polyspec_orm_schema::dbspec::{self, Document};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -23,26 +24,6 @@ fn document(path: &str) -> Document {
     dbspec::parse(&source(path), &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{path}: {errors:?}"))
 }
 
-// Requirements: DBS-100, SCH-12.
-#[test]
-fn manifest_text_reads_back_as_the_same_document_set() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
-    let clock = CaseClock::start();
-    let bench = document("contracts/fixtures/bench/bench.dbs");
-    let audit = document("contracts/fixtures/audit.dbs");
-    let manifest = dbspec::manifest(&[&bench, &audit]).unwrap();
-    let documents = dbspec::parse_manifest(&manifest.manifest_text).or_panic(|errors| format!("{errors:?}"));
-    let refs: Vec<&Document> = documents.iter().collect();
-    let again = dbspec::manifest(&refs).unwrap();
-    assert_eq!(again, manifest, "the documents of a manifest text have the same manifest");
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
-    }
-    polyspec_orm_testcase::step(format_args!("dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}"));
-}
-
-// Requirements: DBS-156, SCH-12.
 #[test]
 fn manifest_text_without_header_is_rejected() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -61,77 +42,19 @@ fn manifest_text_without_header_is_rejected() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
-// Requirements: DBS-111.
 #[test]
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let bench = document("contracts/fixtures/bench/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
-    let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
-    assert_eq!(
-        names,
-        [
-            "author",
-            "user",
-            "service",
-            "service_region",
-            "service_member",
-            "composite_account",
-            "composite_membership",
-            "soft_record",
-            "soft_link",
-            "account",
-            "project",
-            "account_project",
-            "task",
-            "hex_cell",
-            "time_cell",
-            "clock_cell",
-            "day_cell",
-            "upsert_cell",
-            "uuid_cell",
-            "ip_hex_cell",
-            "bind_cell",
-            "audit_record",
-            "audited_note",
-            "audited_note_history"
-        ]
-    );
     let author = model.entity("author").unwrap();
-    assert_eq!(author.table, "author");
-    assert_eq!(author.primary_key, ["seq"]);
-    assert_eq!(author.identity.as_deref(), Some("seq"));
-    assert_eq!(author.updated.as_deref(), Some("updated_ts"));
-    assert_eq!(author.soft_delete, None);
-    assert_eq!(author.aes_version.as_deref(), Some("aes_key_version"));
-    assert!(author.audit.is_none());
-    let seq = author.field("seq").unwrap();
-    assert_eq!((seq.ty, seq.nullable, seq.identity, seq.primary_key), (Type::I64, false, true, true));
-    let price = author.field("price").unwrap();
-    assert_eq!((price.ty, price.nullable), (Type::Decimal(13, 3), true));
-    let created = author.field("created_ts").unwrap();
-    assert_eq!(created.default, Some(dbspec::FieldDefault::Now));
-    assert_eq!(author.field("is_close").unwrap().default, Some(dbspec::FieldDefault::Literal("false".into())));
-    assert_eq!(author.field("user_seq").unwrap().default, None);
-    assert!(author.field("user_seq").unwrap().foreign_key);
-    assert!(!author.field("name").unwrap().foreign_key);
-    assert_eq!(author.field("aes_hex_email").unwrap().codec, ["aes", "hex"]);
-    assert_eq!(author.field("aes_hex_email").unwrap().blind_index.as_deref(), Some("email_blind_index"));
-    assert_eq!(author.field("json_setting").unwrap().codec, ["ordered_json"]);
-    assert_eq!(author.field("gz_extend").unwrap().codec, ["gz"]);
-    assert!(author.field("name").unwrap().codec.is_empty());
-    let mut index_names: Vec<&str> = author.indexes.iter().map(|k| k.name.as_str()).collect();
-    index_names.sort_unstable();
-    assert_eq!(index_names, ["ik", "ix_author_service_member", "ix_email_blind_index", "ix_phone_blind_index", "ix_service", "ix_user"]);
     assert_eq!(author.uniques.len(), 1);
     assert_eq!((author.uniques[0].name.as_str(), author.uniques[0].columns.as_slice()), ("uq_author_uuid", ["uuid".to_owned()].as_slice()));
+    assert_eq!(author.field("is_close").unwrap().default, Some(dbspec::FieldDefault::Literal("false".into())));
     let membership = model.entity("composite_membership").unwrap();
-    assert_eq!(membership.primary_key, ["tenant_id", "account_id"]);
-    assert_eq!(membership.identity, None);
     assert_eq!(membership.foreign_keys[0].references, ["tenant_id", "account_id"]);
     assert_eq!(membership.foreign_keys[0].table, "composite_account");
-    assert_eq!(model.entity("soft_record").unwrap().soft_delete.as_deref(), Some("deleted_at"));
     assert!(model.entity("missing").is_none());
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
@@ -140,7 +63,6 @@ fn runtime_model_of_bench() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
 }
 
-// Requirements: DBS-65, DBS-85, DBS-99, DBS-111, DBS-112.
 #[test]
 fn runtime_model_names_entities_and_reads_settings() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -149,13 +71,7 @@ fn runtime_model_names_entities_and_reads_settings() {
     let shop = dbspec::parse(text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|errors| format!("{errors:?}"));
     let audit = document("contracts/fixtures/audit.dbs");
     let model = dbspec::runtime_model(&[&shop, &audit]).unwrap();
-    let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
-    assert_eq!(names, ["item", "item_history", "audit", "member", "member_history", "member_record"], "documents in name order, tables in document order");
     let member = model.entity("member").unwrap();
-    assert_eq!(member.table, "service_member");
-    assert_eq!(member.field("rank").unwrap().ty, Type::I16);
-    assert_eq!(member.field("key").unwrap().ty, Type::Uuid);
-    assert_eq!(member.field("opens").unwrap().ty, Type::Time(3));
     let audit = member.audit.as_ref().unwrap();
     assert_eq!(
         (audit.history.as_str(), audit.column.as_str(), audit.record.as_str(), audit.action.as_str(), audit.previous.as_str()),
@@ -164,10 +80,6 @@ fn runtime_model_names_entities_and_reads_settings() {
     );
     assert!(!member.immutable);
     assert!(model.entity("member_history").unwrap().immutable);
-    let item = model.entity("item").unwrap().audit.as_ref().unwrap();
-    assert_eq!((item.column.as_str(), item.record.as_str()), ("audit_seq", "audit"));
-    let repeated = dbspec::runtime_model(&[&shop, &shop]).expect_err("a repeated document name");
-    assert_eq!(repeated[0].rule, "name.duplicate");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
         polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
