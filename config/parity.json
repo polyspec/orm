@@ -26442,17 +26442,17 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "id": "CoverageConstraintsAndRelationsTest::testImmutableWrite"
+          "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+          "id": "ImmutableWriteRecipeTest::testSqlite with data set \"immutable_write\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-          "id": "CoverageConstraintsAndRelationsExtensionTest::testImmutableWrite"
+          "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+          "id": "ImmutableWriteRecipeTestExtensionTest::testSqlite with data set \"immutable_write\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "test": "packages/ts/tests/immutable_write-sqlite.test.mjs",
           "id": "immutable_write"
         },
         {

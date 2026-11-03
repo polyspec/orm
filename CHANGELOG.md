@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The TypeScript, PHP and PHP extension immutable write coverage files are gone: the recipe immutable_write holds their assertions on each database, and constraints_and_relations owners read the two recipes.
 - The TypeScript, PHP and PHP extension request hook coverage files are gone: the recipe request_hook holds their cases on each database.
 - The cases of the request hook that only native tests held are cases of the recipe `request_hook` in all six runtimes, through the new hook actions `rebind` and `bad_param` and `first` on `assign`: a hook that rewrites a restore key, a parameter index outside the request, no statement on a refused restore, and the bound value of a hooked `getQuery`. The native tests of TypeScript and PHP keep only what a recipe cannot state: the handle sharing its connection, and a hook that reads the bound parameters.
 - The statement event coverage files of TypeScript, PHP and the PHP extension are removed: the eight vectors they ran are the eight cases of the recipe `statement_events`, event by event on the three databases. The TypeScript helper also refuses an event error that is not an `OrmError`, and the check that the PHP extension publishes events natively moves to `StatementEventsTestExtensionTest`.

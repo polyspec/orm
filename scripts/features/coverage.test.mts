@@ -525,7 +525,7 @@ caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
   const script = new URL('./coverage.mts', import.meta.url).pathname;
   const env = isolatedEnvironment({ BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' });
   const output = execFileSync(process.execPath, [
-    script, '--items', 'packages/ts/tests/coverage_constraints_and_relations.mjs', '--database', 'sqlite',
+    script, '--items', 'packages/ts/tests/coverage_performance_gate_sqlite.mjs', '--database', 'sqlite',
   ], { cwd: root, env, encoding: 'utf8' });
   const parsed: unknown = JSON.parse(output);
   assert.ok(Array.isArray(parsed));

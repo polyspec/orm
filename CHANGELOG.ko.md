@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 285239746b60d7f80b64968597c31289933763edf2e2278ee19b9b8ec63302b3 -->
+<!-- source-sha256: 54bfa141b38b3ba63a58a425029cf1fc2c570bcbf504038f10b1da61b3017536 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript, PHP, PHP extension의 immutable write coverage 파일을 없앴다. recipe immutable_write가 각 database에서 그 검증을 담고, constraints_and_relations owner는 두 recipe를 읽는다.
 - TypeScript, PHP, PHP extension의 request hook coverage 파일을 없앴다. recipe request_hook이 각 database에서 그 case를 담는다.
 - 네이티브 시험만 갖고 있던 request hook 사례는 새 hook action `rebind`, `bad_param`과 `assign`의 `first`로 여섯 runtime 모두에서 recipe `request_hook`의 사례가 된다. restore 키를 다시 쓰는 hook, 요청 범위 밖 parameter index, 거부된 restore가 문장을 보내지 않음, hook이 걸린 `getQuery`의 바인딩 값이 그것이다. TypeScript와 PHP의 네이티브 시험은 recipe로 적을 수 없는 것만 남긴다. 연결을 공유하는 핸들과 바인딩 parameter를 읽는 hook이다.
 - TypeScript, PHP, PHP extension의 statement event coverage 파일을 지운다. 이 파일들이 돌리던 여덟 vector는 세 database 모두에서 event 단위로 recipe `statement_events`의 여덟 사례와 같다. TypeScript helper는 `OrmError`가 아닌 event 오류도 거부하고, PHP extension이 event를 native로 발행한다는 검사는 `StatementEventsTestExtensionTest`로 옮긴다.

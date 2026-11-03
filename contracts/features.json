@@ -9229,13 +9229,10 @@
         "packages/rust/orm/tests/refusal.rs",
         "packages/ts/tests/driver-error.mjs",
         "packages/go/model/coverage_constraints_and_relations_test.go",
-        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-        "packages/ts/tests/coverage_constraints_and_relations.mjs",
         "contracts/fixtures/refusal.dbs",
         "packages/python/tests/test_driver_errors.py",
         "packages/python/tests/coverage_constraints_and_relations.py",
-        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/tests/unit/driver_cause.rs",
         "packages/php-ext/tests/DbspecRenderTestExtensionTest.php"
@@ -9393,66 +9390,78 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+              "packages/php/tests/ImmutableWriteRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testSqlite"
                 }
               ]
             },
             "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ]
           },
           "rust": {
@@ -9523,51 +9532,76 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_constraints_and_relations.mjs"
+              "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
+              "packages/ts/tests/immutable_write-mysql.test.mjs",
+              "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
+              "packages/ts/tests/immutable_write-postgres.test.mjs",
+              "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+              "packages/ts/tests/immutable_write-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-mysql.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-postgres.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-sqlite.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ]
             },
             "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ]
           },
           "python": {
@@ -9624,65 +9658,76 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
+              "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
