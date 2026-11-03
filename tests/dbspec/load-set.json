@@ -218,7 +218,7 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID",
-              "rule": "header"
+              "diagnostics": ["1:1 header"]
             }
           }
         }
@@ -240,7 +240,7 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID",
-              "rule": "header"
+              "diagnostics": ["1:1 header"]
             }
           }
         }
@@ -274,7 +274,7 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID",
-              "rule": "header"
+              "diagnostics": ["1:1 header"]
             }
           }
         }
@@ -298,7 +298,42 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID"
+              "error": "SCHEMA_INVALID",
+              "diagnostics": ["3:7 key"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "every-diagnostic-of-every-document-counted-from-its-document",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 first",
+            "",
+            "table item {",
+            "  seq i64",
+            "}",
+            "",
+            "table part {",
+            "  seq i64",
+            "}",
+            "dbspec 1 second",
+            "",
+            "table stock {",
+            "  seq i64",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID",
+              "diagnostics": ["3:7 key", "7:7 key", "3:7 key"]
             }
           }
         }
@@ -333,7 +368,7 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID",
-              "rule": "name.duplicate"
+              "diagnostics": ["1:10 name.duplicate"]
             }
           }
         }
@@ -352,7 +387,7 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID",
-              "rule": "header"
+              "diagnostics": ["1:1 header"]
             }
           }
         }

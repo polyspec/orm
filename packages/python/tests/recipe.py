@@ -766,8 +766,16 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
         except OrmError as error:
             _expect_equal(error.code, expect.get("error"), "error")
-            if "rule" in expect and expect["rule"] not in str(error):
-                raise AssertionError(f"the error {error} does not name the rule {expect['rule']}")
+            # Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+            if "diagnostics" in expect:
+                prefix = f"{expect['error']}: "
+                if not str(error).startswith(prefix):
+                    raise AssertionError(f"the error {error} does not start with its code")
+                problems = str(error)[len(prefix):].split("; ")
+                _expect_equal(len(problems), len(expect["diagnostics"]), str(error))
+                for problem, want in zip(problems, expect["diagnostics"]):
+                    if not problem.startswith(f"{want}: "):
+                        raise AssertionError(f"the error {error} does not hold the diagnostic {want}")
         else:
             _expect_equal(
                 [{"name": d.name, "external": d.external} for d in documents],

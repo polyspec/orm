@@ -2305,7 +2305,13 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
-        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
+        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+        if (expect.diagnostics !== undefined) {
+          assert.ok(error.message.startsWith(`${expect.error}: `), error.message);
+          const problems = error.message.slice(expect.error.length + 2).split('; ');
+          assert.equal(problems.length, expect.diagnostics.length, error.message);
+          problems.forEach((problem, i) => assert.ok(problem.startsWith(`${expect.diagnostics[i]}: `), error.message));
+        }
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');
