@@ -297,6 +297,18 @@
         {
           "glob": "packages/go/orm/values_test.go",
           "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
+        },
+        {
+          "glob": "packages/go/orm/catalog_auto_identity_test.go",
+          "reason": "harness: the helpers that open a SQLite catalog fixture and compare its rows, used by the internal catalog tests of this directory; the file holds no test"
+        },
+        {
+          "glob": "packages/go/orm/catalog_mutation_test.go",
+          "reason": "test: calls the private catalogSameCell and catalogBytesValue with values no server stores, such as a TIME(7) native type; the cases row_baseline_exact_values and described_temporal_matrix hold what a server can return"
+        },
+        {
+          "glob": "packages/go/orm/catalog_temporal_test.go",
+          "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
         }
       ]
     },
@@ -567,6 +579,10 @@
         {
           "glob": "packages/php/tests/CodecErrorCauseTest.php",
           "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
+        },
+        {
+          "glob": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "reason": "test: invokes the private verifyInsertedRow and sameRow by reflection; a server cannot make the returned row differ, and PHP false against 0 reaches no public read"
         },
         {
           "glob": "packages/php/tests/CoveragePlannerTest.php",
@@ -978,6 +994,10 @@
         {
           "glob": "packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/python/tests/test_catalog_described_temporal.py",
+          "reason": "test: calls the private temporal conversions and passes a datetime value, which a recipe cannot express; temporal_text_row_cycle_sqlite, described_temporal_matrix and described_temporal_text hold the public reads"
         }
       ],
       "roots": [
@@ -1270,6 +1290,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",
           "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
+          "reason": "test: calls the private validate for its parser failure cause and its PostgreSQL operand limit; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
@@ -15357,33 +15381,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/catalog_row_baseline_test.go",
-          "id": "TestCatalogRowBaselineComparesExactTypedValues"
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/row_baseline_exact_values"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testRowBaselineComparesExactValuesIncludingGeneratedOriginals"
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-          "id": "CatalogConnectionSurfaceTest::testNativeRowBaselineIncludesGeneratedColumnOriginalValues"
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "row baseline compares exact typed values including generated-column originals"
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_exact_values"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_catalog_row_baseline.py",
-          "id": "test_compares_exact_typed_values_and_preserves_generated_original"
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_exact_values"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_compares_exact_bits_scale_and_binary"
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_exact_values"
         }
       ]
     },
@@ -15522,16 +15546,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogChangesRejectsValuesBeyondDeclaredCapacity"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
@@ -15540,6 +15554,36 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionMysql/row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::row_byte_capacity_mysql"
         }
       ]
     },
@@ -15701,11 +15745,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/tool_cells.rs",
           "id": "physical_tool_cells_reject_loss_without_substituting_values"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_cells.rs",
-          "id": "binary_grid_values_remain_distinct_from_text_and_null"
         }
       ],
       "owner": {
@@ -16037,11 +16076,6 @@
           "id": "read_statements"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/unit/read_only_policy.rs",
-          "id": "catalog::read_only::tests::policy_validates_nested_read_shapes_and_rejects_writes"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -16050,6 +16084,26 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/read_only_grid_shapes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "read_only_grid_shapes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "read_only_grid_shapes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::read_only_grid_shapes"
         }
       ]
     },
@@ -16631,16 +16685,6 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogBytesValuePreservesNativeTimeAsText"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_temporal_test.go",
-          "id": "TestCatalogDescribedTemporalText"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
@@ -16671,14 +16715,29 @@
           "id": "catalog_describe_metadata"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionMysql/described_temporal_matrix"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "described_temporal_matrix"
+        },
+        {
           "implementation": "python",
-          "test": "packages/python/tests/test_catalog_described_temporal.py",
-          "id": "test_described_temporal_text"
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "described_temporal_matrix"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::described_temporal_matrix"
         }
       ]
     },
@@ -16725,29 +16784,34 @@
           "id": "catalog_connection_sqlite::catalog_read_budgets"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/tool_limits.rs",
-          "id": "physical_tool_queries_reject_budgets_without_partial_success"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testPlainAndGridConsumersShareTheRowLimit"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testPlainAndGridConsumersShareTheByteLimit"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_cells.rs",
-          "id": "binary_grid_values_remain_distinct_from_text_and_null"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/grid_binary_row"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "grid_binary_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "grid_binary_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::grid_binary_row"
         }
       ]
     },
@@ -16760,31 +16824,6 @@
         "DBS-113"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertRequiresIdentityWithoutDatabaseGeneration"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteLiteralDefaultCompositePrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteExpressionDefaultPrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteDefaultOnlyCompositePrimaryKey"
-        },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
@@ -16884,6 +16923,26 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_keys"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/generated_identity_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_identity_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_identity_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_identity_sqlite"
         }
       ]
     },
@@ -43674,6 +43733,25 @@
         "kind": "release-package",
         "artifact": "archive",
         "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "rust-tool-query-budgets-reject-without-partial-success",
+      "kind": "feature",
+      "requirements": [
+        "SCH-3"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/tool_limits.rs",
+          "id": "physical_tool_queries_reject_budgets_without_partial_success"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
       }
     }
   ],
