@@ -1,45 +1,18 @@
-# Runs the shared introspect case (tests/dbspec/introspect.json) with the Python client. For each case
-# creates an empty database (MySQL), schema (PostgreSQL), or file (SQLite), and the rendered statements and the case's
-# statements are run, the introspected document and unsupported objects are compared with the case, and it checks that what remains after the drop
-# is nothing. MySQL and PostgreSQL use ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN (TEST_ENV)
-# servers. The fourth element of an unsupported object is the rule its reason must include.
-# make dbspec-introspect-python-check runs this file with the python in the venv.
-# Requirements: DIA-133.
+# The empty database, schema or file of a dbspec case and the connection rules, which dbspec_apply.py and
+# dbspec_plan_physical.py run on. It checks that what remains after the drop is nothing.
 import contextlib
-import json
 import os
 import sqlite3
-import tempfile
-import unittest
-from pathlib import Path
+
 import psycopg
-from polyspec.orm.dbspec import emit_dbspec, parse_dbspec
-from polyspec.orm.dbspec.introspect import introspect_dbspec
-from polyspec.orm.dbspec.render import render_dbspec
+
 from .runner_connect import Adapter, mysql_connect
-from .vector_case import VectorCase, vector_tests
-from . import testcase
 
-ROOT = Path(__file__).resolve().parents[3]
-
-
-# Same connection rules as tests/dbspec/introspect (packages/ts/tests/dbspec-introspect.mjs).
 CONNECTION_RULES = {
     "mysql": ["SET time_zone = '+00:00'"],
     "postgres": ["SET TimeZone = 'UTC'"],
     "sqlite": ["PRAGMA foreign_keys = ON"],
 }
-
-
-def rendered_case_statements(case, dialect):
-    texts = {name: "\n".join(lines) for name, lines in case["documents"].items()}
-    documents = [
-        parse_dbspec(text, {key: value for key, value in texts.items() if key != name})[
-            0
-        ]
-        for name, text in texts.items()
-    ]
-    return render_dbspec(documents, dialect)["statements"]
 
 
 @contextlib.contextmanager
@@ -93,77 +66,3 @@ def case_database(dialect, name, dsn, sqlite_dir):
         )
         admin.close()
         assert left["rows"][0][0] == 0, f"schema {name} remains after cleanup"
-
-
-# Requirements: DIA-133.
-def check_case(case, index, dsns, sqlite_dir):
-    dialect, case_id = case["dialect"], case["id"]
-    statements = rendered_case_statements(case, dialect)
-    name = f"dbspec_py_{os.getpid()}_{index}"
-    schema = "main" if dialect == "sqlite" else name
-    with case_database(dialect, name, dsns.get(dialect), sqlite_dir) as connection:
-        db = Adapter(connection)
-        for sql in [*CONNECTION_RULES[dialect], *statements]:
-            db.execute(sql)
-        for sql in case["statements"]:
-            # {schema} is this case's database or schema name.
-            db.execute(sql.replace("{schema}", schema))
-        result = introspect_dbspec(db, dialect, "introspected")
-    assert emit_dbspec(result["document"]).splitlines() == case["document"], (
-        f"{case_id}: introspected document differs"
-    )
-    got = [[u["kind"], u["table"], u["name"]] for u in result["unsupported"]]
-    want = [w[:3] for w in case["unsupported"]]
-    assert got == want, f"{case_id}: unsupported objects differ: want {want}, got {got}"
-    for u, w in zip(result["unsupported"], case["unsupported"]):
-        if len(w) == 4:
-            assert w[3] in u["reason"], (
-                f"{case_id}: reason of {w[:3]} differs: want rule {w[3]!r}, got {u['reason']!r}"
-            )
-
-
-TEMP = {}
-
-
-def setUpModule():
-    TEMP["dir"] = tempfile.TemporaryDirectory()
-
-
-def tearDownModule():
-    TEMP["dir"].cleanup()
-
-
-class Case(VectorCase):
-    """A case of the vector file of this module."""
-
-    deadline = testcase.DATABASE
-
-
-def load_tests(
-    loader: unittest.TestLoader, tests: unittest.TestSuite, _pattern: object
-) -> unittest.TestSuite:
-    """One test for each introspect case, named by the case id. A failed case does not stop the others."""
-    data = json.loads((ROOT / "tests" / "dbspec" / "introspect.json").read_text())
-    dsns = {
-        "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
-        "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
-    }
-    for dialect, dsn in dsns.items():
-        if not dsn:
-            raise SystemExit(
-                f"ORM_TEST_{dialect.upper()}_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV"
-            )
-    cases = list(enumerate(data["cases"]))
-    tests.addTests(
-        vector_tests(
-            Case,
-            cases,
-            lambda _test, item: check_case(item[1], item[0], dsns, TEMP["dir"].name),
-            lambda item: item[1]["id"],
-        )
-    )
-    return tests
-
-
-if __name__ == "__main__":
-    testcase.main()

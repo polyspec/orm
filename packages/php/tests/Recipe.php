@@ -83,7 +83,7 @@ final class Recipe
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
         'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
-        'dbspec.compare',
+        'dbspec.compare', 'dbspec.introspect_refusal',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
@@ -95,16 +95,57 @@ final class Recipe
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
     private const MERMAID_OPS = ['dbspec.export_mermaid', 'dbspec.import_mermaid'];
 
-    /** @return iterable<string, array{array<string, mixed>}> each case of the recipe at path, relative to the
-     * repository root */
-    public static function cases(string $path): iterable
+    /** @var array<string, array<string, array{string}>> the data sets of the recipes that have been read, by path */
+    private static array $caseIds = [];
+
+    private static ?string $documentPath = null;
+
+    /** @var array<string, mixed> the recipe at $documentPath: one recipe is held at a time */
+    private static array $document = [];
+
+    /**
+     * The id of each case of the recipe at path, relative to the repository root, as the data sets of its tests. PHPUnit calls
+     * every provider when it builds the suite, whatever the filter of the run, so this reads each recipe once and keeps no case.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function cases(string $path): array
     {
-        $text = (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path);
-        RecipeKeys::check($path, $text);
-        $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
-        foreach ($recipe['cases'] as $case) {
-            yield $case['id'] => [$case];
+        if (!isset(self::$caseIds[$path])) {
+            $recipe = RecipeKeys::decoded($path, (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path));
+            self::$caseIds[$path] = [];
+            foreach ($recipe['cases'] as $case) {
+                self::$caseIds[$path][$case['id']] = [$case['id']];
+            }
         }
+        return self::$caseIds[$path];
+    }
+
+    /** The recipe at path, relative to the repository root, decoded when a test of another recipe ran last. */
+    private static function document(string $path): array
+    {
+        if (self::$documentPath !== $path) {
+            self::$document = [];
+            self::$document = json_decode(
+                (string) file_get_contents(dirname(__DIR__, 3) . '/' . $path),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+            self::$documentPath = $path;
+        }
+        return self::$document;
+    }
+
+    /** @return array<string, mixed> the case of the recipe at path with this id */
+    public static function caseOf(string $path, string $id): array
+    {
+        foreach (self::document($path)['cases'] as $case) {
+            if ($case['id'] === $id) {
+                return $case;
+            }
+        }
+        throw new \RuntimeException("recipe $path: no case $id");
     }
 
     /**
@@ -253,11 +294,17 @@ final class Recipe
      * names (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool:
      * true}} for an accepted request, {error: CODE} for a request that fails with CODE.
      */
+    private static function userFromDatabaseDsn(string $dsn, string $prefix): string
+    {
+        preg_match('#/([^/?]+)(?:\?.*)?$#', $dsn, $name);
+        return (string) preg_replace('#^mysql://[^@]+@#', 'mysql://' . $prefix . substr($name[1], -28) . '@', $dsn);
+    }
+
     private static function validateStep(array $step, string $path, string $database): void
     {
         $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
         $root = dirname(__DIR__, 3);
-        $recipe = json_decode(file_get_contents($root . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
+        $recipe = self::document($path);
         $schema = realpath(dirname($root . '/' . $path) . '/' . $recipe['schema']);
         if ($schema === false) {
             Assert::fail("ir.validate: the schema of $path is missing");
@@ -476,6 +523,13 @@ final class Recipe
                 'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
                 'differences' => $result[2],
             ];
+        } elseif ($op === 'dbspec.introspect_refusal') {
+            $got = self::dialectRefusal(
+                $step['dialect'],
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+            );
+            Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+            return;
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -2279,7 +2333,7 @@ final class Recipe
             Assert::fail("recipe $path: unknown database $database");
         }
         $root = dirname(__DIR__, 3);
-        $recipe = json_decode(file_get_contents($root . '/' . $path), true, 512, JSON_THROW_ON_ERROR);
+        $recipe = self::document($path);
         if (!isset($recipe['fixture'])) {
             Assert::fail("recipe $path: no fixture, so it has no database");
         }
@@ -2655,14 +2709,18 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = $context['dsn'];
-                if (isset($s['user_from_database'])) {
-                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
-                    $reconnectDsn = (string) preg_replace(
-                        '#^mysql://[^@]+@#',
-                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
-                        $reconnectDsn
-                    );
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                    : $context['dsn'];
+                if (isset($s['refused_message'])) {
+                    try {
+                        Catalog::connect($reconnectDsn);
+                    } catch (OrmException $error) {
+                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                        return [];
+                    }
+                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
@@ -3016,6 +3074,8 @@ final class Recipe
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
+            case 'dbspec.introspect':
+                return RecipeIntrospect::step($s, $context);
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
@@ -3052,6 +3112,12 @@ final class Recipe
                         throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
                     }
                 }
+                return [];
+            case 'sql.hold_connection':
+                $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
+                return [];
+            case 'sql.release_connection':
+                unset($context['held']);
                 return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
@@ -4148,6 +4214,9 @@ final class Recipe
                     $row = $model->{'getBy' . $name}(...$args);
                 } else {
                     $row = $model->get();
+                }
+                if (($s['json_output'] ?? false) === true && $row !== null) {
+                    return ['json' => $row->toJson()];
                 }
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];

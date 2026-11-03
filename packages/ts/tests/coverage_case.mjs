@@ -69,7 +69,7 @@ export async function nativeSession(driver, dsn) {
   if (driver === 'sqlite') {
     const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(decodeURIComponent(url.pathname));
-    return { query: async sql => db.prepare(sql).all(), close: async () => db.close() };
+    return { connection: db, query: async sql => db.prepare(sql).all(), close: async () => db.close() };
   }
   if (driver === 'mysql') {
     const conn = await require('mysql2/promise').createConnection({
@@ -77,7 +77,7 @@ export async function nativeSession(driver, dsn) {
       socketPath: url.searchParams.get('socket') ?? undefined, host: url.hostname,
       port: url.port ? Number(url.port) : undefined, database: decodeURIComponent(url.pathname.slice(1)),
     });
-    return { query: async sql => (await conn.query(sql))[0], close: () => conn.end() };
+    return { connection: conn, query: async sql => (await conn.query(sql))[0], close: () => conn.end() };
   }
   const { Client } = require('pg');
   const client = new Client({
@@ -86,7 +86,7 @@ export async function nativeSession(driver, dsn) {
     password: decodeURIComponent(url.password) || undefined,
   });
   await client.connect();
-  return { query: async sql => (await client.query(sql)).rows, close: () => client.end() };
+  return { connection: client, query: async sql => (await client.query(sql)).rows, close: () => client.end() };
 }
 
 /**

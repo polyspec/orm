@@ -87,6 +87,7 @@ from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_refused_generation, check_generator
+from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -1590,6 +1591,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.introspect_refusal",
     "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
@@ -1612,6 +1614,8 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.introspect_refusal":
+        got = _introspect_refusal(step["dialect"])
     elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
         got = _dialect_refusal(
             step["dialect"],
@@ -2497,14 +2501,43 @@ def _op_close(_step: dict, context: dict) -> dict:
     return {}
 
 
+def _user_from_database_dsn(dsn: str, prefix: str) -> str:
+    """The case DSN with the user that user_from_database names: the prefix and the last 28 characters of the name of the
+    case database, without a password."""
+    database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
+    return re.sub(r"^mysql://[^@]+@", f"mysql://{prefix}{database[-28:]}@", dsn)
+
+
 def _op_reconnect(step: dict, context: dict) -> dict:
     dsn = context["dsn"]
     if "user_from_database" in step:
-        database = re.search(r"/([^/?]+)(?:\?.*)?$", dsn).group(1)
-        dsn = re.sub(r"^mysql://[^@]+@", f"mysql://{step['user_from_database']}{database[-28:]}@", dsn)
-    context["catalog"] = connect_catalog(dsn)
-    context["namespace"] = context["catalog"].current_namespace()
+        dsn = _user_from_database_dsn(dsn, step["user_from_database"])
+    if "refused_message" in step:
+        try:
+            connect_catalog(dsn).current_namespace()
+        except Exception as error:  # noqa: BLE001 - any error of the refused connection
+            if step["refused_message"] not in str(error).lower():
+                raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+            if getattr(error, "code", None) != step["refused_code"]:
+                raise AssertionError(f"the refused connection has another code than {step['refused_code']}: {error}") from error
+            return {}
+        raise AssertionError("the server accepted the connection that the step expects it to refuse")
+    catalog = connect_catalog(dsn)
+    context["namespace"] = catalog.current_namespace()
+    context["catalog"] = catalog
     context["closed"] = False
+    return {}
+
+
+def _op_hold_connection(step: dict, context: dict) -> dict:
+    session = native_session(context["database"], _user_from_database_dsn(context["dsn"], step["user_from_database"]))
+    session.__enter__()
+    context["held"] = session
+    return {}
+
+
+def _op_release_connection(_step: dict, context: dict) -> dict:
+    context.pop("held").__exit__(None, None, None)
     return {}
 
 
@@ -3253,6 +3286,11 @@ def _table_model_query(step: dict, context: dict) -> dict:
             steps = model.get_page_plan_steps(
                 limit["offset"] // limit["count"] + 1, limit["count"]
             )
+        holds_sql = step.get("plan_sql") is True
+
+        def statement(plan_step: dict) -> dict:
+            return {"sql": plan_step["sql"]} if holds_sql else {}
+
         return {
             "json": [
                 {
@@ -3262,7 +3300,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
                         text: plan_step["sql"].upper().count(text)
                         for text in step["plan_count"]
                     },
-                    **({"sql": plan_step["sql"]} if step.get("plan_sql") is True else {}),
+                    **statement(plan_step),
                 }
                 for plan_step in steps
             ]
@@ -3335,6 +3373,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if step.get("json_output") is True and row is not None:
+        return {"json": row.to_json_text()}
     if "ordered_text" in step and row is not None:
         return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
@@ -3840,7 +3880,10 @@ _DATABASE_OPS = {
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
+    "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
+    "sql.hold_connection": _op_hold_connection,
+    "sql.release_connection": _op_release_connection,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
     "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
