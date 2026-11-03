@@ -1,4 +1,3 @@
-import { isUtf8 } from 'node:buffer';
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -736,34 +735,10 @@ function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverV
 function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValue[], sink: RowSink): void {
   const statement = state.statement(sql);
   statement.setReturnArrays(true);
-  const columns = sqliteColumns(statement);
-  sink.columns(columns);
-  let bytes: readonly (readonly unknown[])[] | undefined;
-  let at = 0;
+  sink.columns(sqliteColumns(statement));
   for (const row of statement.iterate(...sqliteValues(params))) {
-    const cells = arrayRows([row])[0] ?? [];
-    if (cells.some(lossyText)) bytes ??= sqliteStoredBytes(state, sql, params, columns.length);
-    const exact = bytes?.[at];
-    at += 1;
-    if (!sink.row(exact === undefined ? cells : cells.map((cell, index) => storedCell(cell, exact[index])))) break;
+    if (!sink.row(arrayRows([row])[0] ?? [])) break;
   }
-}
-
-/** node:sqlite decodes a stored text with U+FFFD for what is not UTF-8, so a text that holds it may have lost its bytes. */
-const lossyText = (cell: unknown): boolean => typeof cell === 'string' && cell.includes('\uFFFD');
-
-/** The stored bytes of a cell whose text lost them, and the cell itself when it is valid UTF-8 (INT-153). */
-function storedCell(cell: unknown, bytes: unknown): unknown {
-  return lossyText(cell) && bytes instanceof Uint8Array && !isUtf8(bytes) ? bytes : cell;
-}
-
-/** The same read with each column as a BLOB, which keeps the stored bytes; node:sqlite has no raw read of a text column. */
-function sqliteStoredBytes(state: SqliteState, sql: string, params: readonly DriverValue[], width: number): readonly (readonly unknown[])[] {
-  const names = Array.from({ length: width }, (_, index) => `c${String(index)}`);
-  const select = names.map(name => `CAST(${name} AS BLOB)`).join(',');
-  const statement = state.statement(`WITH q(${names.join(',')}) AS (${sql.replace(/;\s*$/, '')}\n) SELECT ${select} FROM q`);
-  statement.setReturnArrays(true);
-  return arrayRows(statement.all(...sqliteValues(params)));
 }
 
 class SqlitePoolDriver implements DriverPool {

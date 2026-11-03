@@ -453,11 +453,15 @@ func catalogValue(value any, nativeType string) (any, error) {
 	case nil, bool, int64, uint64, float64, time.Time:
 		return v, nil
 	case string:
+		// A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
 		if !utf8.ValidString(v) {
-			return nil, catalogErr(catalogCodeValue, "text of native type %q is not valid UTF-8", nativeType)
+			return []byte(v), nil
 		}
 		return v, nil
 	case []byte:
+		if !utf8.Valid(v) {
+			return append([]byte(nil), v...), nil
+		}
 		return catalogBytesValue(v, nativeType)
 	default:
 		return nil, catalogErr(catalogCodeValue, "unsupported driver value %T", value)

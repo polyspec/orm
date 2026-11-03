@@ -16605,6 +16605,7 @@
         "sqlite"
       ],
       "requirements": [
+        "INT-115",
         "INT-153"
       ],
       "steps": [
@@ -16660,6 +16661,86 @@
                   }
                 ]
               ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "stored_text",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "note"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "valid rows before the one that is not, and a blob and a number of the same read",
+          "sql": "CREATE TABLE stored_mix (id INTEGER PRIMARY KEY, note TEXT, data BLOB)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "one text with a real U+FFFD, one that is not UTF-8",
+          "sql": "INSERT INTO stored_mix VALUES (1, 'ok', X'6869'), (2, 'é�', NULL), (3, CAST(X'FF' AS TEXT), X'00')"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT id, note FROM stored_mix ORDER BY id;",
+          "expect": {
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "ok"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "é�"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT id, note FROM stored_mix ORDER BY id",
+          "max_rows": 3,
+          "max_bytes": 12,
+          "expect": {
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 12 bytes of values"
             }
           }
         }

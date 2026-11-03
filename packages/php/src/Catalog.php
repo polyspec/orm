@@ -1975,10 +1975,6 @@ final class Catalog
         if ($value !== null && self::temporalKind($this->dialect, $native) !== null) {
             return self::gridCell($value, $this->dialect, $native, false, false)->value;
         }
-        // A value that is not text is its bytes (INT-153): an expression reports no binary type on MySQL and SQLite.
-        if (is_string($value) && !self::isUtf8($value)) {
-            return $value;
-        }
         return self::value($value, $native, $this->dialect);
     }
 
@@ -2245,6 +2241,10 @@ final class Catalog
         if (!is_string($value)) {
             throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value ' . get_debug_type($value));
         }
+        // A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153).
+        if (!self::isUtf8($value)) {
+            return $value;
+        }
         return match (self::typeClass($nativeType)) {
             'binary', 'decimal' => $value,
             'int' => filter_var($value, FILTER_VALIDATE_INT) !== false
@@ -2258,9 +2258,7 @@ final class Catalog
                 : ($dialect === 'sqlite'
                     ? $value
                     : throw new OrmException(Code::CATALOG_VALUE, "float of native type \"$nativeType\"")),
-            default => self::isUtf8($value)
-                ? $value
-                : throw new OrmException(Code::CATALOG_VALUE, "text of native type \"$nativeType\" is not valid UTF-8"),
+            default => $value,
         };
     }
 

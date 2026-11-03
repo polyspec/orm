@@ -860,6 +860,11 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
         ZVAL_COPY(out, v);
         return true;
     }
+    /* A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153). */
+    if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
     const char *t = ZSTR_VAL(type);
     bool integer = strcmp(t, "LONG") == 0 || strcmp(t, "LONGLONG") == 0 || strcmp(t, "SHORT") == 0 || strcmp(t, "TINY") == 0
         || strcmp(t, "INT24") == 0 || strcmp(t, "YEAR") == 0;
@@ -889,10 +894,6 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
         || strstr(t, "NUMERIC") != NULL || strstr(t, "MONEY") != NULL || strcmp(t, "NEWDECIMAL") == 0) {
         ZVAL_COPY(out, v);
         return true;
-    }
-    if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
-        db_throw_orm("CATALOG_VALUE", "text of native type \"%s\" is not valid UTF-8", t);
-        return false;
     }
     ZVAL_COPY(out, v);
     return true;
@@ -4774,9 +4775,6 @@ static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cel
             }
             ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
             zval_ptr_dtor(&cell);
-        } else if (Z_TYPE_P(value) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(value), Z_STRLEN_P(value))) {
-            /* A value that is not text is its bytes (INT-153): an expression reports no binary type. */
-            ZVAL_COPY(&v, value);
         } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
             zval_ptr_dtor(cells);
             return false;

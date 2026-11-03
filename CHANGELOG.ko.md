@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ead285c437ec424cae402d49a518b2df640bf727e57621b68a691eb743ec9c4a -->
+<!-- source-sha256: 2cfd92182dfcb2bdc012da0e0a895243ad855e941d754214ee016cb981c913dc -->
 # 변경 이력
 
 ## Unreleased
 
+- described table 읽기는 유효한 UTF-8이 아닌 값을 여섯 runtime 모두에서 그 byte로 돌려주며, TypeScript는 그런 읽기의 응답 전체를 한 번의 실행에서 가져옵니다.
 - 읽기 전용 query의 유효한 UTF-8이 아닌 값은 SQLite text를 포함해 여섯 runtime 모두에서 그 byte이고, grid 질의에서는 binary cell입니다.
 - 길이나 중첩과 관계없이 읽기 전용 query는 여섯 runtime 모두에서 응답하며, Rust도 다른 runtime처럼 token으로 query를 읽습니다.
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
