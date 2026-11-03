@@ -1298,6 +1298,8 @@ final class Catalog
         } catch (\PDOException $rollbackFailure) {
             $rollback = $this->db->driverError($rollbackFailure);
             $message .= '; rollback failed: ' . $rollback->getMessage();
+            // The connection is gone with the commit, so the next call opens a new one (INT-118).
+            $this->streamLeft = true;
         }
         throw new OrmException(Code::ROW_COMMIT_INDETERMINATE, $message, $mapped, $rollback);
     }
