@@ -544,12 +544,6 @@ modelCase('failedLockRelease', ['mysql'], async () => {
     check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
     const rolledBack = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('rollback')); throw new Error('callback failed'); }, { retry: 0 }));
     checkBoth('rollback', rolledBack, 'callback failed', 'statement rejected by the test driver');
-    // If the lock was released in advance, RELEASE_LOCK at the end of the transaction returns 0.
-    const notHeld = await failureMessage(db.transaction(async () => {
-      await db.utils().lock(key('released'));
-      await db.utils().active('lock').session.control('DO RELEASE_LOCK(?)', [key('released')], () => undefined);
-    }, { retry: 0 }));
-    check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
   } finally {
     await db.close();
   }

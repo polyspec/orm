@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b623c4a8d9ec6846626dbaf19d082a56808a3961e66b83582e9bf358dfa8b3cf -->
+<!-- source-sha256: fb05fc73902fd4270b7ccf94f1e6ca4b3524cd424b637f8204fb236f7e0c0615 -->
 # 변경 이력
 
 ## Unreleased
 
+- transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
 - vector 파일을 읽던 PHP와 PHP extension 시험을, 그 시험만 쓰던 coverage helper와 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
 - vector 파일을 읽던 Python conformance module을 target `conformance-check/python`과 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
@@ -24,6 +25,8 @@
 - 문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.
 - generator는 parse된 문서의 diagnostic을 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력한다. PHP와 그 확장, Rust builder는 각자의 형식으로 출력했다 (#T334-3-20)
 - commit에서 연결을 잃은 PHP catalog가 이후 계속 `CONNECTION_LOST`로 실패하지 않고 다음 호출에 새 연결로 읽는다(INT-118). `catalog_connection` recipe case `row_commit_outcomes`가 commit을 거부하는 PostgreSQL deferred trigger와 commit 중 backend를 끝내는 trigger로 이를 담는다.
+- introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
+- rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
 - 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.

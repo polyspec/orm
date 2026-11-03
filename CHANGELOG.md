@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
 - The Rust test `coverage_conformance_verification`, which read the vector files, is gone; the bindings of its units name the recipe test `conformance_verification` of each database. The binary `conformance` stays: the `generated` and `fixed-clock` checks run it.
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
 - The Python conformance modules that read the vector files are gone with the target `conformance-check/python`: the bindings of their units name the recipe test `conformance_verification` of each database.
@@ -23,6 +24,8 @@
 - Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 - The generators print a diagnostic of a parsed document in the form of SCH-12, `<line>:<column> <rule>: document <name>: <message>`: PHP and its extension and the Rust builder printed their own (#T334-3-20)
 - A PHP catalog whose commit lost its connection reads over a new connection at its next call instead of failing with `CONNECTION_LOST` from then on (INT-118). The recipe case `row_commit_outcomes` of `catalog_connection` holds it, with a PostgreSQL deferred trigger that rejects the commit and one that ends the backend during it.
+- Introspection is the recipe dbspec_introspect in all six runtimes: the round trips, the cases of tests/dbspec/introspect.json with the reasons of a PostgreSQL loose sequence and routine, the catalog query count and a failing catalog query; dialect-refusal holds its unknown dialect in five runtimes. Only the silent PDO error mode (DIA-133a) and the method of the PHP extension (DIA-133b) stay native (#T334-3-12-5)
+- The natives of the rollback fault are gone from all runtimes: the case of the recipe transactions states them, with the new expect key `keeps_callback` for the callback error that a ROLLBACK keeps. `packages/ts/tests/rollback.mjs` and `packages/go/orm/rollback_fault_test.go` are removed, and the two Rust forms stay native as INT-72a.
 - The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
 - The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
