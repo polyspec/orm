@@ -43,28 +43,6 @@ final class CatalogQueryBoundsTest extends TestCase
         }
     }
 
-    // Requirements: INT-115.
-    public function testPlainAndGridConsumersShareTheRowLimit(): void
-    {
-        $sql = 'SELECT value FROM values_table ORDER BY id';
-        $this->assertLimit(fn () => $this->catalog->readOnlyQuery($sql, [], 1, 128), 'result has more than 1 rows');
-        $this->assertLimit(
-            fn () => $this->catalog->readOnlyGridQuery($sql, [], 1, 128),
-            'result has more than 1 rows'
-        );
-    }
-
-    // Requirements: INT-115.
-    public function testPlainAndGridConsumersShareTheByteLimit(): void
-    {
-        $sql = "SELECT 'abc' AS value";
-        $this->assertLimit(fn () => $this->catalog->readOnlyQuery($sql, [], 2, 2), 'result has more than 2 bytes');
-        $this->assertLimit(
-            fn () => $this->catalog->readOnlyGridQuery($sql, [], 2, 2),
-            'result has more than 2 bytes'
-        );
-    }
-
     public function testPlainAndGridConsumersPreserveSuccessfulRows(): void
     {
         $sql = 'SELECT value FROM values_table ORDER BY id';
@@ -102,38 +80,6 @@ final class CatalogQueryBoundsTest extends TestCase
         $current = $this->catalog->rowSnapshotFromPage($page, 0);
         self::assertSame(1, $this->catalog->deleteRow($current));
         self::assertSame([['beta']], $this->catalog->readOnlyQuery('SELECT value FROM values_table ORDER BY id')->rows);
-    }
-
-    // Requirements: INT-107.
-    public function testRowBaselineComparesExactValuesIncludingGeneratedOriginals(): void
-    {
-        $sameRow = new \ReflectionMethod(Catalog::class, 'sameRow');
-        foreach (
-            [
-                [[0.0], [-0.0]],
-                [['100.23000'], ['100.23']],
-                [["\x00\xff"], ["\x00\xfe"]],
-                [[false], [0]],
-                [[1, 'generated-original'], [1, 'generated-current']],
-            ] as [$original, $current]
-        ) {
-            self::assertFalse($sameRow->invoke(null, $current, $original));
-        }
-
-        $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'computed_values'];
-        $metadata = $this->catalog->describeTable($table);
-        self::assertTrue($metadata->columns[2]->generated);
-        $this->catalog->insertRow($metadata, ['id' => 1, 'value' => 'four']);
-        $snapshot = $this->catalog->rowSnapshotFromPage($this->catalog->tablePage($table, 1, 0), 0);
-        self::assertSame(4, $snapshot->cells[2]);
-        $setup = new PDO('sqlite:' . $this->path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $setup->exec("UPDATE computed_values SET value = 'changed' WHERE id = 1");
-        try {
-            $this->catalog->updateRow($snapshot, ['value' => 'write']);
-            self::fail('a changed generated-column value was accepted by the old baseline');
-        } catch (OrmException $error) {
-            self::assertSame(Code::ROW_CONFLICT, $error->code_);
-        }
     }
 
     public function testGeneratedKeyInsertVerifiesItsReturnedRow(): void

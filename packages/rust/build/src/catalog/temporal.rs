@@ -296,18 +296,6 @@ mod tests {
     use super::{fraction, precision};
 
     #[test]
-    // Requirements: INT-101.
-    fn precision_follows_the_native_type_and_dialect_default() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        assert_eq!(precision("datetime(6)", "mysql"), Ok(6));
-        assert_eq!(precision("datetime", "mysql"), Ok(0));
-        assert_eq!(precision("time(3) without time zone", "postgres"), Ok(3));
-        assert_eq!(precision("timestamp without time zone", "postgres"), Ok(6));
-        assert!(precision("DATETIME", "sqlite").is_err());
-        assert!(precision("datetime(7)", "mysql").is_err());
-    }
-
-    #[test]
     fn malformed_precision_preserves_parse_cause_message() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let error = precision("datetime(x)", "mysql").expect_err("malformed precision must fail");

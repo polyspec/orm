@@ -12073,7 +12073,6 @@
         "packages/rust/tests/tests/common/mod.rs"
       ],
       "tests": [
-        "packages/rust/build/tests/grid_cells.rs",
         "packages/rust/build/tests/grid_decimals.rs",
         "packages/rust/build/tests/grid_numbers.rs",
         "packages/rust/build/tests/grid_temporal.rs",
@@ -12111,9 +12110,7 @@
         "packages/rust/tests/tests/catalog_connection_sqlite.rs",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/go/orm/catalog_sqlite_sequence_test.go",
-        "packages/go/orm/catalog_row_baseline_test.go",
         "packages/ts/tests/catalog-mutation-helper.test.mjs",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_auto_key.py",
         "packages/php/tests/CatalogQueryBoundsTest.php",
         "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
@@ -12150,7 +12147,6 @@
             "packages/rust/build/tests/tool_limits.rs",
             "packages/rust/build/tests/tool_statement.rs",
             "packages/rust/build/tests/tool_values.rs",
-            "packages/rust/build/tests/grid_cells.rs",
             "packages/rust/build/tests/grid_decimals.rs",
             "packages/rust/build/tests/grid_numbers.rs",
             "packages/rust/build/tests/grid_temporal.rs",
@@ -12224,8 +12220,7 @@
           "command": "make --no-print-directory catalog-row-baseline-go-check",
           "shard": "other",
           "inputs": [
-            "Makefile",
-            "packages/go/orm/catalog_row_baseline_test.go"
+            "Makefile"
           ]
         },
         {
@@ -12243,14 +12238,6 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/catalog-mutation-helper.test.mjs"
-          ]
-        },
-        {
-          "id": "catalog-row-baseline-python",
-          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.test_catalog_row_baseline.CatalogRowBaselineTest.test_compares_exact_typed_values_and_preserves_generated_original",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/test_catalog_row_baseline.py"
           ]
         },
         {
@@ -14921,7 +14908,6 @@
       ],
       "tests": [
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_mysql_visibility.py"
       ],
       "command": "make --no-print-directory catalog-mutation-helper-python-check"

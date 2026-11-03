@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d261e8097ded8985881be89f049c59448d79260c3eb5b37f279b2cc416c10ae2 -->
+<!-- source-sha256: 6b65006bf9ef7aca1ebd09fc44f8b2b0bcbd3e0421d818124161d089d7efc09b -->
 # 변경 이력
 
 ## Unreleased
 
+- catalog 읽기 형태, grid binary 행, row baseline, byte 용량, 선언 temporal 표, SQLite identity native를 catalog_connection recipe 사례로 옮겼다. default만으로 된 key의 catalog insert는 Go, Rust처럼 TypeScript, Python, PHP, extension에서도 assignment 없이 들어가고, PHP는 page의 PostgreSQL bytea와 binary 셀 snapshot을 거부하지 않는다.
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.
 - ordered-json AES 열의 왕복과 회전(COD-7)을 저장된 셀까지 읽는 aes_rotation recipe 사례로 여섯 runtime에 옮겼고 native 시험을 지웠다.
 - 생성 메서드 conformance 본문과 고정 시계 본문을 recipe conformance_verification과 fixed_clock.json으로 비교한다. 고정 시계 본문은 이제 정확한 시계를 적는다.

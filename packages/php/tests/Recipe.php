@@ -2599,7 +2599,7 @@ final class Recipe
             case 'catalog.read_only_grid_query':
                 $result = $catalog->readOnlyGridQuery(
                     self::sqlField($s['sql'], $context),
-                    [],
+                    array_map(self::nativeValue(...), $s['binds'] ?? []),
                     $s['max_rows'] ?? 0,
                     $s['max_bytes'] ?? 0
                 );
@@ -4165,6 +4165,9 @@ final class Recipe
         }
         if (is_bool($value)) {
             return ['bool' => $value];
+        }
+        if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
+            return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {
             return [self::temporalKind($nativeType) ?? 'text' => $value];

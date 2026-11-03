@@ -2170,6 +2170,10 @@ final class Catalog
         if ($value === null || is_bool($value) || is_int($value)) {
             return $value;
         }
+        if (is_resource($value)) {
+            // PDO reads a PostgreSQL bytea as a stream (INT-107).
+            return self::bytes($value);
+        }
         if (!is_string($value)) {
             throw new OrmException(Code::CATALOG_VALUE, 'unsupported driver value ' . get_debug_type($value));
         }
@@ -2244,7 +2248,8 @@ final class Catalog
      */
     private static function changes(CatalogTableMetadata $metadata, array $values, string $code): array
     {
-        if ($values === [] || count($values) > count($metadata->columns)) {
+        // A key of defaults alone takes no assignment (INT-123).
+        if (($values === [] && $code !== Code::ROW_INSERT_INVALID) || count($values) > count($metadata->columns)) {
             throw new OrmException($code, 'invalid column assignments');
         }
         // A list of [name, value] pairs may repeat a name (the form of Go, TypeScript and Python); a map has distinct
@@ -2419,7 +2424,8 @@ final class Catalog
             return 'f' . bin2hex(pack('E', $cell));
         }
         if (is_string($cell)) {
-            return 's' . strlen($cell) . ':' . $cell;
+            // The bytes of a binary cell are hex: the revision encodes its descriptor and cells as JSON text (INT-107).
+            return self::isUtf8($cell) ? 's' . strlen($cell) . ':' . $cell : 'x' . bin2hex($cell);
         }
         throw new OrmException(Code::ROW_SNAPSHOT_INVALID, 'unsupported cell type ' . get_debug_type($cell));
     }
