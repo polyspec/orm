@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+- conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
+- 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
+- markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
+- 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
+- Go, PHP, PHP extension은 정수가 아닌 SQLite `busy_timeout`을, Go는 형식이 틀린 `_pragma`와 SQLite 경로 `/`를 `CONFIG`로 거부하고(CFG-11, CFG-12), PHP는 그 거부에서 경로를 말한다. 읽을 수 없는 MySQL `ssl-ca`는 이를 검사하는 모든 client에서 `is not a readable file`로 읽히고, Python의 음수 timeout 거부는 `statement timeout must not be negative`로 읽힌다. `CONFIG`를 반환하는 DSN은 파일을 만들지 않는다. CFG-36과 CFG-37의 거부되는 DSN과 설정 형식은 메시지까지 recipe case이며, 이들이 대신하는 native 시험은 없앴다.
+- `model_queries`와 `model_writes`의 coverage는 FCV-12가 정한 대로 recipe를 지정한다(`recipe`, `symbol`, 그리고 그 데이터베이스에서 `only`로 빠지는 case를 뺀 `cases`). Rust workspace 실행은 Rust recipe owner의 program을 건너뛴다. 이전에는 case symbol이 없는 첫 owner에서 skip 목록이 예외를 던졌다.
 - 복합 상품 검색은 여섯 런타임이 세 데이터베이스에서 실행하는 recipe `complex_query` 하나다. full-text OR 필터, `getPagePlanSteps`로 읽는 plan step, 페이지, 관계 6개, statement event를 담는다. 미리 seed한 복합 쿼리 데이터베이스 18개는 사라졌다. `make complex-query-check`가 recipe를 실행하고, 각 런타임은 `getPagePlanSteps` 거부의 native 시험만 유지한다.
 - 분할된 root `in` 목록의 merge를 primary key 없는 표에 대한 public query로 recipe `parameter_chunking`에서 시험합니다.
 - collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.
@@ -64,7 +70,6 @@
 - 외부 문서를 사용하는 set의 생성 모델이 사용하는 외부 테이블의 행을 연결해 읽는 것을 모든 runtime의 native 시험이 확인하며, 생성 schema 값이 외부 텍스트를 빠뜨리면 실패한다. Go는 그 출력도 컴파일하고, query 메서드의 PHPStan 검사는 두 PHP mode 모두에 다시 묶인다.
 - Python 모델 read에서 codec이 거부하는 cell은 쓰기와 같이 code를 가진 `OrmError`를 던지며 `CodecError`를 던지지 않는다. codec을 직접 호출하면 `CodecError`를 유지한다.
 - TypeScript의 `toJSONText()`와 `JSON.stringify(row)`는 bigint를 담은 행에서 더 이상 던지지 않는다. 둘은 정확한 정수를 JSON 숫자로 쓰고, 스타일 값 안에서도 그렇게 쓴다.
-- conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 스물일곱 case는 연결자, group, chain 재사용, 식, column, join, relation, subquery, aggregate, 빈 read, 함수, AES와 hex 값, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - CR15-2: add tables and columns 동작은 schema_install recipe의 case 다섯이 되었고, `dbspec.add_tables_steps`는 별도 recipe가 되었으며, native 시험은 없어졌고, 거부 case는 `message_contains`로 message를 확인할 수 있다.
 - recipe op `dbspec.analyze`의 inline 형태는 analysis가 `parse`의 document, position, diagnostic을 그대로 담는지 검사한다(DBS-134). Go, TypeScript, Python, PHP가 Rust처럼 이를 검사하므로 Go `TestAnalyzeIsParse`를 없앴다.
 - Go `runtimemodel.LoadSet`는 SCH-12가 정한 code `SCHEMA_INVALID`로 실패하고(`*SetLoadError`), recipe helper는 diagnostics를 옮겨 읽지 않고 그 code를 읽는다.

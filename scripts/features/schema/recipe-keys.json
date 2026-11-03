@@ -20,9 +20,26 @@
   ],
   "step": {
     "dsn.connect": [
+      "config",
       "dsn",
       "expect",
-      "op"
+      "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
     ],
     "keyring.versions": [
       "expect",

@@ -1396,15 +1396,6 @@
         "databases"
       ]
     },
-    "aes-rotation-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ]
-    },
     "codec-check": {
       "scope": "owner",
       "needs": [
@@ -2880,7 +2871,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]

@@ -5,12 +5,14 @@
 package recipe
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -55,6 +57,7 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	DSN     string                     `json:"dsn"`
+	Config  dsnConfig              `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
 	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
@@ -85,6 +88,10 @@ type step struct {
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
 	Name        string                     `json:"name"`
+	Corpus      string                     `json:"corpus"`
+	Token       string                     `json:"token"`
+	Reply       string                     `json:"reply"`
+	Received    string                     `json:"received"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -316,7 +323,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		r.cell, r.err = orm.BlindIndex(value, key(s))
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
-		r.cell, r.err = connectDriver(s.DSN)
+		r.cell, r.err = connectDriver(s.DSN, s.Config)
+	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
+	case "markdown.connect":
+		r.err = markdownConnect(s)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
 	}
@@ -333,10 +343,80 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	return check(expect, r, s.Styles)
 }
 
+// dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
+type dsnConfig struct {
+	PoolSize           int `json:"pool_size"`
+	PoolIdleSize       int `json:"pool_idle_size"`
+	PoolLifetimeMs     int `json:"pool_lifetime_ms"`
+	StatementTimeoutMs int `json:"statement_timeout_ms"`
+	TLSVersion         bool `json:"tls_version"`
+}
+
+// sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
+// other than the journals of that file (dsn.sqlite_file, CFG-26).
+func sqliteFileName(name, query string) (string, error) {
+	directory, err := os.MkdirTemp("", "orm-recipe-sqlite-name-")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = os.RemoveAll(directory) }()
+	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, dsnConfig{})
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return "", err
+	}
+	if refused != nil {
+		if len(entries) != 0 {
+			return "", fmt.Errorf("a refused DSN left %d files in the directory: %v", len(entries), entries)
+		}
+		return "", refused
+	}
+	names := []string{}
+	for _, entry := range entries {
+		if !slices.Contains([]string{name + "-journal", name + "-shm", name + "-wal"}, entry.Name()) {
+			names = append(names, entry.Name())
+		}
+	}
+	return strings.Join(names, ","), nil
+}
+
+// markdownConnect runs the markdown.connect op: it returns the outcome of the connection, or an error with no code when the
+// listener did not receive the line of the step.
+func markdownConnect(s step) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.Close() }()
+	received := make(chan string, 1)
+	go func() {
+		defer close(received)
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		line, _ := bufio.NewReader(conn).ReadString('\n')
+		_, _ = fmt.Fprintln(conn, s.Reply)
+		received <- strings.TrimRight(line, "\n")
+	}()
+	port := listener.Addr().(*net.TCPAddr).Port
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), dsnConfig{})
+	if got := <-received; got != s.Received {
+		return fmt.Errorf("the listener received %q, want %q", got, s.Received)
+	}
+	return connected
+}
+
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
 // and returns its driver: the one implementation of dsn.connect (FCV-4).
-func connectDriver(dsn string) (string, error) {
-	db, err := orm.Connect(dsn, orm.Config{})
+func connectDriver(dsn string, config dsnConfig) (string, error) {
+	db, err := orm.Connect(dsn, orm.Config{
+		PoolSize:           config.PoolSize,
+		PoolIdleSize:       config.PoolIdleSize,
+		PoolLifetimeMs:     config.PoolLifetimeMs,
+		StatementTimeoutMs: config.StatementTimeoutMs,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -355,6 +435,23 @@ func connectDriver(dsn string) (string, error) {
 		}
 		if fmt.Sprint(cell) != "1" {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		if !config.TLSVersion {
+			return nil
+		}
+		status, err := f.Run(orm.KindUtility, nil, "SHOW SESSION STATUS LIKE 'Ssl_version'")
+		if err != nil {
+			return err
+		}
+		if len(status.Rows) != 1 || len(status.Rows[0]) != 2 {
+			return fmt.Errorf("Ssl_version on the connection of %s returned %v", driver, status.Rows)
+		}
+		version := status.Rows[0][1]
+		if text, isBytes := version.([]byte); isBytes {
+			version = string(text)
+		}
+		if got := fmt.Sprint(version); got != "TLSv1.2" && got != "TLSv1.3" {
+			return fmt.Errorf("the connection has Ssl_version %q, want TLSv1.2 or TLSv1.3", got)
 		}
 		return nil
 	})
@@ -375,10 +472,11 @@ func key(s step) string {
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
-		Value       json.RawMessage `json:"value"`
-		Error       string          `json:"error"`
-		BytesPrefix string          `json:"bytes_prefix_hex"`
-		BytesLength int             `json:"bytes_length"`
+		Value        json.RawMessage `json:"value"`
+		Error        string          `json:"error"`
+		MessageHolds string          `json:"message_holds"`
+		BytesPrefix  string          `json:"bytes_prefix_hex"`
+		BytesLength  int             `json:"bytes_length"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -386,6 +484,9 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	if outcome.Error != "" {
 		if got := orm.ErrorCode(r.err); got != outcome.Error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
+		}
+		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
+			return fmt.Errorf("error %q, want a message that holds %q", r.err, outcome.MessageHolds)
 		}
 		return nil
 	}

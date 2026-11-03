@@ -139,12 +139,34 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
 
 /// Opens a DSN with Db::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its driver:
 /// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
-async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
-    match polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await {
+async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, String)> {
+    let field = |name: &str| config[name].as_u64().unwrap_or(0) as u32;
+    let options = polyspec_orm::Config {
+        pool_idle_size: field("pool_idle_size"),
+        pool_lifetime_ms: field("pool_lifetime_ms"),
+        statement_timeout_ms: field("statement_timeout_ms"),
+        ..polyspec_orm::Config::default()
+    };
+    match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
+            let status = match config["tls_version"].as_bool() {
+                Some(true) => Some(db.utils().run(async |frame| frame.run("utility", &[], "SHOW SESSION STATUS LIKE 'Ssl_version'", &[]).await).await),
+                _ => None,
+            };
             db.close().await;
+            match status {
+                Some(Ok(rows)) => {
+                    let version = rows.first().and_then(|row| row.get(1));
+                    let held = matches!(version, Some(Val::Str(text)) if text == "TLSv1.2" || text == "TLSv1.3");
+                    if !held {
+                        return Err(("STEP".to_owned(), format!("the connection has Ssl_version {version:?}, want TLSv1.2 or TLSv1.3")));
+                    }
+                }
+                Some(Err(error)) => return Err((error.code().to_owned(), error.to_string())),
+                None => {}
+            }
             match answer {
                 Ok(rows) if matches!(rows.as_slice(), [row] if matches!(row.as_slice(), [Val::I64(1)])) => Ok(driver),
                 Ok(rows) => Err(("STEP".to_owned(), format!("SELECT 1 on the connection of {driver} returned {rows:?}"))),
@@ -155,14 +177,75 @@ async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
     }
 }
 
+/// The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4, CFG-26).
+async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
+    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
+    let connected = connect_driver(&dsn, &Value::Null).await.map_err(|(_, message)| message);
+    let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
+        let mut names = Vec::new();
+        for entry in entries {
+            names.push(entry.map_err(|error| error.to_string())?.file_name().to_string_lossy().into_owned());
+        }
+        Ok(names)
+    });
+    std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+    if let Err(message) = connected {
+        return match listed?.as_slice() {
+            [] => Err(message),
+            left => Err(format!("a refused DSN left the files {left:?}")),
+        };
+    }
+    let journals = [format!("{name}-journal"), format!("{name}-shm"), format!("{name}-wal")];
+    let mut names: Vec<String> = listed?.into_iter().filter(|file| !journals.contains(file)).collect();
+    names.sort();
+    Ok(names.join(","))
+}
+
+/// The markdown.connect op (FCV-4, PRT-64): `Db::connect` on a listener that answers the first line with the reply of the step,
+/// checked against the line it received and the outcome of the expect of `database`.
+fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
+    use std::io::{BufRead as _, Write as _};
+    let expect = &step["expect"][database];
+    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let reply = text("reply");
+    let server = std::thread::spawn(move || -> Result<String, String> {
+        let (connection, _) = listener.accept().map_err(|error| error.to_string())?;
+        let mut writer = connection.try_clone().map_err(|error| error.to_string())?;
+        let mut line = String::new();
+        std::io::BufReader::new(connection).read_line(&mut line).map_err(|error| error.to_string())?;
+        writeln!(writer, "{reply}").map_err(|error| error.to_string())?;
+        Ok(line.trim_end().to_owned())
+    });
+    let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome = runtime.block_on(connect_driver(&dsn, &Value::Null));
+    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    if received != text("received") {
+        return Err(format!("the listener received {received:?}, want {:?}", text("received")));
+    }
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    match outcome {
+        Err((code, message)) if code == want && message.contains(holds) => Ok(()),
+        Err((code, message)) => Err(format!("error {code} ({message}), want {want} with {holds}")),
+        Ok(_) => Err(format!("error none, want {want}")),
+    }
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
     let dsn = step["dsn"].as_str().unwrap_or_default();
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome = runtime.block_on(connect_driver(dsn));
+    let outcome = runtime.block_on(connect_driver(dsn, &step["config"]));
     match (outcome, expect["error"].as_str()) {
-        (Err((got, _)), Some(code)) if got == code => Ok(()),
+        (Err((got, message)), Some(code)) if got == code => {
+            let holds = expect["message_holds"].as_str().unwrap_or_default();
+            if message.contains(holds) { Ok(()) } else { Err(format!("message {message}, want one that holds {holds}")) }
+        }
         (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
         (Ok(_), Some(code)) => Err(format!("error none, want {code}")),
         (Err((_, message)), None) => Err(format!("unexpected error {message}")),
@@ -224,6 +307,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "markdown.connect" => return markdown_connect(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
@@ -3031,12 +3115,25 @@ mod database {
             }
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             "dsn.connect" => {
-                let dsn = match step["dsn"].as_str().unwrap_or_default() {
-                    "case" => context.dsn.as_str(),
-                    text => text,
+                let dsn = match (step["dsn"].as_str().unwrap_or_default(), step["query"].as_str()) {
+                    ("case", Some(query)) => {
+                        let separator = if context.dsn.contains('?') { '&' } else { '?' };
+                        format!("{}{separator}{query}", context.dsn)
+                    }
+                    ("case", None) => context.dsn.clone(),
+                    (text, _) => match text.strip_prefix("env:") {
+                        Some(name) => std::env::var(name).map_err(|_| fault(format!("dsn.connect: {name} is unset; run make orm-test-servers")))?,
+                        None => text.to_owned(),
+                    },
                 };
-                let driver = crate::recipe::connect_driver(dsn).await.map_err(|(_, message)| Failure::Call(message))?;
+                let driver = crate::recipe::connect_driver(&dsn, &step["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
+            }
+            "dsn.sqlite_file" => {
+                let name = step["name"].as_str().unwrap_or_default();
+                let query = step["query"].as_str().unwrap_or_default();
+                let names = crate::recipe::sqlite_file_names(name, query).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "value": { "text": names } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
         })
