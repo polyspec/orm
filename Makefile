@@ -2091,7 +2091,7 @@ bind-models-check: go-model-check php-model-check bind-python-models typescript-
 .PHONY: bind-message-check bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
 bind-message-check: bind-message-check/go bind-message-check/rust bind-message-check/typescript bind-message-check/python bind-message-check/php bind-message-check/php-extension
 bind-message-check/go:
-	$(GO_TEST) -tags markdown ./packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
+	$(GO_TEST) ./packages/go/bindmessages -run '^TestRecipeBindMessagesNone$$' -count=1
 bind-message-check/rust: lease-tool
 	cd packages/rust && $(CARGO_TEST) bind-message-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test bind_messages
 bind-message-check/python: python-venv-check bind-python-models

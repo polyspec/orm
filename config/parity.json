@@ -8349,13 +8349,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/query_forms_test.go",
-          "id": "TestExplicitKeyJoinPlacesChildConditionsInGroup"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/engine_test.go",
-          "id": "TestJoinAndPlacement"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_joined_child_conditions_grouped"
         },
         {
           "implementation": "go",
@@ -14025,31 +14020,25 @@
           "id": "TestChainArgumentTypes"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
-          "id": "ModelDslNativeTest::testConditionArityAndNullabilityUseSourceErrors"
-        },
-        {
           "implementation": "typescript",
           "test": "packages/ts/tests/chain-types.mjs",
           "id": "chain argument types"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_chain_values.py",
-          "id": "test_null_is_refused_for_a_non_null_column_without_or_with_eq_and_ne"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
           "id": "compiler_fixtures::dsl49-nonnull-null-e0277"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript"
+        ]
+      }
     },
     {
       "id": "go-orm-mysqlonly-links-mysql-only",
@@ -29254,8 +29243,7 @@
       "id": "dsl-50-operator-value-shapes",
       "kind": "feature",
       "requirements": [
-        "DSL-50",
-        "PLN-4"
+        "DSL-50"
       ],
       "bindings": [
         {
@@ -29264,31 +29252,25 @@
           "id": "TestChainArgumentTypes"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConditions"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
-          "id": "ModelDslNativeTest::testUnsupportedOperatorValuesAreRejectedInsteadOfConverted"
-        },
-        {
           "implementation": "typescript",
           "test": "packages/ts/tests/chain-types.mjs",
           "id": "chain argument types"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_chain_values.py",
-          "id": "test_list_and_null_only_without_an_operator_or_with_eq_and_ne"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
           "id": "compiler_fixtures::dsl50-ordering-list-e0277"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript"
+        ]
+      }
     },
     {
       "id": "group-row-output-collections",
@@ -43711,6 +43693,87 @@
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
+    },
+    {
+      "id": "dsl",
+      "kind": "suite",
+      "requirements": [
+        "DSL-49",
+        "DSL-50",
+        "PLN-4"
+      ],
+      "file": "contracts/fixtures/dsl/dsl.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bindmessages/recipe_dsl_test.go",
+          "symbol": "TestRecipeDslNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DslRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DslRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DslRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DslRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsl-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsl_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsl_none.rs",
+          "symbol": "dsl_none"
+        }
+      ]
+    },
+    {
+      "id": "dsl-dynamic",
+      "kind": "suite",
+      "requirements": [
+        "DSL-49",
+        "DSL-50"
+      ],
+      "file": "contracts/fixtures/dsl/dsl-dynamic.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DslDynamicRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DslDynamicRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DslDynamicRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DslDynamicRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsl_dynamic-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsl_dynamic_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_queries",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     }
   ],
   "errors": {

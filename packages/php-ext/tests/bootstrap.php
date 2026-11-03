@@ -69,6 +69,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipe
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DslRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DslDynamicRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookPostgresRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookSqliteRecipeTest.php';

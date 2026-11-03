@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The chain values of DSL-49 and DSL-50 are the cases of the recipes `dsl` and `dsl-dynamic`; `markdown.send` takes the chain methods of Eq, Ne and Gt and a list parameter, and the PHP extension and Python native tests are gone. The uses that a compiler refuses stay native in Go, TypeScript and Rust.
+
 - The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.
 - The Go tests that assert only Go mechanics lie in internal test files with their reasons in `config/parity.json`, and `TestGenerateUsesRequestedGoPackageName` is bound to the Go-only generator unit.
 - `make client-db-rust-check` runs only the cases that no other target owns, the crate's public connection test needs no outside variable, the compiler fixtures run in order, and generate.mjs leaves no temporary directory.

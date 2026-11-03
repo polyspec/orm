@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8b38a176ae36900384676721ed4674bb433c8b5654bc505a403d24431eac162 -->
+<!-- source-sha256: a1e3405c9d24865b07e1f82b7ffa91c0d78668604fe2b74e0c31565784d5e81e -->
 # 변경 이력
 
 ## Unreleased
+
+- DSL-49와 DSL-50의 chain 값은 recipe `dsl`과 `dsl-dynamic`의 case가 되었다. `markdown.send`는 Eq, Ne, Gt의 chain method와 list parameter를 받고, PHP extension과 Python의 native 시험을 지웠다. 컴파일러가 거부하는 사용은 Go, TypeScript, Rust에서 native로 남는다.
 
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
