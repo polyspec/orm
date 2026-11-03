@@ -2394,6 +2394,8 @@ mod database {
         models: Box<dyn ModelDispatcher>,
         /// The fixture of the recipe with its external documents, which schema.install of a connection installs.
         schemas: Option<&'a (Schema, Vec<Schema>)>,
+        /// The named plans and connections of the dbspec apply ops.
+        apply: crate::recipe_apply::ApplyOps,
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
@@ -2640,10 +2642,11 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, subscriptions: HashMap::new(), recordings: HashMap::new() };
+            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, apply: crate::recipe_apply::ApplyOps::default(), subscriptions: HashMap::new(), recordings: HashMap::new() };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
+        let closed = context.apply.close();
         context.models.close().await;
-        outcome
+        outcome.and(closed)
     }
 
     /// The seed rows of the recipe and then of the case, and the steps of the case in their order.
@@ -2970,6 +2973,12 @@ mod database {
     async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
         Ok(match step["op"].as_str().unwrap_or_default() {
+            // The dbspec apply ops (FCV-4) run on their own connections and report their value.
+            op if crate::recipe_apply::OPS.contains(&op) => {
+                let database = context.database;
+                let dsn = context.dsn.clone();
+                Output::fields(context.apply.run(step, database, &dsn).map_err(fault)?)
+            }
             // schema.install (FCV-4): {schema} installs the set of the step on the case database; {connection} installs the
             // recipe fixture on that connection.
             "schema.install" => {

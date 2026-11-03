@@ -1080,6 +1080,7 @@
         "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/tests/src/lib.rs",
         "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/src/recipe_apply.rs",
         "packages/rust/tests/src/recipe_generator.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
@@ -9340,12 +9341,27 @@
           "symbol": "TestRecipeDbspecApplyMysql"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testMysql"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-mysql.test.mjs"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_apply_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_mysql.rs",
+          "symbol": "dbspec_apply_mysql"
         }
       ]
     },
@@ -9373,12 +9389,27 @@
           "symbol": "TestRecipeDbspecApplyPostgres"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testPostgres"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-postgres.test.mjs"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_apply_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_postgres.rs",
+          "symbol": "dbspec_apply_postgres"
         }
       ]
     },
@@ -9406,12 +9437,27 @@
           "symbol": "TestRecipeDbspecApplySqlite"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyRecipeTestExtensionTest::testSqlite"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec_apply-sqlite.test.mjs"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_apply_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_sqlite.rs",
+          "symbol": "dbspec_apply_sqlite"
         }
       ]
     },
