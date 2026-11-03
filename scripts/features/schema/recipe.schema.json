@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "orm recipe",
-  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects exactly mysql, postgres and sqlite; a recipe without one expects exactly none.",
+  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects the databases that run the step: mysql, postgres and sqlite, or those of its only; a recipe without one expects exactly none.",
   "type": "object",
   "required": [
     "$schema",
@@ -736,15 +736,11 @@
       ]
     },
     "expect": {
-      "description": "The outcome of each database: exactly mysql, postgres and sqlite, or exactly none; the root selects which.",
+      "description": "The outcome of each database: the databases that run the step, or exactly none; the root selects which, and scripts/features/recipes.test.mts checks that the names are exactly those databases (FCV-4, FCV-10).",
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "mysql",
-            "postgres",
-            "sqlite"
-          ],
+          "minProperties": 1,
           "additionalProperties": false,
           "properties": {
             "mysql": {

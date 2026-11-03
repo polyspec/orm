@@ -503,7 +503,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -767,11 +767,11 @@ const OP_DEADLINE_MS = 20000;
 async function runStep(s, context) {
   const op = OPS[s.op] ?? MODEL_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
-  // A step with only runs on the databases it names, and its expect names exactly those; a step without only names every database.
+  // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
   if (s.expect !== undefined) {
     const named = Object.keys(s.expect).sort().join(',');
-    const want = (s.only ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
+    const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
     if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
   }
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
