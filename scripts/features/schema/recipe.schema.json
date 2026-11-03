@@ -781,6 +781,8 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "dsn.sqlite_file",
+            "markdown.connect",
             "keyring.versions",
             "markdown.builder",
             "model.connect",
@@ -871,6 +873,7 @@
             "utils.lock",
             "utils.set_local",
             "utils.local",
+            "db.notify",
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
             "utils.groups"
@@ -880,6 +883,12 @@
       "oneOf": [
         {
           "$ref": "#/$defs/ops/dsn.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/dsn.sqlite_file"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.connect"
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
@@ -1147,6 +1156,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.set_local"
+        },
+        {
+          "$ref": "#/$defs/ops/db.notify"
         },
         {
           "$ref": "#/$defs/ops/utils.local"
@@ -1502,6 +1514,45 @@
           }
         }
       },
+      "markdown.connect": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "reply", "received", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.connect" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "reply": { "type": "string", "description": "The line that a listener answers the first message with." },
+          "received": { "type": "string", "description": "The line that the listener must have received." },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "dsn.sqlite_file": {
+        "type": "object",
+        "required": [
+          "op",
+          "name",
+          "query",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dsn.sqlite_file"
+          },
+          "name": {
+            "type": "string",
+            "description": "The file name of the SQLite DSN in a new directory (CFG-26)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The query of the SQLite DSN."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "dsn.connect": {
         "type": "object",
         "required": [
@@ -1517,6 +1568,26 @@
           "dsn": {
             "type": "string",
             "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The parameters that dsn.connect adds to the DSN of the case database (FCV-4)."
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "description": "The connection configuration of dsn.connect, by the name of each field in Rust (CFG-4, CFG-5, CFG-6).",
+            "properties": {
+              "pool_size": { "type": "integer" },
+              "pool_idle_size": { "type": "integer" },
+              "pool_lifetime_ms": { "type": "integer" },
+              "statement_timeout_ms": { "type": "integer" },
+              "tls_version": { "const": true, "description": "The connection also reads its Ssl_version, which is TLSv1.2 or TLSv1.3 (CFG-16)." }
+            }
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -1618,14 +1689,14 @@
                 "type": "object",
                 "required": [
                   "error",
-                  "message_contains"
+                  "message"
                 ],
                 "additionalProperties": false,
                 "properties": {
                   "error": {
                     "type": "string"
                   },
-                  "message_contains": {
+                  "message": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -6351,6 +6422,31 @@
           "name": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      },
+      "db.notify": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "channel",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.notify"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload": {
+            "type": "string"
           }
         }
       },

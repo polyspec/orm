@@ -19,11 +19,6 @@
     "steps"
   ],
   "step": {
-    "dsn.connect": [
-      "dsn",
-      "expect",
-      "op"
-    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -33,6 +28,28 @@
       "calls",
       "expect",
       "op"
+    ],
+    "dsn.connect": [
+      "config",
+      "dsn",
+      "expect",
+      "only",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
     ],
     "model.connect": [
       "aes_keyring",
@@ -659,6 +676,12 @@
       "connection",
       "name",
       "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
     ],
     "utils.set_local": [
       "connection",

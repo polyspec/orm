@@ -534,7 +534,7 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 		// secret over TLS, and requests the server's RSA public key only when there is no TLS.
 		pem, err := os.ReadFile(dsn.sslCA)
 		if err != nil {
-			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s is not a readable file: %w", dsn.sslCA, err)
 		}
 		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(pem) {
@@ -622,6 +622,11 @@ func mapDriverErr(err error) error {
 	// An error the driver reports as unable to use the connection any further is a lost-connection error.
 	if errors.Is(err, driver.ErrBadConn) {
 		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
+	}
+	// A certificate that the CA or the host of ssl-mode=VERIFY_IDENTITY refuses is CONFIG (CFG-16).
+	var refused *tls.CertificateVerificationError
+	if errors.As(err, &refused) {
+		return &ir.Error{Code: CodeConfig, Msg: "mysql TLS connection failed: " + err.Error(), Cause: err}
 	}
 	// Other driver errors, such as a write a trigger refused, are DRIVER.
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}

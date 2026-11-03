@@ -185,6 +185,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "keyring.versions":
                     _keyring_versions(step, database)
                     continue
+                if step["op"] == "markdown.connect":
+                    _markdown_connect(step, database)
+                    continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
                     continue
@@ -1040,7 +1043,7 @@ def _markdown_builder(step: dict, database: str) -> None:
     if (
         caught is None
         or caught.code != expect["error"]
-        or expect["message_contains"] not in str(caught)
+        or expect["message"] != str(caught)
     ):
         raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
 
@@ -1503,17 +1506,65 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
-def _connect_driver(dsn: str) -> str:
+def _connect_driver(dsn: str, config: dict | None = None) -> str:
     """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
     driver: the one implementation of dsn.connect (FCV-4)."""
-    db = Db.connect(dsn)
+    names = {
+        "pool_size": "poolSize",
+        "pool_idle_size": "poolIdleSize",
+        "pool_lifetime_ms": "poolLifetimeMs",
+        "statement_timeout_ms": "statementTimeoutMs",
+    }
+    db = Db.connect(
+        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
+    )
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
             raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+        if (config or {}).get("tls_version"):
+            status = db.utils().run(
+                lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")
+            )["rows"]
+            if not status or str(status[0][1]) not in ("TLSv1.2", "TLSv1.3"):
+                raise AssertionError(f"the Ssl_version of the connection is {status!r}")
         return db.driver
     finally:
         db.close()
+
+
+def _markdown_connect(step: dict, database: str) -> None:
+    """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
+    of the step, and checks the line it received and the outcome of the expect of database."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            received.append(stream.readline().decode().rstrip("\n"))
+            stream.write(step["reply"].encode() + b"\n")
+            stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    got = None
+    message = ""
+    try:
+        _connect_driver(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    except OrmError as error:
+        got = error.code
+        message = str(error)
+    server.join()
+    listener.close()
+    if received != [step["received"]]:
+        raise AssertionError(f"the listener received {received}, want {step['received']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
 
 
 def _dsn_connect(step: dict, database: str) -> None:
@@ -1523,14 +1574,20 @@ def _dsn_connect(step: dict, database: str) -> None:
     if outcome is None:
         raise AssertionError(f"dsn.connect has no expect for {database}")
     got = None
+    message = ""
     driver = None
     try:
-        driver = _connect_driver(step["dsn"])
+        driver = _connect_driver(step["dsn"], step.get("config"))
     except OrmError as error:
         got = error.code
+        message = str(error)
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
+        if outcome.get("message_holds", "") not in message:
+            raise AssertionError(
+                f"message {message}, want one that holds {outcome['message_holds']}"
+            )
         return
     if got is not None:
         raise AssertionError(f"unexpected error {got}")
@@ -2183,13 +2240,34 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
     """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
-    return {
-        "value": {
-            "text": _connect_driver(
-                context["dsn"] if step["dsn"] == "case" else step["dsn"]
-            )
-        }
-    }
+    dsn = step["dsn"]
+    if dsn == "case":
+        dsn = context["dsn"]
+        if "query" in step:
+            dsn += ("&" if "?" in dsn else "?") + step["query"]
+    if dsn.startswith("env:"):
+        name = dsn[len("env:") :]
+        dsn = os.environ.get(name, "")
+        if not dsn:
+            raise AssertionError(f"dsn.connect: {name} is unset; run make orm-test-servers")
+    return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
+
+
+def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
+    """dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a
+    file of it."""
+    name = step["name"]
+    with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
+        try:
+            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+        except OrmError:
+            left = os.listdir(directory)
+            if left:
+                raise AssertionError(f"a refused DSN left the files {left}") from None
+            raise
+        journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
+        names = sorted(set(os.listdir(directory)) - journals)
+    return {"value": {"text": ",".join(names)}}
 
 
 def _bound_value(field, context: dict) -> Any:
@@ -2814,6 +2892,11 @@ def _utils_lock(step: dict, context: dict) -> dict:
     return {}
 
 
+def _db_notify(step: dict, context: dict) -> dict:
+    _connection_of(step, context).notify(step["channel"], step["payload"])
+    return {}
+
+
 def _utils_set_local(step: dict, context: dict) -> dict:
     _connection_of(step, context).utils().set_local(
         step["name"], _chain_value(step["value"], context)
@@ -3203,6 +3286,7 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "dsn.connect": _op_dsn_connect,
+    "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,
@@ -3603,6 +3687,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,

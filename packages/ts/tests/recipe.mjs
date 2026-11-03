@@ -2,7 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -74,6 +74,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
@@ -92,12 +93,22 @@ export function runRecipe(path, database) {
 
 // connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
 // driver: the one implementation of dsn.connect (FCV-4).
-async function connectDriver(dsn) {
-  const db = await Db.connect(dsn);
+async function connectDriver(dsn, config = {}) {
+  const db = await Db.connect(dsn, {
+    ...(config.pool_size === undefined ? {} : { poolSize: config.pool_size }),
+    ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
+    ...(config.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: config.pool_lifetime_ms }),
+    ...(config.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: config.statement_timeout_ms }),
+  });
   try {
     const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
       throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
+    if (config.tls_version === true) {
+      const status = await db.utils().run(async frame => frame.run('utility', [], "SHOW SESSION STATUS LIKE 'Ssl_version'"));
+      const version = status.rows[0]?.[1];
+      if (version !== 'TLSv1.2' && version !== 'TLSv1.3') throw new Error(`the connection has Ssl_version ${JSON.stringify(version)}`);
     }
     return db.driver;
   } finally {
@@ -105,15 +116,42 @@ async function connectDriver(dsn) {
   }
 }
 
+// checkMarkdownConnect runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the
+// reply of the step.
+async function checkMarkdownConnect(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).once('line', line => {
+      received.push(line);
+      socket.end(`${step.reply}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  let failure;
+  try {
+    await connectDriver(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  } catch (error) {
+    failure = error;
+  } finally {
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
 // checkDsnConnect runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the refusal code or the driver of its expect.
 async function checkDsnConnect(step, database) {
   const expect = step.expect?.[database];
   let driver;
   let code = '';
+  let message = '';
   try {
-    driver = await connectDriver(step.dsn);
+    driver = await connectDriver(step.dsn, step.config);
   } catch (error) {
     code = error?.code ?? '';
+    message = error?.message ?? '';
   }
   if (expect === undefined) {
     if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -121,6 +159,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
+    if (!message.includes(expect.message_holds ?? '')) throw new Error(`message ${message}, want one that holds ${expect.message_holds}`);
     return;
   }
   if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -496,6 +535,7 @@ const callbackError = new Error('the transaction callback failed');
 /** Records one statement event as a recipe object (FCV-4): transactions are numbered from 1 in order of appearance. */
 function recordEvent(subscription, event) {
   if (!(typeof event.elapsed === 'number' && event.elapsed >= 0)) subscription.negative = true;
+  if (event.error !== null && !(event.error instanceof OrmError)) subscription.uncoded = true;
   let transaction = null;
   if (event.transaction !== null) {
     if (!subscription.numbers.has(event.transaction)) subscription.numbers.set(event.transaction, subscription.numbers.size + 1);
@@ -545,7 +585,31 @@ const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
-    return { value: { text: await connectDriver(s.dsn === 'case' ? context.dsn : s.dsn) } };
+    if (s.dsn.startsWith('env:')) {
+      const dsn = process.env[s.dsn.slice(4)];
+      if (!dsn) throw new Error(`dsn.connect: ${s.dsn.slice(4)} is unset; run make orm-test-servers`);
+      return { value: { text: await connectDriver(dsn, s.config) } };
+    }
+    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
+    const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
+    return { value: { text: await connectDriver(dsn, s.config) } };
+  },
+  // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
+  async 'dsn.sqlite_file'(s) {
+    const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
+    try {
+      try {
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+      } catch (refused) {
+        const left = readdirSync(directory);
+        if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);
+        throw refused;
+      }
+      const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
+      return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   },
   async 'catalog.connect'(s) {
     if (s.dsn.url !== undefined) {
@@ -1682,6 +1746,10 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  async 'db.notify'(s, context) {
+    await connectionOf(s, context).notify(s.channel, s.payload);
+    return {};
+  },
   async 'utils.lock'(s, context) {
     await connectionOf(s, context).utils().lock(s.name);
     return {};
@@ -1871,6 +1939,7 @@ Object.assign(OPS, {
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
+    if (subscription.uncoded) throw new Error('an event has an error that is not an OrmError');
     const records = s.compare === 'tables' ? subscription.records.filter(r => r.tables.length > 0) : subscription.records;
     const events = records.map(eventObject);
     // A mask replaces a bind that no recipe can fix (FCV-4 events.captured).
@@ -2245,8 +2314,8 @@ async function checkBuilder(step, database) {
   }
   if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
   const expect = step.expect[database];
-  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
-    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || callError.message !== expect.message) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} ${expect.message}`, { cause: callError });
   }
 }
 

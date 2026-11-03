@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.notify',
         'utils.lock',
         'utils.set_local',
         'utils.local',
@@ -171,6 +172,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'dsn.connect') {
                     self::dsnConnectStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.connect') {
+                    self::markdownConnectStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'keyring.versions') {
@@ -662,9 +667,14 @@ final class Recipe
      * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
      * driver: the one implementation of dsn.connect (FCV-4).
      */
-    private static function connectDriver(string $dsn): string
+    private static function connectDriver(string $dsn, array $config = []): string
     {
-        $db = Orm::connect($dsn, new Config());
+        $db = Orm::connect($dsn, new Config(
+            poolSize: $config['pool_size'] ?? 0,
+            poolIdleSize: $config['pool_idle_size'] ?? 0,
+            poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
+            statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+        ));
         try {
             $rows = $db->utils()->run(
                 static fn (TxFrame $frame): array => $frame->run(
@@ -676,10 +686,68 @@ final class Recipe
             Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
+            if ($config['tls_version'] ?? false) {
+                $status = $db->utils()->run(
+                    static fn (TxFrame $frame): array => $frame->run(
+                        StatementEvent::UTILITY,
+                        [],
+                        "SHOW SESSION STATUS LIKE 'Ssl_version'",
+                    ),
+                );
+                Assert::assertContains($status[0][1] ?? null, ['TLSv1.2', 'TLSv1.3'], 'the Ssl_version of the connection');
+            }
             return $db->driver();
         } finally {
             $db->close();
         }
+    }
+
+    /**
+     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
+     * CFG-26).
+     */
+    private static function sqliteFileNames(string $name, string $query): string
+    {
+        $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
+        if (!mkdir($directory, 0o700)) {
+            throw new RuntimeException("cannot create $directory");
+        }
+        try {
+            try {
+                self::connectDriver("sqlite://$directory/$name?$query");
+            } catch (OrmException $refused) {
+                Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
+                throw $refused;
+            }
+            $names = array_diff(
+                scandir($directory),
+                ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
+            );
+            return implode(',', $names);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($directory));
+        }
+    }
+
+    /** The markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply of the step. */
+    private static function markdownConnectStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
+        $code = null;
+        $message = '';
+        try {
+            self::connectDriver($server[2]);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        Assert::assertSame(
+            [$step['received']],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -690,16 +758,19 @@ final class Recipe
             Assert::fail("dsn.connect has no expect for $database");
         }
         $code = null;
+        $message = '';
         $driver = null;
         try {
-            $driver = self::connectDriver($step['dsn']);
+            $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
         } catch (OrmException $error) {
             $code = $error->code_;
+            $message = $error->getMessage();
         }
         if (isset($expect['error'])) {
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
+            Assert::assertStringContainsString($expect['message_holds'] ?? '', $message);
             return;
         }
         if ($code !== null) {
@@ -1429,7 +1500,7 @@ final class Recipe
         Assert::assertNull($message, 'the terminal sent a message before its error');
         $expect = $step['expect'][$database];
         Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
-        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
+        Assert::assertSame($expect['message'], $caught->getMessage());
     }
 
     /**
@@ -2545,8 +2616,21 @@ final class Recipe
                 return self::querySearchChain($s, $context);
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
-                $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
-                return ['value' => ['text' => self::connectDriver($dsn)]];
+                $dsn = $s['dsn'];
+                if ($dsn === 'case') {
+                    $dsn = $context['dsn'];
+                    if (isset($s['query'])) {
+                        $dsn .= (str_contains($dsn, '?') ? '&' : '?') . $s['query'];
+                    }
+                }
+                if (str_starts_with($dsn, 'env:')) {
+                    $name = substr($dsn, 4);
+                    $dsn = (string) getenv($name);
+                    Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
+                }
+                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
+            case 'dsn.sqlite_file':
+                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'])]];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
@@ -3495,6 +3579,9 @@ final class Recipe
                     return [];
                 }
                 self::chainTarget($s, $context)->delete($recursive);
+                return [];
+            case 'db.notify':
+                self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
                 return [];
             case 'utils.lock':
                 self::connectionOf($s, $context)->utils()->lock($s['name']);
