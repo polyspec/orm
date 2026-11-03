@@ -80,7 +80,8 @@
                         "not": {
                           "enum": [
                             "model.connect",
-                            "sql.exec"
+                            "sql.exec",
+                            "dbspec.ddl_behavior"
                           ]
                         }
                       }
@@ -766,6 +767,7 @@
             "dsn.connect",
             "keyring.versions",
             "dbspec.introspect_sqlite",
+            "dbspec.ddl_behavior",
             "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
@@ -861,6 +863,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.ddl_behavior"
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect_shown"
@@ -1356,6 +1361,27 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.ddl_behavior": {
+        "description": "On one native connection of the case database: the connection rules, the statements of the case for the database, then its behavior steps (DIA-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
           }
         }
       },

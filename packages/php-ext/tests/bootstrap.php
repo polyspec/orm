@@ -62,6 +62,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DsnConnectionRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelSocketRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelWritesRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/StatementEventsRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DbspecRenderPhysicalRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/StatementRunnerRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationPostgresRecipeTest.php';

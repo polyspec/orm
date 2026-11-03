@@ -2439,6 +2439,43 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'dbspec.ddl_behavior':
+                // On one native connection of the case database, the connection rules, the statements of the case for the
+                // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
+                // a query compares its first value, as text, with want, and a NULL or absent value fails it (DIA-113).
+                $vectors = json_decode((string) file_get_contents($context['dir'] . '/' . $s['vectors']), true, 512, JSON_THROW_ON_ERROR);
+                $matching = array_values(array_filter($vectors['cases'], static fn(array $c): bool => $c['id'] === $s['case']));
+                if ($matching === []) {
+                    throw new \RuntimeException("the vectors have no case {$s['case']}");
+                }
+                $database = $context['database'];
+                $pdo = case_admin($context['dsn']);
+                $rule = ['mysql' => "SET time_zone = '+00:00'", 'postgres' => "SET TimeZone = 'UTC'", 'sqlite' => 'PRAGMA foreign_keys = ON'][$database];
+                foreach ([$rule, ...$matching[0]['statements'][$database]] as $statement) {
+                    $pdo->exec($statement);
+                }
+                foreach ($matching[0]['behavior'] as $step) {
+                    if (isset($step['dialects']) && !in_array($database, $step['dialects'], true)) {
+                        continue;
+                    }
+                    if (array_key_exists('sql', $step)) {
+                        if (($step['fails'] ?? false) !== true) {
+                            $pdo->exec($step['sql']);
+                            continue;
+                        }
+                        try {
+                            $pdo->exec($step['sql']);
+                        } catch (\PDOException) {
+                            continue;
+                        }
+                        throw new \RuntimeException("{$step['sql']} must fail");
+                    }
+                    $got = dbspec_value($pdo, $step['query']);
+                    if ($got !== $step['want']) {
+                        throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
+                    }
+                }
+                return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
                 $statement = is_string($s['sql']) ? $s['sql'] : ($s['sql'][$context['database']] ?? null);

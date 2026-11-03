@@ -2911,6 +2911,11 @@ mod database {
                 let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "int": deleted.to_string() } }))
             }
+            // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
+            "dbspec.ddl_behavior" => {
+                ddl_behavior(step, context.database, &context.dsn, context.dir).await.map_err(fault)?;
+                Output::fields(json!({}))
+            }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
@@ -3252,6 +3257,66 @@ mod database {
             Value::Object(map) if map.len() == 1 && map.contains_key("null") => json!({ "null": true }),
             Value::Object(map) => Value::Object(map.iter().map(|(k, v)| (k.clone(), normalized(v))).collect()),
             other => other.clone(),
+        }
+    }
+
+    /// On one native connection of the case database: the connection rules, the statements of the case for the database, then
+    /// its behavior steps. A step with dialects runs only on those; a step with fails must fail; a query compares its first
+    /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
+    async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
+        use sqlx::{ConnectOptions as _, Connection as _, Row as _};
+        let path = dir.join(step["vectors"].as_str().unwrap_or_default());
+        let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
+        let id = step["case"].as_str().unwrap_or_default();
+        let vector = vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
+        let rule = match database {
+            "mysql" => "SET time_zone = '+00:00'",
+            "postgres" => "SET TimeZone = 'UTC'",
+            _ => "PRAGMA foreign_keys = ON",
+        };
+        let statements = vector["statements"][database].as_array().ok_or_else(|| format!("the case {id} has no statements for {database}"))?;
+        let behavior = vector["behavior"].as_array().ok_or_else(|| format!("the case {id} has no behavior"))?;
+        // The driver of each database has its own connection type, so the steps are written once as a macro.
+        macro_rules! run {
+            ($options:expr) => {{
+                let mut connection = $options.connect().await.map_err(|e| e.to_string())?;
+                let result = async {
+                    for statement in std::iter::once(rule).chain(statements.iter().filter_map(Value::as_str)) {
+                        sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(&mut connection).await.map_err(|e| format!("{statement}: {e}"))?;
+                    }
+                    for entry in behavior {
+                        if entry["dialects"].as_array().is_some_and(|dialects| !dialects.iter().any(|dialect| dialect == database)) {
+                            continue;
+                        }
+                        if let Some(sql) = entry["sql"].as_str() {
+                            let done = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned())).execute(&mut connection).await;
+                            match (done, entry["fails"].as_bool() == Some(true)) {
+                                (Ok(_), true) => return Err(format!("{sql} must fail")),
+                                (Err(error), false) => return Err(format!("{sql}: {error}")),
+                                _ => {}
+                            }
+                            continue;
+                        }
+                        let query = entry["query"].as_str().unwrap_or_default();
+                        let row = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_optional(&mut connection).await.map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: no row"))?;
+                        let got = row.try_get_unchecked::<Option<String>, usize>(0).map_err(|e| format!("{query}: {e}"))?.ok_or_else(|| format!("{query}: NULL value"))?;
+                        let want = entry["want"].as_str().unwrap_or_default();
+                        if got != want {
+                            return Err(format!("{query}: got {got}, want {want}"));
+                        }
+                    }
+                    Ok::<(), String>(())
+                }
+                .await;
+                connection.close().await.map_err(|e| e.to_string())?;
+                result
+            }};
+        }
+        match parse_dsn(dsn).map_err(|e| e.to_string())?.options {
+            ConnectOptions::MySql(options) => run!(options),
+            ConnectOptions::Postgres(options) => run!(options),
+            ConnectOptions::Sqlite(options) => run!(options),
+            ConnectOptions::Markdown(_) => Err("a markdown corpus has no native SQL driver".into()),
         }
     }
 

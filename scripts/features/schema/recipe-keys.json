@@ -19,6 +19,11 @@
     "steps"
   ],
   "step": {
+    "dbspec.ddl_behavior": [
+      "case",
+      "op",
+      "vectors"
+    ],
     "dbspec.introspect_shown": [
       "case",
       "expect",

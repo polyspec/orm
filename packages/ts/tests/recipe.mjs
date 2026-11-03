@@ -24,7 +24,7 @@ import { checkKeys } from './recipe_keys.mjs';
 import { checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
-import { nativeQuery, within } from './coverage_case.mjs';
+import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
 import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
@@ -637,6 +637,35 @@ const OPS = {
   },
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
+  },
+  // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
+  // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
+  // fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it.
+  async 'dbspec.ddl_behavior'(s, context) {
+    const vectors = JSON.parse(readFileSync(resolve(context.dir, s.vectors), 'utf8'));
+    const vector = vectors.cases.find(candidate => candidate.id === s.case);
+    if (vector === undefined) throw new Error(`the vectors have no case ${s.case}`);
+    const { database } = context;
+    const rule = { mysql: "SET time_zone = '+00:00'", postgres: "SET TimeZone = 'UTC'", sqlite: 'PRAGMA foreign_keys = ON' }[database];
+    const session = await nativeSession(database, context.dsn);
+    try {
+      for (const statement of [rule, ...vector.statements[database]]) await session.query(statement);
+      for (const step of vector.behavior) {
+        if (step.dialects !== undefined && !step.dialects.includes(database)) continue;
+        if (step.sql !== undefined) {
+          const refused = await session.query(step.sql).then(() => null, error => error);
+          if (step.fails && refused === null) throw new Error(`${step.sql} must fail`);
+          if (!step.fails && refused !== null) throw new Error(`${step.sql}: ${refused.message}`, { cause: refused });
+          continue;
+        }
+        const rows = await session.query(step.query);
+        if (rows.length === 0) throw new Error(`${step.query}: no row`);
+        const value = Object.values(rows[0])[0];
+        if (value === null) throw new Error(`${step.query}: NULL value`);
+        if (String(value) !== step.want) throw new Error(`${step.query}: got ${String(value)}, want ${step.want}`);
+      }
+    } finally { await session.close(); }
+    return {};
   },
   async 'sql.exec'(s, context) {
     // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.

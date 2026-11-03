@@ -3525,41 +3525,119 @@
       ]
     },
     {
-      "id": "dbspec-render-physical",
-      "kind": "feature",
+      "id": "dbspec-render-physical-mysql",
+      "kind": "suite",
       "requirements": [
         "DIA-113"
       ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render-physical.mjs",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_render_physical.py",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
-          "id": "render_physical"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/dbspec_render_physical_test.go",
-          "id": "TestDBSpecRenderPhysical"
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "id": "DbspecRenderTest::testBehaviourPhysical"
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
-          "id": "DbspecRenderTestExtensionTest::testBehaviourPhysical"
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+          "symbol": "dbspec_render_physical_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+          "symbol": "dbspec_render_physical_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+          "symbol": "dbspec_render_physical_sqlite"
         }
       ]
     },

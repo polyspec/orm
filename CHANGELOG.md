@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The physical run of the rendered statements of `tests/dbspec/ddl.json` is the recipe `tests/dbspec/render-physical.json` on the three databases in all six runtimes, through the op `dbspec.ddl_behavior`, in place of a native test in each runtime (DIA-113).
 - A Python model read of a cell that its codec refuses raises `OrmError` with the code, as a write does, in place of `CodecError`; a direct codec call keeps `CodecError`.
 - TypeScript `toJSONText()` and `JSON.stringify(row)` no longer throw on a row that holds a bigint: both write the exact integer as a JSON number, also inside a styled value.
 - The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: its twenty-seven cases cover connectors, groups, chain reuse, expressions, columns, joins, relations, subqueries, aggregates, empty reads, functions, AES and hex values, a write cycle, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.

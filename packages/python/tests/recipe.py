@@ -76,7 +76,7 @@ from polyspec.orm.styled_value import StyledValue
 
 from . import chain_answer, testcase
 from .case_database import case_database
-from .coverage_case import native_query
+from .coverage_case import native_query, native_session
 from .recipe_generator import check_generator
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -2160,6 +2160,50 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+# The statement that every client runs on a new connection (docs/spec/dbspec.md "Types", docs/spec/dialects.md "Foreign keys").
+_DDL_CONNECTION_RULES = {
+    "mysql": "SET time_zone = '+00:00'",
+    "postgres": "SET TimeZone = 'UTC'",
+    "sqlite": "PRAGMA foreign_keys = ON",
+}
+
+
+def _op_ddl_behavior(step: dict, context: dict) -> dict:
+    """dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
+    statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step
+    with fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it."""
+    vectors = json.loads((context["dir"] / step["vectors"]).read_text(encoding="utf-8"))
+    vector = next((c for c in vectors["cases"] if c["id"] == step["case"]), None)
+    if vector is None:
+        raise AssertionError(f"the vectors have no case {step['case']}")
+    database = context["database"]
+    with native_session(database, context["dsn"]) as run:
+        for statement in [_DDL_CONNECTION_RULES[database], *vector["statements"][database]]:
+            run(statement)
+        for entry in vector["behavior"]:
+            if "dialects" in entry and database not in entry["dialects"]:
+                continue
+            if "sql" in entry:
+                try:
+                    run(entry["sql"])
+                except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+                    if not entry.get("fails"):
+                        raise AssertionError(f"{entry['sql']}: {error}") from error
+                    continue
+                if entry.get("fails"):
+                    raise AssertionError(f"{entry['sql']} must fail")
+                continue
+            rows = run(entry["query"])
+            if not rows:
+                raise AssertionError(f"{entry['query']}: no row")
+            value = next(iter(rows[0].values()))
+            if value is None:
+                raise AssertionError(f"{entry['query']}: NULL value")
+            if str(value) != entry["want"]:
+                raise AssertionError(f"{entry['query']}: got {value!s}, want {entry['want']}")
+    return {}
+
+
 def _op_sql_exec(step: dict, context: dict) -> dict:
     # An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
     statement = (
@@ -3140,6 +3184,7 @@ _DATABASE_OPS = {
     "catalog.insert_row": _op_insert_row,
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
+    "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
