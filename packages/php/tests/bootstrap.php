@@ -66,7 +66,6 @@ require_once __DIR__ . '/FailingPdo.php';
 require_once __DIR__ . '/FailingStatement.php';
 require_once __DIR__ . '/dbspec_verify_errors_case.php';
 require_once __DIR__ . '/DbspecTimedCases.php';
-require_once __DIR__ . '/DbspecIntrospectQueryCountCases.php';
 require_once __DIR__ . '/DbspecStressTestSupport.php';
 require_once __DIR__ . '/ModelTestFailingPdo.php';
 require_once __DIR__ . '/StatementEventLog.php';

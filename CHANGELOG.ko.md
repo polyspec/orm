@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9914d163c72849be963c5f897b1d5c92ade8649099f4d90f24b228d24ab96f64 -->
+<!-- source-sha256: 1b8ee9f00644d779e52cac80b20f38b53e3e9a29ff527fd7d4118da53c64577a -->
 # 변경 이력
 
 ## Unreleased
 
+- introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
 - transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)

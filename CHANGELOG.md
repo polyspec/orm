@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Introspection is the recipe dbspec_introspect in all six runtimes: the round trips, the cases of tests/dbspec/introspect.json with the reasons of a PostgreSQL loose sequence and routine, the catalog query count and a failing catalog query; dialect-refusal holds its unknown dialect in five runtimes. Only the silent PDO error mode (DIA-133a) and the method of the PHP extension (DIA-133b) stay native (#T334-3-12-5)
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)
 - The feature checker builds a Go owner with the tags of the normal go test, so it reads by exact name a test that the normal run holds (#T334-3-6-2)
