@@ -56,9 +56,11 @@
       "call",
       "expect",
       "fail_catalog_read",
+      "fail_statements",
       "op",
       "plan",
-      "sql"
+      "sql",
+      "stop_on_applied"
     ],
     "dbspec.ddl_behavior": [
       "case",

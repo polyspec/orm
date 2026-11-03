@@ -4240,6 +4240,11 @@
         "tests/dbspec/schema-definition.json"
       ],
       "tests": [
+        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
         "packages/go/internal/dialects/apply_clients_physical_test.go",
         "packages/go/internal/dialects/apply_physical_test.go",
         "packages/go/internal/dialects/ddl_physical_test.go",

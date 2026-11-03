@@ -1772,7 +1772,7 @@
         }
       },
       "dbspec.apply_fault": {
-        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. Statements of fail_statements fail in the call, and stop_on_applied stops the call at its first applied event. The result is the code of the apply error, its failure and its cleanup errors (PLN-92, PLN-93, PLN-96, PLN-106).",
         "type": "object",
         "required": [
           "op",
@@ -1807,6 +1807,32 @@
             "type": "integer",
             "minimum": 1
           },
+          "fail_statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "statement",
+                "message"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "statement": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sqlite_result": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "stop_on_applied": {
+            "type": "string"
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -1816,16 +1842,27 @@
             "properties": {
               "none": {
                 "type": "object",
-                "required": [
-                  "code"
-                ],
                 "additionalProperties": false,
                 "properties": {
                   "code": {
                     "enum": [
                       "verify",
-                      "drift"
+                      "drift",
+                      "locked",
+                      "chain"
                     ]
+                  },
+                  "failure_ends_with": {
+                    "type": "string"
+                  },
+                  "failure": {
+                    "type": "string"
+                  },
+                  "cleanup": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "history_state": {
                     "type": "string"

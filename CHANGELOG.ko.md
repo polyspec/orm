@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d10d1fb84f5bc8776a6ae2a3903dbc72f21f4cadac259d64e5cb67aa8255d57d -->
+<!-- source-sha256: be1575be604d023776817753f0e7636258028a827f60aef2d2c9d94a2f633748 -->
 # 변경 이력
 
 ## Unreleased
 
+- apply의 cleanup error(PLN-97~PLN-101, PLN-106)와 plan 밖의 기록된 step rollback은 주입한 statement로 모든 runtime에서 `dbspec.apply_fault` recipe의 case이고, native 시험은 없앴다 (#T334-3-18).
 - `conformance-generated-methods-check`는 본문 `now_defaults`, `delete_recursive`, `affected_counts`도 그 recipe case의 expect와 비교한다.
 - group_rows_db native와 physical check를 없앤다. recipe가 값과 읽기 전용 statement를 그대로 담는다 (#T334-3-4-25)
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.

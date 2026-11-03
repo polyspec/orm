@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The cleanup errors of apply (PLN-97 to PLN-101, PLN-106) and a rollback of a recorded step outside the plan are cases of the `dbspec.apply_fault` recipe in every runtime, through injected statements; the native tests are gone (#T334-3-18).
 - `conformance-generated-methods-check` also compares the bodies `now_defaults`, `delete_recursive` and `affected_counts` with the expects of their recipe cases.
 - The group_rows_db natives and the physical check are gone; the recipe holds the values and the exact read-only statements (#T334-3-4-25)
 - The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
