@@ -2801,6 +2801,10 @@ final class Recipe
                 $recording = new RecipeRecording();
                 $stop = self::connectionOf($s, $context)->subscribe($recording->receive(...));
                 return ['bind' => new RecipeSubscription($stop, $recording)];
+            case 'fault.next_rollback':
+                require_once dirname(__DIR__) . '/testing/Faults.php';
+                \Polyspec\Orm\Testing\Faults::failNextRollback(self::connectionOf($s, $context));
+                return [];
             case 'events.fail_subscriber':
                 $kind = $s['kind'];
                 $refusal = $s['refusal'] ?? null;

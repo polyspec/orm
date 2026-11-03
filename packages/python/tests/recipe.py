@@ -45,7 +45,7 @@ from polyspec.orm import (
     transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
-from polyspec.orm.testing import last_affected
+from polyspec.orm.testing import fail_next_rollback, last_affected
 from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
@@ -3404,6 +3404,11 @@ def _op_events_subscribe(step: dict, context: dict) -> dict:
     return {"bind": _Subscription(stop, recording)}
 
 
+def _op_fault_next_rollback(step: dict, context: dict) -> dict:
+    fail_next_rollback(_connection_of(step, context))
+    return {}
+
+
 def _op_events_fail_subscriber(step: dict, context: dict) -> dict:
     kind = step["kind"]
     refusal: Exception = RuntimeError("subscriber refused the event")
@@ -3775,6 +3780,7 @@ _DATABASE_OPS = {
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
+    "fault.next_rollback": lambda step, context: _op_fault_next_rollback(step, context),
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
     "utils.run": _op_utils_run,

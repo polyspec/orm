@@ -3378,6 +3378,11 @@ mod database {
                 context.subscriptions.insert(name, subscription);
                 Output::fields(json!({}))
             }
+            "fault.next_rollback" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                polyspec_orm::testing::fail_next_rollback(&db);
+                Output::fields(json!({}))
+            }
             "events.fail_subscriber" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;

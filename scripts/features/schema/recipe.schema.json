@@ -809,6 +809,7 @@
             "collection.key",
             "sql.exec",
             "session.end",
+            "fault.next_rollback",
             "query.search",
             "query.search_chain",
             "ir.validate",
@@ -974,6 +975,9 @@
         },
         {
           "$ref": "#/$defs/ops/session.end"
+        },
+        {
+          "$ref": "#/$defs/ops/fault.next_rollback"
         },
         {
           "$ref": "#/$defs/ops/query.search"
@@ -3371,6 +3375,20 @@
                 "minLength": 1
               }
             }
+          }
+        }
+      },
+      "fault.next_rollback": {
+        "description": "Arms the rollback fault of the test entry point of the client on the connection (PRT-43 and its peers).",
+        "type": "object",
+        "required": ["op", "connection"],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "fault.next_rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
           }
         }
       },

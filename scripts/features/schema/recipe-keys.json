@@ -148,6 +148,10 @@
       "op",
       "table"
     ],
+    "fault.next_rollback": [
+      "connection",
+      "op"
+    ],
     "query.search": [
       "columns",
       "connection",

@@ -488,7 +488,7 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 	result, err := op(s, c)
 	if err != nil {
 		code := orm.ErrorCode(err)
-		if errors.Is(err, errCallback) {
+		if code == "" && errors.Is(err, errCallback) {
 			code = callbackCode
 		}
 		want, wantsError := expected["error"]

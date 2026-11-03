@@ -138,6 +138,12 @@ func statementOp(s databaseStep, c *databaseContext) (outcome, bool, error) {
 			return outcome{}, true, err
 		}
 		return outcome{api: &subscription{stop: stop}, fields: map[string]any{}}, true, nil
+	case "fault.next_rollback":
+		db, err := connectionOf(s, c)
+		if err != nil {
+			return outcome{}, true, err
+		}
+		return outcome{fields: map[string]any{}}, true, failNextRollback(db)
 	case "events.stop_failing", "events.unsubscribe":
 		sub, err := boundAPI[*subscription](s.Ref, c)
 		if err != nil {
