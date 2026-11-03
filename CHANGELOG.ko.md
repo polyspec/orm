@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dd4b6bf005e9c0f8bdf9d12565ad76f0fc08f47431a4b87a32bec36096f4d014 -->
+<!-- source-sha256: 9a3b8c80d1aa76183dbb7102ec994108892767080197482244c3d0755b0a5cb5 -->
 # 변경 이력
 
 ## Unreleased
 
 - conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
 - 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
+- `clock_microseconds`, `clock_soft_delete_microseconds`, `now_defaults`는 database clock 기준 1분 범위를 허용하던 자리에서, 새 step `clock.read`로 write 앞뒤에 읽은 wall clock 사이에 저장된 clock 값을 잡는다.
 - CR15-F: 저장된 표의 내림차순 행과 NULL을 `grid_column_and_row_order`의 step으로 두었다. Go 시험은 wrapper의 plan만 남기고(SCH-6b), Rust helper 시험은 지우며, Rust commit 분류기는 단일 소유 unit이 된다(INT-118a).
 - `performance_gate`는 각 class가 가리키는 database의 `BENCH_<DATABASE>_DSN`을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - described table 읽기는 유효한 UTF-8이 아닌 값을 여섯 runtime 모두에서 그 byte로 돌려주며, TypeScript는 그런 읽기의 응답 전체를 한 번의 실행에서 가져옵니다.
