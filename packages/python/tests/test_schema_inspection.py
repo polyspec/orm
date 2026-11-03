@@ -41,36 +41,6 @@ class SchemaInspectionTest(unittest.TestCase):
         busy = DbStats(max_open_connections=10, open_connections=1, in_use=1, idle=0)
         self.assertEqual(seen, [(busy, busy)])
 
-    # Requirements: INT-58.
-    def test_empty_counts_tables_and_views_but_not_the_orm_tables(self):
-        schema = self.db.utils().schema()
-        self.assertTrue(schema.empty())
-        self.db._connection.execute('CREATE TABLE "orm__probe" ("k" TEXT)', [])
-        self.assertTrue(schema.empty(), "an orm__ table is not content")
-        self.db._connection.execute('CREATE VIEW "listing" AS SELECT 1 AS "one"', [])
-        self.assertFalse(schema.empty(), "a view is content")
-        self.db._connection.execute('DROP VIEW "listing"', [])
-        self.assertTrue(schema.empty())
-        schema.install(SCHEMA)
-        self.assertFalse(schema.empty(), "installed tables are content")
-
-    # Requirements: INT-57.
-    def test_exists_and_installed_read_the_prefixed_tables_of_a_schema(self):
-        schema = self.db.utils().schema()
-        self.assertFalse(schema.exists("app"))
-        self.db._connection.execute('CREATE TABLE "app__user" ("k" TEXT)', [])
-        self.db._connection.execute('CREATE TABLE "apps" ("k" TEXT)', [])
-        self.assertTrue(schema.exists("app"))
-        self.assertFalse(
-            schema.exists("ap"), "the schema prefix is the whole name before __"
-        )
-        self.assertFalse(
-            schema.exists("a_p"), "an underscore of the name is not a wildcard"
-        )
-        self.assertTrue(schema.installed("app", "user"))
-        self.assertFalse(schema.installed("app", "missing"))
-        self.assertFalse(schema.installed("ormexample", "user"))
-
     def test_inspection_runs_in_the_active_transaction(self):
         schema = self.db.utils().schema()
         seen = []

@@ -1840,7 +1840,7 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture};
+pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture, CASE_CONNECTION};
 
 /// The member in which a step of the table path keeps the written order of an object, since serde_json sorts the keys of
 /// its objects and a column list is written in the order of the recipe (FCV-4).
@@ -1911,6 +1911,9 @@ mod database {
     }
 
     /// The boxed future of a model op or of model.connect: its fields, or the error text, which begins with its code (FCV-4).
+    /// The name under which a dispatcher holds the case connection for the model ops that name no connection.
+    pub const CASE_CONNECTION: &str = "case";
+
     pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
 
     /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
@@ -1929,6 +1932,8 @@ mod database {
         fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a>;
         /// Closes the connections that the case opened.
         fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+        /// Holds the case connection under `name` for the model ops that name no connection; the case closes it, not the dispatcher.
+        fn adopt(&mut self, _name: &str, _db: Db) {}
         /// The connection `name` that model.connect opened, for the events and transaction ops; none by default.
         fn db(&self, _name: &str) -> Option<Db> {
             None
@@ -2572,6 +2577,16 @@ mod database {
                 context.db.utils().schema().register(&schema).map_err(orm)?;
                 Output::fields(ok_value())
             }
+            "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),
+            "schema.exists" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().exists(&name).await.map_err(orm)? } }))
+            }
+            "schema.installed" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                let table = step["table"].as_str().unwrap_or_default();
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().installed(&name, table).await.map_err(orm)? } }))
+            }
             "schema.connect" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
                 let connected = Db::connect_schema(&context.dsn, &schema, 1, Config::default()).await.map_err(orm)?;
@@ -2939,6 +2954,11 @@ mod database {
         let connection = match step["connection"].as_str() {
             Some(name) => name,
             None if step.get("row").is_some() || op == "hook.records" => "",
+            // A model op of the table path with no connection runs on the case connection, as in the other runtimes.
+            None if context.models.table_path() => {
+                context.models.adopt(CASE_CONNECTION, context.db.clone());
+                CASE_CONNECTION
+            }
             None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
         };
         let resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
@@ -3004,6 +3024,15 @@ mod database {
 
     /// The SQL of a sql.exec field for the case database: a string, or the entry of the database when the object has its key.
     /// An absent key is None, so the step runs nothing on that database.
+    fn inspected_schema(field: &Value, context: &Context<'_>) -> Result<String, String> {
+        let name = field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} names no schema for {}", context.database))?;
+        if name != "$database" {
+            return Ok(name.to_owned());
+        }
+        let path = context.dsn.split('?').next().unwrap_or_default();
+        Ok(path.rsplit('/').next().unwrap_or_default().to_owned())
+    }
+
     fn sql_entry<'a>(field: &'a Value, context: &Context<'_>) -> Result<Option<&'a str>, String> {
         if let Some(text) = field.as_str() {
             return Ok(Some(text));

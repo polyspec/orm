@@ -3080,6 +3080,25 @@ def _op_aes_rotate(step: dict, context: dict) -> dict:
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
     "schema.register": lambda step, context: _op_schema_register(step, context),
+    "schema.empty": lambda step, context: {
+        "value": {"bool": context["db"].utils().schema().empty()}
+    },
+    "schema.exists": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .exists(_inspected_schema(step["schema"], context))
+        }
+    },
+    "schema.installed": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .installed(_inspected_schema(step["schema"], context), step["table"])
+        }
+    },
     "schema.connect": lambda step, context: _op_schema_connect(step, context),
     "schema.add_tables_and_columns": lambda step, context: _op_schema_add_tables(
         step, context
@@ -3377,6 +3396,15 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     if replace is not None:
         text = text.replace(replace["from"], replace["to"])
     return Schema(text, manifest.manifest_hash, manifest.external_text)
+
+
+def _inspected_schema(value, context: dict) -> str:
+    """The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is
+    the name of the case database."""
+    name = value if isinstance(value, str) else value[context["database"]]
+    if name == "$database":
+        return context["dsn"].split("?", 1)[0].rsplit("/", 1)[1]
+    return name
 
 
 def _op_schema_install(step: dict, context: dict) -> dict:
