@@ -373,7 +373,7 @@ SH;
     public function testCoverageItemsCanSelectOneDatabaseWithoutOtherDsns(): void
     {
         $this->withSelectedSQLiteEnvironment(function (): void {
-            $items = coverageItemsOf(__DIR__ . '/CoverageConstraintsAndRelationsTest.php');
+            $items = coverageItemsOf(__DIR__ . '/CoveragePerformanceGateSqliteTest.php');
             self::assertNotSame([], $items, 'the feature test has declared coverage items');
             foreach ($items as [$database, $dsn]) {
                 self::assertSame('sqlite', $database, 'only the selected database is returned');
@@ -483,7 +483,7 @@ SH;
         $seen = [];
         $this->withSelectedSQLiteEnvironment(function () use (&$connections, &$seen): void {
             coverageRunDatabaseItems(
-                __DIR__ . '/CoverageModelQueriesTest.php',
+                __DIR__ . '/CoverageTransactionsTest.php',
                 static function (Db $db) use (&$seen): void {
                     $seen[] = coverageItem();
                 },

@@ -18,6 +18,11 @@ class OrmError(Exception):
             self.rollback = rollback
 
 
+def transaction_conflict(message: str) -> OrmError:
+    """The retryable DEADLOCK error (INT-48): a transaction whose callback fails with it runs again."""
+    return OrmError(codes.DEADLOCK, message)
+
+
 def _error_text(error: object) -> str:
     if isinstance(error, Exception):
         return str(error)

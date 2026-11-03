@@ -594,7 +594,7 @@ def markdown_links(row: list) -> MdLinks:
 
 def begin_message(read_only: bool) -> dict:
     """The begin control message of a transaction: a read-only transaction sends read_only true, any other leaves the
-    member out (docs/spec/protocol.md section 5 Session, the control cases of tests/bind/vectors.json)."""
+    member out (docs/spec/protocol.md section 5 Session, the cases control_begin of tests/bind/messages.json)."""
     return {"op": "begin", "read_only": True} if read_only else {"op": "begin"}
 
 

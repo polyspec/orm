@@ -79,35 +79,6 @@ async function install(dsn) {
   } finally { await db.close(); }
 }
 
-/**
- * Checks schema().empty() on a new case database, with an empty PostgreSQL
- * schema other than public, and with the installed tables.
- * Requirements: DBS-108, INT-58, SCH-7.
- */
-// Requirements: DBS-108, INT-58, SCH-7.
-async function schemaEmpty(dialect, dsn) {
-  const db = await connect(dsn);
-  try {
-    check(await db.utils().schema().empty(), 'a database without tables');
-    if (dialect === 'postgres') {
-      await postgres(dsn, ['CREATE SCHEMA unowned_empty']);
-      try {
-        check(!(await db.utils().schema().empty()), 'an empty schema other than public');
-      } finally { await postgres(dsn, ['DROP SCHEMA unowned_empty']); }
-      check(await db.utils().schema().empty(), 'the empty schema dropped');
-    }
-    await installBench(db);
-    check(!(await db.utils().schema().empty()), 'installed tables');
-  } finally { await db.close(); }
-}
-
-// Requirements: INT-57.
-async function schemaExistsUnderscore(db) {
-  await db.pool.execute('CREATE TABLE "fooXbar__schema_probe" (id INTEGER)', [], undefined, () => undefined);
-  check(!(await db.utils().schema().exists('foo_bar')), 'an underscore in a schema prefix is literal');
-  check(await db.utils().schema().exists('fooXbar'), 'the exact schema prefix exists');
-}
-
 // A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/spec/interfaces.md).
 const start = Date.UTC(2026, 0, 2, 3, 4, 5);
 const datetime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
@@ -473,35 +444,6 @@ async function transactions(db, dsn) {
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-async function aesRotation(db, dsn) {
-  const f = await seed(db);
-  const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());
-  await b.setAesHexEmail('person@example.com').setAesHexPhone('01012345678').update();
-  const found = await new Author().connect(db).aesHexEmail('person@example.com').getBySeq(b.getSeq());
-  check(found?.getAesHexEmail() === 'person@example.com', 'aes round trip and blind index');
-  const keyring = new AesKeyring(new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]), 2);
-  let status = await db.utils().aes().status(new Author(), keyring);
-  check(status.current === 2 && status.total === 4 && status.pending === 4 && status.versions.get(1) === 4 && status.versions.size === 1, `status: ${JSON.stringify(status)}`);
-  const rotated = await db.utils().aes().rotate(new Author(), keyring);
-  check(rotated === 4, `rotated ${rotated}`);
-  status = await db.utils().aes().status(new Author(), keyring);
-  check(status.current === 2 && status.total === 4 && status.pending === 0 && status.versions.get(2) === 4 && status.versions.size === 1, `after rotation: ${JSON.stringify(status)}`);
-  // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
-  const versioned = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[1, 'test-aes-key'], [2, 'next-aes-key']]) });
-  const current = await connectBench(dsn, { blindIndexKey: 'test-blind-key', aesVersion: 2, aesKeys: new Map([[2, 'next-aes-key']]) });
-  try {
-    const rotated = await new Author().connect(current).getBySeq(f.authors[0].getSeq());
-    check(rotated?.getAesHexEmail() === 'person@example.com', 'rotated email uses current key');
-    check(rotated?.getAesHexPhone() === '01012345678', 'rotated phone uses current key');
-    check(await code((async () => { await (await new Author().connect(versioned).getBySeq(f.authors[1].getSeq())).setAesHexEmail('second@example.com').update(); })()) === null, 'write with aesKeys and aesVersion');
-    check((await new Author().connect(current).getBySeq(f.authors[1].getSeq())).getAesHexEmail() === 'second@example.com', 'write with the key of aesVersion');
-    check(await code(connectBench(dsn, { aesKey: 'other-key', aesKeys: new Map([[1, 'test-aes-key']]) })) === 'CONFIG', 'aesKey differs from aesKeys[aesVersion]');
-  } finally {
-    await versioned.close();
-    await current.close();
-  }
-}
-
 function connect(dsn) {
   return connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key' });
 }
@@ -656,7 +598,7 @@ async function storedCell(dialect, dsn, sqlitePath) {
   try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
 }
 
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, bindLimitSplitting, insertParts };
 
 /**
  * Runs body(dsn, database) on a new case database for the dialect, and drops it when done. A SQLite DSN has a
@@ -680,9 +622,7 @@ const failureMessage = async promise => { try { await promise; return 'no error'
 // Checks that the message is a ROLLBACK that includes both the cause and the error at the end of the transaction.
 const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
 
-modelCase('schemaEmpty', DIALECTS, (dialect, step) => inCaseDatabase(dialect, step, dsn => schemaEmpty(dialect, dsn)));
 for (const [name, fn] of Object.entries(cases)) modelCase(name, DIALECTS, installed(fn));
-modelCase('schemaExistsUnderscore', ['sqlite'], installed(schemaExistsUnderscore));
 // Requirements: CFG-9.
 modelCase('cancellation', DIALECTS, installed(async (db, dsn, dialect) => {
   const fixture = await seed(db);

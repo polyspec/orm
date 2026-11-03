@@ -41,8 +41,10 @@ from polyspec.orm import (
     connect_catalog,
     orm,
     register_model,
+    transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -169,6 +171,12 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
                     continue
+                if step["op"] == "ir.param_uses":
+                    _param_uses(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "planner.columns":
+                    _planner_columns(step, ROOT / Path(path).parent, database)
+                    continue
                 if step["op"] == "generator.generate":
                     check_generator(step, ROOT / Path(path).parent, database)
                     continue
@@ -189,6 +197,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "keyring.versions":
                     _keyring_versions(step, database)
+                    continue
+                if step["op"] == "markdown.connect":
+                    _markdown_connect(step, database)
                     continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
@@ -635,6 +646,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.parse_set",
     "dbspec.set",
     "dbspec.load_set",
+    "dbspec.runtime_model",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -756,6 +768,47 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 expect.get("documents"),
                 "documents",
             )
+            if "manifest_hash" in expect:
+                built, _ = dbspec_manifest(documents)
+                _expect_equal(built.manifest_hash, expect["manifest_hash"], "manifest hash")
+    elif op == "dbspec.runtime_model":
+        texts = [(directory / path).read_bytes().decode("utf-8") for path in step["documents"]]
+        model = model_of_documents(parse_document_set(texts))
+        _expect_equal(list(model.entities), expect["entities"], "entities")
+        for name, values in expect.get("models", {}).items():
+            entity = model.entities[name]
+            got = {
+                "table": entity.table,
+                "primary_key": list(entity.primary_key),
+                "identity": entity.identity,
+                "updated": entity.updated,
+                "soft_delete": entity.soft_delete,
+                "aes_version": entity.aes_version,
+                "audit_column": entity.audit_column,
+                "audit_record": entity.audit_record,
+                "key_names": sorted(entity.indexes),
+                "fields": {
+                    f.name: {
+                        "type": f.type,
+                        "nullable": f.nullable,
+                        "default": f.has_default,
+                        "default_now": f.default_now,
+                        "codec": list(f.stages),
+                        "blind_index": f.blind_index,
+                        "primary_key": f.primary,
+                        "foreign_key": f.foreign,
+                    }
+                    for f in entity.fields
+                },
+            }
+
+            def named(have, want):
+                return {
+                    key: named(have[key], value) if isinstance(value, dict) else have[key]
+                    for key, value in want.items()
+                }
+
+            _expect_equal(named(got, values), values, f"entity {name}")
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
@@ -1217,7 +1270,7 @@ def _markdown_builder(step: dict, database: str) -> None:
     if (
         caught is None
         or caught.code != expect["error"]
-        or expect["message_contains"] not in str(caught)
+        or expect["message"] != str(caught)
     ):
         raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
 
@@ -1380,6 +1433,8 @@ def _plan_slot(slot: dict) -> dict:
         out["length"] = slot.get("length", 0)
     if slot.get("not_null"):
         out["not_null"] = True
+    if slot["from"] == "audit":
+        out["name"] = slot["name"]
     return out
 
 
@@ -1422,6 +1477,11 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
                 "slots": [_plan_slot(s) for s in planned["bind_slots"]],
                 "sql": planned["sql"],
                 "tables": planned["tables"],
+                **(
+                    {"assemble_types": {c["name"]: c["type"] for c in planned["assemble"]["columns"]}}
+                    if step.get("assemble_types")
+                    else {}
+                ),
             }
             for planned in plan["steps"]
         ]
@@ -1589,6 +1649,64 @@ def _messages(diagnostics, rule: str) -> list:
     return [d.message for d in diagnostics]
 
 
+def _plan_request(step: dict, recipe_dir: Path) -> tuple[Any, dict]:
+    """The model of the schema of a planner step and its input with the manifest_hash of that schema."""
+    schema = (recipe_dir / step["schema"]).resolve()
+    if schema not in _plan_models:
+        _plan_models[schema] = _validation_model(schema)
+    model = _plan_models[schema]
+    return model, dict(
+        json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash
+    )
+
+
+def _param_uses(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the uses of each parameter of a validated request (DIA-31, PRT-67)."""
+    model, request = _plan_request(step, recipe_dir)
+    validate(model, request)
+    uses = [
+        [
+            {"type": use.type}
+            if use.column is None
+            else {
+                "type": use.type,
+                **({"assign": True} if use.assign else {}),
+                "column": use.column.name,
+                "length": use.column.length,
+                "null": use.column.nullable,
+                "precision": use.column.precision,
+                "scale": use.column.scale,
+            }
+            for use in parameter
+        ]
+        for parameter in param_uses(model, request)
+    ]
+    want = step["expect"][database]["value"]
+    if {"uses": uses} != want:
+        raise AssertionError(f"ir.param_uses: got {uses}, want {want}")
+
+
+def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the output columns that the names of the step select from the first statement of the plan of each dialect:
+    their type and whether they are hidden (PRT-69, DIA-33)."""
+    model, request = _plan_request(step, recipe_dir)
+    want = step["expect"][database]["value"]
+    for dialect in _PLAN_DIALECTS:
+        assemble = Engine(model, dialect).compile(request)["steps"][0]["assemble"]
+        got = [
+            {
+                "name": name,
+                "type": column["type"],
+                "hidden": column.get("hidden", False),
+            }
+            for name in step["names"]
+            for column in assemble["columns"]
+            if column["name"] == name
+        ]
+        if got != want:
+            raise AssertionError(f"planner.columns {dialect}: got {got}, want {want}")
+
+
 def _validate(step: dict, model: Any, database: str) -> None:
     """Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema added, and checks the
     outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE."""
@@ -1601,7 +1719,13 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError("request already holds manifest_hash")
     got = None
     try:
-        validate(model, dict(step["request"], manifest_hash=model.manifest_hash))
+        validate(
+            model,
+            dict(
+                step["request"],
+                manifest_hash=step.get("manifest_hash", model.manifest_hash),
+            ),
+        )
     except OrmError as error:
         got = error.code
     if "error" in outcome:
@@ -1616,17 +1740,65 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
-def _connect_driver(dsn: str) -> str:
+def _connect_driver(dsn: str, config: dict | None = None) -> str:
     """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
     driver: the one implementation of dsn.connect (FCV-4)."""
-    db = Db.connect(dsn)
+    names = {
+        "pool_size": "poolSize",
+        "pool_idle_size": "poolIdleSize",
+        "pool_lifetime_ms": "poolLifetimeMs",
+        "statement_timeout_ms": "statementTimeoutMs",
+    }
+    db = Db.connect(
+        dsn, {names[key]: value for key, value in (config or {}).items() if key in names}
+    )
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
             raise AssertionError(f"SELECT 1 on the connection of {db.driver} returned {rows!r}")
+        if (config or {}).get("tls_version"):
+            status = db.utils().run(
+                lambda frame: frame.run("SHOW SESSION STATUS LIKE 'Ssl_version'", [], "utility")
+            )["rows"]
+            if not status or str(status[0][1]) not in ("TLSv1.2", "TLSv1.3"):
+                raise AssertionError(f"the Ssl_version of the connection is {status!r}")
         return db.driver
     finally:
         db.close()
+
+
+def _markdown_connect(step: dict, database: str) -> None:
+    """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
+    of the step, and checks the line it received and the outcome of the expect of database."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            received.append(stream.readline().decode().rstrip("\n"))
+            stream.write(step["reply"].encode() + b"\n")
+            stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    got = None
+    message = ""
+    try:
+        _connect_driver(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    except OrmError as error:
+        got = error.code
+        message = str(error)
+    server.join()
+    listener.close()
+    if received != [step["received"]]:
+        raise AssertionError(f"the listener received {received}, want {step['received']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
 
 
 def _dsn_connect(step: dict, database: str) -> None:
@@ -1636,14 +1808,20 @@ def _dsn_connect(step: dict, database: str) -> None:
     if outcome is None:
         raise AssertionError(f"dsn.connect has no expect for {database}")
     got = None
+    message = ""
     driver = None
     try:
-        driver = _connect_driver(step["dsn"])
+        driver = _connect_driver(step["dsn"], step.get("config"))
     except OrmError as error:
         got = error.code
+        message = str(error)
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
+        if outcome.get("message_holds", "") not in message:
+            raise AssertionError(
+                f"message {message}, want one that holds {outcome['message_holds']}"
+            )
         return
     if got is not None:
         raise AssertionError(f"unexpected error {got}")
@@ -1727,6 +1905,15 @@ def _run(step: dict, bound: dict, database: str) -> None:
         return
     if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
+    if "bytes_prefix_hex" in expect:
+        # An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        if (
+            not isinstance(result, bytes)
+            or len(result) != expect["bytes_length"]
+            or not result.hex().startswith(expect["bytes_prefix_hex"])
+        ):
+            raise AssertionError(f"cell {result!r}, want {expect}")
+        return
     want = expect["value"]
     if not decoded:
         _compare_cell(want, result)
@@ -2331,13 +2518,34 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
     """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
-    return {
-        "value": {
-            "text": _connect_driver(
-                context["dsn"] if step["dsn"] == "case" else step["dsn"]
-            )
-        }
-    }
+    dsn = step["dsn"]
+    if dsn == "case":
+        dsn = context["dsn"]
+        if "query" in step:
+            dsn += ("&" if "?" in dsn else "?") + step["query"]
+    if dsn.startswith("env:"):
+        name = dsn[len("env:") :]
+        dsn = os.environ.get(name, "")
+        if not dsn:
+            raise AssertionError(f"dsn.connect: {name} is unset; run make orm-test-servers")
+    return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
+
+
+def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
+    """dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a
+    file of it."""
+    name = step["name"]
+    with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
+        try:
+            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+        except OrmError:
+            left = os.listdir(directory)
+            if left:
+                raise AssertionError(f"a refused DSN left the files {left}") from None
+            raise
+        journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
+        names = sorted(set(os.listdir(directory)) - journals)
+    return {"value": {"text": ",".join(names)}}
 
 
 def _bound_value(field, context: dict) -> Any:
@@ -2439,6 +2647,8 @@ def _chain_value(raw, context: dict) -> Any:
 
 def _column_value(model: Model, column: str, raw: dict, context: dict) -> Any:
     """The value of a column for a wrapper: an object is the styled value of its codec."""
+    if "styled" in raw:
+        return StyledValue.value(_chain_value(raw["styled"], context))
     if "object" not in raw:
         return _chain_value(raw, context)
     field = field_of(model.core.ent.entity, column)
@@ -2636,6 +2846,10 @@ class _ChainBuild:
                 model.limit(limit.get("offset", 0), limit["count"])
         if "lock" in q:
             model.core.lock = q["lock"]
+        if "force_index" in q:
+            model.core.index = q["force_index"]
+        if "key_by" in q:
+            model.core.key_name = q["key_by"]
 
     def relation(self, relation: dict) -> Model:
         """The child model of a relation."""
@@ -2821,6 +3035,13 @@ def _table_model_query(step: dict, context: dict) -> dict:
             return {"json": model.get_sum()}
         if aggregate["agg"] == "avg":
             return {"json": model.get_avg()}
+        if "group_value" in step:
+            rows = list(model.gets_count())
+            if not rows:
+                raise AssertionError(
+                    f"group_value {step['group_value']}: the aggregate has no group row"
+                )
+            return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
     if step.get("page") is True:
         limit = step.get("limit")
@@ -2872,6 +3093,8 @@ def _table_model_count(step: dict, context: dict) -> dict:
 
 def _table_model_get_by(step: dict, context: dict) -> dict:
     row = _chain_built(step, context).get()
+    if "ordered_text" in step and row is not None:
+        return {"json": row.core.values[step["ordered_text"]].payload().raw}
     fields = {"json": _row_json(row, step.get("pick"))}
     if row is not None:
         fields["bind"] = row
@@ -2944,6 +3167,11 @@ def _plain_json(value) -> Any:
 
 def _utils_lock(step: dict, context: dict) -> dict:
     _connection_of(step, context).utils().lock(step["name"])
+    return {}
+
+
+def _db_notify(step: dict, context: dict) -> dict:
+    _connection_of(step, context).notify(step["channel"], step["payload"])
     return {}
 
 
@@ -3022,6 +3250,8 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 kind=statement["kind"],
                 tables=statement["tables"],
             )
+        if "conflict" in step:
+            raise transaction_conflict(step["conflict"])
         return last
 
     result = _connection_of(step, context).utils().run(run)
@@ -3308,6 +3538,25 @@ def _op_aes_rotate(step: dict, context: dict) -> dict:
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
     "schema.register": lambda step, context: _op_schema_register(step, context),
+    "schema.empty": lambda step, context: {
+        "value": {"bool": context["db"].utils().schema().empty()}
+    },
+    "schema.exists": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .exists(_inspected_schema(step["schema"], context))
+        }
+    },
+    "schema.installed": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .installed(_inspected_schema(step["schema"], context), step["table"])
+        }
+    },
     "schema.connect": lambda step, context: _op_schema_connect(step, context),
     "schema.add_tables_and_columns": lambda step, context: _op_schema_add_tables(
         step, context
@@ -3315,6 +3564,7 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "dsn.connect": _op_dsn_connect,
+    "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,
@@ -3608,6 +3858,15 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     return Schema(text, manifest.manifest_hash, manifest.external_text)
 
 
+def _inspected_schema(value, context: dict) -> str:
+    """The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is
+    the name of the case database."""
+    name = value if isinstance(value, str) else value[context["database"]]
+    if name == "$database":
+        return context["dsn"].split("?", 1)[0].rsplit("/", 1)[1]
+    return name
+
+
 def _op_schema_install(step: dict, context: dict) -> dict:
     if "connection" in step:
         _connection_of(step, context).utils().schema().install(context["schema"])
@@ -3707,6 +3966,7 @@ _TABLE_OPS = {
     "model.creates": _table_model_creates,
     "model.restore": _table_model_restore,
     "model.query": _table_model_query,
+    "db.notify": _db_notify,
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,

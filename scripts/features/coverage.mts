@@ -18,7 +18,7 @@ import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, perf
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
 
 /** A native test command of a coverage owner or dependent (contracts/features.json). */
-export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; symbols?: Record<string, string>; recipe?: string; symbol?: string };
+export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; symbols?: Record<string, string>; recipe?: string; symbol?: string; database?: string };
 /** The owning client part of a feature. */
 export type Owner = { part: string; tests: string[]; commands?: Record<string, NativeCommand[]> };
 /** A dependent part of a feature. */
@@ -40,7 +40,7 @@ type StepWriter = (text: string) => void;
 /** The outcome of run: an error message, or the collected output. */
 type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string };
 /** A native test planned for one execution. */
-type Spec = ({ format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] }) & { recipe?: string[] };
+type Spec = ({ format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] }) & { recipe?: string[]; recipeDatabase?: string };
 type CargoSpec = Extract<Spec, { format: 'cargo' }>;
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
@@ -404,7 +404,7 @@ export function recipeCaseIds(text: string, database: string): string[] {
 // a case database from the run (FCV-9).
 async function recipeTest(item: Item, command: NativeCommand, root: string): Promise<Spec> {
   const recipe = command.recipe ?? '';
-  const keys = ['runner', 'test', 'cases', 'recipe', 'symbol'];
+  const keys = ['runner', 'test', 'cases', 'recipe', 'symbol', 'database'];
   const named = command.runner === 'go' || command.runner === 'php';
   if (Object.keys(command).some(key => !keys.includes(key)) || !item.tests.includes(command.test) ||
       !recipe.startsWith('contracts/fixtures/') || !recipe.endsWith('.json') ||
@@ -412,7 +412,11 @@ async function recipeTest(item: Item, command: NativeCommand, root: string): Pro
     throw new Error('invalid recipe test command');
   const testPath = resolve(root, command.test);
   if (await realpath(testPath) !== testPath) throw new Error('symbolic test path');
-  const expected = recipeCaseIds(await readFile(resolve(root, recipe), 'utf8'), item.database === 'none' ? '' : item.database);
+  // An independent owner whose behaviour is a case of a recipe with a database names the one database its entry runs on.
+  if (command.database !== undefined && (item.database !== 'none' || !databases.includes(command.database)))
+    throw new Error('invalid recipe test command');
+  const recipeDatabase = command.database ?? item.database;
+  const expected = recipeCaseIds(await readFile(resolve(root, recipe), 'utf8'), recipeDatabase);
   const declared = [...command.cases].sort();
   const listed = [...expected].sort();
   if (command.cases.some(id => !expected.includes(id)) ||
@@ -421,26 +425,26 @@ async function recipeTest(item: Item, command: NativeCommand, root: string): Pro
   const symbol = command.symbol ?? '';
   const directory = resolve(root, testDirectoryOf(item.language));
   if (command.runner === 'node')
-    return { format: 'case', program: 'node', args: ['--conditions=orm-test', '--test', testPath], cwd: directory, recipe: expected };
+    return { format: 'case', program: 'node', args: ['--conditions=orm-test', '--test', testPath], cwd: directory, recipe: expected, recipeDatabase };
   if (command.runner === 'python') {
     if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
     const module = relative(root, testPath).replace(/\.py$/, '').split(sep).join('.');
-    return { format: 'case', program: process.env.ORM_PYTHON, args: ['-m', module], cwd: root, recipe: expected };
+    return { format: 'case', program: process.env.ORM_PYTHON, args: ['-m', module], cwd: root, recipe: expected, recipeDatabase };
   }
   if (command.runner === 'php') {
     const extension = item.language === 'php-extension' ? process.env.POLYSPEC_ORM_EXTENSION : undefined;
     if (item.language === 'php-extension' && !extension)
       throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
-    return { format: 'phpunit', program: 'php', cwd: root, symbols: [symbol], recipe: expected,
+    return { format: 'phpunit', program: 'php', cwd: root, symbols: [symbol], recipe: expected, recipeDatabase,
       args: [...(extension ? ['-d', `extension=${extension}`] : []), resolve(root, 'vendor-php/bin/phpunit'),
         '--configuration', resolve(directory, 'phpunit.xml.dist'), '--filter', `/::${symbol}( |$)/`, testPath],
       ...(item.language === 'php-extension' ? { env: { ORM_PHP_MODE: 'extension' } } : {}) };
   }
   if (command.runner === 'go') {
     if (!new RegExp(`\\bfunc\\s+${symbol}\\s*\\(`).test(await readFile(testPath, 'utf8'))) throw new Error(`test symbol ${symbol} is absent from declared test file`);
-    return { format: 'go', cwd: dirname(testPath), symbols: [symbol], recipe: expected };
+    return { format: 'go', cwd: dirname(testPath), symbols: [symbol], recipe: expected, recipeDatabase };
   }
-  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, symbols: [], recipe: expected };
+  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, symbols: [], recipe: expected, recipeDatabase };
 }
 
 // owningCrate is the directory of the Cargo manifest of a Rust test file, within the part of its owner.
@@ -1177,7 +1181,7 @@ export async function executeCoverage(
                   output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';
                 }
                 if (recipeResults && spec.recipe) {
-                  results.push(...observedCases('case', await recipeOutput(recipeResults), entry.cases, spec.recipe, item.database));
+                  results.push(...observedCases('case', await recipeOutput(recipeResults), entry.cases, spec.recipe, spec.recipeDatabase).map(result => ({ ...result, database: item.database })));
                   continue;
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols, item.database));

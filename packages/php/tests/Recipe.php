@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.notify',
         'utils.lock',
         'utils.set_local',
         'utils.local',
@@ -87,7 +88,7 @@ final class Recipe
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.runtime_model', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -153,6 +154,14 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'ir.param_uses') {
+                    self::paramUsesStep($step, $path, $database);
+                    continue;
+                }
+                if ($step['op'] === 'planner.columns') {
+                    self::plannerColumnsStep($step, $path, $database);
+                    continue;
+                }
                 if ($step['op'] === 'generator.generate') {
                     RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
                     continue;
@@ -175,6 +184,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'dbspec.introspect_sqlite') {
                     self::dbspecIntrospectSqliteStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.connect') {
+                    self::markdownConnectStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'keyring.versions') {
@@ -242,7 +255,7 @@ final class Recipe
         $model = RuntimeModel::build(RuntimeModel::files([$schema]));
         $got = 'no error';
         try {
-            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $model->manifestHash]);
+            (new Validator($model))->validate($step['request'] + ['manifest_hash' => $step['manifest_hash'] ?? $model->manifestHash]);
         } catch (OrmException $error) {
             $got = $error->code_;
         }
@@ -252,6 +265,57 @@ final class Recipe
         }
         Assert::assertSame(['bool' => true], $outcome['value'] ?? null, 'ir.validate expects {bool true} or an error');
         Assert::assertSame('no error', $got);
+    }
+
+    /** The model of the schema of a planner step and its input with the manifest_hash of that schema. */
+    private static function plannerRequest(array $step, string $path): array
+    {
+        $schema = realpath(dirname(dirname(__DIR__, 3) . '/' . $path) . '/' . $step['schema']);
+        if ($schema === false) {
+            Assert::fail("{$step['op']}: the schema of $path is missing");
+        }
+        $model = RuntimeModel::build(RuntimeModel::files([$schema]));
+        return [$model, $step['input'] + ['manifest_hash' => $model->manifestHash]];
+    }
+
+    /** States the uses of each parameter of a validated request (DIA-31, PRT-67). */
+    private static function paramUsesStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        $validator = new Validator($model);
+        $validator->validate($request);
+        $uses = array_map(static fn(array $list): array => array_map(static fn(array $use): array => $use['column'] === null
+            ? ['type' => $use['type']]
+            : ($use['assign'] ?? false ? ['assign' => true] : []) + [
+                'column' => $use['column']['name'],
+                'length' => $use['column']['length'] ?? 0,
+                'null' => $use['column']['nullable'],
+                'precision' => $use['column']['precision'] ?? 0,
+                'scale' => $use['column']['scale'] ?? 0,
+                'type' => $use['type'],
+            ], $list), $validator->paramUses($request));
+        Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys(['uses' => $uses]), 'ir.param_uses');
+    }
+
+    /**
+     * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
+     * type and whether they are hidden (PRT-69, DIA-33).
+     */
+    private static function plannerColumnsStep(array $step, string $path, string $database): void
+    {
+        [$model, $request] = self::plannerRequest($step, $path);
+        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+            $assemble = (new Engine($model, $dialect, 8))->compile($request)['steps'][0]['assemble'];
+            $got = [];
+            foreach ($step['names'] as $name) {
+                foreach ($assemble['columns'] as $column) {
+                    if ($column['name'] === $name) {
+                        $got[] = ['hidden' => $column['hidden'] ?? false, 'name' => $name, 'type' => $column['type']];
+                    }
+                }
+            }
+            Assert::assertSame(self::sortedKeys($step['expect'][$database]['value']), self::sortedKeys($got), "$dialect planner.columns");
+        }
     }
 
     /**
@@ -294,7 +358,9 @@ final class Recipe
                 'slots' => array_map(self::planSlot(...), $planned['bind_slots']),
                 'sql' => $planned['sql'],
                 'tables' => $planned['tables'],
-            ], $plan['steps']);
+            ] + (($step['assemble_types'] ?? false) === true ? [
+                'assemble_types' => array_column($planned['assemble']['columns'], 'type', 'name'),
+            ] : []), $plan['steps']);
         }
         Assert::assertSame(self::sortedKeys($outcome['value']), self::sortedKeys($got), 'planner.compile statements');
     }
@@ -318,6 +384,9 @@ final class Recipe
         }
         if ($type === 'datetime' || $type === 'time') {
             $out['precision'] = $slot['precision'] ?? 0;
+        }
+        if ($slot['from'] === 'audit') {
+            $out['name'] = $slot['name'];
         }
         $out['type'] = $type;
         return $out;
@@ -422,6 +491,13 @@ final class Recipe
             return ['refused' => $name];
         }
         Assert::fail("the call accepted the dialect $name");
+    }
+
+    /** The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is the name of the case database. */
+    private static function inspectedSchema(mixed $value, array $context): string
+    {
+        $name = is_string($value) ? $value : $value[$context['database']];
+        return $name === '$database' ? ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/') : $name;
     }
 
     /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
@@ -608,9 +684,14 @@ final class Recipe
      * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
      * driver: the one implementation of dsn.connect (FCV-4).
      */
-    private static function connectDriver(string $dsn): string
+    private static function connectDriver(string $dsn, array $config = []): string
     {
-        $db = Orm::connect($dsn, new Config());
+        $db = Orm::connect($dsn, new Config(
+            poolSize: $config['pool_size'] ?? 0,
+            poolIdleSize: $config['pool_idle_size'] ?? 0,
+            poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
+            statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+        ));
         try {
             $rows = $db->utils()->run(
                 static fn (TxFrame $frame): array => $frame->run(
@@ -622,10 +703,68 @@ final class Recipe
             Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
+            if ($config['tls_version'] ?? false) {
+                $status = $db->utils()->run(
+                    static fn (TxFrame $frame): array => $frame->run(
+                        StatementEvent::UTILITY,
+                        [],
+                        "SHOW SESSION STATUS LIKE 'Ssl_version'",
+                    ),
+                );
+                Assert::assertContains($status[0][1] ?? null, ['TLSv1.2', 'TLSv1.3'], 'the Ssl_version of the connection');
+            }
             return $db->driver();
         } finally {
             $db->close();
         }
+    }
+
+    /**
+     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
+     * CFG-26).
+     */
+    private static function sqliteFileNames(string $name, string $query): string
+    {
+        $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
+        if (!mkdir($directory, 0o700)) {
+            throw new RuntimeException("cannot create $directory");
+        }
+        try {
+            try {
+                self::connectDriver("sqlite://$directory/$name?$query");
+            } catch (OrmException $refused) {
+                Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
+                throw $refused;
+            }
+            $names = array_diff(
+                scandir($directory),
+                ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
+            );
+            return implode(',', $names);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($directory));
+        }
+    }
+
+    /** The markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply of the step. */
+    private static function markdownConnectStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
+        $code = null;
+        $message = '';
+        try {
+            self::connectDriver($server[2]);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        Assert::assertSame(
+            [$step['received']],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
@@ -636,16 +775,19 @@ final class Recipe
             Assert::fail("dsn.connect has no expect for $database");
         }
         $code = null;
+        $message = '';
         $driver = null;
         try {
-            $driver = self::connectDriver($step['dsn']);
+            $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
         } catch (OrmException $error) {
             $code = $error->code_;
+            $message = $error->getMessage();
         }
         if (isset($expect['error'])) {
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
+            Assert::assertStringContainsString($expect['message_holds'] ?? '', $message);
             return;
         }
         if ($code !== null) {
@@ -910,6 +1052,52 @@ final class Recipe
                     array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
                     'documents',
                 );
+                if (array_key_exists('manifest_hash', $expect)) {
+                    Assert::assertSame($expect['manifest_hash'], Dbspec::manifest($documents)->manifest->manifestHash, 'manifest hash');
+                }
+                return;
+            case 'dbspec.runtime_model':
+                $texts = array_map(static fn(string $path): string => self::dbspecFile($dir, $path), $step['documents']);
+                $model = RuntimeModel::build(RuntimeModel::parse($texts));
+                Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
+                $named = static function (array $have, array $want) use (&$named): array {
+                    $out = [];
+                    foreach ($want as $key => $value) {
+                        $out[$key] = is_array($value) && !array_is_list($value) ? $named($have[$key], $value) : $have[$key];
+                    }
+                    return $out;
+                };
+                foreach ($expect['models'] ?? [] as $name => $values) {
+                    $entity = $model->entities[$name];
+                    $fields = [];
+                    foreach ($entity['columns'] as $column) {
+                        $fields[$column['name']] = [
+                            'type' => $column['type'],
+                            'nullable' => $column['nullable'],
+                            'default' => $column['default'],
+                            'default_now' => $column['default_now'],
+                            'codec' => $column['codec'],
+                            'blind_index' => $column['blind_index'],
+                            'primary_key' => $column['pk'],
+                            'foreign_key' => $column['foreign_key'],
+                        ];
+                    }
+                    $keyNames = [...array_keys($entity['unique']), ...array_keys($entity['indexes'])];
+                    sort($keyNames);
+                    $got = [
+                        'table' => $entity['table'],
+                        'primary_key' => $entity['pk'],
+                        'identity' => $entity['identity'],
+                        'updated' => $entity['updated'],
+                        'soft_delete' => $entity['soft_delete'],
+                        'aes_version' => $entity['aes_version'],
+                        'audit_column' => $entity['audit'],
+                        'audit_record' => $entity['audit_record'],
+                        'key_names' => $keyNames,
+                        'fields' => $fields,
+                    ];
+                    Assert::assertEquals($values, $named($got, $values), "entity $name");
+                }
                 return;
             case 'dbspec.parse_set':
                 $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));
@@ -1499,7 +1687,7 @@ final class Recipe
         Assert::assertNull($message, 'the terminal sent a message before its error');
         $expect = $step['expect'][$database];
         Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
-        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
+        Assert::assertSame($expect['message'], $caught->getMessage());
     }
 
     /**
@@ -1679,6 +1867,13 @@ final class Recipe
         }
         if ($result['error'] !== null) {
             Assert::fail("unexpected error {$result['error']->getMessage()}");
+        }
+        if (isset($expect['bytes_prefix_hex'])) {
+            // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+            Assert::assertInstanceOf(Bytes::class, $result['value']);
+            Assert::assertSame($expect['bytes_length'], strlen($result['value']->bytes));
+            Assert::assertStringStartsWith($expect['bytes_prefix_hex'], bin2hex($result['value']->bytes));
+            return;
         }
         $want = $expect['value'];
         if (!$result['decoded']) {
@@ -2225,6 +2420,17 @@ final class Recipe
             case 'schema.register':
                 $context['db']->utils()->schema()->register(self::schemaArgument($s['schema'], $context));
                 return ['value' => ['bool' => true]];
+            case 'schema.empty':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->empty()]];
+            case 'schema.exists':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->exists(
+                    self::inspectedSchema($s['schema'], $context)
+                )]];
+            case 'schema.installed':
+                return ['value' => ['bool' => $context['db']->utils()->schema()->installed(
+                    self::inspectedSchema($s['schema'], $context),
+                    $s['table']
+                )]];
             case 'schema.connect':
                 Orm::connectSchema(
                     $context['dsn'],
@@ -2462,6 +2668,9 @@ final class Recipe
                                 array_map(self::toValue(...), $statement['params'] ?? []),
                             );
                         }
+                        if (isset($s['conflict'])) {
+                            throw Orm::transactionConflict($s['conflict']);
+                        }
                         return $last;
                     }
                 );
@@ -2631,8 +2840,21 @@ final class Recipe
                 return self::querySearchChain($s, $context);
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
-                $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
-                return ['value' => ['text' => self::connectDriver($dsn)]];
+                $dsn = $s['dsn'];
+                if ($dsn === 'case') {
+                    $dsn = $context['dsn'];
+                    if (isset($s['query'])) {
+                        $dsn .= (str_contains($dsn, '?') ? '&' : '?') . $s['query'];
+                    }
+                }
+                if (str_starts_with($dsn, 'env:')) {
+                    $name = substr($dsn, 4);
+                    $dsn = (string) getenv($name);
+                    Assert::assertNotSame('', $dsn, "dsn.connect: $name is unset; run make orm-test-servers");
+                }
+                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
+            case 'dsn.sqlite_file':
+                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'])]];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);
@@ -3292,6 +3514,12 @@ final class Recipe
                 ? $model->limit(0, $q['limit'])
                 : $model->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
         }
+        if (isset($q['force_index'])) {
+            $model->{'forceIndex' . self::pascal($q['force_index'])}();
+        }
+        if (isset($q['key_by'])) {
+            $model->{'keyName' . self::pascal($q['key_by'])}();
+        }
         if (isset($q['lock'])) {
             $model->{match ($q['lock']) {
                 'update' => 'forUpdate',
@@ -3441,6 +3669,8 @@ final class Recipe
             if (isset($value['arith'])) {
                 $call = ($value['arith']['operation'] === 'minus' ? 'minus' : 'plus') . $name;
                 $model->$call(self::chainValue($value['arith']['amount'], $context));
+            } elseif (isset($value['styled'])) {
+                $model->{'set' . $name}(StyledValue::value(self::chainValue($value['styled'], $context)));
             } elseif (isset($value['object'])) {
                 $codec = $model::meta()['columns'][$column]['codec'] ?? [];
                 $model->{'set' . $name}(self::styledArgument($value, $codec, []));
@@ -3517,6 +3747,9 @@ final class Recipe
                 } else {
                     $row = $model->get();
                 }
+                if (isset($s['ordered_text']) && $row !== null) {
+                    return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
+                }
                 $fields = ['json' => self::chainRow($row, $s['pick'] ?? null)];
                 return $row === null ? $fields : ['bind' => $row] + $fields;
             case 'model.create':
@@ -3571,6 +3804,9 @@ final class Recipe
                 }
                 self::chainTarget($s, $context)->delete($recursive);
                 return [];
+            case 'db.notify':
+                self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
+                return [];
             case 'utils.lock':
                 self::connectionOf($s, $context)->utils()->lock($s['name']);
                 return [];
@@ -3620,10 +3856,17 @@ final class Recipe
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;
+        if (isset($s['group_value'])) {
+            $groups = $model->getsCount()->all();
+            if ($groups === []) {
+                Assert::fail("group_value {$s['group_value']}: the aggregate has no group row");
+            }
+            return ['json' => $groups[0]->value($s['group_value'])];
+        }
         if ($aggregate !== null) {
             return ['json' => match ($aggregate['agg']) {
-                'sum' => $model->getSum(),
-                'avg' => $model->getAvg(),
+                'sum' => json_decode(json_encode($model->getSum())),
+                'avg' => json_decode(json_encode($model->getAvg())),
                 default => $model->getsCount()->toArray(),
             }];
         }

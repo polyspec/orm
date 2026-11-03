@@ -19,36 +19,6 @@
     "steps"
   ],
   "step": {
-    "dbspec.apply_fault": [
-      "applied_first",
-      "call",
-      "expect",
-      "fail_catalog_read",
-      "op",
-      "plan",
-      "sql"
-    ],
-    "dbspec.ddl_behavior": [
-      "case",
-      "op",
-      "vectors"
-    ],
-    "dbspec.introspect_shown": [
-      "case",
-      "expect",
-      "op",
-      "vectors"
-    ],
-    "dbspec.introspect_sqlite": [
-      "expect",
-      "op",
-      "sql"
-    ],
-    "dsn.connect": [
-      "dsn",
-      "expect",
-      "op"
-    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -58,6 +28,28 @@
       "calls",
       "expect",
       "op"
+    ],
+    "dsn.connect": [
+      "config",
+      "dsn",
+      "expect",
+      "only",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
     ],
     "model.connect": [
       "aes_keyring",
@@ -134,8 +126,22 @@
     ],
     "ir.validate": [
       "expect",
+      "manifest_hash",
       "op",
       "request"
+    ],
+    "ir.param_uses": [
+      "expect",
+      "input",
+      "op",
+      "schema"
+    ],
+    "planner.columns": [
+      "expect",
+      "input",
+      "names",
+      "op",
+      "schema"
     ],
     "ir.answer": [
       "answer",
@@ -235,6 +241,21 @@
       "expect",
       "op",
       "schema"
+    ],
+    "schema.empty": [
+      "expect",
+      "op"
+    ],
+    "schema.exists": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.installed": [
+      "expect",
+      "op",
+      "schema",
+      "table"
     ],
     "schema.connect": [
       "expect",
@@ -359,6 +380,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
@@ -372,10 +394,13 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
+      "group_value",
       "items",
       "joins",
       "key",
+      "key_by",
       "limit",
       "lock",
       "model",
@@ -412,6 +437,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",
@@ -425,6 +451,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -546,6 +573,11 @@
       "op",
       "owned"
     ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -651,6 +683,12 @@
       "name",
       "op"
     ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
+    ],
     "utils.set_local": [
       "connection",
       "name",
@@ -679,6 +717,31 @@
       "connection",
       "expect",
       "op"
+    ],
+    "dbspec.apply_fault": [
+      "applied_first",
+      "call",
+      "expect",
+      "fail_catalog_read",
+      "op",
+      "plan",
+      "sql"
+    ],
+    "dbspec.ddl_behavior": [
+      "case",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_shown": [
+      "case",
+      "expect",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_sqlite": [
+      "expect",
+      "op",
+      "sql"
     ]
   }
 }

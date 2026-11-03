@@ -226,6 +226,75 @@ class SqliteEndToEndTest(unittest.TestCase):
         count = self.models.Author().connect(self.db).lk_name("cond-").get_count()
         self.assertEqual(count, 4)
 
+    # Requirements: PLN-6, PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
+    def test_condition_connectors_and_refusals(self):
+        def author():
+            return self.models.Author().connect(self.db)
+
+        for index, (close, display, read) in enumerate(
+            [(False, False, 9101), (True, True, 9102), (True, False, 9103)]
+        ):
+            self.author(f"connector-{index}").set_is_close(close).set_is_display(
+                display
+            ).set_read_count(read).create()
+        rows = (
+            author()
+            .lk_name("connector-")
+            .and_is_close(False)
+            .or_()
+            .read_count(9102)
+            .order_by_seq_asc()
+            .gets()
+        )
+        self.assertEqual(
+            [row.get_name() for row in rows], ["connector-0", "connector-1"]
+        )
+        grouped = (
+            author()
+            .lk_name("connector-")
+            .and_(
+                lambda query: query.is_display(False).or_(
+                    lambda nested: nested.is_close(True).and_gt_read_count(9101)
+                )
+            )
+            .order_by_seq_desc()
+            .gets()
+        )
+        self.assertEqual(
+            [row.get_name() for row in grouped],
+            ["connector-2", "connector-1", "connector-0"],
+        )
+        query = author().lk_name("connector-")
+        query.get_count_by_is_close(True)
+        self.assertEqual(query.get_count(), 3)
+        for code, build in (
+            ("CONFIG", lambda: author().name("a").is_close(True).gets()),
+            ("CONFIG", lambda: author().and_().gets()),
+            ("EMPTY_IN", lambda: author().seq([]).gets()),
+            ("CONFIG", lambda: author().and_(lambda q: q.get_count()).gets()),
+        ):
+            with self.assertRaisesRegex(Exception, code):
+                build()
+        author().lk_name("connector-").gets().delete()
+
+    # Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
+    def test_joined_child_refuses_its_own_connection(self):
+        self.author("joined-child").create()
+        joined = (
+            self.models.Author()
+            .connect(self.db)
+            .name("joined-child")
+            .join_user_seq_with_seq(self.models.User())
+            .gets()
+        )
+        self.assertEqual(joined.values()[0].get_user_model().get_seq(), 1)
+        with self.assertRaisesRegex(Exception, "CONFIG"):
+            self.models.Author().connect(self.db).join_user_seq_with_seq(
+                self.models.User().connect(self.db)
+            ).gets()
+        joined.delete()
+
+    # Requirements: PLN-8, PLN-9, PLN-14.
     def test_group_and_page(self):
         for i in range(5):
             self.author(f"page-{i}").set_is_close(i % 2 == 0).create()
