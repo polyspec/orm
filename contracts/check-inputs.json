@@ -517,7 +517,6 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
         "packages/php/tests/RuntimeModelTest.php",
@@ -611,76 +610,6 @@
         "packages/rust/build/src/generate.rs",
         "packages/rust/build/tests/generate.rs",
         "packages/rust/tests/tests/integration_program/main.rs"
-      ]
-    },
-    "blind-index-source-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "packages/go/engine/planner/planner.go",
-        "packages/go/engine/planner/blind_index_source_test.go"
-      ]
-    },
-    "blind-index-source-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/php/src/Planner.php",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php"
-      ]
-    },
-    "blind-index-source-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/src/planner.c",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php",
-        "packages/php-ext/tests/BlindIndexSourceNativeTest.php"
-      ]
-    },
-    "blind-index-source-ts-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/tests/engine_features.mjs"
-      ]
-    },
-    "blind-index-source-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/python/src/polyspec/orm/engine/planner.py",
-        "packages/python/tests/test_blind_index_source.py"
-      ]
-    },
-    "blind-index-source-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/rust/orm/src/engine/planner.rs",
-        "packages/rust/orm/src/engine/mod.rs",
-        "packages/rust/orm/tests/unit/blind_index_source.rs"
       ]
     },
     "nowait-restore-check": {
@@ -1177,7 +1106,6 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/rust/orm/tests/unit/markdown_column_function.rs",
         "packages/ts/src/engine/params.ts",
         "packages/ts/src/engine/planner.ts",
@@ -1237,8 +1165,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/rust/orm/src/engine/planner.rs",
-        "packages/rust/orm/tests/unit/upsert_conflict.rs"
+        "packages/rust/orm/src/engine/planner.rs"
       ]
     },
     "scalar-subquery-column-check": {
@@ -1368,7 +1295,6 @@
         "packages/rust/tests/tests/planner_compile_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-        "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/ts/src/engine/*.ts",
         "packages/ts/src/ir.ts",
         "packages/ts/tests/plan-cache-in.mjs",
@@ -4096,7 +4022,6 @@
         "packages/python/tests/test_ir_validate_none.py",
         "packages/python/tests/recipe.py",
         "packages/rust/tests/tests/ir_validate_none.rs",
-        "packages/rust/orm/tests/ir_manifest_hash.rs",
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },

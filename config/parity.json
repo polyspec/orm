@@ -290,6 +290,18 @@
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         },
         {
+          "glob": "packages/go/engine/engine_test.go",
+          "reason": "test: the Go engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/go/engine/query_forms_test.go",
+          "reason": "test: the Go engine's own query form assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
           "glob": "packages/go/engine/planner/runtime_model_test.go",
           "reason": "test: reads the internal plan of the Go planner, its assemble columns and slots, which no public call returns"
         }
@@ -390,7 +402,6 @@
         "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/was_inserted_child.php",
-        "packages/php/tests/BlindIndexSourcePlannerInput.php",
         "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
@@ -560,6 +571,14 @@
         {
           "glob": "packages/php/tests/DbspecPlanTest.php",
           "reason": "harness: tests the PHP compare harness and the connection, value and cleanup helpers of the dbspec database tests; it holds no shared client behaviour"
+        },
+        {
+          "glob": "packages/php/tests/EngineTest.php",
+          "reason": "test: the PHP engine's own compile assertions, kept beside the recipe tests/planner/compile.json for shapes it has not taken over."
+        },
+        {
+          "glob": "packages/php/tests/CodecErrorCauseTest.php",
+          "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
         }
       ]
     },
@@ -645,6 +664,14 @@
         {
           "glob": "packages/php-ext/tests/ChainNativeSurfaceTest.php",
           "reason": "test: `model-native-php-extension-check` verifies internal Polyspec\\Orm\\Internal\\Chain registration and direct words/parseMeta/orderMeta/pairMeta/columnName helper behavior in testNativeClassOwnsTheCompletePublicChainSurface, testWordsAndNameConversionsKeepTheChainGrammar, testNativeParserAcceptsConnectorsComparisonsAndTuples, testNativeParserRejectsUnknownAndDisallowedOperatorsAsConfig, and testNativeOrderPairAndColumnLookupReturnExactNames; public fluent query output and IR validation remain exercised by coverage-model-query-rows and ir-validate"
+        },
+        {
+          "glob": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "reason": "test: the extension releases what its validator looks up; this is the memory of the native code."
+        },
+        {
+          "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
+          "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
         }
       ],
       "shares": "php"
@@ -714,6 +741,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+        },
         {
           "glob": "packages/ts/tests/paginate-order.mjs",
           "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
@@ -845,6 +876,10 @@
         {
           "glob": "packages/ts/tests/dbspec-stress.mjs",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/ts/tests/scalar_subquery_type.mjs",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         }
       ]
     },
@@ -852,6 +887,10 @@
       "name": "python",
       "runner": "python",
       "internal": [
+        {
+          "glob": "packages/python/tests/coverage_authenticated_encryption.py",
+          "reason": "harness: the feature coverage entry of authenticated_encryption, which T334-3-12-5 removes; its cases are recipe cases of tests/codec/codec.json"
+        },
         {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
@@ -935,6 +974,10 @@
         {
           "glob": "packages/python/tests/statement_events.py",
           "reason": "harness: the helper module of the statement events of tests/events/vectors.json (EventRun, run_case, VECTORS and setUpModule) that the coverage and server-transactions tests import; it holds no test of its own, and the cases run as the statement_events recipe units"
+        },
+        {
+          "glob": "packages/python/tests/test_scalar_subquery_type.py",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
         }
       ],
       "roots": [
@@ -1210,6 +1253,18 @@
         {
           "glob": "packages/rust/schema/tests/dbspec_model.rs",
           "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/codec_tests.rs",
+          "reason": "test: the private helpers of the Rust codec, whose faults a public call cannot reach."
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
+          "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/mod.rs",
+          "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
         }
       ]
     }
@@ -6389,168 +6444,153 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/param_uses_column_function"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/param_uses_interval"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/param_uses_contains"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/param_uses_if_parent"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_planner_test.go",
-          "id": "TestCoveragePlanner/param_uses_optimistic"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/param_uses_column_function"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testParamUsesColumnFunction"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testParamUsesInterval"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testParamUsesContains"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testParamUsesIfParent"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testParamUsesOptimistic"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testParamUses"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"param_uses_column_function\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testParamUsesColumnFunction"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testParamUsesInterval"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testParamUsesContains"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testParamUsesIfParent"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testParamUsesOptimistic"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"param_uses_column_function\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "id": "param_uses_column_function"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "id": "param_uses_interval"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "id": "param_uses_contains"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "id": "param_uses_if_parent"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_planner.mjs",
-          "id": "param_uses_optimistic"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/param-uses.mjs",
-          "id": "param-uses/kinds"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "param_uses_column_function"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "param_uses_column_function"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::param_uses_column_function"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/param_uses_interval"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"param_uses_interval\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"param_uses_interval\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "param_uses_interval"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "param_uses_interval"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::param_uses_interval"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/param_uses_contains"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"param_uses_contains\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"param_uses_contains\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "param_uses_contains"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "param_uses_contains"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::param_uses_contains"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/param_uses_if_parent"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"param_uses_if_parent\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"param_uses_if_parent\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "param_uses_if_parent"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_planner.py",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "param_uses_if_parent"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::param_uses_if_parent"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/param_uses_optimistic"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"param_uses_optimistic\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"param_uses_optimistic\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "param_uses_optimistic"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "param_uses_optimistic"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::param_uses_column_function"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::param_uses_interval"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::param_uses_contains"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::param_uses_if_parent"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/coverage_planner.rs",
-          "id": "engine::coverage_planner::planner::param_uses_optimistic"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/param_uses.rs",
-          "id": "engine::param_uses_tests::param_uses_name_each_slot"
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::param_uses_optimistic"
         }
       ]
     },
@@ -8101,11 +8141,6 @@
           "id": "TestRecipePlannerCompileNone/planner_joined_child_conditions_grouped"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/engine/query_forms_test.go",
-          "id": "TestUnplacedJoinConditionsAreAppended"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/PlannerCompileTest.php",
           "id": "PlannerCompileTest::testNone with data set \"planner_joined_child_conditions_grouped\""
@@ -8129,6 +8164,36 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::planner_joined_child_conditions_grouped"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_joined_child_conditions_appended"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_joined_child_conditions_appended\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_joined_child_conditions_appended\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_joined_child_conditions_appended"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_joined_child_conditions_appended"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_joined_child_conditions_appended"
         }
       ]
     },
@@ -8145,9 +8210,59 @@
           "id": "TestRecipePlannerCompileNone/planner_rejects_upsert_primary_and_unique_key"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_rejects_upsert_primary_and_unique_key"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_planner_test.go",
           "id": "TestRecipePlannerCompileNone/planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_rejects_upsert_unique_key_not_assigned"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "go",
@@ -8157,27 +8272,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/PlannerCompileTest.php",
-          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlannerCompileTest.php",
-          "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlannerCompileTest.php",
           "id": "PlannerCompileTest::testNone with data set \"planner_rejects_upsert_without_a_key\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
-          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_primary_and_unique_key\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
-          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_rejects_upsert_unique_key_not_assigned\""
         },
         {
           "implementation": "php-extension",
@@ -8187,42 +8282,12 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/planner_compile.mjs",
-          "id": "planner_rejects_upsert_primary_and_unique_key"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/planner_compile.mjs",
-          "id": "planner_rejects_upsert_unique_key_not_assigned"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_rejects_upsert_without_a_key"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_planner_compile_none.py",
-          "id": "planner_rejects_upsert_primary_and_unique_key"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_planner_compile_none.py",
-          "id": "planner_rejects_upsert_unique_key_not_assigned"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_planner_compile_none.py",
           "id": "planner_rejects_upsert_without_a_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
-          "id": "planner_compile_none::planner_rejects_upsert_primary_and_unique_key"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/planner_compile_none.rs",
-          "id": "planner_compile_none::planner_rejects_upsert_unique_key_not_assigned"
         },
         {
           "implementation": "rust",
@@ -8230,19 +8295,34 @@
           "id": "planner_compile_none::planner_rejects_upsert_without_a_key"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "engine::planner::upsert_conflict_tests::missing_conflict_key_error_is_preserved"
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_upsert_composite_primary_key"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_upsert_composite_primary_key\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_upsert_composite_primary_key\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_upsert_composite_primary_key"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_upsert_composite_primary_key"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "engine::planner::upsert_conflict_tests::ambiguous_primary_and_unique_conflict_keys_are_rejected"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/upsert_conflict.rs",
-          "id": "engine::planner::upsert_conflict_tests::fully_assigned_composite_primary_key_is_a_valid_conflict_target"
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_upsert_composite_primary_key"
         }
       ]
     },
@@ -8429,6 +8509,7 @@
         "COD-3",
         "COD-4",
         "COD-5",
+        "COD-6",
         "COD-8",
         "COD-9",
         "COD-10",
@@ -10521,23 +10602,18 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CodecErrorCauseTest.php",
-          "id": "CodecErrorCauseTest::testCodecExpectedExceptionCause"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"decode_errors\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecMalformedInputUsesDecodeCode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
-          "id": "CodecErrorCauseTestExtensionTest::testCodecExpectedExceptionCause"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"decode_errors\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/codec-errors.test.mjs",
-          "id": "codec/malformed-json-and-yaml"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "decode_errors"
         },
         {
           "implementation": "python",
@@ -10575,8 +10651,8 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "col_op_bool_order"
         },
         {
           "implementation": "python",
@@ -10589,19 +10665,64 @@
           "id": "ir_validate_none::col_op_bool_order"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/mod.rs",
-          "id": "dbspec::operator_tests::operators_follow_field_type_capabilities"
+          "implementation": "go",
+          "test": "packages/go/engine/ir/recipe_validate_test.go",
+          "id": "TestRecipeIRValidateNone/operators_follow_type_and_codec"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/IrValidateRecipeTest.php",
+          "id": "IrValidateRecipeTest::testNone with data set \"operators_follow_type_and_codec\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
+          "id": "IrValidateRecipeTestExtensionTest::testNone with data set \"operators_follow_type_and_codec\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "operators_follow_type_and_codec"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_ir_validate_none.py",
+          "id": "operators_follow_type_and_codec"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/mod.rs",
-          "id": "dbspec::operator_tests::codecs_and_column_operators_keep_their_restrictions"
+          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "id": "ir_validate_none::operators_follow_type_and_codec"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/ir/recipe_validate_test.go",
+          "id": "TestRecipeIRValidateNone/limit_params_subquery_invalid"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/IrValidateRecipeTest.php",
+          "id": "IrValidateRecipeTest::testNone with data set \"limit_params_subquery_invalid\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
+          "id": "IrValidateRecipeTestExtensionTest::testNone with data set \"limit_params_subquery_invalid\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "limit_params_subquery_invalid"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_ir_validate_none.py",
           "id": "limit_params_subquery_invalid"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "id": "ir_validate_none::limit_params_subquery_invalid"
         }
       ]
     },
@@ -12905,33 +13026,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/engine_test.go",
-          "id": "TestAllColumnsSelectAESVersionOnce"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_aes_version_selected_once"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/EngineTest.php",
-          "id": "EngineTest::testAllColumnsSelectAesVersionOnce"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_aes_version_selected_once\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
-          "id": "ValidatorNativeTest::testAllColumnsSelectAesVersionOnce"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_aes_version_selected_once\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_aes_version_selected_once"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_scalar_subquery_type.py",
-          "id": "test_all_columns_select_aes_version_once"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_aes_version_selected_once"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::all_columns_select_the_aes_version_once"
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_aes_version_selected_once"
         }
       ]
     },
@@ -16632,34 +16753,34 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/codec.rs",
-          "id": "codec::tests::json_literal_null_is_distinct_from_sql_null"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/styled_state_test.go",
-          "id": "TestStyledColumnStateFixture"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/sql_null_is_not_a_value"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/StyledValueTest.php",
-          "id": "StyledValueTest::testModelStates"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"sql_null_is_not_a_value\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"sql_null_is_not_a_value\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/styled-value.mjs",
-          "id": "nonnull_value_null"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "sql_null_is_not_a_value"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_styled_column_states.py",
-          "id": "nonnull_value_null"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "sql_null_is_not_a_value"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::sql_null_is_not_a_value"
         }
       ]
     },
@@ -17709,33 +17830,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/engine_test.go",
-          "id": "TestCompileErrors"
+          "test": "packages/go/engine/ir/recipe_validate_test.go",
+          "id": "TestRecipeIRValidateNone/request_of_another_manifest"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/EngineTest.php",
-          "id": "EngineTest::testEngine"
+          "test": "packages/php/tests/IrValidateRecipeTest.php",
+          "id": "IrValidateRecipeTest::testNone with data set \"request_of_another_manifest\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
-          "id": "ValidatorNativeTest::testRequestWithAnotherManifestHashIsRejected"
+          "test": "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
+          "id": "IrValidateRecipeTestExtensionTest::testNone with data set \"request_of_another_manifest\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "request_of_another_manifest"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_ir_validate_additional.py",
-          "id": "test_a_request_of_another_manifest_is_schema_hash_mismatch"
+          "test": "packages/python/tests/test_ir_validate_none.py",
+          "id": "request_of_another_manifest"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/ir_manifest_hash.rs",
-          "id": "manifest_hash_mismatch"
+          "test": "packages/rust/tests/tests/ir_validate_none.rs",
+          "id": "ir_validate_none::request_of_another_manifest"
         }
       ]
     },
@@ -27323,38 +27444,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesEnvelopeDecrypt"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESReadsSharedFixedVector"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_bench_salt"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesEnvelopeDecrypt"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_bench_salt\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_bench_salt\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_envelope_decrypt"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_bench_salt"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_envelope_decrypt"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_bench_salt"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_envelope_decrypt"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_bench_salt"
         }
       ]
     },
@@ -27367,53 +27483,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESUsesAuthenticatedVersionTwoEnvelope"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesRoundTrip"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_envelope_form"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesRoundTrip"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_envelope_form\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_envelope_form\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_round_trip"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_envelope_form"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_round_trip"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_envelope_form"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_round_trip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_round_trip"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/HostcodecTest.php",
-          "id": "HostcodecTest::testHostcodec"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/HostcodecTestExtensionTest.php",
-          "id": "HostcodecTestExtensionTest::testHostcodec"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_envelope_form"
         }
       ]
     },
@@ -27426,38 +27522,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesTamperRejected"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_invalid_tag"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesTamperRejected"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_invalid_tag\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_invalid_tag\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_tamper_rejected"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_invalid_tag"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_tamper_rejected"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_invalid_tag"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_tamper_rejected"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_tamper_rejected"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_invalid_tag"
         }
       ]
     },
@@ -27470,43 +27561,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesWrongKeyRejected"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESDecodesByStoredVersion"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_envelope_without_hex"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesWrongKeyRejected"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_envelope_without_hex\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_envelope_without_hex\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_wrong_key_rejected"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_envelope_without_hex"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_wrong_key_rejected"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_envelope_without_hex"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_wrong_key_rejected"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_wrong_key_rejected"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_envelope_without_hex"
         }
       ]
     },
@@ -27519,38 +27600,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageBlindIndexVector"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestBlindIndexIsStableAndKeyed"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/blind_index_vector"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testBlindIndexVector"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"blind_index_vector\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"blind_index_vector\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "test": "packages/ts/tests/codec-none.test.mjs",
           "id": "blind_index_vector"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_blind_index_vector"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "blind_index_vector"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::blind_index_vector"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::blind_index_vector"
         }
       ]
     },
@@ -27563,178 +27639,213 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestMultiRowBlindIndexUsesAssignedSourceAndOriginalRowOffsets"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestBlindIndexDerivationRejectsDistinctSourcesRegardlessOfValues"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestExplicitBlindIndexAssignmentWinsOverMultipleSources"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestInsertAndOnDuplicateBlindIndexAssignmentsAreIndependent"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestOnDuplicateRejectsDistinctSourcesWithoutExplicitTarget"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/planner/blind_index_source_test.go",
-          "id": "TestOrdinaryInsertHasNoBlindIndexAssignments"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_multi_row_source_position"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testMultiRowIndexUsesTheAssignedSourceColumnPosition"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testOrdinaryInsertControlHasNoBlindIndexSlots"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testTwoNullSourcesDerivingOneTargetAreInvalid"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testEqualParameterSourcesDerivingOneTargetAreInvalid"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testExplicitTargetAssignmentWinsForSharedSchema"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testOnDuplicateRejectsTwoSourcesIndependently"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/BlindIndexSourcePlannerTest.php",
-          "id": "BlindIndexSourcePlannerTest::testExplicitTargetWinsInOnDuplicate"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_multi_row_source_position\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeMultiRowIndexUsesAssignedSourcePosition"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeOrdinaryInsertHasNoBlindIndexSlots"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeTwoNullSourcesDerivingOneTargetAreInvalid"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeEqualParameterSourcesDerivingOneTargetAreInvalid"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeExplicitTargetAssignmentWinsForSharedSchema"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeOnDuplicateRejectsTwoSourcesIndependently"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-          "id": "BlindIndexSourceNativeTest::testNativeExplicitTargetWinsInOnDuplicate"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_multi_row_source_position\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_multi_row_source_position"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_multi_row_index_binds_the_assigned_source_column_position"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_multi_row_source_position"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_multi_row_source_position"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_ordinary_insert_has_no_slot"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_ordinary_insert_has_no_slot\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_ordinary_insert_has_no_slot\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_ordinary_insert_has_no_slot"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_ordinary_insert_has_no_blind_index_assignment"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_ordinary_insert_has_no_slot"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_ordinary_insert_has_no_slot"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_rejects_two_sources"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_rejects_two_sources\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_rejects_two_sources\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_rejects_two_sources"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_two_sources_of_one_derived_target_are_invalid_even_when_null"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_rejects_two_sources"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_rejects_two_sources"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_explicit_target_wins"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_explicit_target_wins\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_explicit_target_wins\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_explicit_target_wins"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_two_sources_with_equal_parameter_are_invalid"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_explicit_target_wins"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_explicit_target_wins"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_insert_source_with_on_duplicate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_insert_source_with_on_duplicate\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_insert_source_with_on_duplicate\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_insert_source_with_on_duplicate"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_explicit_target_assignment_wins_for_shared_schema"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_insert_source_with_on_duplicate"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_insert_source_with_on_duplicate"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_on_duplicate_explicit_target"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_on_duplicate_explicit_target\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_on_duplicate_explicit_target\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_on_duplicate_explicit_target"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_on_duplicate_rejects_two_sources_independently"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_on_duplicate_explicit_target"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_on_duplicate_explicit_target"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_blind_index_on_duplicate_rejects_two_sources"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_blind_index_on_duplicate_rejects_two_sources\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_blind_index_on_duplicate_rejects_two_sources\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/planner_compile.mjs",
+          "id": "planner_blind_index_on_duplicate_rejects_two_sources"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_blind_index_source.py",
-          "id": "test_explicit_target_wins_in_on_duplicate"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_blind_index_on_duplicate_rejects_two_sources"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::multi_row_index_uses_the_assigned_source_column_position"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::ordinary_insert_has_no_blind_index_assignment"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::two_assigned_sources_of_one_derived_target_are_invalid"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::two_sources_with_equal_parameter_are_invalid"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::explicit_index_assignment_wins_over_multiple_sources"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::on_duplicate_rejects_two_sources_deriving_one_target"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/blind_index_source.rs",
-          "id": "engine::blind_index_source::explicit_index_assignment_wins_in_on_duplicate"
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_blind_index_on_duplicate_rejects_two_sources"
         }
       ]
     },
@@ -28586,33 +28697,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/planner/scalar_subquery_type_test.go",
-          "id": "TestScalarSubqueryAggregateTypes"
+          "test": "packages/go/orm/recipe_planner_test.go",
+          "id": "TestRecipePlannerCompileNone/planner_scalar_subquery_aggregate_types"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoveragePlannerTest.php",
-          "id": "CoveragePlannerTest::testScalarSubqueryAggregateTypesRemainI64AndF64"
+          "test": "packages/php/tests/PlannerCompileTest.php",
+          "id": "PlannerCompileTest::testNone with data set \"planner_scalar_subquery_aggregate_types\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::testPlannerScalarSubqueryAggregateTypesRemainI64AndF64"
+          "test": "packages/php-ext/tests/PlannerCompileTestExtensionTest.php",
+          "id": "PlannerCompileTestExtensionTest::testNone with data set \"planner_scalar_subquery_aggregate_types\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/scalar_subquery_type.mjs",
+          "test": "packages/ts/tests/planner_compile.mjs",
           "id": "planner_scalar_subquery_aggregate_types"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_scalar_subquery_type.py",
-          "id": "test_scalar_subquery_aggregate_types_remain_i64_and_f64"
+          "test": "packages/python/tests/test_planner_compile_none.py",
+          "id": "planner_scalar_subquery_aggregate_types"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-          "id": "markdown::markdown_scalar_subquery_tests::markdown_subquery_aggregate_types_remain_i64_and_f64"
+          "test": "packages/rust/tests/tests/planner_compile_none.rs",
+          "id": "planner_compile_none::planner_scalar_subquery_aggregate_types"
         }
       ],
       "requirements": [

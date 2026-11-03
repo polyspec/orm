@@ -6790,10 +6790,7 @@
         "packages/go/engine/ir/recipe_validate_test.go",
         "packages/python/tests/test_ir_validate_none.py",
         "packages/go/engine/ir/params_test.go",
-        "packages/rust/orm/tests/unit/param_uses.rs",
-        "packages/ts/tests/param-uses.mjs",
         "packages/rust/tests/tests/ir_validate_none.rs",
-        "packages/rust/orm/tests/ir_manifest_hash.rs",
         "packages/php/tests/IrValidateRecipeTest.php",
         "packages/php-ext/tests/IrValidateRecipeTestExtensionTest.php",
         "packages/rust/orm/src/testing/ir_request.rs",
@@ -6805,16 +6802,13 @@
         "packages/php-ext/tests/ValidatorNativeTest.php",
         "packages/ts/tests/column_function_metadata.mjs",
         "packages/ts/tests/scalar_subquery_type.mjs",
-        "packages/python/tests/test_blind_index_source.py",
         "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_scalar_subquery_type.py",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/go/orm/values_test.go",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-        "packages/rust/orm/tests/unit/upsert_conflict.rs",
-        "packages/rust/schema/src/dbspec/mod.rs",
-        "packages/python/tests/test_ir_validate_additional.py"
+        "packages/rust/schema/src/dbspec/mod.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -6835,7 +6829,6 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts param-uses-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib engine::param_uses_tests",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/unit/param_uses.rs",
             "packages/rust/orm/src/engine/params.rs"
           ]
         },
@@ -6844,7 +6837,6 @@
           "command": "node packages/ts/tests/param-uses.mjs",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/param-uses.mjs",
             "packages/ts/src/engine/params.ts"
           ]
         },
@@ -6946,7 +6938,6 @@
           "inputs": [
             "packages/rust/orm/src/engine/validate.rs",
             "packages/rust/tests/tests/ir_validate_none.rs",
-            "packages/rust/orm/tests/ir_manifest_hash.rs",
             "packages/rust/orm/src/testing/ir_request.rs",
             "tests/ir/validate.json"
           ]
@@ -8593,12 +8584,10 @@
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "packages/php/tests/BlindIndexSourcePlannerInput.php",
         "contracts/fixtures/secret_config.dbs"
       ],
       "tests": [
         "packages/go/orm/codec_test.go",
-        "packages/go/orm/hostcodec_test.go",
         "packages/go/orm/aes_rotation_test.go",
         "packages/go/orm/aes_json_test.go",
         "packages/go/orm/aes_keys_test.go",
@@ -8606,7 +8595,6 @@
         "packages/rust/orm/tests/aes_json.rs",
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
-        "packages/php/tests/HostcodecTest.php",
         "packages/ts/tests/codec_case.mjs",
         "packages/go/orm/fuzz_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
@@ -8625,20 +8613,14 @@
         "packages/python/tests/test_aes_version_codes.py",
         "packages/ts/tests/codec-aes-errors.test.mjs",
         "packages/ts/tests/codec-errors.test.mjs",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php",
         "packages/php/tests/CodecYamlCauseTest.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/CodecCauseTest.php",
-        "packages/go/engine/planner/blind_index_source_test.go",
-        "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-        "packages/rust/orm/tests/unit/blind_index_source.rs",
-        "packages/python/tests/test_blind_index_source.py",
         "packages/ts/tests/aes-read-row-without-version-cell.mjs",
         "packages/python/tests/aes_json.py",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/AesJsonTestExtensionTest.php",
         "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-        "packages/php-ext/tests/HostcodecTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_codec_test.go",
         "packages/php/tests/CodecRecipeTest.php",
@@ -8678,7 +8660,6 @@
             "packages/go/internal/recipe/recipe.go",
             "tests/codec/codec.json",
             "packages/go/orm/coverage_authenticated_encryption_test.go",
-            "packages/go/orm/hostcodec_test.go",
             "contracts/fixtures/authenticated_encryption.json"
           ]
         },
@@ -8688,14 +8669,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
-          ]
-        },
-        {
-          "id": "encryption-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/HostcodecTest.php"
           ]
         },
         {
