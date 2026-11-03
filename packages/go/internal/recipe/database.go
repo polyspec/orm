@@ -530,6 +530,9 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
 		}
+		if keeps, ok := expected["keeps_callback"]; ok && keeps == true && !errors.Is(err, errCallback) {
+			return fmt.Errorf("error %q does not keep the error of the callback", err.Error())
+		}
 		if want, ok := expected["rollback"]; ok {
 			var coded *orm.Error
 			if !errors.As(err, &coded) {
