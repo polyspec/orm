@@ -4732,6 +4732,110 @@
       ]
     },
     {
+      "id": "analyze-class-byte-order-mark-then-header-stop",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "﻿dbspec 1 shop"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  1,
+                  7,
+                  "word"
+                ],
+                [
+                  1,
+                  8,
+                  9,
+                  "number"
+                ],
+                [
+                  1,
+                  10,
+                  14,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-table-name-takes-a-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table 12 {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  8,
+                  "name"
+                ],
+                [
+                  2,
+                  9,
+                  10,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "analyze-class-comment-keeps-its-text-from-to-the-line-end",
       "requirements": [
         "DBS-134",
