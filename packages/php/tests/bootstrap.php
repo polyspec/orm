@@ -36,6 +36,7 @@ require_once __DIR__ . '/SqliteConcurrencyWriter.php';
 require_once __DIR__ . '/CollectionIdentityCases.php';
 require_once __DIR__ . '/CollectionWeakTypedKeyCases.php';
 require_once __DIR__ . '/GroupRowsCases.php';
+require_once __DIR__ . '/RecipeStep.php';
 require_once __DIR__ . '/RecipeModel.php';
 require_once __DIR__ . '/RecipeApply.php';
 require_once __DIR__ . '/RecipeIntrospect.php';

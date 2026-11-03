@@ -36,6 +36,8 @@ pub enum Val {
     Float(f64),
     Text(String),
     Bool(bool),
+    /// The bytes of a value that is not text (INT-153).
+    Binary(Vec<u8>),
 }
 
 impl Val {
@@ -47,6 +49,7 @@ impl Val {
             Val::Float(f) => f.to_string(),
             Val::Text(s) => s.clone(),
             Val::Bool(b) => b.to_string(),
+            Val::Binary(bytes) => String::from_utf8_lossy(bytes).into_owned(),
         }
     }
 
@@ -64,6 +67,7 @@ impl Val {
             Val::Text(s) => s.parse().map_err(|error| sqlx::Error::Decode(format!("Invalid tool integer: {error}").into())),
             Val::Unsigned(n) => i64::try_from(*n).map_err(|error| sqlx::Error::Decode(Box::new(error))),
             Val::Float(_) => Err(sqlx::Error::Decode("Invalid tool integer: a float".into())),
+            Val::Binary(_) => Err(sqlx::Error::Decode("Invalid tool integer: binary".into())),
             Val::Null => Err(sqlx::Error::Decode("Required tool integer is NULL".into())),
         }
     }
@@ -94,7 +98,7 @@ pub fn s(v: &str) -> P {
 pub type Rows = Vec<Vec<Val>>;
 
 fn decode_bytes(value: Option<Vec<u8>>) -> Result<Val, sqlx::Error> {
-    value.map(String::from_utf8).transpose().map(|value| value.map_or(Val::Null, Val::Text)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
+    Ok(value.map_or(Val::Null, |bytes| String::from_utf8(bytes).map_or_else(|error| Val::Binary(error.into_bytes()), Val::Text)))
 }
 
 /// A value of a type that a catalog cell cannot hold; the catalog reports it as CATALOG_VALUE (docs/spec/interfaces.md,

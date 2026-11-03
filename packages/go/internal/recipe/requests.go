@@ -51,16 +51,16 @@ func auditValues(raw json.RawMessage, c *databaseContext) (map[string]any, error
 // connectConfig is the configuration of a model.connect: the keys of the bench set or the keyring of the step, and the
 // audit source of the step.
 func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
-	cfg := orm.Config{PoolSize: s.PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey}
-	if s.AuditSource != nil {
+	cfg := orm.Config{PoolSize: s.k("pool_size").PoolSize, AESKey: benchAESKey, BlindIndexKey: benchBlindIndexKey}
+	if s.k("audit_source").AuditSource != nil {
 		var values map[string]any
-		if s.AuditSource.Values != nil {
+		if s.k("audit_source").AuditSource.Values != nil {
 			var err error
-			if values, err = auditValues(s.AuditSource.Values, c); err != nil {
+			if values, err = auditValues(s.k("audit_source").AuditSource.Values, c); err != nil {
 				return orm.Config{}, err
 			}
 		}
-		fail := s.AuditSource.Fail
+		fail := s.k("audit_source").AuditSource.Fail
 		cfg.AuditSource = func(context.Context) (map[string]any, error) {
 			if fail {
 				return nil, errCallback
@@ -68,20 +68,20 @@ func connectConfig(s databaseStep, c *databaseContext) (orm.Config, error) {
 			return values, nil
 		}
 	}
-	if s.AESKeyring == nil {
+	if s.k("aes_keyring").AESKeyring == nil {
 		return cfg, nil
 	}
-	keys, err := s.AESKeyring.keys()
+	keys, err := s.k("aes_keyring").AESKeyring.keys()
 	if err != nil {
 		return orm.Config{}, err
 	}
-	cfg.AESKeys, cfg.AESVersion, cfg.AESKey = keys, s.AESKeyring.Current, keys[s.AESKeyring.Current]
+	cfg.AESKeys, cfg.AESVersion, cfg.AESKey = keys, s.k("aes_keyring").AESKeyring.Current, keys[s.k("aes_keyring").AESKeyring.Current]
 	return cfg, nil
 }
 
 // requestOp runs the request hook and AES ops of FCV-4, or OP_UNKNOWN for an op that it does not name.
 func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "hook.install":
 		return c.installHook(s)
 	case "hook.records":
@@ -109,19 +109,19 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		return outcome{fields: map[string]any{}}, db.Notify(s.Channel, s.Payload)
+		return outcome{fields: map[string]any{}}, db.Notify(s.k("channel").Channel, s.k("payload").Payload)
 	case "utils.aes_status", "utils.aes_rotate":
 		db, err := connectionOf(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		table := snakeOf(s.Model)
-		keyring, err := s.Keyring.keyring()
+		table := snakeOf(s.k("model").Model)
+		keyring, err := s.k("keyring").Keyring.keyring()
 		if err != nil {
 			return outcome{}, err
 		}
 		model := tableCore(db, table, c.schema).Self()
-		if s.Op == "utils.aes_rotate" {
+		if s.k("op").Op == "utils.aes_rotate" {
 			n, err := db.Utils().Aes().Rotate(model, keyring)
 			if err != nil {
 				return outcome{}, err
@@ -145,7 +145,7 @@ func requestOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}}
 		return outcome{fields: map[string]any{"value": value}}, nil
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
 // hookAction is one action of hook.install, with its value converted once.
@@ -161,18 +161,18 @@ type hookAction struct {
 // installHook binds the connection of s to the connection that model.connect opened with the actions of s as its request
 // hook, in order; a later hook.install on the same connection replaces the hook (FCV-4).
 func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
-	b, ok := c.bound[s.Connection]
+	b, ok := c.bound[s.k("connection").Connection]
 	if !ok {
-		return outcome{}, fmt.Errorf("hook.install: connection %q is not bound by model.connect", s.Connection)
+		return outcome{}, fmt.Errorf("hook.install: connection %q is not bound by model.connect", s.k("connection").Connection)
 	}
 	base, isDB := b.hookBase, b.hookBase != nil
 	if !isDB {
 		if base, isDB = b.api.(*orm.DB); !isDB {
-			return outcome{}, fmt.Errorf("hook.install: connection %q is not a connection", s.Connection)
+			return outcome{}, fmt.Errorf("hook.install: connection %q is not a connection", s.k("connection").Connection)
 		}
 	}
 	var actions []hookAction
-	for _, raw := range s.Hooks {
+	for _, raw := range s.k("hooks").Hooks {
 		var h struct {
 			Action string          `json:"action"`
 			Kinds  json.RawMessage `json:"kinds"`
@@ -249,12 +249,12 @@ func (c *databaseContext) installHook(s databaseStep) (outcome, error) {
 		return nil
 	})
 	// With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
-	if s.As != "" {
+	if s.k("as").As != "" {
 		out := okOutcome()
 		out.api = hooked
 		return out, nil
 	}
-	c.bound[s.Connection] = bound{api: hooked, fields: b.fields, hookBase: base}
+	c.bound[s.k("connection").Connection] = bound{api: hooked, fields: b.fields, hookBase: base}
 	return okOutcome(), nil
 }
 

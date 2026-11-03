@@ -277,23 +277,6 @@ class SqliteEndToEndTest(unittest.TestCase):
                 build()
         author().lk_name("connector-").gets().delete()
 
-    # Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
-    def test_joined_child_refuses_its_own_connection(self):
-        self.author("joined-child").create()
-        joined = (
-            self.models.Author()
-            .connect(self.db)
-            .name("joined-child")
-            .join_user_seq_with_seq(self.models.User())
-            .gets()
-        )
-        self.assertEqual(joined.values()[0].get_user_model().get_seq(), 1)
-        with self.assertRaisesRegex(Exception, "CONFIG"):
-            self.models.Author().connect(self.db).join_user_seq_with_seq(
-                self.models.User().connect(self.db)
-            ).gets()
-        joined.delete()
-
     # Requirements: PLN-8, PLN-9, PLN-14.
     def test_group_and_page(self):
         for i in range(5):

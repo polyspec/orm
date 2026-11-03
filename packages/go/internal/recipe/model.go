@@ -39,14 +39,14 @@ func sortedColumns(values map[string]any) []string {
 // modelOp runs one model op of s. model.connect opens the connection and binds it with as; every other op uses the
 // connection that its connection name names.
 func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if s.Op == "model.connect" {
+	if s.k("op").Op == "model.connect" {
 		cfg, err := connectConfig(s, c)
 		if err != nil {
 			return outcome{}, err
 		}
 		var named string
-		if s.DSN != nil {
-			if err := json.Unmarshal(s.DSN, &named); err != nil {
+		if s.k("dsn").DSN != nil {
+			if err := json.Unmarshal(s.k("dsn").DSN, &named); err != nil {
 				return outcome{}, fmt.Errorf("model.connect dsn is not text: %w", err)
 			}
 		}
@@ -61,15 +61,15 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 		c.closers = append(c.closers, func() error { return db.Close() })
 		return outcome{api: db, fields: map[string]any{}}, nil
 	}
-	if s.Unconnected {
+	if s.k("unconnected").Unconnected {
 		return unconnectedAccountOp(s, c)
 	}
-	bound, ok := c.bound[s.Connection]
+	bound, ok := c.bound[s.k("connection").Connection]
 	db, isDB := bound.api.(*orm.DB)
 	if !ok || !isDB {
-		return outcome{}, fmt.Errorf("model op %s: connection %q is not bound by model.connect", s.Op, s.Connection)
+		return outcome{}, fmt.Errorf("model op %s: connection %q is not bound by model.connect", s.k("op").Op, s.k("connection").Connection)
 	}
-	switch s.Model {
+	switch s.k("model").Model {
 	case "CompositeAccount":
 		return compositeAccountOp(s, c, db)
 	case "CompositeMembership":
@@ -81,7 +81,7 @@ func modelOp(s databaseStep, c *databaseContext) (outcome, error) {
 	case "NoteReader":
 		return noteReaderOp(s, c, db)
 	}
-	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.Model)
+	return outcome{}, fmt.Errorf("model %s has no recipe entry", s.k("model").Model)
 }
 
 // modelValues reads an object of assignments of a model op into native values.
@@ -183,11 +183,11 @@ func setColumns(name string, values map[string]any, setters map[string]columnSet
 
 // keyAndSet reads the key and the set of a model.update step.
 func keyAndSet(s databaseStep, c *databaseContext) (map[string]any, map[string]any, error) {
-	key, err := modelValues(s.Key, c)
+	key, err := modelValues(s.k("key").Key, c)
 	if err != nil {
 		return nil, nil, err
 	}
-	set, err := modelValues(s.Set, c)
+	set, err := modelValues(s.k("set").Set, c)
 	return key, set, err
 }
 
@@ -208,12 +208,12 @@ func compositeAccount(db *orm.DB, values map[string]any) (*model.CompositeAccoun
 
 // unconnectedAccountOp runs model.create and model.count of a CompositeAccount built with no connection (PLN-16).
 func unconnectedAccountOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if s.Model != "CompositeAccount" {
-		return outcome{}, fmt.Errorf("model op %s: %s has no unconnected recipe op", s.Op, s.Model)
+	if s.k("model").Model != "CompositeAccount" {
+		return outcome{}, fmt.Errorf("model op %s: %s has no unconnected recipe op", s.k("op").Op, s.k("model").Model)
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	case "model.create":
-		values, err := modelValues(s.Values, c)
+		values, err := modelValues(s.k("values").Values, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -224,7 +224,7 @@ func unconnectedAccountOp(s databaseStep, c *databaseContext) (outcome, error) {
 		_, err = m.Create()
 		return outcome{fields: map[string]any{}}, err
 	case "model.count":
-		where, err := modelValues(s.Where, c)
+		where, err := modelValues(s.k("where").Where, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -235,7 +235,7 @@ func unconnectedAccountOp(s databaseStep, c *databaseContext) (outcome, error) {
 		n, err := m.GetCount()
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	}
-	return outcome{}, fmt.Errorf("model op %s has no unconnected form", s.Op)
+	return outcome{}, fmt.Errorf("model op %s has no unconnected form", s.k("op").Op)
 }
 
 // setCompositeAccount sets the columns of values on m.
@@ -253,7 +253,7 @@ func setCompositeAccount(m *model.CompositeAccountModel, values map[string]any) 
 
 // compositeAccountWhere is the CompositeAccount chain on db narrowed by the where of s.
 func compositeAccountWhere(s databaseStep, c *databaseContext, db *orm.DB) (*model.CompositeAccountModel, error) {
-	where, err := modelValues(s.Where, c)
+	where, err := modelValues(s.k("where").Where, c)
 	if err != nil {
 		return nil, err
 	}
@@ -290,9 +290,9 @@ func compositeAccountFilter(m *model.CompositeAccountModel, where map[string]any
 
 // compositeAccountOp runs a model op on the CompositeAccount model.
 func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "model.create", "model.save":
-		values, err := modelValues(s.Values, c)
+		values, err := modelValues(s.k("values").Values, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -300,18 +300,18 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
-		if s.Op == "model.save" {
+		if s.k("op").Op == "model.save" {
 			_, err = m.Save()
 		} else {
 			_, err = m.Create()
 		}
 		return outcome{api: m, fields: map[string]any{}}, err
 	case "model.duplicate_create":
-		values, err := modelValues(s.Values, c)
+		values, err := modelValues(s.k("values").Values, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		duplication, err := modelValues(s.Duplication, c)
+		duplication, err := modelValues(s.k("duplication").Duplication, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -327,7 +327,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		return outcome{fields: map[string]any{}}, err
 	case "model.creates":
 		var raw []json.RawMessage
-		if err := json.Unmarshal(s.Rows, &raw); err != nil {
+		if err := json.Unmarshal(s.k("rows").Rows, &raw); err != nil {
 			return outcome{}, err
 		}
 		rows := make([]*model.CompositeAccountModel, 0, len(raw))
@@ -342,7 +342,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			}
 			rows = append(rows, m)
 		}
-		n, err := model.CompositeAccount().Connect(db).Creates(rows, s.Batch)
+		n, err := model.CompositeAccount().Connect(db).Creates(rows, s.k("batch").Batch)
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	case "model.update":
 		key, set, err := keyAndSet(s, c)
@@ -387,9 +387,9 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		n, err := m.GetCount()
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	case "model.get_by", "model.query":
-		where := s.Key
-		if s.Op == "model.query" {
-			where = s.Where
+		where := s.k("key").Key
+		if s.k("op").Op == "model.query" {
+			where = s.k("where").Where
 		}
 		filter, err := modelValues(where, c)
 		if err != nil {
@@ -399,12 +399,12 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		if err != nil {
 			return outcome{}, err
 		}
-		if s.Tuples != nil {
-			if m, err = compositeAccountTuples(m, s.Tuples, len(filter) > 0, c); err != nil {
+		if s.k("tuples").Tuples != nil {
+			if m, err = compositeAccountTuples(m, s.k("tuples").Tuples, len(filter) > 0, c); err != nil {
 				return outcome{}, err
 			}
 		}
-		for _, column := range s.Order {
+		for _, column := range s.k("order").Order {
 			switch column {
 			case "tenant_id":
 				m = m.OrderByTenantIdAsc()
@@ -415,8 +415,8 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			}
 		}
 		var relation *compositeRelation
-		if s.Relation != nil {
-			if relation, err = compositeMembershipRelation(s.Relation, db); err != nil {
+		if s.k("relation").Relation != nil {
+			if relation, err = compositeMembershipRelation(s.k("relation").Relation, db); err != nil {
 				return outcome{}, err
 			}
 			if relation.many {
@@ -426,7 +426,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 			}
 		}
 		// The lock of a model.query (INT-47): a lock outside a transaction is refused with CONFIG.
-		switch s.Lock {
+		switch s.k("lock").Lock {
 		case "":
 		case "update":
 			m = m.ForUpdate()
@@ -437,7 +437,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		case "share_nowait":
 			m = m.ForShareNoWait()
 		default:
-			return outcome{}, fmt.Errorf("lock %q is not a lock of the recipe", s.Lock)
+			return outcome{}, fmt.Errorf("lock %q is not a lock of the recipe", s.k("lock").Lock)
 		}
 		rows, err := m.Gets()
 		if err != nil {
@@ -446,7 +446,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		out := [][]any{}
 		for _, row := range rows.Slice() {
 			var cells []any
-			for _, column := range s.Columns {
+			for _, column := range s.k("columns").Columns {
 				var v any
 				var err error
 				switch column {
@@ -482,7 +482,7 @@ func compositeAccountOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome
 		}
 		return outcome{fields: map[string]any{"rows": out}}, nil
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
 // compositeAccountTuples narrows a CompositeAccount chain by the tuples of a model.query through the generated tuple filter
@@ -643,10 +643,10 @@ func compositeMembership(db *orm.DB, values map[string]any) (*model.CompositeMem
 // compositeMembershipOp runs the model ops of the composite keys recipe on the CompositeMembership model: model.creates
 // and model.count by tenant_id.
 func compositeMembershipOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "model.creates":
 		var raw []json.RawMessage
-		if err := json.Unmarshal(s.Rows, &raw); err != nil {
+		if err := json.Unmarshal(s.k("rows").Rows, &raw); err != nil {
 			return outcome{}, err
 		}
 		rows := make([]*model.CompositeMembershipModel, 0, len(raw))
@@ -661,10 +661,10 @@ func compositeMembershipOp(s databaseStep, c *databaseContext, db *orm.DB) (outc
 			}
 			rows = append(rows, m)
 		}
-		n, err := model.CompositeMembership().Connect(db).Creates(rows, s.Batch)
+		n, err := model.CompositeMembership().Connect(db).Creates(rows, s.k("batch").Batch)
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	case "model.count":
-		where, err := modelValues(s.Where, c)
+		where, err := modelValues(s.k("where").Where, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -685,7 +685,7 @@ func compositeMembershipOp(s databaseStep, c *databaseContext, db *orm.DB) (outc
 		n, err := m.GetCount()
 		return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(n, 10)}}}, err
 	}
-	return outcome{}, fmt.Errorf("op %s has no CompositeMembership entry", s.Op)
+	return outcome{}, fmt.Errorf("op %s has no CompositeMembership entry", s.k("op").Op)
 }
 
 // compositeAccountRows loads the CompositeAccount rows that the key names; an update needs the one row it names.
@@ -844,10 +844,10 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		return m, nil
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	case "model.save":
 		// A set of the key and the named columns, with no read before it, then one Save.
-		values, err := modelValues(s.Values, c)
+		values, err := modelValues(s.k("values").Values, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -862,7 +862,7 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		_, err = m.Save()
 		return outcome{api: m, fields: map[string]any{}}, err
 	case "model.count":
-		where, err := modelValues(s.Where, c)
+		where, err := modelValues(s.k("where").Where, c)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -876,23 +876,23 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		return outcome{fields: map[string]any{"value": wrapperOf(n)}}, nil
 	case "model.query":
-		where, err := modelValues(s.Where, c)
+		where, err := modelValues(s.k("where").Where, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		m, err := authorChain(db, where, s.Columns)
+		m, err := authorChain(db, where, s.k("columns").Columns)
 		if err != nil {
 			return outcome{}, err
 		}
-		for _, column := range s.Order {
+		for _, column := range s.k("order").Order {
 			order, ok := authorOrders[column]
 			if !ok {
 				return outcome{}, fmt.Errorf("Author column %s has no recipe order", column)
 			}
 			m = order(m)
 		}
-		if s.Limit > 0 || s.Offset > 0 {
-			m = m.Limit(int(s.Offset), s.Limit)
+		if s.k("limit").Limit > 0 || s.k("offset").Offset > 0 {
+			m = m.Limit(int(s.k("offset").Offset), s.k("limit").Limit)
 		}
 		collection, err := m.Gets()
 		if err != nil {
@@ -900,20 +900,20 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		rows := []any{}
 		for _, row := range collection.Slice() {
-			rows = append(rows, rowCells(row, s.Columns))
+			rows = append(rows, rowCells(row, s.k("columns").Columns))
 		}
 		return outcome{fields: map[string]any{"rows": rows}}, nil
 	case "model.get_by":
 		// The key and the where are one chain: the equalities, the projection of columns, then the terminal Get.
-		raw := s.Key
-		if len(s.Where) > 0 {
-			raw = s.Where
+		raw := s.k("key").Key
+		if len(s.k("where").Where) > 0 {
+			raw = s.k("where").Where
 		}
 		where, err := modelValues(raw, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		m, err := authorChain(db, where, s.Columns)
+		m, err := authorChain(db, where, s.k("columns").Columns)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -923,7 +923,7 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		}
 		rows := []any{}
 		if row != nil {
-			rows = append(rows, rowCells(row, s.Columns))
+			rows = append(rows, rowCells(row, s.k("columns").Columns))
 		}
 		return outcome{fields: map[string]any{"rows": rows}}, nil
 	case "model.update":
@@ -961,7 +961,7 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		_, err = row.Update()
 		return outcome{fields: map[string]any{}}, err
 	case "model.arithmetic":
-		m, err := filterOf(s.Key)
+		m, err := filterOf(s.k("key").Key)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -973,39 +973,39 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 			return outcome{}, fmt.Errorf("arithmetic key names %d rows, want one", len(rows.Slice()))
 		}
 		row := rows.Slice()[0]
-		if s.Column != "read_count" {
-			return outcome{}, fmt.Errorf("Author column %s has no recipe arithmetic", s.Column)
+		if s.k("column").Column != "read_count" {
+			return outcome{}, fmt.Errorf("Author column %s has no recipe arithmetic", s.k("column").Column)
 		}
-		value, err := assignmentValue(s.Amount, c)
+		value, err := assignmentValue(s.k("amount").Amount, c)
 		if err != nil {
 			return outcome{}, err
 		}
-		amount, err := int32Of(value, s.Column)
+		amount, err := int32Of(value, s.k("column").Column)
 		if err != nil {
 			return outcome{}, err
 		}
-		switch s.Operation {
+		switch s.k("operation").Operation {
 		case "plus":
 			row.PlusReadCount(amount)
 		case "minus":
 			row.MinusReadCount(amount)
 		default:
-			return outcome{}, fmt.Errorf("unknown arithmetic operation %q", s.Operation)
+			return outcome{}, fmt.Errorf("unknown arithmetic operation %q", s.k("operation").Operation)
 		}
 		_, err = row.Update()
 		return outcome{fields: map[string]any{}}, err
 	}
-	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.Op)
+	return outcome{}, fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 }
 
 // userOp runs one model op of s on the User model; only model.delete names it (the referenced-user case).
 func userOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
-	where, err := modelValues(s.Where, c)
+	where, err := modelValues(s.k("where").Where, c)
 	if err != nil {
 		return outcome{}, err
 	}
-	if s.Op != "model.delete" {
-		return outcome{}, fmt.Errorf("op %s has no User entry", s.Op)
+	if s.k("op").Op != "model.delete" {
+		return outcome{}, fmt.Errorf("op %s has no User entry", s.k("op").Op)
 	}
 	m := model.User().Connect(db)
 	for i, column := range sortedColumns(where) {
@@ -1027,22 +1027,22 @@ func userOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 
 // noteReaderOp runs model.query on the NoteReader model with its relation to the external SharedNote model.
 func noteReaderOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
-	if s.Op != "model.query" || s.Relation == nil {
-		return outcome{}, fmt.Errorf("op %s has no NoteReader entry", s.Op)
+	if s.k("op").Op != "model.query" || s.k("relation").Relation == nil {
+		return outcome{}, fmt.Errorf("op %s has no NoteReader entry", s.k("op").Op)
 	}
 	var relation struct {
 		Model   string     `json:"model"`
 		Match   [][]string `json:"match"`
 		Columns []string   `json:"columns"`
 	}
-	if err := json.Unmarshal(s.Relation, &relation); err != nil {
+	if err := json.Unmarshal(s.k("relation").Relation, &relation); err != nil {
 		return outcome{}, err
 	}
 	if relation.Model != "SharedNote" || !slices.Equal(relation.Match[0], []string{"shared_note_seq", "seq"}) || len(relation.Match) != 1 {
 		return outcome{}, fmt.Errorf("NoteReader relation %v has no recipe entry", relation.Match)
 	}
-	if len(s.Columns) != 1 || s.Columns[0] != "seq" || len(relation.Columns) != 1 || relation.Columns[0] != "title" {
-		return outcome{}, fmt.Errorf("NoteReader columns %v with relation %v have no recipe entry", s.Columns, relation.Columns)
+	if len(s.k("columns").Columns) != 1 || s.k("columns").Columns[0] != "seq" || len(relation.Columns) != 1 || relation.Columns[0] != "title" {
+		return outcome{}, fmt.Errorf("NoteReader columns %v with relation %v have no recipe entry", s.k("columns").Columns, relation.Columns)
 	}
 	m := model.NoteReader().Connect(db).Relation(model.SharedNote().MatchSharedNoteSeqWithSeq()).OrderBySeqAsc()
 	collection, err := m.Gets()
@@ -1073,13 +1073,13 @@ const searchEntity = "author"
 // the statement text and the bind value after the DIA-6 transform. A text with no term is run on the case connection
 // through the generated model, so that the bind check refuses it with IR_INVALID.
 func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if s.Model != "Author" {
-		return outcome{}, fmt.Errorf("model %s has no query.search entry", s.Model)
+	if s.k("model").Model != "Author" {
+		return outcome{}, fmt.Errorf("model %s has no query.search entry", s.k("model").Model)
 	}
-	bound, ok := c.bound[s.Connection]
+	bound, ok := c.bound[s.k("connection").Connection]
 	db, isDB := bound.api.(*orm.DB)
 	if !ok || !isDB {
-		return outcome{}, fmt.Errorf("query.search: connection %q is not bound by model.connect", s.Connection)
+		return outcome{}, fmt.Errorf("query.search: connection %q is not bound by model.connect", s.k("connection").Connection)
 	}
 	if c.schema == nil {
 		return outcome{}, fmt.Errorf("query.search needs the schema of the case")
@@ -1095,7 +1095,7 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 		Kind:         "count",
 		Query: ir.Query{
 			Entity: searchEntity,
-			Where:  &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "fulltext_boolean", Cols: s.Columns, P: &position}}}},
+			Where:  &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Op: "fulltext_boolean", Cols: s.k("columns").Columns, P: &position}}}},
 		},
 		NParams: 1,
 	})
@@ -1116,13 +1116,13 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 	// The value is the one the statement binds: the transform that the plan declares for its slot (DIA-6 declares
 	// fulltext_boolean on MySQL only; PostgreSQL binds the text as it is).
 	boolean := len(compiled.Steps[0].BindSlots) > 0 && compiled.Steps[0].BindSlots[0].Transform == "fulltext_boolean"
-	value := s.Text
+	value := s.k("text").Text
 	if boolean {
-		value = plan.FulltextBoolean(s.Text)
+		value = plan.FulltextBoolean(s.k("text").Text)
 	}
 	if boolean && value == "" {
 		m := model.Author().Connect(db)
-		m.Orm_().Where("", []orm.ChainKey{{Op: "fulltext_boolean", Columns: s.Columns}}, s.Text)
+		m.Orm_().Where("", []orm.ChainKey{{Op: "fulltext_boolean", Columns: s.k("columns").Columns}}, s.k("text").Text)
 		if _, err := m.GetCount(); err != nil {
 			return outcome{}, err
 		}
@@ -1134,22 +1134,22 @@ func searchOp(s databaseStep, c *databaseContext) (outcome, error) {
 // searchChainOp is query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, read through
 // GetQuery on the case connection.
 func searchChainOp(s databaseStep, c *databaseContext) (outcome, error) {
-	if s.Model != "Author" {
-		return outcome{}, fmt.Errorf("model %s has no query.search_chain entry", s.Model)
+	if s.k("model").Model != "Author" {
+		return outcome{}, fmt.Errorf("model %s has no query.search_chain entry", s.k("model").Model)
 	}
-	bound, ok := c.bound[s.Connection]
+	bound, ok := c.bound[s.k("connection").Connection]
 	db, isDB := bound.api.(*orm.DB)
 	if !ok || !isDB {
-		return outcome{}, fmt.Errorf("query.search_chain: connection %q is not bound by model.connect", s.Connection)
+		return outcome{}, fmt.Errorf("query.search_chain: connection %q is not bound by model.connect", s.k("connection").Connection)
 	}
 	m := model.Author().Connect(db)
-	switch s.Mode {
+	switch s.k("mode").Mode {
 	case "fulltext_boolean":
-		m = m.FulltextBooleanNameWithDescription(s.Text)
+		m = m.FulltextBooleanNameWithDescription(s.k("text").Text)
 	case "fulltext":
-		m = m.FulltextNameWithDescription(s.Text)
+		m = m.FulltextNameWithDescription(s.k("text").Text)
 	default:
-		return outcome{}, fmt.Errorf("query.search_chain: mode %q has no generated method", s.Mode)
+		return outcome{}, fmt.Errorf("query.search_chain: mode %q has no generated method", s.k("mode").Mode)
 	}
 	statement, err := m.GetQuery()
 	if err != nil {
