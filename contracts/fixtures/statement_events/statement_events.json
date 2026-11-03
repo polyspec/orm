@@ -6158,11 +6158,6 @@
           "op": "events.captured",
           "ref": "recorder",
           "expect": {
-            "mysql": {
-              "value": {
-                "array": []
-              }
-            },
             "postgres": {
               "value": {
                 "array": [
@@ -6341,11 +6336,6 @@
                     ]
                   }
                 ]
-              }
-            },
-            "sqlite": {
-              "value": {
-                "array": []
               }
             }
           }

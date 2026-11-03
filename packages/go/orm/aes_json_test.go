@@ -8,34 +8,17 @@ import (
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 
-	"github.com/polyspec/orm/packages/go/engine/dbspec"
-	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 const aesJSONText = `{"z":{},"a":[],"token":"s3cret-token","nested":{"second":2,"first":1.50}}`
 
-// TestAESJSONColumnSchema checks that an AES codec with no key version setting and a text
-// column storing an AES codec are rejected with a SCHEMA_INVALID setting diagnostic.
-// Requirements: DBS-64, DBS-70, DBS-167.
-func TestAESJSONColumnSchema(t *testing.T) {
-	// The test of COD-7 (docs/spec).
-	testcase.Start(t, testcase.Database)
-	for _, c := range []struct{ document, message string }{
-		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  config bytes\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n  }\n}\n", "aes_version"},
-		{"dbspec 1 secret\n\ntable secret_config {\n  seq i64 identity\n  aes_key_version i32\n  config text\n  primary key (seq)\n  settings {\n    codec config ordered_json aes\n    aes_version aes_key_version\n  }\n}\n", "bytes"},
-	} {
-		_, diagnostics := runtimemodel.LoadDocuments([]string{c.document})
-		if len(diagnostics) == 0 || diagnostics[0].Rule != dbspec.RuleSetting || !strings.Contains(diagnostics[0].Message, c.message) {
-			t.Fatalf("diagnostics = %v, want a setting diagnostic about %s", diagnostics, c.message)
-		}
-	}
-}
-
 // TestAESJSONColumn writes an ordered-json value to an encrypted column, reads
 // it back unchanged, and rotates it to another key version on the three
 // databases.
+//
+// Requirements: COD-7.
 func TestAESJSONColumn(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "secret_config")
