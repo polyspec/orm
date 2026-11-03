@@ -43044,16 +43044,30 @@
           "id": "chain_fulltext"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
         }
       ]
+    },
+    {
+      "id": "python-fulltext-generated-method",
+      "kind": "feature",
+      "requirements": [
+        "DSL-33a"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "complex_query",
+        "part": "owner/python"
+      }
     },
     {
       "id": "dsl",

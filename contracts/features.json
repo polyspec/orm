@@ -9480,7 +9480,8 @@
         "complex_query-sqlite",
         "fulltext-search-recipe-mysql",
         "fulltext-search-recipe-postgres",
-        "fulltext-search-recipe-sqlite"
+        "fulltext-search-recipe-sqlite",
+        "python-fulltext-generated-method"
       ],
       "fixtures": [
         "contracts/fixtures/complex_query/complex_query.dbs",
@@ -9515,7 +9516,8 @@
         "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
-        "packages/rust/orm/src/request.rs"
+        "packages/rust/orm/src/request.rs",
+        "packages/python/tests/test_complex_query.py"
       ],
       "docs": [
         "docs/spec/complex-query.md",
