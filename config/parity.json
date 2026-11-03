@@ -17306,11 +17306,6 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExisting"
-        },
-        {
-          "implementation": "php-extension",
           "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
           "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
         },
