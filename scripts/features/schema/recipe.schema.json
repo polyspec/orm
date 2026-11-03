@@ -912,6 +912,8 @@
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
             "utils.groups",
+            "utils.stats",
+            "pool.transactions",
             "dbspec.plan",
             "dbspec.connect",
             "dbspec.exec",
@@ -1272,6 +1274,12 @@
         },
         {
           "$ref": "#/$defs/ops/utils.groups"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.stats"
+        },
+        {
+          "$ref": "#/$defs/ops/pool.transactions"
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan"
@@ -2271,7 +2279,6 @@
         "type": "object",
         "required": [
           "op",
-          "pool_size",
           "as"
         ],
         "additionalProperties": false,
@@ -2280,6 +2287,10 @@
             "const": "model.connect"
           },
           "pool_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pool_idle_size": {
             "type": "integer",
             "minimum": 1
           },
@@ -8181,6 +8192,56 @@
         "properties": {
           "op": {
             "const": "utils.groups"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "pool.transactions": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "transactions",
+          "hold",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "pool.transactions"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "transactions": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "hold": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.stats": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.stats"
           },
           "connection": {
             "$ref": "#/$defs/name"

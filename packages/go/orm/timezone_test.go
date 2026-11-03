@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,90 +18,44 @@ func zoneEntity(s *orm.Schema) *orm.Entity {
 	return rowEntity("zone_event", s, zoneColumns...)
 }
 
-// TestPoolSize applies the configured maximum of open connections, 10 when
-// PoolSize is zero, and never runs more concurrent transactions or opens more
-// connections than the maximum.
+// TestPoolSize applies the configured maximum of open connections and 10 when
+// PoolSize is zero on SQLite, where the Go pool holds several connections as no
+// other runtime's does; the recipe connection_pool states MySQL and PostgreSQL.
 // Requirements: CFG-4.
 func TestPoolSize(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
-	}
+	dsn := "sqlite://" + filepath.Join(t.TempDir(), "pool.sqlite")
 	s := fixtureSchema(t, "zone")
-	for driver, dsn := range targets {
-		requireTarget(t, driver, dsn)
-		t.Run(driver, func(t *testing.T) {
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer testcase.Close(t, db)
-			if got := db.Stats().MaxOpenConnections; got != 3 {
-				t.Fatalf("max open connections = %d, want 3", got)
-			}
-			if _, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
-				t.Fatalf("negative pool size: %v", err)
-			}
-			unset, err := orm.ConnectSchema(dsn, s, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer testcase.Close(t, unset)
-			if got := unset.Stats().MaxOpenConnections; got != 10 {
-				t.Fatalf("max open connections without a pool size = %d, want 10", got)
-			}
-			if driver == "sqlite" {
-				return
-			}
-			// Each transaction holds a connection while it runs, so six
-			// transactions on a pool of two run at most two at a time.
-			bounded, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 2})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer testcase.Close(t, bounded)
-			var active, peak, opened atomic.Int32
-			var wg sync.WaitGroup
-			for i := 0; i < 6; i++ {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					err := bounded.Transaction(func() error {
-						n := active.Add(1)
-						defer active.Add(-1)
-						for p := peak.Load(); n > p && !peak.CompareAndSwap(p, n); p = peak.Load() {
-						}
-						if open := int32(bounded.Stats().OpenConnections); open > opened.Load() {
-							opened.Store(open)
-						}
-						time.Sleep(50 * time.Millisecond)
-						return nil
-					})
-					if err != nil {
-						t.Error(err)
-					}
-				}()
-			}
-			wg.Wait()
-			if peak.Load() != 2 || opened.Load() > 2 {
-				t.Fatalf("pool of 2: %d concurrent transactions, %d open connections", peak.Load(), opened.Load())
-			}
-		})
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testcase.Close(t, db)
+	if got := db.Stats().MaxOpenConnections; got != 3 {
+		t.Fatalf("max open connections = %d, want 3", got)
+	}
+	if _, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("negative pool size: %v", err)
+	}
+	unset, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testcase.Close(t, unset)
+	if got := unset.Stats().MaxOpenConnections; got != 10 {
+		t.Fatalf("max open connections without a pool size = %d, want 10", got)
 	}
 }
 
-// TestPoolIdleSizeAndLifetime keeps at most PoolIdleSize idle connections,
-// closes a connection PoolLifetimeMs after it was opened, and rejects a
-// negative value or an idle size above the pool size with CONFIG.
+// TestPoolIdleSize keeps at most PoolIdleSize idle connections on SQLite, where
+// the Go pool holds several connections as no other runtime's does (the recipe
+// connection_pool states MySQL and PostgreSQL), and rejects a negative value or
+// an idle size above the pool size with CONFIG.
 // Requirements: CFG-5.
-func TestPoolIdleSizeAndLifetime(t *testing.T) {
+func TestPoolIdleSize(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
-		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-idle.sqlite"),
-		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
-		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
+		"sqlite": "sqlite://" + filepath.Join(t.TempDir(), "pool-idle.sqlite"),
 	}
 	s := fixtureSchema(t, "zone")
 	for driver, dsn := range targets {
@@ -170,6 +123,24 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 			if st := unset.Stats(); st.Idle != 3 {
 				t.Fatalf("pool idle size unset keeps %d idle connections, want the pool size 3", st.Idle)
 			}
+		})
+	}
+}
+
+// TestPoolLifetime closes a connection PoolLifetimeMs after it was opened: the
+// expiry takes the time of the pool's cleanup, which no recipe value states.
+// Requirements: CFG-5.
+func TestPoolLifetime(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	targets := map[string]string{
+		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "pool-lifetime.sqlite"),
+		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
+		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
+	}
+	s := fixtureSchema(t, "zone")
+	for driver, dsn := range targets {
+		t.Run(driver, func(t *testing.T) {
+			requireTarget(t, driver, dsn)
 			// The pool closes an idle connection whose lifetime has passed
 			// on its next cleanup, which runs at least once a second.
 			aged, err := orm.ConnectSchema(dsn, s, orm.Config{PoolLifetimeMs: 100})

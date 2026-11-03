@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fb05fc73902fd4270b7ccf94f1e6ca4b3524cd424b637f8204fb236f7e0c0615 -->
+<!-- source-sha256: 0a2beff6f1afc2786b614f329e69bcb10cbd55f61771fd5f7fefe39e55c98d61 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL와 PostgreSQL에서 CFG-4와 CFG-5의 connection pool은 새 op `pool.transactions`와 `model.connect`의 `pool_idle_size`를 통해 Go, TypeScript, Python, Rust에서 새 recipe `connection_pool`로 실행한다. native 시험에는 SQLite pool과 lifetime 만료가 남으며, 그 목록은 `docs/spec/feature-coverage.md`에 있다 (#T334-3-12-2)
+- INT-79의 pool 통계가 새 op `utils.stats`로 recipe utils의 case `stats_report_the_pool_of_the_connection`에서 여섯 runtime 모두 돈다 (#T334-3-12-2)
+- Go lane과 parity root가 Go 파일이 남지 않은 `packages/go/complexquery`를 더 이상 가리키지 않는다 (#T334-3-12-2)
+- vector 17의 native 거부 시험을 recipe conformance_verification의 case `errors`로 대체했다. Go, TypeScript, Rust는 거부를 버리는 사용에 대한 compile fixture만 유지하며, Rust의 private SQLite fixture helper도 그 유일한 시험과 함께 없앴다 (#T334-3-12-2)
+- `performance_gate`는 각 class가 가리키는 database의 BENCH_<DATABASE>_DSN을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
 - vector 파일을 읽던 PHP와 PHP extension 시험을, 그 시험만 쓰던 coverage helper와 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.
@@ -36,6 +41,7 @@
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
+- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`, `php-model-check`, `ts-model-check`가 생성된 모델을 맡는다. `ts-model-check`는 TypeScript 모델 다섯 묶음을 모두 맡고, 그 scan 목록은 모델을 부르는 source를 적는다.
 - 서버가 거부한 연결은 모든 클라이언트에서 `DRIVER`다. PHP와 extension은 `CONFIG`를, Rust catalog는 코드 없는 문자열을 보고했다.
 - catalog는 `max_user_connections`가 거부한 연결을 자신의 연결을 닫은 뒤 2초 안에서만 다시 시도하고, Go의 budget 중단은 rollback을 시도하지 않고 `CATALOG_LIMIT`만 보고한다.
 - recipe transactions의 case `a_rollback_fault_is_consumed_by_the_next_failed_rollback`이 새 op `fault.next_rollback`으로 모든 runtime의 INT-72를 말한다: fault는 commit된 transaction을 지나 남고, 다음 실패 callback은 FAULT를 담은 ROLLBACK을 보고하며, 그다음 transaction은 callback error만 보고한다.
@@ -47,7 +53,6 @@
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - Go는 conformance vector를 recipe conformance_verification과 fixed-clock 본문으로만 돌린다. tag가 붙은 시험 `coverage_conformance_verification_test.go`와 그 helper, `testdb.FeatureDatabase`, runner `packages/go/testing/feature-json.mts`, target `feature-go-unit`, build tag `featurecoverage`를 없앴다 (#T334-3-12-2)
 - `errors` vector의 거부 아홉 가지(연결자 누락·끊긴 연결자, 빈 목록, 연결 없음, transaction 밖 lock, 연결된 join child, limit 있는 page, limit 있는 relation, join하지 않은 model 배치)가 recipe conformance_verification의 `errors` case로 여섯 runtime 모두에서 돌며, 빈 event 목록이 요청이 나가지 않았다는 증거다. recipe는 join의 `connect`, relation의 `limit`, `{"placed": {"model": <name>}}`, `plan` 없는 `plan_page`(`getsPage`)를 받는다 (#T334-3-12-2)
-- Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
 - - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
