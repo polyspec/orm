@@ -49,6 +49,9 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	GenSet  string                     `json:"document_set"`
+	Same    []string                   `json:"unchanged"`
+	Diff    []string                   `json:"changed"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -95,6 +98,11 @@ type step struct {
 	Token       string                     `json:"token"`
 	Reply       string                     `json:"reply"`
 	Received    string                     `json:"received"`
+	// Replies and Messages are the fields of markdown.session: the lines the listener answers and the lines it must receive.
+	Replies  []string `json:"replies"`
+	Messages []string `json:"messages"`
+	// Surface is the public call of a markdown.send step that has no form on a markdown connection.
+	Surface string `json:"surface"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -132,9 +140,10 @@ type step struct {
 // MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
 // and returns that message (the JSON of the message, or of the parameter of a statement) and the code of the error that the
 // public call returned before it sent one. A begin step passes begin, the statement passes column, operator and params.
+// A step with a surface passes that name.
 // A non-empty processZone is the IANA zone name that is the process default zone while the step runs.
 // It is supplied by the test package that owns the listener and the generated bind models, since they cannot be reached from here.
-type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, processZone string) (message json.RawMessage, code string)
+type MarkdownSend func(t *testing.T, column, operator string, params []json.RawMessage, begin *bool, surface, processZone string) (message json.RawMessage, code string)
 
 // IRAnswer runs the chain of one ir.answer step on a listener that answers with the answer, or with answers keyed by the op of
 // a control message or the kind of a request, and returns the result of the chain or its error. It is supplied by the test
@@ -270,6 +279,8 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlannerColumns(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
+	case "generator.check":
+		return checkGeneratedFiles(o.dir, s)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
@@ -358,6 +369,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
 	case "markdown.connect":
 		r.err = markdownConnect(s)
+	// markdown.session (FCV-4, PRT-64): the control messages of two transactions on a listener that answers from replies.
+	case "markdown.session":
+		r.err = markdownSession(s)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
 	}
@@ -437,6 +451,52 @@ func markdownConnect(s step) error {
 		return fmt.Errorf("the listener received %q, want %q", got, s.Received)
 	}
 	return connected
+}
+
+// markdownSession runs the markdown.session op: on a listener that answers each line with the next of the replies, a read-only
+// transaction that holds a nested one, then a transaction. It returns the error of the last one, or an error with no code when
+// the listener did not receive the messages of the step.
+func markdownSession(s step) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.Close() }()
+	received := make(chan []string, 1)
+	go func() {
+		var got []string
+		defer func() { received <- got }()
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		lines := bufio.NewScanner(conn)
+		for lines.Scan() {
+			got = append(got, lines.Text())
+			if len(got) <= len(s.Replies) {
+				_, _ = fmt.Fprintln(conn, s.Replies[len(got)-1])
+			}
+		}
+	}()
+	port := listener.Addr().(*net.TCPAddr).Port
+	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), orm.Config{})
+	if err != nil {
+		return fmt.Errorf("connect: %s", err.Error())
+	}
+	if err := db.Transaction(func() error {
+		return db.Transaction(func() error { return nil })
+	}, orm.ReadOnly()); err != nil {
+		return fmt.Errorf("the read-only transaction: %s", err.Error())
+	}
+	failure := db.Transaction(func() error { return nil })
+	if err := db.Close(); err != nil {
+		return fmt.Errorf("close: %s", err.Error())
+	}
+	if got := <-received; !slices.Equal(got, s.Messages) {
+		return fmt.Errorf("the listener received %q, want %q", got, s.Messages)
+	}
+	return failure
 }
 
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
@@ -1366,8 +1426,9 @@ func checkPlanner(dir string, s step, database string) error {
 		return fmt.Errorf("planner.compile has no expect for %s", database)
 	}
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value   json.RawMessage `json:"value"`
+		Error   string          `json:"error"`
+		Message string          `json:"message"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -1398,8 +1459,12 @@ func checkPlanner(dir string, s step, database string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := e.Compile(request); err == nil || orm.ErrorCode(err) != outcome.Error {
+			_, err = e.Compile(request)
+			if err == nil || orm.ErrorCode(err) != outcome.Error {
 				return fmt.Errorf("%s: compile = %w; want %s", dialect, err, outcome.Error)
+			}
+			if outcome.Message != "" && err.Error() != outcome.Message {
+				return fmt.Errorf("%s: message %q, want %q", dialect, err.Error(), outcome.Message)
 			}
 		}
 		return nil
@@ -1833,7 +1898,7 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		}
 		begin = &b.ReadOnly
 	}
-	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.ProcessZone)
+	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.Surface, s.ProcessZone)
 	return checkMessage(s.Expect, message, code)
 }
 

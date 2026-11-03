@@ -5,7 +5,7 @@
 //!
 //! Each section is one test that runs its case on every driver, in case databases of its own, so the sections run in parallel.
 //! The workspace cargo test of the rust lane of scripts/client-db-test.mts runs them, scripts/case-database-check.mts runs the
-//! target, and a parity binding runs one section through make feature-rust-database.
+//! target, and a parity binding runs one section through make feature-rust-unit.
 use polyspec_orm_testcase::OrPanic;
 
 use std::cell::Cell;

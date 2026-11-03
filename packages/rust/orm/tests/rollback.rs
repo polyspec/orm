@@ -1,16 +1,5 @@
-//! A transaction or savepoint whose callback fails and whose rollback fails
-//! too, on SQLite, MySQL and PostgreSQL (contracts/fixtures/rollback.dbs). The client reports Error::Rollback
-//! with the code ROLLBACK, which keeps the callback error and the rollback
-//! error. The callback runs only model calls. On SQLite a trigger of the test
-//! fixture raises ROLLBACK when a row labeled `end` is inserted, which ends
-//! the transaction; the client then sends no ROLLBACK and reports the
-//! trigger's error alone (INT-155). On MySQL
-//! and PostgreSQL a test connection ends the server session that holds the
-//! transaction, so the next statement and the rollback fail; that connection
-//! reaches the server through ORM_TEST_MYSQL_SERVER_DSN or
-//! ORM_TEST_POSTGRES_SERVER_DSN (the make targets set them to the server DSNs
-//! of TEST_ENV), not through a pooler. Each case runs in a case database of its
-//! own (polyspec-orm-case-database). The test fails when one of the four DSNs is unset.
+//! The rollback fault of the test entry point (contracts/fixtures/rollback.dbs). The failed rollbacks of CFG-15 and
+//! INT-155 are cases of contracts/fixtures/transactions/transactions.json.
 //!
 //! The `rollback_fault_*` cases set the rollback fault of the test entry point `polyspec_orm::testing`.
 //! That entry point is built with feature `test-faults`, which the dev-dependency of this crate on
@@ -30,7 +19,6 @@ use case_database_run::run_case;
 
 use std::time::Duration;
 
-use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
@@ -47,68 +35,11 @@ const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RollbackProbe, ROLLBACK_PROBE, COLUMNS);
 
-/// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
+/// Opens the client and installs the fixture.
 async fn installed(driver: &str, dsn: &str) -> Db {
     let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
     db.utils().schema().install(&ROLLBACK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
-    if let Pool::Sqlite(p) = db.pool() {
-        sqlx::raw_sql("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END")
-            .execute(p)
-            .await
-            .or_panic(|e| format!("trigger: {e}"));
-    }
     db
-}
-
-/// Ends the server session that holds a lock on rollback_probe in the case
-/// database; SQLite needs none, its trigger ends the transaction. `session`
-/// is the case database on the server of ORM_TEST_MYSQL_SERVER_DSN or
-/// ORM_TEST_POSTGRES_SERVER_DSN, not on a pooler, because a pooler may handle
-/// the statement on its own: ProxySQL takes a text-protocol KILL as a command
-/// for its own client sessions. The lock on the table of the case database
-/// marks the session that holds the transaction behind the pooler. The test
-/// connection is a client connection (`Db::connect`), so it sends the startup
-/// parameters of the client and no parameter a pooler rejects.
-async fn end_session(driver: &str, session: &str) {
-    if driver == "sqlite" {
-        return;
-    }
-    let admin = Db::connect(session, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: session connection: {e}"));
-    match admin.pool() {
-        Pool::Postgres(pool) => {
-            let pid: i32 = sqlx::query_scalar(
-                "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = 'rollback_probe' AND l.pid <> pg_backend_pid() LIMIT 1",
-            )
-            .fetch_one(pool)
-            .await
-            .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::query("SELECT pg_terminate_backend($1, 5000)").bind(pid).execute(pool).await.unwrap();
-        }
-        Pool::MySql(pool) => {
-            let id: u64 = sqlx::query_scalar("SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = 'rollback_probe' LIMIT 1")
-                .fetch_one(pool)
-                .await
-                .expect("the transaction session holds a lock on rollback_probe");
-            sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.unwrap();
-        }
-        Pool::Sqlite(_) => unreachable!("sqlite needs no session end"),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-    admin.close().await;
-}
-
-/// The DSN of the case database on the server itself: ORM_TEST_MYSQL_SERVER_DSN
-/// or ORM_TEST_POSTGRES_SERVER_DSN with the path of the case database. SQLite
-/// has no server; its DSN is the case file.
-fn session_dsn(driver: &str, database: &CaseDatabase) -> String {
-    if driver == "sqlite" {
-        return database.dsn().to_owned();
-    }
-    let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
-    match std::env::var(&env) {
-        Ok(server) if !server.is_empty() => database.related_dsn(&server),
-        _ => panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
-    }
 }
 
 async fn create(label: &str) -> polyspec_orm::Result<()> {
@@ -125,71 +56,6 @@ fn check_rollback<'e>(driver: &str, error: &'e polyspec_orm::Error, subject: &st
     let text = error.to_string();
     assert!(text.contains(&callback.to_string()) && text.contains(&rollback.to_string()), "{driver}: {subject} message does not name both errors: {text}");
     callback
-}
-
-/// Checks the error of a transaction that the rollback_probe trigger ended:
-/// SQLite rolled it back by itself, so the error is the trigger's, with no
-/// rollback failure stacked on it, and no row stayed (INT-155).
-async fn check_sqlite_rolled_back(db: &Db, error: &polyspec_orm::Error) {
-    assert_eq!(error.code(), polyspec_orm::codes::DRIVER, "sqlite: transaction = {error}");
-    let text = error.to_string();
-    assert!(
-        text.contains("rollback probe ended the transaction") && text.ends_with(" (SQLITE_CONSTRAINT_TRIGGER)"),
-        "sqlite: transaction error {text} is not the trigger's"
-    );
-    assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(db).core()).await.unwrap(), 0, "the connection serves later requests");
-}
-
-/// The session of a transaction ends behind the client. On MySQL and
-/// PostgreSQL the server ends it, so the callback fails and the rollback
-/// fails (CFG-15); on SQLite the trigger makes SQLite roll the transaction
-/// back, so the trigger's error is reported (INT-155).
-async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
-    let db = installed(driver, dsn).await;
-    let error = db
-        .transaction(async || {
-            create("kept").await?;
-            end_session(driver, session).await;
-            create("end").await
-        })
-        .await
-        .expect_err("transaction");
-    if driver == "sqlite" {
-        check_sqlite_rolled_back(&db, &error).await;
-    } else {
-        let callback = check_rollback(driver, &error, "transaction");
-        // The next statement and rollback on a session the server ended are lost-connection errors.
-        let polyspec_orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
-        assert_eq!(callback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
-        assert_eq!(rollback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
-    }
-    db.close().await;
-}
-
-/// The session ends inside a savepoint. On MySQL and PostgreSQL the
-/// savepoint rollback and then the transaction rollback fail (CFG-15); on
-/// SQLite the trigger's error is reported (INT-155).
-async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
-    let db = installed(driver, dsn).await;
-    let error = db
-        .transaction(async || {
-            create("kept").await?;
-            db.transaction(async || {
-                create("nested").await?;
-                end_session(driver, session).await;
-                create("end").await
-            })
-            .await
-        })
-        .await
-        .expect_err("transaction");
-    if driver == "sqlite" {
-        check_sqlite_rolled_back(&db, &error).await;
-    } else {
-        let callback = check_rollback(driver, &error, "transaction");
-        check_rollback(driver, callback, "savepoint");
-    }
-    db.close().await;
 }
 
 /// The callback error of a rollback fault case.
@@ -265,55 +131,13 @@ async fn rollback_fault(driver: &str, dsn: &str) {
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
     let dsn = database.dsn().to_owned();
-    let session = session_dsn(driver, &database);
     let run = async {
         match case {
-            "rollback_failed" => rollback_failed(driver, &dsn, &session).await,
-            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, &dsn, &session).await,
             "rollback_fault" => rollback_fault(driver, &dsn).await,
             other => unreachable!("unknown case {other}"),
         }
     };
     run_case(database, driver, case, CASE_DEADLINE, run).await;
-}
-
-#[tokio::test]
-// Requirements: CFG-15.
-async fn rollback_failed_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("sqlite", "rollback_failed").await;
-}
-
-#[tokio::test]
-// Requirements: CFG-15.
-async fn rollback_failed_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("mysql", "rollback_failed").await;
-}
-
-#[tokio::test]
-// Requirements: CFG-15.
-async fn rollback_failed_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("postgres", "rollback_failed").await;
-}
-
-#[tokio::test]
-async fn savepoint_rollback_failed_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("sqlite", "savepoint_rollback_failed").await;
-}
-
-#[tokio::test]
-async fn savepoint_rollback_failed_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("mysql", "savepoint_rollback_failed").await;
-}
-
-#[tokio::test]
-async fn savepoint_rollback_failed_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("postgres", "savepoint_rollback_failed").await;
 }
 
 #[tokio::test]

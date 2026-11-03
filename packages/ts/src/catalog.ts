@@ -775,7 +775,8 @@ function declaredTemporalPrecision(column: CatalogColumn, dialect: string): numb
 }
 
 function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string, dialect: string): Array<{ index: number; value: DriverValue }> {
-  if (values.length === 0 || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
+  // A key of defaults alone takes no assignment (INT-123).
+  if ((values.length === 0 && code !== CODE_INSERT_INVALID) || values.length > metadata.columns.length) throw err(code, 'invalid column assignments');
   const params = checkParams(values.map(assignment => assignment.value), CODE_PARAM);
   const seen = new Set<string>();
   return values.map((assignment, position) => {
@@ -1091,12 +1092,16 @@ class Session {
       // The dbspec renderer writes the fraction digits of a TIME or DATETIME column into a CHECK of the table's own definition.
       const tables = (await this.plainRows("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ref.name], 2, METADATA_BYTES)).rows;
       const [tableRow] = tables;
-      if (tables.length !== 1 || tableRow === undefined || tableRow.length !== 1 || typeof tableRow[0] !== 'string') {
-        throw err(CODE_METADATA, `the definition of table "${ref.name}" is not one text`);
-      }
-      for (const column of columns) {
-        const declared = column.nativeType.toUpperCase();
-        if (declared === 'TIME' || declared === 'DATETIME') column.checkPrecision = checkPrecisionOf(tableRow[0], column.name);
+      // A view has no definition of a table, and so no CHECK of a table's own (INT-113).
+      if (tableRow !== undefined) {
+        if (tables.length !== 1 || tableRow.length !== 1 || typeof tableRow[0] !== 'string') {
+          throw err(CODE_METADATA, `the definition of table "${ref.name}" is not one text`);
+        }
+        const definition = tableRow[0];
+        for (const column of columns) {
+          const declared = column.nativeType.toUpperCase();
+          if (declared === 'TIME' || declared === 'DATETIME') column.checkPrecision = checkPrecisionOf(definition, column.name);
+        }
       }
     }
     keys.sort((a, b) => a.ordinal - b.ordinal);
@@ -1230,9 +1235,27 @@ export class CatalogConnection {
   }
 
   /** Opens a session in a read-only transaction, or a writable one. */
+  /**
+   * Reserves a connection. The socket that a budget stop closed holds its place in max_user_connections until the server
+   * ends that thread, which it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of
+   * CFG-35 at most.
+   */
+  private async reserveConnection(): ReturnType<typeof this.pool.reserve> {
+    const deadline = Date.now() + 2000;
+    for (;;) {
+      try {
+        return await this.pool.reserve();
+      } catch (error) {
+        const full = (error as { errno?: unknown }).errno === 1226;
+        if (!full || Date.now() >= deadline) throw error;
+        await new Promise(resolve => { setTimeout(resolve, 10); });
+      }
+    }
+  }
+
   private async begin(readOnly: boolean): Promise<Session> {
     this.ensureOpen();
-    const session = new Session(this.dialect, await this.pool.reserve());
+    const session = new Session(this.dialect, await this.reserveConnection());
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);
@@ -1481,7 +1504,10 @@ export class CatalogConnection {
       }
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
       const marks = changes.map((_, index) => placeholder(index + 1, this.dialect));
-      const insert = `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`;
+      const target = `INSERT INTO ${qualified(descriptor.table, this.dialect)}`;
+      const insert = names.length > 0
+        ? `${target} (${names.join(',')}) VALUES (${marks.join(',')})`
+        : this.dialect === 'mysql' ? `${target} () VALUES ()` : `${target} DEFAULT VALUES`;
       let after: CatalogValue[][];
       if (omittedKeys.length > 0 && this.dialect !== 'mysql') {
         const returning = quoteList(descriptor.columns.map(column => column.name), this.dialect);

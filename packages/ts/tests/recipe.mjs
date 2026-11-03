@@ -11,6 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
+import { lastAffected } from '../dist/testing.js';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
@@ -21,10 +22,12 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
-import { withCaseDatabase } from './case-database.mjs';
+import { styledField } from '../dist/core.js';
+import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
+import { applyOps } from './recipe_apply.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
@@ -54,7 +57,7 @@ function registerRecipeCase(recipeCase, database, deadline, body) {
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
   if (database !== NONE) return databaseRecipe(path, database);
-  const text = readFileSync(path, 'utf8');
+  const text = readFileSync(resolve(root, path), 'utf8');
   checkKeys(path, text);
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
@@ -77,12 +80,14 @@ export function runRecipe(path, database) {
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
+          else if (step.op === 'markdown.session') await checkMarkdownSession(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'dbspec.introspect_shown') await checkIntrospectShown(step, dir, database);
           else if (step.op === 'dbspec.apply_fault') await checkApplyFault(step, bound, database);
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
+          else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -142,6 +147,32 @@ async function checkMarkdownConnect(step, database) {
     await server.close();
   }
   if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
+}
+
+// checkMarkdownSession runs the markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies
+// of the step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
+async function checkMarkdownSession(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).on('line', line => {
+      received.push(line);
+      if (received.length <= step.replies.length) socket.write(`${step.replies[received.length - 1]}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  const db = await Db.connect(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  let failure;
+  try {
+    await db.transaction(() => db.transaction(() => undefined), { readOnly: true });
+    await db.transaction(() => undefined).catch(error => { failure = error; });
+  } finally {
+    await db.close();
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, step.messages)) throw new Error(`the listener received ${JSON.stringify(received)}, want ${JSON.stringify(step.messages)}`);
   if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
   if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
 }
@@ -502,6 +533,7 @@ export async function prepareRecipeDatabase(path, database, dsn) {
       const metadata = await catalog.describeTable({ namespace, name: table });
       for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
     }
+    if (recipe.seed?.after !== undefined) await runStep(recipe.seed.after, context);
   } finally {
     await catalog.close();
     await db.close();
@@ -530,12 +562,15 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map(), step, caseName: caseDatabase.name, casePath: caseDatabase.path };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
         for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
       }
+    }
+    for (const after of [recipe.seed?.after, recipeCase.seed?.after]) {
+      if (after !== undefined) await runStep(after, context);
     }
     step('seed rows inserted');
     for (const [index, current] of recipeCase.steps.entries()) {
@@ -664,8 +699,13 @@ const OPS = {
     await context.catalog.close();
     return {};
   },
-  async 'catalog.reconnect'(_, context) {
-    context.catalog = await connectCatalog(context.dsn);
+  async 'catalog.reconnect'(s, context) {
+    let dsn = context.dsn;
+    if (s.user_from_database !== undefined) {
+      const database = /\/([^/?]+)(?:\?.*)?$/.exec(dsn)[1];
+      dsn = dsn.replace(/^mysql:\/\/[^@]+@/, `mysql://${s.user_from_database}${database.slice(-28)}@`);
+    }
+    context.catalog = await connectCatalog(dsn);
     context.closed = false;
     context.namespace = await context.catalog.currentNamespace();
     return {};
@@ -709,7 +749,7 @@ const OPS = {
     return { columns: result.columns, row_count: result.rows.length, rows: result.rows.map(row => row.map(cell => plain(cell, null))) };
   },
   async 'catalog.read_only_grid_query'(s, context) {
-    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), [], limits(s));
+    const result = await context.catalog.readOnlyGridQuery(sql(s.sql, context), (s.binds ?? []).map(bind => native(databaseValue(bind, context))), limits(s));
     return { columns: result.columns.map(c => c.name), rows: result.rows.map(row => row.map(grid)) };
   },
   async 'catalog.row_snapshot'(s, context) {
@@ -746,6 +786,22 @@ const OPS = {
   },
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
+  },
+  // Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+  // handle KILL on its own.
+  async 'session.end'(s, context) {
+    const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
+    const server = process.env[variable];
+    if (!server) throw new Error(`${variable} is required; database tests never skip`);
+    const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
+    const postgres = context.database === 'postgres';
+    const [rows] = await nativeQuery(context.database, session, [postgres
+      ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+    if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
+    const id = Number(Object.values(rows[0])[0]);
+    await nativeQuery(context.database, session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    return {};
   },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
   // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
@@ -817,11 +873,14 @@ const OPS = {
   },
 };
 
+// The ops of the dbspec apply API (FCV-4); a command of a large plan is bounded by the deadline of its case.
+const APPLY_OPS = applyOps({ sql: (field, context) => sql(field, context), runStep: (s, context) => runStep(s, context) });
+
 // OP_DEADLINE_MS bounds one op: a read that did not stop at its budget (the cross join of the user table) fails instead of running on.
 const OP_DEADLINE_MS = 20000;
 
 async function runStep(s, context) {
-  const op = OPS[s.op] ?? MODEL_OPS[s.op];
+  const op = OPS[s.op] ?? MODEL_OPS[s.op] ?? APPLY_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
   // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
@@ -833,7 +892,7 @@ async function runStep(s, context) {
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
   let actual;
   try {
-    actual = await within(Promise.resolve().then(() => op(s, context)), OP_DEADLINE_MS, `${s.op} on ${context.database}`);
+    actual = await within(Promise.resolve().then(() => op(s, context)), APPLY_OPS[s.op] === undefined ? OP_DEADLINE_MS : DATABASE, `${s.op} on ${context.database}`);
   } catch (error) {
     const code = error === callbackError ? 'CALLBACK' : error?.code;
     if (expected?.error === undefined || typeof code !== 'string') throw error;
@@ -842,6 +901,10 @@ async function runStep(s, context) {
     if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
     if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    if (expected.rollback !== undefined) {
+      assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
+      assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
+    }
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
@@ -1123,8 +1186,10 @@ function checkPlanner(step, recipeDir, database) {
   if (outcome.error !== undefined) {
     for (const dialect of plannerDialects) {
       let code = null;
-      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); }
+      let message = '';
+      try { new Engine(model, dialect).compile(request); } catch (error) { code = error.code ?? String(error); message = error.message; }
       if (code !== outcome.error) throw new Error(`${dialect}: got ${code ?? 'a plan'}, want ${outcome.error}`);
+      if (outcome.message !== undefined && message !== outcome.message) throw new Error(`${dialect}: message ${message}, want ${outcome.message}`);
     }
     return;
   }
@@ -1515,8 +1580,11 @@ function chainValue(raw, context) {
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
   if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
+  const field = m[CORE].ent.entity.fields.find(entry => entry.name === column);
+  // A null of a styled column is SQL NULL, the styled value its typed setter takes.
+  if ('null' in raw && field !== undefined && styledField(field)) return StyledValue.sqlNull();
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
+  return styledArgument(raw, field?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1549,6 +1617,7 @@ class ChainBuild {
       if (name === 'and' || name === 'or') return this.group(m, conn, name, value);
       if (name === 'not') return m[CORE].negated(conn, group => this.predicate(group, '', value));
       if (name === 'placed') {
+        if (value.model !== undefined) return m[CORE].connector(conn, [coreModel(value.model, this.context)]);
         if (!this.joined.has(value)) throw new Error(`placed ${value} names no join`);
         return m[CORE].connector(conn, [this.joined.get(value)]);
       }
@@ -1654,6 +1723,7 @@ class ChainBuild {
       if (join.alias !== undefined) child[CORE].alias = snakeOf(join.alias);
       if (join.on !== undefined) child[CORE].setOn(group => inner.predicate(group, '', join.on));
       inner.query(child, join);
+      if (join.connect === true) child.connect(this.db);
       m[CORE].join(join.kind ?? 'inner', join.match[0], join.match[1], child);
       if (join.as !== undefined) this.joined.set(join.as, child);
     }
@@ -1739,8 +1809,10 @@ function chainBuilt(s, context) {
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
   if (s.from !== undefined) return byKey(refOf(s.from, context));
-  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const model = coreModel(s.model, context);
+  const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
+  if (s.unconnected !== true) build.db = connectionOf(s, context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
   if (!paged && s.offset !== undefined && s.limit !== undefined) m.limit(s.offset, typeof s.limit === 'number' ? s.limit : s.limit.count);
@@ -1766,7 +1838,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
@@ -1790,10 +1863,13 @@ const TABLE_OPS = {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
-      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      const steps = s.plan_page === undefined
+        ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
+        : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
       return { json: steps.map(step => {
         const sql = step.sql.toUpperCase();
-        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
@@ -1804,11 +1880,13 @@ const TABLE_OPS = {
       return { json: plainJson(row.value(s.group_value)) };
     }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
-    if (s.page === true) {
+    if (s.page === true || s.plan_page !== undefined) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
-      if (!(count > 0)) throw new Error('a page needs a limit count above 0');
+      if (s.plan_page === undefined && !(count > 0)) throw new Error('a page needs a limit count above 0');
       const offset = (s.offset ?? 0) + (s.limit?.offset ?? 0);
-      const page = await m.getsPage(Math.floor(offset / count) + 1, count);
+      const page = s.plan_page === undefined
+        ? await m.getsPage(Math.floor(offset / count) + 1, count)
+        : await m.getsPage(s.plan_page.page, s.plan_page.per_page);
       const fields = { json: plainJson({ keys: page.items.keys(), total: page.totalCount, pages: page.totalPages, page: page.page, per_page: page.perPage, ...(s.items === true ? { items: page.items.values().map(row => rowJson(row, s.pick)) } : {}) }), total: page.totalCount };
       if (wantsRows(s, context)) fields.rows = chainCells(page.items.values(), s);
       return fields;
@@ -1860,6 +1938,7 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  'db.last_affected': (s, context) => ({ value: { int: String(lastAffected(connectionOf(s, context))) } }),
   async 'db.notify'(s, context) {
     await connectionOf(s, context).notify(s.channel, s.payload);
     return {};
@@ -2026,7 +2105,9 @@ Object.assign(OPS, {
   },
   async 'events.fail_subscriber'(s, context) {
     const stop = connectionOf(s, context).subscribe(event => {
-      if (event.kind === s.kind) throw new Error('subscriber refused the event');
+      if (event.kind === s.kind) {
+        throw s.refusal === undefined ? new Error('subscriber refused the event') : new OrmError(s.refusal.code, s.refusal.message);
+      }
     });
     return { bind: { stop } };
   },
@@ -2406,12 +2487,37 @@ async function withProcessZone(zone, work) {
   }
 }
 
+// refusedSurface runs the public call of a markdown.send surface, one that has no form on a markdown connection (DIA-183 to DIA-189).
+function refusedSurface(surface, db) {
+  const empty = () => undefined;
+  const calls = {
+    audit: () => db.transaction(empty, { audit: { actor: 'tester' } }),
+    isolation: () => db.transaction(empty, { isolation: 'serializable' }),
+    timeout_ms: () => db.transaction(empty, { timeoutMs: 100 }),
+    get_query: () => new Slots().connect(db).getQuery(),
+    subscribe: async () => db.subscribe(empty),
+    lock: () => db.utils().lock('k'),
+    set_local: () => db.utils().setLocal('k', 'v'),
+    local: () => db.utils().local('k'),
+    backend_waiting_for_lock: () => db.utils().backendWaitingForLock(),
+    privileges: () => db.utils().privileges().inspectTable('public.items'),
+    aes_status: () => db.utils().aes().status(null, null),
+    aes_rotate: () => db.utils().aes().rotate(null, null),
+    schema_install: () => db.utils().schema().install(null),
+    schema_evolution: () => db.utils().schema().addTablesAndColumns(null),
+    schema_exists: () => db.utils().schema().exists('orm'),
+  };
+  if (calls[surface] === undefined) throw new Error(`markdown.send surface ${surface} has no call in the TypeScript cases`);
+  return calls[surface]();
+}
+
 // checkSend runs a markdown.send step: a transaction begin, or the typed filter of a slot column with the value of its wrapper, on a
 // listener that records the first message it receives. The expect is not per database: {message: json} is compared with the message
 // (messageValue) and {error: code} with the OrmError code of a call that sent no message (FCV-4).
 async function checkSend(step, wrappedExpect) {
   await checkFirst(async db => {
-    if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
+    if (step.surface !== undefined) await refusedSurface(step.surface, db);
+    else if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
 }

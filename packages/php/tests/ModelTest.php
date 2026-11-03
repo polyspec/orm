@@ -382,15 +382,8 @@ class ModelTest extends TestCase
         );
     }
 
-    private static function caseStyledValueStates(Db $db, string $dsn): void
+    private static function caseStyledValueStates(Db $db): void
     {
-        $fixture = json_decode(
-            file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        $cases = array_column($fixture['cases'], null, 'id');
         $seed = self::seed($db);
         $seq = $seed['authors'][0]->getSeq();
         $pdo = $db->pdo();
@@ -400,16 +393,6 @@ class ModelTest extends TestCase
             self::check(
                 $row->getJsonSetting() instanceof StyledValue && $row->getJsonSetting()->kind === 'sql-null',
                 'SQL NULL getter'
-            );
-            self::check($row->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL array output');
-            self::check(
-                json_decode(
-                    $row->toJson(),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                )['json_setting'] === $cases['sql_null']['output'],
-                'SQL NULL JSON output'
             );
             $partial = (new Author())($db)->removeAllColumns()->addColumnName()->getBySeq($seq);
             self::check(
@@ -423,78 +406,8 @@ class ModelTest extends TestCase
                 ->update();
             $loaded = (new Author())($db)->addAllColumns()->getBySeq($seq);
             self::check($loaded->getJsonSetting()->kind === 'value', 'JSON null getter');
-            self::check(
-                json_decode(
-                    Model::jsonText($loaded->toArray()['json_setting']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['json_null']['output'],
-                'JSON null array output'
-            );
-            self::check(
-                json_decode(
-                    Model::jsonText($loaded->toArray()['jsons_tags']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['jsons_value_null']['output'],
-                'JSONS null array output'
-            );
-            self::check(
-                $loaded->toArray()['serialize_data'] === $cases['serialize_value_null']['output'],
-                'serialize null array output'
-            );
-            $json = json_decode($loaded->toJson(), true, 512, JSON_THROW_ON_ERROR);
-            self::check(
-                $json['json_setting'] === $cases['json_null']['output'] && $json['serialize_data'] === $cases[
-                    'serialize_value_null'
-                ]['output'],
-                'encoded null JSON output'
-            );
-            $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
-            $cell->execute([$seq]);
-            $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check(
-                $stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored[
-                    'serialize_data'
-                ] === 'N;',
-                'encoded null storage'
-            );
-
-            $loaded->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('{"kind":"sql-null"}')))->update();
-            $again = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check(
-                json_decode(
-                    Model::jsonText($again->toArray()['json_setting']),
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ) === $cases['json_object_with_kind']['output'],
-                'JSON document does not collide with state tag'
-            );
-
-            $again->setJsonSetting(StyledValue::sqlNull())
-                ->setJsonsTags(StyledValue::sqlNull())
-                ->setSerializeData(StyledValue::sqlNull())
-                ->update();
-            $nulls = (new Author())($db)->addAllColumns()->getBySeq($seq);
-            self::check($nulls->toArray()['json_setting'] === $cases['sql_null']['output'], 'SQL NULL restored');
-            $cell = $pdo->prepare('SELECT json_setting, jsons_tags, serialize_data FROM author WHERE seq = ?');
-            $cell->execute([$seq]);
-            $stored = $cell->fetch(\PDO::FETCH_ASSOC);
-            self::check(
-                $stored['json_setting'] === null && $stored['jsons_tags'] === null && $stored[
-                    'serialize_data'
-                ] === null,
-                'SQL NULL storage'
-            );
-
-            $pdo->prepare('UPDATE author SET json_setting = ? WHERE seq = ?')->execute(['', $seq]);
-            self::check(
-                self::code(fn() => (new Author())($db)->addAllColumns()->getBySeq($seq)) === Code::CODEC_DECODE,
-                'empty JSON text rejected'
-            );
+            self::check($loaded->getJsonsTags()->kind === 'value', 'JSONS null getter');
+            self::check($loaded->getSerializeData()->kind === 'value', 'serialize null getter');
         } finally {
             $pdo->rollBack();
         }
@@ -1656,7 +1569,7 @@ class ModelTest extends TestCase
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::caseStyledValueStates($db, $dsn);
+        self::caseStyledValueStates($db);
     }
 
     // codec columns

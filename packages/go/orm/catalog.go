@@ -15,6 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-sql-driver/mysql"
+
 	"github.com/polyspec/orm/packages/go/engine/ir"
 )
 
@@ -126,6 +128,12 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 		return nil, err
 	}
 	conn, err := c.db.sql.Conn(ctx)
+	// The socket that a budget stop closed holds its place in max_user_connections until the server ends that thread, which
+	// it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of CFG-35 at most.
+	for deadline := time.Now().Add(2 * time.Second); catalogConnectionsFull(err) && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+		conn, err = c.db.sql.Conn(ctx)
+	}
 	if err != nil {
 		return nil, mapDriverErrContext(err, ctx)
 	}
@@ -172,6 +180,12 @@ func catalogBegin(dialect string, readOnly bool) string {
 	default:
 		return "BEGIN IMMEDIATE"
 	}
+}
+
+// catalogConnectionsFull reports the refusal of a connection over max_user_connections.
+func catalogConnectionsFull(err error) bool {
+	var refused *mysql.MySQLError
+	return errors.As(err, &refused) && refused.Number == 1226
 }
 
 // discard closes the connection of the session instead of returning it to the pool, and returns err.
@@ -425,7 +439,7 @@ func catalogConvert(raw catalogRaw, nativeTypes []string) ([][]any, error) {
 // bytes, integers int64, floats float64, datetimes time.Time and decimals their plain text. Other types fail explicitly.
 func catalogValue(value any, nativeType string) (any, error) {
 	switch v := value.(type) {
-	case nil, bool, int64, float64, time.Time:
+	case nil, bool, int64, uint64, float64, time.Time:
 		return v, nil
 	case string:
 		if !utf8.ValidString(v) {
@@ -455,6 +469,10 @@ func catalogBytesValue(value []byte, nativeType string) (any, error) {
 	case strings.Contains(t, "INT"):
 		n, err := strconv.ParseInt(string(value), 10, 64)
 		if err != nil {
+			// A MySQL BIGINT UNSIGNED reaches past int64 (INT-102).
+			if u, unsigned := strconv.ParseUint(string(value), 10, 64); unsigned == nil {
+				return u, nil
+			}
 			return nil, catalogErr(catalogCodeValue, "integer of native type %q: %v", nativeType, err)
 		}
 		return n, nil

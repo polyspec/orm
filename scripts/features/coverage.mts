@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
+import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent, type ParityConfig } from '../json/formats.mts';
@@ -113,10 +114,10 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[], pa
     const ownerCases = selectedCases ? coverage.cases.filter(id => selectedCases.has(id)) : coverage.cases;
     for (const database of required) {
       const command = selectCommandCases(owner.commands?.[database], selectedCases);
-      const tests = coverage.kind === 'database' || selectedCases
-        ? [...new Set((command ?? []).map(entry => entry.test))] : owner.tests;
       // The cases of a recipe owner are the cases of its recipe on this database (FCV-12), which nativeTest compares.
       const recipe = Array.isArray(command) && command.some(entry => entry?.recipe);
+      const tests = coverage.kind === 'database' || selectedCases || recipe
+        ? [...new Set((command ?? []).map(entry => entry.test))] : owner.tests;
       items.push({ key: `${feature.id}/owner/${language}/${database}`,
         role: 'owner', language, database, part: owner.part, tests, recipe, selected: Boolean(selectedCases),
         cases: recipe ? (command ?? []).flatMap(entry => entry.cases) : ownerCases, command });
@@ -416,7 +417,7 @@ async function recipeTest(item: Item, command: NativeCommand, root: string): Pro
   const keys = ['runner', 'test', 'cases', 'recipe', 'symbol', 'database'];
   const named = command.runner === 'go' || command.runner === 'php';
   if (Object.keys(command).some(key => !keys.includes(key)) || !item.tests.includes(command.test) ||
-      !recipe.startsWith('contracts/fixtures/') || !recipe.endsWith('.json') ||
+      !(recipe.startsWith('contracts/fixtures/') || recipe.startsWith('tests/')) || !recipe.endsWith('.json') ||
       (named ? !/^[A-Za-z_][A-Za-z0-9_]*$/.test(command.symbol ?? '') : command.symbol !== undefined))
     throw new Error('invalid recipe test command');
   const testPath = resolve(root, command.test);
@@ -434,7 +435,7 @@ async function recipeTest(item: Item, command: NativeCommand, root: string): Pro
   const symbol = command.symbol ?? '';
   const directory = resolve(root, testDirectoryOf(item.language));
   if (command.runner === 'node')
-    return { format: 'case', program: 'node', args: ['--conditions=orm-test', '--test', testPath], cwd: directory, recipe: expected, recipeDatabase };
+    return { format: 'case', program: 'node', args: ['--conditions=orm-test', '--test', testPath], cwd: root, recipe: expected, recipeDatabase };
   if (command.runner === 'python') {
     if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
     const module = relative(root, testPath).replace(/\.py$/, '').split(sep).join('.');
@@ -713,12 +714,15 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
   for (const cwd of new Set(specs.filter(spec => spec.format === 'go').map(spec => spec.cwd))) {
     const binary = resolve(directory, `go-${builds.go.size}.test`);
     const error = await build(`go/${relative(plans.root, cwd)}`, step =>
-      go(['test', '-c', '-tags', 'featurecoverage', '-o', binary, '.'], cwd, step));
+      go(['test', '-c', '-tags', goBuildTags, '-o', binary, '.'], cwd, step));
     builds.go.set(cwd, error ? { error } : { binary });
   }
   builds.cargoReady = buildCargo(plans, directory, builds, build);
   return builds;
 }
+
+// goBuildTags are the build tags of the normal go test, so that the checker reads a test the normal run holds.
+const goBuildTags = GO_TEST_TAGS.join(',');
 
 // buildCargo builds only the Rust test targets selected by the coverage plans.
 // A failure stays as an error in builds.cargo, so this promise is not rejected.

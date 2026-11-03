@@ -26,7 +26,6 @@ final class ModelAssemblyTest extends TestCase
 {
     // Requirements: PRT-35.
     use CollectionIdentityCases;
-    // Requirements: PRT-36. The imported case rejects invalid stored group booleans.
     // Requirements: INT-68, PRT-69, INT-1, INT-90. The imported cases assert the public group-row output values.
     use GroupRowsCases;
 
@@ -34,10 +33,6 @@ final class ModelAssemblyTest extends TestCase
     {
         self::assertTrue((new \ReflectionClass(GroupRow::class))->isInternal());
         self::assertTrue((new \ReflectionClass(GroupRow::class))->isReadOnly());
-    }
-
-    protected function assertGroupValueOwnership(): void
-    {
         self::assertTrue((new \ReflectionMethod(Model::class, 'groupValue'))->isInternal());
     }
 

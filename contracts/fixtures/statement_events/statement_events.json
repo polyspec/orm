@@ -4959,6 +4959,65 @@
       ]
     },
     {
+      "id": "subscriber_orm_error",
+      "requirements": [
+        "INT-96"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "events.fail_subscriber",
+          "connection": "conn",
+          "kind": "insert",
+          "refusal": {
+            "code": "CONFIG",
+            "message": "the subscriber refuses the statement"
+          },
+          "as": "failing"
+        },
+        {
+          "op": "model.create",
+          "connection": "conn",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "CONFIG: the subscriber refuses the statement"
+            },
+            "postgres": {
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "CONFIG: the subscriber refuses the statement"
+            },
+            "sqlite": {
+              "error": "SUBSCRIBER",
+              "message": "SUBSCRIBER: statement event subscriber failed: CONFIG: the subscriber refuses the statement",
+              "cause": "CONFIG: the subscriber refuses the statement"
+            }
+          }
+        },
+        {
+          "op": "events.stop_failing",
+          "ref": "failing"
+        }
+      ]
+    },
+    {
       "id": "unsubscribe",
       "requirements": [
         "INT-55",
@@ -5769,24 +5828,7 @@
         },
         {
           "op": "schema.install",
-          "connection": "owner",
-          "expect": {
-            "mysql": {
-              "value": {
-                "bool": true
-              }
-            },
-            "postgres": {
-              "value": {
-                "bool": true
-              }
-            },
-            "sqlite": {
-              "value": {
-                "bool": true
-              }
-            }
-          }
+          "connection": "owner"
         },
         {
           "op": "model.create",

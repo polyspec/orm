@@ -1,71 +1,14 @@
-# The shared base of the Python feature coverage tests (scripts/features/coverage.mts). The checker runs
-# `<python> -m <module> <case id>...`, and the standard output must be `CASE <id> [<database>] PASS` lines; coverage_main
-# runs exactly the requested test methods and CoverageCase.each_item prints those lines.
+# The shared helpers of the Python tests. A native owner of a feature (scripts/features/coverage.mts) runs as
+# `<python> -m <module> <case id>...`; coverage_main runs exactly the requested test methods, each of which prints its
+# `CASE <id> [<database>] PASS` line.
 import contextlib
 import io
-import os
 import sys
 import unittest
 from pathlib import Path
 
 # The repository root, resolved from this file.
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-
-
-def run_cases(cases):
-    """Runs exactly the case IDs of the command line in their order, each on every coverage item of this file (the
-    databases the manifest lists for it, or one item without a database). The output is `CASE <id> [<database>] PASS`
-    for each case that passed on a database item, and `CASE <id> PASS` for an item without one. A case takes its item
-    (driver, dsn) or None; an unknown, repeated or missing ID is an error before any case runs."""
-    requested = sys.argv[1:]
-    if (
-        not requested
-        or len(set(requested)) != len(requested)
-        or any(i not in cases for i in requested)
-    ):
-        raise SystemExit(
-            f"usage: {Path(sys.argv[0]).name} {'|'.join(cases)}...; got {requested}"
-        )
-    test = (
-        Path(sys._getframe(1).f_globals["__file__"])
-        .resolve()
-        .relative_to(REPOSITORY_ROOT)
-        .as_posix()
-    )
-    items = feature_items(test)
-    for case_id in requested:
-        for item in items:
-            # A file without a database (item None) takes no item argument.
-            if item is None:
-                cases[case_id]()
-                print(f"CASE {case_id} PASS", flush=True)
-            else:
-                cases[case_id](item)
-                print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
-
-
-class CoverageCase(unittest.TestCase):
-    """The base of a coverage program: one test method per case id, each run on every coverage item of the file (the
-    databases the manifest lists for it, or one item without a database) through each_item."""
-
-    def each_item(self, case_id: str, check) -> None:
-        """Runs check on each coverage item in a subTest and prints `CASE <id> [<database>] PASS` for each item that
-        passed, or `CASE <id> PASS` for an item without a database. A check takes its item (driver, dsn), or none."""
-        for item in feature_items(self.coverage_test()):
-            database = "none" if item is None else item[0]
-            with self.subTest(db=database):
-                if item is None:
-                    check()
-                    print(f"CASE {case_id} PASS", flush=True)
-                else:
-                    check(item)
-                    print(f"CASE {case_id} [{item[0]}] PASS", flush=True)
-
-    @classmethod
-    def coverage_test(cls) -> str:
-        """The path of the test file of this class, relative to the repository root."""
-        file = sys.modules[cls.__module__].__file__
-        return Path(file).resolve().relative_to(REPOSITORY_ROOT).as_posix()
 
 
 def coverage_main(test_class: type) -> None:
@@ -92,39 +35,6 @@ def coverage_main(test_class: type) -> None:
     if not result.wasSuccessful():
         sys.stderr.write(report.getvalue())
         raise SystemExit(1)
-
-
-def feature_items(test: str):
-    """Resolve every database by default, or the exact ORM_FEATURE_DATABASE assigned to this owner run.
-    The selected item keeps its declared DSN variable; a missing DSN fails with its name."""
-    import json
-    import subprocess
-
-    arguments = [
-        "node",
-        str(REPOSITORY_ROOT / "scripts/features/coverage.mts"),
-        "--items",
-        test,
-    ]
-    selected_database = os.environ.get("ORM_FEATURE_DATABASE")
-    if selected_database:
-        arguments.extend(["--database", selected_database])
-    listed = subprocess.run(
-        arguments,
-        cwd=REPOSITORY_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if listed.returncode != 0:
-        raise AssertionError(f"coverage items of {test}: {listed.stderr.strip()}")
-    items = []
-    for item in json.loads(listed.stdout):
-        if item["database"] == "none":
-            items.append(None)
-        else:
-            items.append((item["database"], item["dsn"]))
-    return items or [None]
 
 
 @contextlib.contextmanager
@@ -202,23 +112,6 @@ def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict
         return [run(sql) for sql in statements]
 
 
-def table_exists(driver: str, dsn: str, table: str) -> bool:
-    """Whether a table exists in the database or schema the DSN connects to."""
-    import re
-
-    if not re.fullmatch(r"[a-z_][a-z0-9_]*", table):
-        raise AssertionError(f"table name {table} is not a plain identifier")
-    sql = {
-        "mysql": "SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() "
-        f"AND TABLE_NAME = '{table}'",
-        "postgres": "SELECT COUNT(*)::int AS n FROM pg_tables WHERE schemaname = current_schema() "
-        f"AND tablename = '{table}'",
-        "sqlite": f"SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = '{table}'",
-    }[driver]
-    ((row,),) = native_query(driver, dsn, [sql])
-    return int(row["n"]) == 1
-
-
 def error_code(run) -> str | None:
     """The code of an ORM or host-codec error that run raises, or None when it returns."""
     from polyspec.orm.codec import CodecError
@@ -231,73 +124,3 @@ def error_code(run) -> str | None:
     return None
 
 
-def with_cleanup(body, cleanup) -> None:
-    """Runs body, then cleanup even when body failed; a failed cleanup never hides the failure of the case."""
-    failure = None
-    try:
-        body()
-    except BaseException as error:  # noqa: BLE001 - the case's body and its cleanup report a failure of any type
-        failure = error
-    try:
-        cleanup()
-    except BaseException as error:  # noqa: BLE001 - the case's body and its cleanup report a failure of any type
-        if failure is None:
-            failure = error
-        else:
-            raise BaseExceptionGroup(
-                "the case and its cleanup failed", [failure, error]
-            ) from None
-    if failure is not None:
-        raise failure
-
-
-def expect_equal(got, want, what: str) -> None:
-    """Raises with both values when they differ; an assert statement would vanish under python -O."""
-    if got != want:
-        raise AssertionError(f"{what}: got {got!r}, want {want!r}")
-
-
-def run_on_empty_tenant(
-    models, item, tenant, run, *, aes_key=None, blind_index_key=None
-) -> None:
-    """Opens the database of item with models, checks its driver and that composite_account has no row of tenant, then
-    calls run(db, account), where account() starts a composite_account query on db; db is closed when run ends. When
-    supplied, aes_key and blind_index_key configure decoding of encrypted bench columns on the same handle."""
-    driver, dsn = item
-    options = {}
-    if aes_key is not None or blind_index_key is not None:
-        if aes_key is None or blind_index_key is None:
-            raise ValueError("aes_key and blind_index_key must be provided together")
-        options = {"aesKey": aes_key, "blindIndexKey": blind_index_key}
-    db = models.connect(dsn, **options)
-    try:
-        expect_equal(db.driver, driver, "the driver")
-
-        def account():
-            return models.CompositeAccount().connect(db)
-
-        expect_equal(
-            account().tenant_id(tenant).get_count(),
-            0,
-            f"composite_account rows of tenant {tenant} before the case",
-        )
-        run(db, account)
-    finally:
-        db.close()
-
-
-def connect_bench_author(models, item, *, all_columns=False):
-    """Connects the seeded bench database and returns its connected Author query factory."""
-    driver, dsn = item
-    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
-    try:
-        expect_equal(db.driver, driver, "the driver")
-    except BaseException:
-        db.close()
-        raise
-
-    def author():
-        query = models.Author().connect(db)
-        return query.add_all_columns() if all_columns else query
-
-    return db, author, driver, dsn

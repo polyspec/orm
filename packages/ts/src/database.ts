@@ -270,7 +270,6 @@ export function resolve(conn: Db | undefined): Executor {
   throw new OrmError(codes.CONFIG, 'the model has no connection; use connect or run it inside a transaction');
 }
 
-const SECRET = '$SECRET';
 const NOW = '$NOW';
 
 function pad2(n: number): string { return String(n).padStart(2, '0'); }
@@ -1246,7 +1245,7 @@ export class Db {
   }
 
   /**
-   * Resolves the bind slots of a step; masked marks secret and clock positions.
+   * Resolves the bind slots of a step; masked marks clock positions.
    *
    * @internal
    */
@@ -1281,10 +1280,6 @@ export class Db {
         }
         case 'audit':
           push(auditValue(slot, audit));
-          break;
-        case 'secret':
-          if (slot.name !== 'aes' || this.aesKey === '') throw new OrmError(codes.CONFIG, `secret ${slot.name} is not configured`);
-          push(this.aesKey, SECRET);
           break;
         case 'config':
           if (slot.name !== 'aes_version') throw new OrmError(codes.CONFIG, `config value ${slot.name} is not configured`);

@@ -27,7 +27,8 @@
     "COD-38",
     "COD-39",
     "COD-40",
-    "PLN-15"
+    "PLN-15",
+    "DIA-32"
   ],
   "cases": [
     {
@@ -16867,7 +16868,8 @@
     {
       "id": "aes_envelope_form",
       "requirements": [
-        "COD-5"
+        "COD-5",
+        "DIA-32"
       ],
       "steps": [
         {
