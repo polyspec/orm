@@ -314,6 +314,7 @@
     ],
     "schema.installed": [
       "expect",
+      "only",
       "op",
       "schema",
       "table"

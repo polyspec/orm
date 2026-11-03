@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 62e1166910e2f238ad7b6d38ab151d95853dc1c8f41f1359a87bc1c41f87da2e -->
+<!-- source-sha256: a783d45184c9be93574b9a6c6ccd3faf86856e6123a7b5b2a80bfe223867e0a0 -->
 # 변경 이력
 
 ## Unreleased
 
+- 이제 transaction 안의 schema inspection 읽기와 그 statement event를 recipe schema_install이 확인하며, 이를 반복하던 Python 파일은 사라졌다.
 - 이제 모든 client에서 PostgreSQL의 table 권한과 MySQL, SQLite의 거부를 recipe 하나가 확인하며, native extension은 INT-59a 아래 자기 unit을 유지한다.
 - CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
 - CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.

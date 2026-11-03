@@ -1504,6 +1504,9 @@
           "op": {
             "const": "schema.installed"
           },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
           "schema": {
             "description": "The schema name, or one for each database. The text $database is the name of the case database.",
             "oneOf": [
@@ -5329,7 +5332,6 @@
         "type": "object",
         "required": [
           "op",
-          "connection",
           "as"
         ],
         "additionalProperties": false,
