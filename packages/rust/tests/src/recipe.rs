@@ -2465,6 +2465,7 @@ mod database {
         "model.query",
         "model.save",
         "model.chain",
+        "db.notify",
         "utils.lock",
         "utils.set_local",
         "utils.local",
@@ -4491,6 +4492,10 @@ mod tables {
                         ["pending", { "int": status.pending.to_string() }],
                         ["versions", { "object": versions }],
                     ] } }))
+                }
+                "db.notify" => {
+                    db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    Ok(json!({}))
                 }
                 "utils.lock" => {
                     db.utils().lock(step["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
