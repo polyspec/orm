@@ -58,7 +58,7 @@ func statementFault(t *testing.T, driver string) {
 			t.Fatalf("fixture case %q has no test function in statementFaultCases", name)
 		}
 		t.Run(name, func(t *testing.T) {
-			db, model, _ := rollbackFixture(t, driver)
+			db, model := rollbackFixture(t, driver)
 			run(t, db, model, f)
 		})
 	}

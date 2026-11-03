@@ -667,10 +667,6 @@
         {
           "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
           "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
-        },
-        {
-          "glob": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ],
       "shares": "php"
@@ -5562,71 +5558,6 @@
       ]
     },
     {
-      "id": "ordered-json-storage-round-trip",
-      "kind": "feature",
-      "requirements": [
-        "DIA-26",
-        "COD-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/jsontext_order_test.go",
-          "id": "TestJsonTextOrderPreservation"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_model_writes_chain_test.go",
-          "id": "TestRecipeModelWritesChainSqlite/ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
-          "id": "Polyspec\\Orm\\Tests\\ModelWritesChainRecipeTest::testSqlite"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
-          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesChainRecipeTestExtensionTest::testSqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
-          "id": "ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_writes_chain_sqlite.py",
-          "id": "ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
-          "id": "model_writes_chain_sqlite::ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_model_writes_chain_test.go",
-          "id": "TestRecipeModelWritesChainSqlite/ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
-          "id": "ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_writes_chain_sqlite.py",
-          "id": "ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
-          "id": "model_writes_chain_sqlite::ordered_json_keeps_a_repeated_member_name"
-        }
-      ]
-    },
-    {
       "id": "coverage-request-hook-without-hook",
       "kind": "feature",
       "requirements": [
@@ -6891,6 +6822,33 @@
       ]
     },
     {
+      "id": "connection-first-statement-lost",
+      "kind": "feature",
+      "requirements": [
+        "CFG-38"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
+          "id": "RollbackTestExtensionTest::testFirstStatementLost"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "transactions",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
+    },
+    {
       "id": "connection-rollback-failed-reports-both-errors",
       "kind": "feature",
       "requirements": [
@@ -6900,83 +6858,83 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSQLiteRolledBackTransaction"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsMysql/rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedMySQL"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsPostgres/rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedPostgres"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsSqlite/sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFailed"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testMysql with data set \"rollback_failed_reports_both_errors\""
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testFirstStatementLost"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testPostgres with data set \"rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_rolled_back_transaction_reports_the_trigger\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testRollbackFailed"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testMysql with data set \"rollback_failed_reports_both_errors\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testFirstStatementLost"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testPostgres with data set \"rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_rolled_back_transaction_reports_the_trigger\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/sqlite"
+          "test": "packages/ts/tests/transactions-mysql.test.mjs",
+          "id": "rollback_failed_reports_both_errors"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/postgres"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_sqlite"
+          "test": "packages/python/tests/test_transactions_mysql.py",
+          "id": "rollback_failed_reports_both_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_postgres"
+          "test": "packages/python/tests/test_transactions_sqlite.py",
+          "id": "sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_sqlite"
+          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "id": "transactions_mysql::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_mysql"
+          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "id": "transactions_postgres::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_postgres"
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "id": "transactions_sqlite::sqlite_rolled_back_transaction_reports_the_trigger"
         }
       ]
     },
@@ -6990,73 +6948,83 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSQLiteRolledBackSavepoint"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsMysql/savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSavepointRollbackFailedMySQL"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsPostgres/savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSavepointRollbackFailedPostgres"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsSqlite/sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testSavepointRollbackFailed"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testMysql with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testPostgres with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_rolled_back_savepoint_reports_the_trigger\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testSavepointRollbackFailed"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testMysql with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testPostgres with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_rolled_back_savepoint_reports_the_trigger\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/sqlite"
+          "test": "packages/ts/tests/transactions-mysql.test.mjs",
+          "id": "savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/postgres"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_sqlite"
+          "test": "packages/python/tests/test_transactions_mysql.py",
+          "id": "savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_postgres"
+          "test": "packages/python/tests/test_transactions_sqlite.py",
+          "id": "sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_sqlite"
+          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "id": "transactions_mysql::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_mysql"
+          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "id": "transactions_postgres::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_postgres"
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "id": "transactions_sqlite::sqlite_rolled_back_savepoint_reports_the_trigger"
         }
       ]
     },
@@ -9526,7 +9494,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9683,7 +9655,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9840,7 +9816,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",

@@ -1263,18 +1263,17 @@ dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prep
 # dbspec-php-extension-check/set-parse runs DbspecSetParseRecipeTestExtensionTest with the extension: every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
-# dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
+# dbspec-php-extension-check/planner runs the planner suites with the extension: PlannerCompileTestExtensionTest
 # (the compile recipe tests/planner/compile.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
 # (the recipe tests/ir/answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
-dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
+dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/compile dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
 
 # The planner parts are independent: each runs as its own target after the class check, so make -j runs them together.
 dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
-PHP_EXTENSION_PLANNER_TEST_FILTER ?= test_
-dbspec-php-extension-check/planner/coverage: php-vendor-check dbspec-php-extension-check/planner/internal
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoveragePlannerExtensionTest.php --filter '$(PHP_EXTENSION_PLANNER_TEST_FILTER)'
+dbspec-php-extension-check/planner/compile: php-vendor-check dbspec-php-extension-check/planner/internal
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/PlannerCompileTestExtensionTest.php
 dbspec-php-extension-check/planner/insert-parts: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
 dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-extension-check/planner/internal
@@ -1862,7 +1861,7 @@ client-db-rust-check: lease-tool orm-codes
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
-PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
 PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 
@@ -1940,13 +1939,6 @@ session-state-check: php-vendor-check php-models python-venv-check lease-tool ty
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/SessionStateTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) session-state-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test session_state -- --test-threads=1
-
-# python-rollback-check runs the Python cases of a transaction or savepoint whose callback and rollback both fail on
-# SQLite, MySQL and PostgreSQL (packages/python/tests/rollback.py); it needs the database variables of make
-# orm-test-servers (WITH_TEST_ENV).
-.PHONY: python-rollback-check
-python-rollback-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.rollback
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
@@ -3671,13 +3663,13 @@ php-lifecycle-extension-native-check: php-vendor-check php-models
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php packages/php-ext/tests/CoverageTransactionsExtensionTest.php packages/php-ext/tests/StatementEventsTestExtensionTest.php packages/php-ext/tests/QueryCancellationNativeTest.php --filter 'testNativeMethodsAreInternal|testNativeSqliteConnectionQueriesAndCloses|testNativeSqliteTransactionCommitsAndPublishesOneTransactionId|testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent|testStatementEventEntryPointsAreNative|testNativeCancellationStateIsPrivatePersistentAndRemovedWhenReleased|testNativeCancellationDispatchesOnlyToActiveConnectionSlots|testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable'
 
 
-# rollback-php-extension-check runs the rollback-failed and savepoint-rollback-failed cases of packages/php/tests/RollbackTest.php
-# with the extension loaded, on SQLite, MySQL and PostgreSQL (WITH_TEST_ENV).
+# rollback-php-extension-check runs the first-statement-lost case of packages/php/tests/RollbackTest.php
+# with the extension loaded, on MySQL and PostgreSQL (WITH_TEST_ENV).
 .PHONY: rollback-php-extension-check
 rollback-php-extension-check: RUN_DIR = $(abspath .runtime/run)/rollback-php-extension-check-$$PPID
 rollback-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/RollbackTest.php --filter 'testRollbackFailed|testSavepointRollbackFailed'; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/RollbackTest.php --filter testFirstStatementLost; status=$$?; rm -rf $(RUN_DIR); exit $$status
 
 transaction-failure-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; \

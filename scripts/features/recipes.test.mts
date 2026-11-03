@@ -279,6 +279,25 @@ caseTest('a recipe owner runs once and is read from the results its runner write
   }
 });
 
+// Requirements: FCV-12.
+caseTest('a recipe under tests/ or contracts/fixtures/ is accepted and a recipe elsewhere is refused', 20000, async () => {
+  const directory = await realpath(await mkdtemp(join(tmpdir(), 'orm-recipe-place-')));
+  const entry = 'packages/ts/tests/entry.mjs';
+  try {
+    await mkdir(join(directory, 'packages/ts/tests'), { recursive: true });
+    await writeFile(join(directory, entry), `import { appendFileSync } from 'node:fs';\nappendFileSync(process.env.ORM_RECIPE_RESULTS, 'CASE first PASS\\n');\n`);
+    for (const recipe of ['tests/sample/sample.json', 'contracts/fixtures/sample/sample.json', 'docs/sample/sample.json']) {
+      await mkdir(join(directory, dirname(recipe)), { recursive: true });
+      await writeFile(join(directory, recipe), JSON.stringify({ cases: [{ id: 'first', steps: [] }] }));
+    }
+    assert.deepEqual((await outcome(sampleOwner(entry, 'tests/sample/sample.json', ['first']), directory)).errors, []);
+    assert.deepEqual((await outcome(sampleOwner(entry, 'contracts/fixtures/sample/sample.json', ['first']), directory)).errors, []);
+    assert.match((await outcome(sampleOwner(entry, 'docs/sample/sample.json', ['first']), directory)).text, /invalid recipe test command/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 // Requirements: FCV-3, FCV-12.
 caseTest('the cases of a recipe on a database leave out a case that names only other databases', COMPUTE, () => {
   const text = JSON.stringify({ cases: [{ id: 'all' }, { id: 'lite', only: ['sqlite'] }] });
