@@ -3891,9 +3891,6 @@
       ],
       "coverage": {
         "kind": "independent",
-        "cases": [
-          "model_generation_check"
-        ],
         "owners": {
           "go": {
             "part": "packages/go",
