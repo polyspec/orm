@@ -2731,6 +2731,7 @@ class _ChainBuild:
         self.context = context
         self.outer = outer
         self.joined: dict = {}
+        self.db = None
 
     def predicate(self, model: Model, conn: str, raw: dict) -> None:
         """Adds the predicate raw to model, joined by conn."""
@@ -2745,6 +2746,10 @@ class _ChainBuild:
                     conn, lambda group: self.predicate(group, "", value)
                 )
             if name == "placed":
+                if isinstance(value, dict):
+                    return model.core.connector(
+                        conn, [_new_core_model(self.context, value["model"])]
+                    )
                 if value not in self.joined:
                     raise AssertionError(f"placed {value} names no join")
                 return model.core.connector(conn, [self.joined[value]])
@@ -2872,6 +2877,8 @@ class _ChainBuild:
                 child.core.set_on(lambda group, on=on: inner.predicate(group, "", on))
             inner.query(child, join)
             kind = join.get("kind", "inner")
+            if join.get("connect") is True:
+                child.connect(self.db)
             model.core.join(kind, join["match"][0], join["match"][1], child)
             if "as" in join:
                 self.joined[join["as"]] = child
@@ -2984,6 +2991,7 @@ def _chain_built(step: dict, context: dict) -> Model:
         else _new_row(context, db, step["model"])
     )
     build = _ChainBuild(context)
+    build.db = db
     paged = step.get("page") is True
     build.query(model, step, not paged and "offset" not in step)
     if not paged and "offset" in step and "limit" in step:
@@ -3105,15 +3113,19 @@ def _table_model_query(step: dict, context: dict) -> dict:
                 )
             return {"json": _plain_json(rows[0].value(step["group_value"]))}
         return {"json": _plain_json(model.gets_count().to_array())}
-    if step.get("page") is True:
+    if step.get("page") is True or "plan_page" in step:
         limit = step.get("limit")
         count = limit if isinstance(limit, int) else (limit or {}).get("count", 0)
-        if count <= 0:
+        if count <= 0 and "plan_page" not in step:
             raise AssertionError("a page needs a limit count above 0")
         offset = step.get("offset", 0)
         if isinstance(limit, dict):
             offset += limit.get("offset", 0)
-        page = model.gets_page(offset // count + 1, count)
+        page = (
+            model.gets_page(step["plan_page"]["page"], step["plan_page"]["per_page"])
+            if "plan_page" in step
+            else model.gets_page(offset // count + 1, count)
+        )
         fields = {
             "json": _plain_json(
                 {

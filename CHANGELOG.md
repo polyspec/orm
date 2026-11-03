@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The nine refusals of the vector `errors` (a missing or dangling connector, an empty list, no connection, a lock outside a transaction, a join child with a connection, a page with a limit, a relation with a limit and an unjoined model placement) run as the case `errors` of the recipe conformance_verification in all six runtimes, with an empty event list as the proof that no request left; the recipe takes `connect` on a join, `limit` on a relation, `{"placed": {"model": <name>}}`, and `plan_page` without `plan` for `getsPage` (#T334-3-12-2)
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.
 - A function and a subquery on one output name answer COLUMN_ALIAS_CONFLICT as the compile case `planner_function_and_subquery_share_an_output_name` on every runtime; the scalar aggregate type copies and the extension's native planner test are gone, and the extension's planner target runs the compile recipe (#T334-3-6-2)
 - PRT-38 states the order of the page steps as they are, main, count, relations, and what the count step holds; PRT-9 states the select list; `planner_page_steps` of the compile recipe holds those statements (DSL-159).

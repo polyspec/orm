@@ -8118,7 +8118,24 @@
           "additionalProperties": false,
           "properties": {
             "placed": {
-              "$ref": "#/$defs/name"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/name"
+                },
+                {
+                  "description": "A model that no join holds, which is refused (DSL-96).",
+                  "type": "object",
+                  "required": [
+                    "model"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model": {
+                      "$ref": "#/$defs/name"
+                    }
+                  }
+                }
+              ]
             }
           }
         },
@@ -8402,6 +8419,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "connect": {
+          "description": "The joined model is connected to the connection of the query, which is refused (DSL-98).",
+          "type": "boolean"
+        },
         "model": {
           "$ref": "#/$defs/model"
         },
@@ -8455,6 +8476,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "limit": {
+          "description": "The limit of the related model, which is refused with LIMIT_IN_RELATION.",
+          "$ref": "#/$defs/limit"
+        },
         "model": {
           "$ref": "#/$defs/model"
         },

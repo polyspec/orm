@@ -4238,6 +4238,8 @@ mod tables {
     struct Build {
         joined: HashMap<String, u64>,
         outer: Option<u64>,
+        /// The connection of the step, for a join that names connect.
+        db: Option<Db>,
     }
 
     impl Build {
@@ -4255,6 +4257,10 @@ mod tables {
                         return Ok(());
                     }
                     "placed" => {
+                        if let Some(model) = value["model"].as_str() {
+                            core.place(conn, core_of(model)?.id());
+                            return Ok(());
+                        }
                         let name = value.as_str().ok_or_else(|| format!("placed {value} is not a name"))?;
                         let joined = self.joined.get(name).ok_or_else(|| format!("placed {name} names no join"))?;
                         core.place(conn, *joined);
@@ -4333,7 +4339,7 @@ mod tables {
             }
             if let Some(sub) = raw.get("sub") {
                 let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, sub, true)?;
+                Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, sub, true)?;
                 return Ok((Arg::Value(ArgValue::Sub(Box::new(child))), ""));
             }
             if raw.get("fn").is_some() {
@@ -4383,7 +4389,7 @@ mod tables {
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()) }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
@@ -4428,7 +4434,7 @@ mod tables {
             }
             for join in q["joins"].as_array().into_iter().flatten() {
                 let mut child = core_of(join["model"].as_str().ok_or_else(|| format!("join {join} names no model"))?)?;
-                let mut inner = Build { joined: HashMap::new(), outer: self.outer };
+                let mut inner = Build { joined: HashMap::new(), outer: self.outer, db: None };
                 if let Some(alias) = join["alias"].as_str() {
                     child.set_alias(alias);
                 }
@@ -4438,6 +4444,9 @@ mod tables {
                     child.set_on(group);
                 }
                 inner.query(&mut child, join, true)?;
+                if join["connect"].as_bool() == Some(true) {
+                    child.connect(self.db.as_ref().ok_or_else(|| format!("join {join} has no connection"))?);
+                }
                 let id = child.id();
                 let (left, right) = (join["match"][0].as_str().unwrap_or_default(), join["match"][1].as_str().unwrap_or_default());
                 core.join(leaked(join["kind"].as_str().unwrap_or("inner")), left, right, child);
@@ -4499,7 +4508,7 @@ mod tables {
             if relation["parent_node"].as_bool() == Some(true) {
                 child.parent_node();
             }
-            Build { joined: HashMap::new(), outer: self.outer }.query(&mut child, relation, true)?;
+            Build { joined: HashMap::new(), outer: self.outer, db: None }.query(&mut child, relation, true)?;
             if let Some(n) = relation["group_limit"].as_u64() {
                 child.group_limit(u32::try_from(n).map_err(|e| e.to_string())?);
             }
@@ -4724,7 +4733,7 @@ mod tables {
                 if step["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
-                let mut build = Build::default();
+                let mut build = Build { db: Some(db.clone()), ..Build::default() };
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
                 if !paged && !step["offset"].is_null() {
@@ -4803,7 +4812,7 @@ mod tables {
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
                 } }));
             }
-            if step["page"].as_bool() == Some(true) {
+            if step["page"].as_bool() == Some(true) || !step["plan_page"].is_null() {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
@@ -4825,10 +4834,16 @@ mod tables {
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
             let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
             let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-            if count == 0 {
-                return Err("a paged model.query needs a limit above 0".into());
-            }
-            let page = gets_page(root, offset / count + 1, count).await.map_err(orm)?;
+            let (number, size) = if step["plan_page"].is_null() {
+                if count == 0 {
+                    return Err("a paged model.query needs a limit above 0".into());
+                }
+                (offset / count + 1, count)
+            } else {
+                let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                (number("page")?, number("per_page")?)
+            };
+            let page = gets_page(root, number, size).await.map_err(orm)?;
             let keys: Vec<Value> = page.items.keys().iter().map(polyspec_orm::Key::to_json).collect();
             let mut fields = json!({
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
