@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The apply verification errors of tests/dbspec/apply-verification-errors.json on a memory connection (docs/spec/feature-coverage.md FCV-3).
-// Requirements: PLN-92, PLN-93, PLN-96.
+// Requirements: PLN-92, PLN-93, PLN-96, PLN-98, PLN-106.
 #[Medium]
 class DbspecApplyVerificationErrorsRecipeTest extends TestCase
 {

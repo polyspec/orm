@@ -1091,12 +1091,16 @@ class Session {
       // The dbspec renderer writes the fraction digits of a TIME or DATETIME column into a CHECK of the table's own definition.
       const tables = (await this.plainRows("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [ref.name], 2, METADATA_BYTES)).rows;
       const [tableRow] = tables;
-      if (tables.length !== 1 || tableRow === undefined || tableRow.length !== 1 || typeof tableRow[0] !== 'string') {
-        throw err(CODE_METADATA, `the definition of table "${ref.name}" is not one text`);
-      }
-      for (const column of columns) {
-        const declared = column.nativeType.toUpperCase();
-        if (declared === 'TIME' || declared === 'DATETIME') column.checkPrecision = checkPrecisionOf(tableRow[0], column.name);
+      // A view has no definition of a table, and so no CHECK of a table's own (INT-113).
+      if (tableRow !== undefined) {
+        if (tables.length !== 1 || tableRow.length !== 1 || typeof tableRow[0] !== 'string') {
+          throw err(CODE_METADATA, `the definition of table "${ref.name}" is not one text`);
+        }
+        const definition = tableRow[0];
+        for (const column of columns) {
+          const declared = column.nativeType.toUpperCase();
+          if (declared === 'TIME' || declared === 'DATETIME') column.checkPrecision = checkPrecisionOf(definition, column.name);
+        }
       }
     }
     keys.sort((a, b) => a.ordinal - b.ordinal);

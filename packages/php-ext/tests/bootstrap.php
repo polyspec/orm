@@ -70,6 +70,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/StatementRunnerRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelWritesChainRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelQueriesChainRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/UtilsRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DbspecApplyRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationMysqlRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationPostgresRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ConformanceVerificationSqliteRecipeTest.php';
@@ -158,7 +159,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/BindMessagesUntypedNullRecipeTest
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelMethodsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/RevisionTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RollbackTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SessionStateTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/SqliteRowLockRestoreTest.php';

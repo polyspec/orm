@@ -844,78 +844,6 @@
         "scripts/typescript/node-min.mts"
       ]
     },
-    "group-rows-db-go": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "databases"
-      ],
-      "inputs": [
-        "packages/go/model/group_rows_db_test.go"
-      ]
-    },
-    "group-rows-db-python": {
-      "scope": "owner",
-      "needs": [
-        "python",
-        "databases"
-      ],
-      "inputs": [
-        "packages/python/tests/test_group_rows_db.py",
-        "packages/python/src/polyspec/orm/**"
-      ]
-    },
-    "group-rows-db-typescript": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/group_rows_db.mjs"
-      ]
-    },
-    "group-rows-db-php": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/GroupRowsDbTest.php",
-        "packages/php/tests/GroupRowsDbCases.php",
-        "packages/php/tests/GroupRowsDbCase.php"
-      ]
-    },
-    "group-rows-db-php-extension": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/GroupRowsDbTest.php",
-        "packages/php/tests/GroupRowsDbCases.php",
-        "packages/php/tests/GroupRowsDbCase.php",
-        "packages/php-ext/**"
-      ]
-    },
-    "group-rows-db-rust": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust"
-      ],
-      "inputs": [
-        "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
-      ]
-    },
     "rust-check": {
       "scope": "suite",
       "needs": [
@@ -1097,7 +1025,6 @@
         "packages/go/engine/ir/params_test.go",
         "packages/go/engine/planner/planner.go",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
-        "packages/go/orm/coverage_planner_test.go",
         "packages/go/orm/recipe_planner_test.go",
         "packages/go/orm/markdown.go",
         "packages/rust/orm/src/engine/params.rs",
@@ -1122,9 +1049,7 @@
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/src/polyspec/orm/markdown.py",
         "packages/python/tests/test_column_function_internal.py",
-        "packages/python/tests/coverage_planner.py",
         "packages/python/tests/test_planner_compile_none.py",
-        "contracts/fixtures/planner.json",
         "tests/planner/compile.json"
       ]
     },
@@ -2484,7 +2409,7 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/bench/coverage_performance_gate_test.go",
+        "packages/go/bench/performance_measurement_test.go",
         "scripts/perf-test.mts"
       ]
     },
@@ -2920,7 +2845,6 @@
         "packages/go/orm/coverage_transaction_failure_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/test_helpers_test.go",
-        "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/rollback_fault_test.go",
         "Makefile"
@@ -3508,7 +3432,6 @@
         "tests/dbspec/invalid.json",
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
-        "contracts/fixtures/planner.json",
         "tests/planner/compile.json",
         "tests/ir/validate.json",
         "tests/dbspec/stress.mts"

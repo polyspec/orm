@@ -22,7 +22,7 @@ const RECIPE = 'contracts/fixtures/conformance_verification/conformance_verifica
 const FIXED_CLOCK = 'tests/conformance/check/fixed_clock.json';
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
-type Step = { op: string; expect?: Record<string, Json> };
+type Step = { op: string; expect?: Record<string, Json>; steps?: Step[]; only?: string[]; sql?: string };
 type Case = { id: string; steps: Step[] };
 type Output = { result: Json; statements: Json[] };
 
@@ -69,18 +69,46 @@ const shapes: Record<string, (steps: Json[]) => Json> = {
       sum,
     } as Json;
   },
+  // The recipe counts the row that holds both facts: a body answers each of them, and the count is one only when both hold.
+  now_defaults: ([found]) => {
+    const held = plain(((found as { rows: Json[][] }).rows[0] as Json[])[0] as Json) === 1;
+    return { created_equals_updated: held, created_near_clock: held };
+  },
+  delete_recursive: ([loaded, members_left, service_left]) => ({
+    members: size((loaded as { service_member_models: Json }).service_member_models), members_left, service_left,
+  }) as Json,
+  // A body reads the count from the test entry point (protocol.md "Test write result"), which no recipe step reaches, so this file states it.
+  affected_counts: () => ({ update_changed: 1, update_unchanged: 1, upsert_inserted: 1, upsert_updated: 1 }),
 };
+
+/** The steps of a case with those of its transactions, in the order they run. */
+const inOrder = (steps: Step[]): Step[] => steps.flatMap(step => [step, ...inOrder(step.steps ?? [])]);
+
+// The recipe commits now_defaults to read its row by a catalog query between its two transactions; the body holds one transaction.
+const oneTransaction = (statements: Json[]): Json[] => statements
+  .filter((statement, index) => {
+    const kind = (item: Json | undefined) => (item as { kind?: Json } | undefined)?.kind;
+    return !(kind(statement) === 'commit' && kind(statements[index + 1]) === 'begin') && !(kind(statement) === 'begin' && kind(statements[index - 1]) === 'commit');
+  })
+  .map(statement => ({ ...(statement as Record<string, Json>), transaction: 1 }));
 
 /** The result and the statements that the recipe case states for a body. */
 export function expectedOfCase(recipeCase: Case, database: string): Output {
   const shape = shapes[recipeCase.id];
   if (shape === undefined) throw new Error(`recipe case ${recipeCase.id} has no body shape`);
-  const held = recipeCase.steps.filter(step => step.expect !== undefined && step.op !== 'events.captured');
+  const held = inOrder(recipeCase.steps).filter(step => step.expect !== undefined && step.op !== 'events.captured');
   const captured = recipeCase.steps.find(step => step.op === 'events.captured');
   if (captured === undefined) throw new Error(`recipe case ${recipeCase.id} captures no statement`);
   const statements = stepValue(captured, database);
   const events = (statements as { value?: Json }).value ?? statements;
-  return { result: shape(held.map(step => stepValue(step, database))), statements: plain(events) as Json[] };
+  const stated = plain(events) as Json[];
+  return { result: shape(held.map(step => stepValue(step, database))), statements: recipeCase.id === 'now_defaults' ? oneTransaction(stated) : stated };
+}
+
+/** A body masks the sequence value it created as `$SEQ`; the recipe states it, and only an integer takes that mask. */
+function unmasked(got: Json | undefined, want: Json | undefined): Json | undefined {
+  if (!Array.isArray(got) || !Array.isArray(want)) return got;
+  return got.map((bind, index) => bind === '$SEQ' && typeof want[index] === 'number' ? want[index] as Json : bind);
 }
 
 /** Each statement of a body against the fields that the statement of the expect states. */
@@ -90,7 +118,9 @@ export function compareOutput(name: string, got: Output, want: Output): void {
   for (const [index, statement] of want.statements.entries()) {
     const fields = statement as Record<string, Json>;
     const actual = got.statements[index] as Record<string, Json>;
-    for (const key of Object.keys(fields)) assert.deepEqual(actual[key], fields[key], `${name}: statement ${index} ${key}`);
+    for (const key of Object.keys(fields)) {
+      assert.deepEqual(key === 'binds' ? unmasked(actual[key], fields[key]) : actual[key], fields[key], `${name}: statement ${index} ${key}`);
+    }
   }
 }
 
@@ -135,22 +165,38 @@ export function expectations(mode: string, database: string): Map<string, Output
   return out;
 }
 
+/** The statement of the recipe that moves the PostgreSQL identity sequences past its seed, for a body that creates rows on that seed. */
+export function sequenceStatement(): string {
+  const recipe = JSON.parse(readFileSync(join(root, RECIPE), 'utf8')) as { cases: Case[] };
+  const step = recipe.cases.find(item => item.id === 'now_defaults')?.steps.find(item => item.op === 'sql.exec' && item.only?.includes('postgres'));
+  if (step?.sql === undefined) throw new Error(`${RECIPE} case now_defaults has no sequence statement`);
+  return step.sql;
+}
+
 async function main(args: string[]): Promise<void> {
   const [mode, ...rest] = args;
   const flag = (name: string): string => {
     const index = rest.indexOf(name);
     const value = index < 0 ? undefined : rest[index + 1];
-    if (value === undefined) throw new Error(`${name} is required`);
+    if (value === undefined) throw new Error(`${name} is required; run make conformance-generated-methods-check or make conformance-fixed-clock-check, which pass it`);
     return value;
   };
   const language = flag('--language');
   const database = flag('--database');
   const want = expectations(mode ?? '', database);
   const tests = pathToFileURL(join(root, 'packages/ts/tests')).href;
-  const { withCaseDatabase } = await import(`${tests}/case-database.mjs`) as { withCaseDatabase: (d: string, s: (m: string) => void, b: (c: { dsn: string }) => Promise<void>) => Promise<void> };
+  const { postgresClient, withCaseDatabase } = await import(`${tests}/case-database.mjs`) as {
+    postgresClient: (dsn: string) => { connect: () => Promise<void>; query: (sql: string) => Promise<unknown>; end: () => Promise<void> };
+    withCaseDatabase: (d: string, s: (m: string) => void, b: (c: { dsn: string }) => Promise<void>) => Promise<void>;
+  };
   const { prepareRecipeDatabase } = await import(`${tests}/recipe.mjs`) as { prepareRecipeDatabase: (p: string, d: string, dsn: string) => Promise<void> };
   await withCaseDatabase(database, () => undefined, async ({ dsn }) => {
     await prepareRecipeDatabase(RECIPE, database, dsn);
+    if (database === 'postgres') {
+      const client = postgresClient(dsn);
+      await client.connect();
+      try { await client.query(sequenceStatement()); } finally { await client.end(); }
+    }
     const output = runner(language, dsn, [...want.keys()]);
     for (const [name, expected] of want) {
       const got = output[name];

@@ -122,6 +122,23 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the dbspec_apply recipe, contracts/fixtures/dbspec_apply/dbspec_apply.json, is the trial dbspec_apply_<database>::<case id>
+# on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_apply_mysql"
+path = "tests/dbspec_apply_mysql.rs"
+harness = false
+
+[[test]]
+name = "dbspec_apply_postgres"
+path = "tests/dbspec_apply_postgres.rs"
+harness = false
+
+[[test]]
+name = "dbspec_apply_sqlite"
+path = "tests/dbspec_apply_sqlite.rs"
+harness = false
+
 # Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a
 # case database of its own (FCV-3, FCV-4).
 [[test]]
