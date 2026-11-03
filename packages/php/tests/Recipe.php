@@ -599,7 +599,12 @@ final class Recipe
             throw new RuntimeException("cannot create $directory");
         }
         try {
-            self::connectDriver("sqlite://$directory/$name?$query");
+            try {
+                self::connectDriver("sqlite://$directory/$name?$query");
+            } catch (OrmException $refused) {
+                Assert::assertSame(['.', '..'], scandir($directory), 'a refused DSN creates no file');
+                throw $refused;
+            }
             $names = array_diff(
                 scandir($directory),
                 ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
@@ -618,16 +623,19 @@ final class Recipe
             Assert::fail("dsn.connect has no expect for $database");
         }
         $code = null;
+        $message = '';
         $driver = null;
         try {
             $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
         } catch (OrmException $error) {
             $code = $error->code_;
+            $message = $error->getMessage();
         }
         if (isset($expect['error'])) {
             if ($code !== $expect['error']) {
                 Assert::fail('error ' . ($code ?? 'none') . ", want {$expect['error']}");
             }
+            Assert::assertStringContainsString($expect['message_holds'] ?? '', $message);
             return;
         }
         if ($code !== null) {

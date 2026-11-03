@@ -1422,14 +1422,20 @@ def _dsn_connect(step: dict, database: str) -> None:
     if outcome is None:
         raise AssertionError(f"dsn.connect has no expect for {database}")
     got = None
+    message = ""
     driver = None
     try:
         driver = _connect_driver(step["dsn"], step.get("config"))
     except OrmError as error:
         got = error.code
+        message = str(error)
     if "error" in outcome:
         if got != outcome["error"]:
             raise AssertionError(f"got {got}, want {outcome['error']}")
+        if outcome.get("message_holds", "") not in message:
+            raise AssertionError(
+                f"message {message}, want one that holds {outcome['message_holds']}"
+            )
         return
     if got is not None:
         raise AssertionError(f"unexpected error {got}")
@@ -2086,7 +2092,13 @@ def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
     file of it."""
     name = step["name"]
     with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
-        _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+        try:
+            _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+        except OrmError:
+            left = os.listdir(directory)
+            if left:
+                raise AssertionError(f"a refused DSN left the files {left}") from None
+            raise
         journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
         names = sorted(set(os.listdir(directory)) - journals)
     return {"value": {"text": ",".join(names)}}

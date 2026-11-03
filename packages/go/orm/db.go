@@ -525,7 +525,7 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 		// secret over TLS, and requests the server's RSA public key only when there is no TLS.
 		pem, err := os.ReadFile(dsn.sslCA)
 		if err != nil {
-			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s is not a readable file: %w", dsn.sslCA, err)
 		}
 		roots := x509.NewCertPool()
 		if !roots.AppendCertsFromPEM(pem) {

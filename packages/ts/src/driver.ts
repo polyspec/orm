@@ -824,7 +824,7 @@ function mysqlTls(url: URL): string | undefined {
 function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
-    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${errorText(error)}`, error);
+    throw new OrmError(codes.CONFIG, `mysql DSN ssl-ca ${parsed.sslCa} is not a readable file: ${errorText(error)}`, error);
   }
 }
 

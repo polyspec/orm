@@ -163,7 +163,12 @@ async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
         Ok(names)
     });
     std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
-    connected?;
+    if let Err(message) = connected {
+        return match listed?.as_slice() {
+            [] => Err(message),
+            left => Err(format!("a refused DSN left the files {left:?}")),
+        };
+    }
     let journals = [format!("{name}-journal"), format!("{name}-shm"), format!("{name}-wal")];
     let mut names: Vec<String> = listed?.into_iter().filter(|file| !journals.contains(file)).collect();
     names.sort();
@@ -177,7 +182,10 @@ fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     let outcome = runtime.block_on(connect_driver(dsn, &step["config"]));
     match (outcome, expect["error"].as_str()) {
-        (Err((got, _)), Some(code)) if got == code => Ok(()),
+        (Err((got, message)), Some(code)) if got == code => {
+            let holds = expect["message_holds"].as_str().unwrap_or_default();
+            if message.contains(holds) { Ok(()) } else { Err(format!("message {message}, want one that holds {holds}")) }
+        }
         (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
         (Ok(_), Some(code)) => Err(format!("error none, want {code}")),
         (Err((_, message)), None) => Err(format!("unexpected error {message}")),

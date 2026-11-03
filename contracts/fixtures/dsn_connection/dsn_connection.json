@@ -3,6 +3,7 @@
   "requirements": [
     "CFG-1",
     "CFG-2",
+    "CFG-12",
     "CFG-19",
     "CFG-26"
   ],
@@ -178,6 +179,65 @@
               "value": {
                 "text": "named.sqlite"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_refused_dsn_creates_no_file",
+      "requirements": [
+        "CFG-12"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "_txlock=immediate",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "timezone=Asia%2FSeoul",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "dsn.sqlite_file",
+          "name": "refused.sqlite",
+          "query": "_pragma=busy_timeout(soon)",
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
             }
           }
         }

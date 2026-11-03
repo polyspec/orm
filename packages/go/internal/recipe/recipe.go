@@ -313,12 +313,16 @@ func sqliteFileName(name, query string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = os.RemoveAll(directory) }()
-	if _, err := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, dsnConfig{}); err != nil {
-		return "", err
-	}
+	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, dsnConfig{})
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return "", err
+	}
+	if refused != nil {
+		if len(entries) != 0 {
+			return "", fmt.Errorf("a refused DSN left %d files in the directory: %v", len(entries), entries)
+		}
+		return "", refused
 	}
 	names := []string{}
 	for _, entry := range entries {
@@ -376,8 +380,9 @@ func key(s step) string {
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value        json.RawMessage `json:"value"`
+		Error        string          `json:"error"`
+		MessageHolds string          `json:"message_holds"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -385,6 +390,9 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	if outcome.Error != "" {
 		if got := orm.ErrorCode(r.err); got != outcome.Error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
+		}
+		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
+			return fmt.Errorf("error %q, want a message that holds %q", r.err, outcome.MessageHolds)
 		}
 		return nil
 	}

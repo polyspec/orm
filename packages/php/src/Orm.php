@@ -345,7 +345,7 @@ final class Orm
                 }
                 return [$driver, $pdo, $user, $password, [], null];
             default:
-                if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
+                if (!str_starts_with($dsn, 'sqlite:///') || $path === '' || $path === '/') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
                 }
                 $pragmas = [];

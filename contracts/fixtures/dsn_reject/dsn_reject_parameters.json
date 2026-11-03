@@ -15,7 +15,8 @@
           "dsn": "mysql://root@db.local/orm_example?charset=latin1",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter charset"
             }
           }
         }
@@ -32,7 +33,8 @@
           "dsn": "mysql://root@db.local/orm_example?sslmode=disable",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter sslmode"
             }
           }
         }
@@ -49,7 +51,8 @@
           "dsn": "postgres://root@db.local/orm_example?application_name=orm",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter application_name"
             }
           }
         }
@@ -66,7 +69,8 @@
           "dsn": "postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter ssl-mode"
             }
           }
         }
@@ -83,7 +87,8 @@
           "dsn": "sqlite:///tmp/orm-tls.sqlite?cache=shared",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter cache"
             }
           }
         }
@@ -100,7 +105,8 @@
           "dsn": "mysql://root@db.local/orm_example?ssl-mode%5B%5D=VERIFY_IDENTITY",
           "expect": {
             "none": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_holds": "has the unknown parameter ssl-mode[]"
             }
           }
         }

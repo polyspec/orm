@@ -101,10 +101,12 @@ async function checkDsnConnect(step, database) {
   const expect = step.expect?.[database];
   let driver;
   let code = '';
+  let message = '';
   try {
     driver = await connectDriver(step.dsn, step.config);
   } catch (error) {
     code = error?.code ?? '';
+    message = error?.message ?? '';
   }
   if (expect === undefined) {
     if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -112,6 +114,7 @@ async function checkDsnConnect(step, database) {
   }
   if (expect.error !== undefined) {
     if (code !== expect.error) throw new Error(`error ${code || 'none'}, want ${expect.error}`);
+    if (!message.includes(expect.message_holds ?? '')) throw new Error(`message ${message}, want one that holds ${expect.message_holds}`);
     return;
   }
   if (code !== '') throw new Error(`unexpected error ${code}`);
@@ -538,7 +541,13 @@ const OPS = {
   async 'dsn.sqlite_file'(s) {
     const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
     try {
-      await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+      try {
+        await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+      } catch (refused) {
+        const left = readdirSync(directory);
+        if (left.length !== 0) throw new Error(`a refused DSN left the files ${left.join(',')}`);
+        throw refused;
+      }
       const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
       return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
     } finally {

@@ -1398,7 +1398,8 @@ def _connection_config(options: dict) -> _PoolConfig:
         if isinstance(value, bool) or not isinstance(value, int):
             raise OrmError(codes.CONFIG, f"{name} must be an integer")
         if value < 0:
-            raise OrmError(codes.CONFIG, f"{name} must not be negative")
+            label = "statement timeout" if name == "statementTimeoutMs" else name
+            raise OrmError(codes.CONFIG, f"{label} must not be negative")
         values[name] = value
     size = values["poolSize"] or DEFAULT_POOL_SIZE
     if values["poolIdleSize"] > size:
