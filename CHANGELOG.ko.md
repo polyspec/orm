@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bb91fe0aefc1ed235ba7b99e3f50b503c9b99d15fde5954d3cf4d1d922f846ae -->
+<!-- source-sha256: bca31728701b0a809a33988125cbf3bc0ff2b73e98472bea4803adb83073d3c3 -->
 # 변경 이력
 
 ## Unreleased
 
+- commit에서 연결을 잃은 PHP catalog가 이후 계속 `CONNECTION_LOST`로 실패하지 않고 다음 호출에 새 연결로 읽는다(INT-118). `catalog_connection` recipe case `row_commit_outcomes`가 commit을 거부하는 PostgreSQL deferred trigger와 commit 중 backend를 끝내는 trigger로 이를 담는다.
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.
 - Python과 PHP(library, extension)가 `docs/spec/interfaces.md`의 catalog grid 절대로 유한하지 않은 PostgreSQL numeric grid 칸을 `CATALOG_VALUE`로 거부한다. 지금까지 `NaN`을 decimal 칸으로 돌려주었다. recipe case `grid_decimal_values`가 이를 담는다.
