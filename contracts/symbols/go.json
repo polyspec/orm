@@ -6281,7 +6281,7 @@
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::Load": {
     "exported": true,
-    "signature": "func(text string) (*Model, []dbspec.Diagnostic)"
+    "signature": "func(text string) (*Model, *SetLoadError)"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::LoadDocumentSet": {
     "exported": true,
@@ -6297,7 +6297,7 @@
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::LoadSet": {
     "exported": true,
-    "signature": "func(text, external string) (*Model, []dbspec.Diagnostic)"
+    "signature": "func(text, external string) (*Model, *SetLoadError)"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::LoadSetFile": {
     "exported": true,
@@ -6339,7 +6339,15 @@
     "exported": true,
     "signature": "[]string"
   },
+  "packages/go/engine/runtimemodel/runtimemodel.go::SetLoadError.Code": {
+    "exported": true,
+    "signature": "receiver=*SetLoadError func() string"
+  },
   "packages/go/engine/runtimemodel/runtimemodel.go::SetLoadError.Error": {
+    "exported": true,
+    "signature": "receiver=*SetLoadError func() string"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::SetLoadError.Message": {
     "exported": true,
     "signature": "receiver=*SetLoadError func() string"
   },
@@ -6354,6 +6362,10 @@
   "packages/go/engine/runtimemodel/runtimemodel.go::externalTables": {
     "exported": false,
     "signature": "func(d *dbspec.Document, used []string) []dbspec.Table"
+  },
+  "packages/go/engine/runtimemodel/runtimemodel.go::invalidSet": {
+    "exported": false,
+    "signature": "func(diagnostics []dbspec.Diagnostic) *SetLoadError"
   },
   "packages/go/engine/runtimemodel/runtimemodel.go::splitDocuments": {
     "exported": false,
@@ -19643,6 +19655,10 @@
     "exported": true,
     "signature": "func(err error) bool"
   },
+  "packages/go/orm/db.go::RegisterDeallocator": {
+    "exported": true,
+    "signature": "func(name string, deallocate func(ctx context.Context, driverConn any) error)"
+  },
   "packages/go/orm/db.go::RegisterDriver": {
     "exported": true,
     "signature": "func(name, sqlDriver string, mapErr func(error) error)"
@@ -20189,7 +20205,7 @@
   },
   "packages/go/orm/exec.go::runSelect": {
     "exported": false,
-    "signature": "func(ctx context.Context, ex executor, c *cached, st *plan.Step, r *request, parentVals []any) ([][]any, error)"
+    "signature": "func(ctx context.Context, ex executor, c *cached, st *plan.Step, r *request, parentVals []any) (_ [][]any, retErr error)"
   },
   "packages/go/orm/exec.go::scalar": {
     "exported": false,
@@ -20374,6 +20390,10 @@
   "packages/go/orm/group_rows.go::GroupRows.ToArray": {
     "exported": true,
     "signature": "receiver=*GroupRows func() []map[string]any"
+  },
+  "packages/go/orm/group_rows.go::addedColumnValue": {
+    "exported": false,
+    "signature": "func(typ string, raw any) (any, error)"
   },
   "packages/go/orm/group_rows.go::checkCountText": {
     "exported": false,
@@ -21595,6 +21615,42 @@
     "exported": false,
     "signature": "func(v, colType string) error"
   },
+  "packages/go/orm/stale_plan.go::DB.execAgain": {
+    "exported": false,
+    "signature": "receiver=*DB func(ctx context.Context, outside bool, sqlText string, args []any, result sql.Result, err error) (sql.Result, error)"
+  },
+  "packages/go/orm/stale_plan.go::DB.openStalePlanSession": {
+    "exported": false,
+    "signature": "receiver=*DB func(ctx context.Context) (*stalePlanSession, error)"
+  },
+  "packages/go/orm/stale_plan.go::DB.queryAgain": {
+    "exported": false,
+    "signature": "receiver=*DB func(ctx context.Context, outside bool, sqlText string, args []any, rows *sql.Rows, err error) (*sql.Rows, func(error) error, error)"
+  },
+  "packages/go/orm/stale_plan.go::DB.scanAgain": {
+    "exported": false,
+    "signature": "receiver=*DB func(ctx context.Context, outside bool, sqlText string, args []any, err error, dest ...any) error"
+  },
+  "packages/go/orm/stale_plan.go::stalePlan": {
+    "exported": false,
+    "signature": "func(err error) bool"
+  },
+  "packages/go/orm/stale_plan.go::stalePlanSession": {
+    "exported": false,
+    "signature": "type stalePlanSession struct { conn *sql.Conn }"
+  },
+  "packages/go/orm/stale_plan.go::stalePlanSession#field.conn": {
+    "exported": false,
+    "signature": "*sql.Conn"
+  },
+  "packages/go/orm/stale_plan.go::stalePlanSession.discard": {
+    "exported": false,
+    "signature": "receiver=*stalePlanSession func(err error) error"
+  },
+  "packages/go/orm/stale_plan.go::stalePlanSession.finish": {
+    "exported": false,
+    "signature": "receiver=*stalePlanSession func(ctx context.Context, err error) error"
+  },
   "packages/go/orm/statement_fault.go::DB.takeStatementFault": {
     "exported": false,
     "signature": "receiver=*DB func() error"
@@ -21625,11 +21681,15 @@
   },
   "packages/go/orm/statements.go::observed": {
     "exported": false,
-    "signature": "type observed struct { r runner kind string tables func(sqlText string) []string start time.Time ctx context.Context }"
+    "signature": "type observed struct { r runner kind string tables func(sqlText string) []string start time.Time ctx context.Context endAgain func(error) error }"
   },
   "packages/go/orm/statements.go::observed#field.ctx": {
     "exported": false,
     "signature": "context.Context"
+  },
+  "packages/go/orm/statements.go::observed#field.endAgain": {
+    "exported": false,
+    "signature": "func(error) error"
   },
   "packages/go/orm/statements.go::observed#field.kind": {
     "exported": false,
@@ -21686,6 +21746,10 @@
   "packages/go/orm/statements.go::runner.exec": {
     "exported": false,
     "signature": "receiver=runner func(ctx context.Context, kind string, tables []string, sqlText string, args ...any) (sql.Result, error)"
+  },
+  "packages/go/orm/statements.go::runner.outside": {
+    "exported": false,
+    "signature": "receiver=runner func() bool"
   },
   "packages/go/orm/statements.go::runner.rows": {
     "exported": false,

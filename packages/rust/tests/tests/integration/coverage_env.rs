@@ -1,26 +1,9 @@
-//! The database and DSN that feature-check chose, and the coverage case's deadline and progress output.
-//! feature-check gives ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, and runs each coverage test by its exact name on the seeded bench
-//! database.
-use polyspec_orm_testcase::OrPanic;
-
-use polyspec_orm::Db;
+//! The deadline and progress output of a database case of the generated models.
 use std::future::Future;
 use std::time::Duration;
 
-pub use super::result_code::code;
-
 /// The deadline of one database case. It is measured in wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
-
-/// Connects with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN. Fails if either is missing, or if the DSN
-/// selects a different database.
-pub async fn connect() -> Db {
-    let (driver, dsn) = super::coverage_database::feature_database();
-    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
-    let db = super::model::connect(&dsn, 2, config).await.or_panic(|e| format!("{driver}: connect: {e}"));
-    assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
-    db
-}
 
 /// Runs `body` within the deadline and prints its start, success, and elapsed time.
 pub async fn run<F: Future<Output = ()>>(case: &str, body: F) {

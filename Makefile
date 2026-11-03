@@ -404,7 +404,7 @@ get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
 get-page-plan-steps-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
 get-page-plan-steps-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page -- --exact --test-threads=1
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_sqlite -- --exact complex_query_sqlite::page_plan_steps
 
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
 # its results (PASS, FAIL and reason), and the elapsed time, and that it reports a case past its deadline as FAIL,
@@ -1263,18 +1263,17 @@ dbspec-php-extension-check/aes: php-vendor-check dbspec-php-extension-check/prep
 # dbspec-php-extension-check/set-parse runs DbspecSetParseRecipeTestExtensionTest with the extension: every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecSetParseRecipeTestExtensionTest.php
-# dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
+# dbspec-php-extension-check/planner runs the planner suites with the extension: PlannerCompileTestExtensionTest
 # (the compile recipe tests/planner/compile.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
 # (the recipe tests/ir/answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
-dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
+dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/compile dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
 
 # The planner parts are independent: each runs as its own target after the class check, so make -j runs them together.
 dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
-PHP_EXTENSION_PLANNER_TEST_FILTER ?= test_
-dbspec-php-extension-check/planner/coverage: php-vendor-check dbspec-php-extension-check/planner/internal
-	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoveragePlannerExtensionTest.php --filter '$(PHP_EXTENSION_PLANNER_TEST_FILTER)'
+dbspec-php-extension-check/planner/compile: php-vendor-check dbspec-php-extension-check/planner/internal
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/PlannerCompileTestExtensionTest.php
 dbspec-php-extension-check/planner/insert-parts: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
 dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-extension-check/planner/internal
@@ -1499,6 +1498,8 @@ RECIPE_VECTORS_RUN = for database in sqlite mysql postgres; do node tests/confor
 .PHONY: conformance-generated-methods-check conformance-fixed-clock-check conformance-recipe-vectors-unit
 conformance-generated-methods-check: conformance-recipe-vectors-unit $(addprefix conformance-generated-methods-check/,$(RECIPE_VECTORS_LANGUAGES))
 conformance-fixed-clock-check: conformance-recipe-vectors-unit $(addprefix conformance-fixed-clock-check/,$(RECIPE_VECTORS_LANGUAGES))
+CHECK_TARGETS += conformance-generated-methods-check conformance-fixed-clock-check
+CI_TARGETS_conformance += conformance-generated-methods-check conformance-fixed-clock-check
 conformance-recipe-vectors-unit:
 	$(NODE) --test tests/conformance/check/recipe_vectors.test.mts
 define RECIPE_VECTORS_TARGETS
@@ -1529,23 +1530,11 @@ feature-go-unit:
 # feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
 # (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
 # `--test client_bench_dsn` or `--bin conformance`) and FEATURE_TEST (the exact name of the test) are passed by
-# config/parity.json. The test is selected by its exact name, since a target also holds the database tests that
-# feature-rust-database runs. It runs through tests/cargo-test.mts,
+# config/parity.json. The test is selected by its exact name. It runs through tests/cargo-test.mts,
 # the runner of every Rust test, which gives the test binaries the copied programs they read (polyspec_orm_testcase::program).
 .PHONY: feature-rust-unit
 feature-rust-unit:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
-
-# feature-rust-database runs one Rust database test of a feature against one database, as a parity binding names it:
-# FEATURE_CRATE, FEATURE_CARGO_TARGET and FEATURE_TEST as feature-rust-unit, and FEATURE_DATABASE with FEATURE_DSN_ENV (the
-# database, and the variable that holds its DSN). The test needs that database, so it is selected by its exact name only where
-# the database is given: the feature checker runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN set for each database of its
-# coverage item (scripts/features/coverage.mts), and this target does the same for the one database that the binding names.
-# A database test that the plain suite cannot run is an ignored trial, which the feature checker runs with --include-ignored, so
-# this target includes ignored tests too; --exact keeps the run to the named test.
-.PHONY: feature-rust-database
-feature-rust-database:
-	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --include-ignored --exact $(FEATURE_TEST)
 
 # feature-check is the feature coverage and all verification commands. Its aggregate feature-coverage target depends on the runtime/database
 # cells and the exclusive performance target; CI runs each SQL cell, each runtime's Markdown target, and performance in separate groups.
@@ -1872,7 +1861,7 @@ client-db-rust-check: lease-tool orm-codes
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
-PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePlannerExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
+PHP_EXT_MEMORY_CASES = ^(Polyspec\\Orm\\Extension\\Tests\\CoverageNativeFixtureExtensionTest::|Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\RequestHookTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaDefinitionExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\CoverageSchemaInstallNativeTest::|Polyspec\\Orm\\Extension\\Tests\\StatementEventsRecipeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\StatementRunnerRecipeTestExtensionTest::|Polyspec\\Orm\\Tests\\CoverageTransactionsExtensionTest::|Polyspec\\Orm\\Tests\\Cpx5DuplicateRelationNativeTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecAnalyzeTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyCleanupTestExtensionTest::|Polyspec\\Orm\\Extension\\Tests\\DbspecApplyTestExtensionTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks|Polyspec\\Orm\\Extension\\Tests\\ParameterChunkingMysqlRecipeExtensionTest::testMysql with data set "root_in_chunking")
 PHP_EXT_MEMORY_GATE_POSTGRES = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionPostgresTest::)
 PHP_EXT_MEMORY_GATE_SQLITE = ^(Polyspec\\Orm\\Tests\\CoveragePerformanceGateExtensionSqliteTest::)
 
@@ -3617,12 +3606,12 @@ request-hook-php-extension-check: php-vendor-check php-model-check lease-tool
 .PHONY: request-hook-relation-scope-check
 request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hook-relation-scope-check-$$PPID
 request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRequestHook$$/^relation_scope$$' -count=1
-	$(NODE) --test-name-pattern='^request-hook/relation_scope$$' packages/ts/tests/request_hook.mjs
+	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRecipeRequestHookSqlite$$/^relation_scope$$' -count=1
+	$(NODE) --test --test-name-pattern='relation_scope' packages/ts/tests/request_hook-sqlite.test.mjs
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook_sqlite
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookSqliteRecipeTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php/tests/RequestHookTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) request-hook-relation-scope-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --manifest-path packages/rust/Cargo.toml --workspace --features $(ORM_RUST_TEST_FEATURES) --test request_hook_sqlite -- --exact request_hook_sqlite::relation_scope
 
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the

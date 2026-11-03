@@ -4310,7 +4310,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model",
               "expect"
             ],
@@ -4343,7 +4342,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model"
             ],
             "additionalProperties": false,
@@ -5637,8 +5635,12 @@
                       }
                     }
                   },
-                  "rule": {
-                    "type": "string"
+                  "diagnostics": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "manifest_hash": {
                     "type": "string"
