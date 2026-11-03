@@ -1682,6 +1682,10 @@ const TABLE_OPS = {
     await chainTarget(s, context).delete(s.recursive === true);
     return {};
   },
+  async 'db.notify'(s, context) {
+    await connectionOf(s, context).notify(s.channel, s.payload);
+    return {};
+  },
   async 'utils.lock'(s, context) {
     await connectionOf(s, context).utils().lock(s.name);
     return {};
