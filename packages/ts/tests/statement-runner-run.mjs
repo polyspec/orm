@@ -1,4 +1,4 @@
-// The statement runner case of INT-150 for one database: statement-runner.mjs and coverage_statement_runner.mjs use this runner.
+// The statement runner case of INT-150 for one database: statement-runner.mjs uses this runner.
 // It runs db.utils().run(fn) outside a transaction, where it opens one, and inside a transaction, where it joins that one, on the
 // database of dsn, and calls check(condition, message) for each expectation that fails.
 import { Db } from '../dist/index.js';

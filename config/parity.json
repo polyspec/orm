@@ -41879,13 +41879,33 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageStatementRunnerTest.php",
-          "id": "CoverageStatementRunnerTest::testStatementRunner"
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "id": "StatementRunnerRecipeTest::testSqlite with data set \"outside_opens_and_ends_a_transaction\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "id": "StatementRunnerRecipeTest::testSqlite with data set \"inside_joins_the_active_transaction\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StatementRunnerRecipeTest.php",
+          "id": "StatementRunnerRecipeTest::testSqlite with data set \"failed_statement_is_its_database_code_and_rolls_back\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
-          "id": "CoverageStatementRunnerExtensionTest::testStatementRunner"
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "id": "StatementRunnerRecipeTestExtensionTest::testSqlite with data set \"outside_opens_and_ends_a_transaction\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "id": "StatementRunnerRecipeTestExtensionTest::testSqlite with data set \"inside_joins_the_active_transaction\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+          "id": "StatementRunnerRecipeTestExtensionTest::testSqlite with data set \"failed_statement_is_its_database_code_and_rolls_back\""
         },
         {
           "implementation": "python",
@@ -41899,8 +41919,18 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_runner.mjs",
-          "id": "statement_runner"
+          "test": "packages/ts/tests/statement_runner-sqlite.test.mjs",
+          "id": "outside_opens_and_ends_a_transaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-sqlite.test.mjs",
+          "id": "inside_joins_the_active_transaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_runner-sqlite.test.mjs",
+          "id": "failed_statement_is_its_database_code_and_rolls_back"
         }
       ]
     },

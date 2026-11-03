@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The statement runner coverage files of TypeScript, PHP and the PHP extension are removed: their two reads of `SELECT 1`, outside and inside a transaction, are cases of the recipe `statement_runner`, which also names their feature owners.
 - A generated model of a set that uses an external document connects and reads a row of the used external table in a native test of every runtime, which fails when the generated schema value drops the external text; Go also compiles that output, and the PHPStan check of the query methods is bound in both PHP modes again.
 - The refusal of an immutable table is the recipe `immutable_write` (DBS-84): an update and a delete fail with `DRIVER`, the message holds `table refused_row is immutable`, the driver cause stays, and a later read gives the stored value. The outcome of an op takes `message_holds` and `driver_cause`. The delete was not checked in any runtime before. (#T334-3-4-16)
 - Key prefix methods, scanned chain methods, used external tables, the absence of lint suppressions and the manifest hash of generated code are cases of the `generator` recipe in all six runtimes, and their native tests are gone; the command line of the generator, the type of a generated member and the loading of a generated module stay native, each with its reason in docs/spec/feature-coverage.md.
