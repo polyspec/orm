@@ -52,6 +52,7 @@ const affected = db => ({ value: { int: String(lastAffected(db)) } });
 /** The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step. */
 export function connectDsn(dsn, database, caseDsn, socket = process.env.ORM_TEST_MYSQL_SOCKET) {
   if (dsn === undefined || dsn === 'case') return caseDsn;
+  if (dsn.startsWith('case?')) return `${caseDsn}${caseDsn.includes('?') ? '&' : '?'}${dsn.slice('case?'.length)}`;
   if (dsn !== 'case-socket') return dsn;
   if (database !== 'mysql') throw new Error(`dsn case-socket needs mysql, not ${database}`);
   if (!socket) throw new Error('dsn case-socket: ORM_TEST_MYSQL_SOCKET is unset; run make orm-test-servers');

@@ -74,7 +74,8 @@
         "dsn_connection-postgres",
         "dsn_connection-sqlite",
         "dsn-reject-checked",
-        "dsn-reject-parameters"
+        "dsn-reject-parameters",
+        "connection-driver-from-dsn"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -95,17 +96,14 @@
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-        "packages/python/tests/connection_utc.py",
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/dsn_features.mjs",
-        "packages/ts/tests/connection_utc.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/statement_timeout.mjs",
         "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",
-        "packages/go/model/coverage_dsn_test.go",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/sqlite_path_test.go",
@@ -136,7 +134,6 @@
         "packages/python/tests/test_driver_cells.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
-        "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -546,15 +543,6 @@
           ]
         },
         {
-          "id": "connection-utc-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_utc",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/connection_utc.py",
-            "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
           "id": "connection-pool-python",
           "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_pool",
           "shard": "other",
@@ -883,112 +871,7 @@
             }
           }
         },
-        "dependents": [
-          {
-            "id": "generated_go_model",
-            "language": "go",
-            "part": "packages/go/model",
-            "tests": [
-              "packages/go/model/coverage_dsn_test.go"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/mysql"
-                  },
-                  "case_database": true
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/postgres"
-                  },
-                  "case_database": true
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/sqlite"
-                  },
-                  "case_database": true
-                }
-              ]
-            }
-          },
-          {
-            "id": "generated_rust_model",
-            "language": "rust",
-            "part": "packages/rust/tests/tests/integration_program",
-            "tests": [
-              "packages/rust/tests/tests/integration_program/main.rs"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                }
-              ]
-            }
-          }
-        ]
+        "dependents": []
       }
     },
     {
@@ -2216,14 +2099,6 @@
           ]
         },
         {
-          "id": "ip-host-input-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestIPHostInputIsValidatedBeforeModelAndPredicateBinding$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/model_host_input_test.go"
-          ]
-        },
-        {
           "id": "writes-orm-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
           "shard": "other",
@@ -2688,12 +2563,10 @@
         "packages/php/tests/TransactionFailureCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/rust/orm/tests/rollback.rs",
-        "packages/ts/tests/rollback.mjs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
         "packages/ts/tests/coverage_transactions.mjs",
-        "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
         "packages/go/orm/statement_fault_test.go",
         "packages/go/orm/statement_fault_entry_test.go",
@@ -2804,11 +2677,10 @@
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFault' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFaultEntry$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/rollback_fault_entry_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/rollback_fault_entry_test.go"
           ]
         },
         {
@@ -2816,8 +2688,7 @@
           "command": "make transaction-failure-go-check",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/coverage_transaction_failure_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/coverage_transaction_failure_test.go"
           ]
         },
         {
@@ -2940,15 +2811,6 @@
           "inputs": [
             "packages/rust/orm/src/tx.rs",
             "packages/rust/orm/src/tx_send_tests.rs"
-          ]
-        },
-        {
-          "id": "rollback-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/rollback.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/rollback.mjs",
-            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
@@ -9073,14 +8935,6 @@
           "shard": "rust",
           "inputs": [
             "packages/rust/build/tests/row_snapshot.rs"
-          ]
-        },
-        {
-          "id": "catalog-row-baseline-go",
-          "command": "make --no-print-directory catalog-row-baseline-go-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile"
           ]
         },
         {

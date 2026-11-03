@@ -19,7 +19,6 @@ const TESTS: Command[] = [
   node('packages/ts/tests/statement-runner.mjs'),
   node('packages/ts/tests/clock.mjs'),
   node('packages/ts/tests/driver-error.mjs'),
-  node('--conditions=orm-test', 'packages/ts/tests/rollback.mjs'),
   node('--conditions=orm-test', 'packages/ts/tests/statement_fault.mjs'),
   node('--conditions=orm-test', 'packages/ts/tests/statement_fault_entry.mjs'),
   node('packages/ts/tests/mysql_tls.mjs'),

@@ -188,7 +188,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
   const checkTargets = [...makefile.matchAll(/^CHECK_TARGETS (?:\+)?= (.*)$/gm)].flatMap(match => match[1]?.trim().split(/\s+/) ?? []);
   assert.ok(checkTargets.length > 0, 'the Makefile declares CHECK_TARGETS');
-  assert.ok(checkTargets.includes('catalog-row-baseline-go-check'), 'CHECK_TARGETS includes appended owner targets');
+  assert.ok(checkTargets.includes('catalog-described-temporal-go-check'), 'CHECK_TARGETS includes appended owner targets');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
   assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, 'parity-api-check': { scope: 'suite', needs: [] } }, ['a'], ['docs/x.md']), []);
@@ -237,7 +237,8 @@ caseTest('a change across the four clients selects no full-suite target', 5000, 
   const owners = await selectOwners(manifest, root, t42);
   assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
   assert.deepEqual(selected(owners.slice(0, 1)), [
-    'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript',
+    'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/php-extension',
+    'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript', 'statement_events/coverage/owner/python',
   ]);
 });
 

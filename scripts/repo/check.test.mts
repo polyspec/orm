@@ -594,7 +594,7 @@ function isStringArray(value: unknown): value is string[] {
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
-  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage/go/mysql', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-row-baseline-go-check'])
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage/go/mysql', 'feature-performance-check', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-described-temporal-go-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
   assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
   assert.deepEqual(checkTargets('CHECK_TARGETS = first\nCHECK_TARGETS += second third\n'), ['first', 'second', 'third']);
@@ -625,7 +625,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   const own = jobTargets(makefile);
   assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
-  assert.ok((targets.static ?? []).includes('catalog-row-baseline-go-check'), 'the appended owner check runs in the static CI group');
+  assert.ok((targets.static ?? []).includes('catalog-described-temporal-go-check'), 'the appended owner check runs in the static CI group');
   for (const [group, expected] of Object.entries({
     client_db_go: ['client-db-go-check', 'dialect-facts-check'],
     client_db_php: ['client-db-php-check', 'complex-query-check/php'],

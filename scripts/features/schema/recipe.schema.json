@@ -719,6 +719,10 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "keeps_callback": {
+              "description": "A ROLLBACK error keeps the error that the callback of its transaction returned (CFG-15).",
+              "const": true
+            },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
@@ -2205,7 +2209,7 @@
           "dsn": {
             "type": "string",
             "minLength": 1,
-            "description": "Absent: the case database. \"case\" is its DSN, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
+            "description": "Absent: the case database. \"case\" is its DSN, \"case?<query>\" its DSN with those parameters, \"case-socket\" its MySQL DSN through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, CFG-19; a MySQL-only recipe unit, FCV-3); otherwise the DSN text of the step (FCV-4)."
           },
           "as": {
             "$ref": "#/$defs/name"
@@ -3747,8 +3751,7 @@
         "required": [
           "op",
           "metadata",
-          "values",
-          "expect"
+          "values"
         ],
         "additionalProperties": false,
         "properties": {
@@ -8245,6 +8248,18 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "table",
+                  "partitioned",
+                  "view",
+                  "materialized_view",
+                  "foreign",
+                  "virtual",
+                  "shadow"
+                ]
+              },
               "columns": {
                 "type": "array",
                 "items": {

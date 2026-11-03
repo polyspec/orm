@@ -1521,8 +1521,7 @@
         "packages/go/orm/recipe_statement_events_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go",
-        "packages/go/internal/recipe/statement.go",
-        "packages/go/orm/statement_events*.go"
+        "packages/go/internal/recipe/statement.go"
       ]
     },
     "statement-events-check/typescript": {
@@ -2372,7 +2371,6 @@
         "Makefile",
         "packages/python/src/polyspec/orm/catalog.py",
         "packages/python/tests/test_catalog_mutation_helper.py",
-        "packages/python/tests/test_catalog_row_baseline.py",
         "packages/python/tests/test_catalog_mysql_visibility.py",
         "packages/python/tests/test_catalog_described_temporal.py"
       ]
@@ -2844,7 +2842,6 @@
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/schema_helpers_test.go",
-        "packages/go/orm/rollback_fault_test.go",
         "Makefile"
       ]
     },
@@ -3024,22 +3021,6 @@
         "tests/testcase.mts"
       ]
     },
-    "connection-utc-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/tests/connection_utc.mjs",
-        "packages/ts/tests/model.mjs",
-        "packages/ts/tests/bench-set.mjs",
-        "packages/ts/tests/case-database.mjs",
-        "contracts/fixtures/bench/**",
-        "tests/testcase.mts"
-      ]
-    },
     "connection-utc-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -3060,37 +3041,6 @@
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
-      ]
-    },
-    "connection-utc-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php/tests/ModelTest.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/tests/bench.php",
-        "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "contracts/fixtures/bench/**"
-      ]
-    },
-    "connection-utc-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust",
-        "databases",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/tests/zone.rs",
-        "tests/cargo-test.mts",
-        "tests/testcase.mts"
       ]
     },
     "dbspec-apply-php-extension-check": {
@@ -3211,7 +3161,6 @@
         "tests/dbspec/*.json",
         "tests/dsn/sqlite-paths.json",
         "tests/ir/*.json",
-        "tests/events/*.json",
         "tests/markdown/*.json",
         "tests/conformance/schema/**",
         "scripts/json/**",
@@ -3648,16 +3597,6 @@
         "packages/go/orm/catalog.go",
         "packages/go/orm/catalog_session_error_test.go",
         "packages/go/orm/failing_driver_test.go"
-      ]
-    },
-    "catalog-row-baseline-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/orm/catalog_row_baseline_test.go"
       ]
     },
     "catalog-described-temporal-go-check": {

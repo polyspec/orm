@@ -282,6 +282,12 @@ var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
 func connectDSN(dsn, database, caseDSN string) (string, error) {
+	if query, ok := strings.CutPrefix(dsn, "case?"); ok {
+		if strings.Contains(caseDSN, "?") {
+			return caseDSN + "&" + query, nil
+		}
+		return caseDSN + "?" + query, nil
+	}
 	switch dsn {
 	case "", "case":
 		return caseDSN, nil
@@ -523,6 +529,9 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		}
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		}
+		if keeps, ok := expected["keeps_callback"]; ok && keeps == true && !errors.Is(err, errCallback) {
+			return fmt.Errorf("error %q does not keep the error of the callback", err.Error())
 		}
 		if want, ok := expected["rollback"]; ok {
 			var coded *orm.Error
@@ -1696,7 +1705,9 @@ var declaredPrecision = regexp.MustCompile(`\(([0-9]+)\)`)
 // cannot be decided fails the step.
 func plainTime(v time.Time, nativeType, database string) (any, error) {
 	kind := temporalKind(nativeType)
-	v = v.UTC()
+	if v.Location() != time.UTC {
+		return nil, fmt.Errorf("the time value %s reads in %s, not in UTC (CFG-2)", v, v.Location())
+	}
 	if kind == "date" {
 		return map[string]any{"date": v.Format("2006-01-02")}, nil
 	}

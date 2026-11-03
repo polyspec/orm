@@ -1,11 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e82bb3f4a1e2095b8eb9ce12d487dd2faec5ce9b07b3b947bf3964af5bfb91b2 -->
+<!-- source-sha256: a522acd8035001a50b8993be25045387faf6a1ef261e7828b8bffd710432a05e -->
 # 변경 이력
 
 ## Unreleased
 
-- ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
-- PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
+- rollback fault의 native가 모든 runtime에서 사라졌다: recipe transactions의 case가 그것을 말하고, ROLLBACK이 지니는 callback error는 새 expect key `keeps_callback`이 말한다. `packages/ts/tests/rollback.mjs`와 `packages/go/orm/rollback_fault_test.go`는 지워지고, Rust의 두 form은 INT-72a로 native에 남는다.
+- 시험: chain의 finalize는 모든 runtime에서 `dbspec_apply` recipe가 맡고, 아무것도 숨기지 않는 plan의 새 case를 둔다: finalize event는 행이 `applied`일 때 오고, 문장은 실행되지 않으며, 행은 `done`이 된다. Go의 `TestFinalizeMarksPlanDone`은 삭제했다.
+- 문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.
+- generator는 parse된 문서의 diagnostic을 SCH-12 형식 `<line>:<column> <rule>: document <name>: <message>`로 출력한다. PHP와 그 확장, Rust builder는 각자의 형식으로 출력했다 (#T334-3-20)
+- commit에서 연결을 잃은 PHP catalog가 이후 계속 `CONNECTION_LOST`로 실패하지 않고 다음 호출에 새 연결로 읽는다(INT-118). `catalog_connection` recipe case `row_commit_outcomes`가 commit을 거부하는 PostgreSQL deferred trigger와 commit 중 backend를 끝내는 trigger로 이를 담는다.
 - 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.
@@ -13,6 +16,9 @@
 - 행 baseline과 native update 검증이 여섯 runtime, 세 데이터베이스의 `catalog_connection` recipe case `row_update_verification`, `row_baseline_key_order`, `row_baseline_rejected`가 되었고, op `catalog.revision_compare`와 `page_with`의 대체가 늘었다. Rust 시험은 사라졌고 Rust 형식만 담는 부분(`rust-row-snapshot-cell-forms`)만 남는다. TypeScript는 SQLite view를 정의 text가 하나가 아닌 table로 거부하지 않는다.
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
+- recipe transactions의 case `a_rollback_fault_is_consumed_by_the_next_failed_rollback`이 새 op `fault.next_rollback`으로 모든 runtime의 INT-72를 말한다: fault는 commit된 transaction을 지나 남고, 다음 실패 callback은 FAULT를 담은 ROLLBACK을 보고하며, 그다음 transaction은 callback error만 보고한다.
+- Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
+- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - Go physical 시험의 query 형태는 모든 database에서 recipe case다: `{"random": true}`는 `model.query`를 `orderByRandom`으로 정렬하고, case `query_now_and_random_order`가 `now`와 함께 그것을 시험한다. tuple과 날짜 함수는 이미 case였다 (#T334-3-18).
 - - output 이름 충돌의 compile case는 planner.compile expect의 선택 항목 message로 모든 dialect의 오류 문장 전체를 시험한다 (#T334-3-6-2)
 - recipe가 닿지 못하는 catalog native는 internal test로 남고, generated_identity_sqlite, read_only_grid_shapes, temporal_text_row_cycle_sqlite가 random key, 거부되는 grid 쓰기, temporal row cycle을 담습니다.
@@ -22,7 +28,6 @@
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
 - Go는 conformance vector를 recipe conformance_verification과 fixed-clock 본문으로만 돌린다. tag가 붙은 시험 `coverage_conformance_verification_test.go`와 그 helper, `testdb.FeatureDatabase`, runner `packages/go/testing/feature-json.mts`, target `feature-go-unit`, build tag `featurecoverage`를 없앴다 (#T334-3-12-2)
-- recipe transactions의 case `a_rollback_fault_is_consumed_by_the_next_failed_rollback`이 새 op `fault.next_rollback`으로 모든 runtime의 INT-72를 말한다: fault는 commit된 transaction을 지나 남고, 다음 실패 callback은 FAULT를 담은 ROLLBACK을 보고하며, 그다음 transaction은 callback error만 보고한다.
 - `errors` vector의 거부 아홉 가지(연결자 누락·끊긴 연결자, 빈 목록, 연결 없음, transaction 밖 lock, 연결된 join child, limit 있는 page, limit 있는 relation, join하지 않은 model 배치)가 recipe conformance_verification의 `errors` case로 여섯 runtime 모두에서 돌며, 빈 event 목록이 요청이 나가지 않았다는 증거다. recipe는 join의 `connect`, relation의 `limit`, `{"placed": {"model": <name>}}`, `plan` 없는 `plan_page`(`getsPage`)를 받는다 (#T334-3-12-2)
 - Go, PHP, TypeScript의 `orm-gen gen --check` native 시험을 없앴다. recipe `generator`의 case `check_reports_differences_without_writing`가 그 내용을 맡고, `go-model-check`와 `php-model-check`가 생성된 모델을 맡고, TypeScript build는 자기 모델을 직접 쓴다.
 - INT-78a는 hook을 건 handle의 `root`가 연결임을 root가 있는 runtime인 Go, TypeScript, Python에 대해 정한다. Rust compiler fixture는 request hook이 bind된 값을 쓸 수 없음을 나타낸다.
@@ -43,14 +48,11 @@
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
-- Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
 - 함수와 subquery가 같은 output 이름을 쓰면 COLUMN_ALIAS_CONFLICT로 답한다는 것을 모든 runtime의 compile case `planner_function_and_subquery_share_an_output_name`이 시험한다. scalar aggregate 타입의 사본과 확장의 native planner 시험은 사라졌고, 확장의 planner target은 compile recipe를 실행한다 (#T334-3-6-2)
 - PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - `make perf-check`는 PERF-1의 Go 측정을 MySQL, PostgreSQL, SQLite에서 실행하고, `client-db-check`의 Go lane은 클라이언트 결과를 검증하지 않는 그 시험을 건너뛴다.
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
-- Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
-- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - row의 JSON 형식은 array 형식처럼 `time`과 `datetime` column을 모든 클라이언트에서 소수 여섯 자리로 쓴다. 지금까지 TypeScript, Python, Rust는 column precision으로, Go와 PHP는 여섯 자리로 썼다.
 - conformance vector의 쓰기 case 아홉 개를 더 recipe conformance_verification에서 돌린다 (#T334-3-4-23)
 - recipe가 담는 Go request hook native를 없앴다. 실패하는 hook의 읽기도 statement가 실행되지 않음을 적는다. native로 남는 unit은 FCV-2에 이유와 함께 적었다.
@@ -60,6 +62,11 @@
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - AES envelope와 blind index case, param_uses case는 여섯 런타임 모두에서 recipe로 실행한다. suite authenticated-encryption과 planner-params, 그 fixture를 삭제했고, authenticated_encryption과 planner의 owner는 tests/codec/codec.json과 tests/planner/compile.json을 가리킨다. 자기 case database를 쓰는 native test는 bench DSN 대신 `case_database`를 적는다.
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
+- kill이 실패한 catalog budget 중단은 결과의 나머지를 더 읽지 않음: PHP는 서버가 stream을 끝내기를 기다렸다가 다시 연결하고, Python은 socket을 닫음.
+- Go는 database/sql이 이미 닫은 connection의 statement를 CFG-15대로 `CONNECTION_LOST`로 보고한다. 전에는 `DRIVER`로 보고했고, 끊긴 savepoint의 바깥 rollback이 여기에 해당했다.
+- markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
+- 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
+- PHP, TypeScript, Go의 runtime model native를 값별로 비교해 없앴다. recipe에 외부 문서가 있는 bench set, 주석과 diagram이 없는 manifest text, select explicit 표시, i16 조건, 삽입 행별 clock, 할당된 `default now` 컬럼, rule로 거부되는 반복 문서와 빈 text를 더했다. PRT-81에 PRT-33의 `default now` 예외를 적었다.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
 - Recipe `statement_events`가 ORM error로 실패한 subscriber를 담고, Go와 Python의 native statement event 시험은 사라졌다.
 - 페이지의 계획 단계는 모든 런타임에서 `complex_query`의 recipe 사례 `page_plan_steps`가 담는다. 단계는 페이지가 보내는 문장이며, 잘못된 페이지, 잘못된 크기, limit이 있는 chain, 연결되지 않은 모델은 거부된다(DSL-159).
@@ -337,6 +344,8 @@
 - 문장 runner(INT-150)의 parity unit은 여섯 런타임 모두에서 `Utils.run`과 frame `run`을 이름으로 쓰고, 모든 데이터베이스에서 statement_runner 테스트를 바인딩한다 (T345-7).
 - Python 런타임은 `utils().run(fn)`을 public으로 만들어, 연결의 트랜잭션 frame으로 `fn`을 호출한다 (INT-150, T345-6).
 - Python 설치는 이미 make uv-install을 거친다. Makefile:768이 `$(MAKE) uv-install DIR=packages/python`을 호출하고 직접 실행하는 uv sync는 남아 있지 않으므로, 이 row는 Verification으로 닫는다 (KSTD-5-118).
+- UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.
+- Go `DriverFromDSN`은 별도 요구사항(CFG-40)이 되고, Go와 Rust의 generated model 연결은 그 연결을 하는 recipe 밖에 시험을 더 두지 않는다.
 - 공백이 든 `ip` column의 조건 값은 Go와 TypeScript처럼 PHP, PHP extension, Python, Rust에서도 조건을 만들 때 `CODEC_ENCODE`로 실패한다(COD-38). `INET6_ATON`으로 SQL에서 인코딩하는 MySQL에서는 NULL로 읽혀 어떤 행과도 맞지 않았고, SQLite와 PostgreSQL의 Python은 `OrmError`가 아닌 `CodecError`를 올렸다.
 - `model-ip-input-rejects-whitespace`, `model-codec-columns`, `coverage-model-create-parts`의 native 시험을 없앤다. recipe `model_writes_chain`이 그 값을 담으며, 거부되는 count, SQL NULL 쓰기, `IS NULL` 조건을 더했다.
 - 값 타입, styled SQL NULL 읽기, decimal 왕복의 native 시험은 typed getter가 돌려주는 값만 남긴다. 저장된 값, 거부, 조건, row 출력은 `conformance_verification`의 case `core_value_types`, `core_styled_null`, `core_styled_states`, `core_decimal_values`로, `i16`에 넣는 소수는 bind vector `i16-fraction`으로 옮긴다.
@@ -479,6 +488,8 @@
 - repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
+- ordered-json 값의 model JSON 출력은 새 step key `json_output`으로 여섯 runtime의 recipe case `ordered_json_keeps_its_text_in_the_model_json_output`가 되고 native 시험은 없앤다. SQL NULL과 빈 text 읽기는 recipe `catalog_connection`만 담는다. Python에만 있는 `to_json_text`는 COD-68이다.
+- PHP 시험 실행은 data set에 recipe 사본을 들지 않는다. PHP 기본 메모리 한도에서 suite를 만들다 죽지 않는다.
 
 ## 0.0.21
 

@@ -1,4 +1,4 @@
-// Requirements: PLN-89, PLN-91, PLN-92, PLN-104, PLN-105 (docs/spec/feature-coverage.md).
+// Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105 (docs/spec/feature-coverage.md).
 package orm_test
 
 import (
@@ -12,21 +12,21 @@ import (
 const dbspecApplyRecipe = "../../../contracts/fixtures/dbspec_apply/dbspec_apply.json"
 
 // TestRecipeDbspecApplyMysql runs the dbspec_apply recipe on MySQL, each case on a case database (FCV-3).
-// Requirements: PLN-89, PLN-91, PLN-92, PLN-104, PLN-105.
+// Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplyMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "mysql")
 }
 
 // TestRecipeDbspecApplyPostgres runs the dbspec_apply recipe on PostgreSQL, each case on a case database (FCV-3).
-// Requirements: PLN-89, PLN-91, PLN-92, PLN-104, PLN-105.
+// Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplyPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "postgres")
 }
 
 // TestRecipeDbspecApplySqlite runs the dbspec_apply recipe on SQLite, each case on a case database (FCV-3).
-// Requirements: PLN-89, PLN-91, PLN-92, PLN-104, PLN-105.
+// Requirements: PLN-89, PLN-91, PLN-92, PLN-94, PLN-104, PLN-105.
 func TestRecipeDbspecApplySqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dbspecApplyRecipe, "sqlite")

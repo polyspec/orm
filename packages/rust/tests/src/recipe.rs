@@ -121,6 +121,10 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
         None | Some("case") => Ok(case_dsn.to_owned()),
+        Some(dsn) if dsn.starts_with("case?") => {
+            let separator = if case_dsn.contains('?') { '&' } else { '?' };
+            Ok(format!("{case_dsn}{separator}{}", &dsn["case?".len()..]))
+        }
         Some("case-socket") => {
             if database != "mysql" {
                 return Err(format!("dsn case-socket needs mysql, not {database}"));
@@ -3140,6 +3144,9 @@ mod database {
                     if kept != Some(rollback) {
                         return Err(format!("error message {message:?} keeps the rollback error {kept:?}, want code {rollback}"));
                     }
+                }
+                if expected.as_ref().and_then(|e| e.get("keeps_callback")).and_then(Value::as_bool) == Some(true) && !message.contains(CALLBACK_FAILED) {
+                    return Err(format!("error message {message:?} does not keep the error of the callback"));
                 }
                 let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
