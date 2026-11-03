@@ -1,0 +1,129 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-74",
+    "INT-88",
+    "INT-89",
+    "INT-130"
+  ],
+  "cases": [
+    {
+      "id": "keyring_lists_its_versions_in_ascending_order",
+      "requirements": [
+        "INT-74",
+        "INT-130"
+      ],
+      "steps": [
+        {
+          "op": "keyring.versions",
+          "keyring": {
+            "current": 2,
+            "versions": {
+              "3": "third",
+              "1": "first",
+              "2": "second"
+            }
+          },
+          "expect": {
+            "none": {
+              "current": 2,
+              "versions": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "keyring_refuses_an_empty_key",
+      "requirements": [
+        "INT-130"
+      ],
+      "steps": [
+        {
+          "op": "keyring.versions",
+          "keyring": {
+            "current": 1,
+            "versions": {
+              "1": ""
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "keyring_refuses_an_undeclared_current_version",
+      "requirements": [
+        "INT-130"
+      ],
+      "steps": [
+        {
+          "op": "keyring.versions",
+          "keyring": {
+            "current": 2,
+            "versions": {
+              "1": "first"
+            }
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "terminal_returns_the_limit_error_recorded_first",
+      "requirements": [
+        "INT-88",
+        "INT-89"
+      ],
+      "steps": [
+        {
+          "op": "markdown.builder",
+          "calls": [
+            "limit_zero_count",
+            "empty_i64_list"
+          ],
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_contains": "a positive count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "terminal_returns_the_empty_list_error_of_the_first_column",
+      "requirements": [
+        "INT-88",
+        "INT-89"
+      ],
+      "steps": [
+        {
+          "op": "markdown.builder",
+          "calls": [
+            "empty_i64_list",
+            "empty_varchar_list"
+          ],
+          "expect": {
+            "none": {
+              "error": "EMPTY_IN",
+              "message_contains": "i64_value received an empty list"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

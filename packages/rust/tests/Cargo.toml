@@ -327,6 +327,13 @@ name = "model_writes_sqlite"
 path = "tests/model_writes_sqlite.rs"
 harness = false
 
+# Each case of the public interface recipe, contracts/fixtures/public_interface/public_interface.json, is the trial
+# public_interface_none::<case id> (FCV-3).
+[[test]]
+name = "public_interface_none"
+path = "tests/public_interface_none.rs"
+harness = false
+
 # Each case of the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, is the trial dsn_reject_none::<case id> (FCV-3).
 [[test]]
 name = "dsn_reject_none"

@@ -743,6 +743,8 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "keyring.versions",
+            "markdown.builder",
             "model.connect",
             "codec.decode",
             "codec.encode",
@@ -824,6 +826,12 @@
       "oneOf": [
         {
           "$ref": "#/$defs/ops/dsn.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.builder"
         },
         {
           "$ref": "#/$defs/ops/model.connect"
@@ -1282,6 +1290,118 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "keyring.versions": {
+        "type": "object",
+        "required": [
+          "op",
+          "keyring",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "keyring.versions"
+          },
+          "keyring": {
+            "$ref": "#/$defs/aesKeyring"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "current",
+                      "versions"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "current": {
+                        "type": "integer"
+                      },
+                      "versions": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "markdown.builder": {
+        "type": "object",
+        "required": [
+          "op",
+          "calls",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "markdown.builder"
+          },
+          "calls": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "limit_zero_count",
+                "limit_negative_offset",
+                "empty_i64_list",
+                "empty_varchar_list"
+              ]
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "error",
+                  "message_contains"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "type": "string"
+                  },
+                  "message_contains": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
           }
         }
       },
