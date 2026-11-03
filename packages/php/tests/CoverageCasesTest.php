@@ -483,7 +483,7 @@ SH;
         $seen = [];
         $this->withSelectedSQLiteEnvironment(function () use (&$connections, &$seen): void {
             coverageRunDatabaseItems(
-                __DIR__ . '/CoverageModelQueriesTest.php',
+                __DIR__ . '/CoverageTransactionsTest.php',
                 static function (Db $db) use (&$seen): void {
                     $seen[] = coverageItem();
                 },

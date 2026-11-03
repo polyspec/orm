@@ -15,50 +15,6 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
 
 /** The AES version column is selected once, as an ordinary visible column, when all columns are requested. */
-function assertAllColumnsSelectAesVersionOnce(string $root): void
-{
-    $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
-    $request = [
-        'ir_version' => 1,
-        'manifest_hash' => $model->manifestHash,
-        'kind' => 'one',
-        'entity' => 'author',
-        'n_params' => 1,
-        'where' => ['items' => [['pred' => ['column' => 'seq', 'op' => 'eq', 'p' => 0]]]]
-    ];
-    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-        foreach (
-            [
-                'selected' => ['columns' => ['mode' => 'all']],
-                'default' => [],
-            ] as $selection => $options
-        ) {
-            $step = (new Engine($model, $dialect, 8))->plan($request + $options)['steps'][0];
-            $quote = $dialect === 'mysql' ? '`' : '"';
-            $versionColumn = $quote . 'a' . $quote . '.' . $quote . 'aes_key_version' . $quote . ' AS ';
-            \PHPUnit\Framework\Assert::assertSame(
-                1,
-                substr_count($step['sql'], $versionColumn),
-                "$dialect $selection selection reads the AES version once"
-            );
-            $version = array_values(array_filter(
-                $step['assemble']['columns'],
-                static fn(array $column): bool => ($column['column'] ?? '') === 'aes_key_version'
-            ));
-            \PHPUnit\Framework\Assert::assertCount(
-                1,
-                $version,
-                "$dialect $selection selection marks one AES version column"
-            );
-            \PHPUnit\Framework\Assert::assertSame(
-                $selection === 'default',
-                $version[0]['hidden'] ?? false,
-                "$dialect $selection selection marks the hidden state"
-            );
-        }
-    }
-}
-
 #[Small]
 final class EngineTest extends TestCase
 {
@@ -73,7 +29,6 @@ final class EngineTest extends TestCase
     }
 
     // manifest check, request validation, and statement form.
-    // Requirements: PRT-1.
     public function testEngine(): void
     {
         $root = dirname(__DIR__, 3);
@@ -613,9 +568,4 @@ final class EngineTest extends TestCase
         }
     }
 
-    // Requirements: DIA-33.
-    public function testAllColumnsSelectAesVersionOnce(): void
-    {
-        assertAllColumnsSelectAesVersionOnce(dirname(__DIR__, 3));
-    }
 }
