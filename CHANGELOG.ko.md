@@ -1,9 +1,13 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8c7a22ddbefe725bcdb14fc3c6c02e22b2006c8bac567e7ea379a5e316f394a -->
+<!-- source-sha256: 08d8dbb11d83946326ebb17ac01556ceae1cf057c04146b4e62f94b3a9631657 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP와 PHP extension은 described read에서 SQLite TIME 또는 DATETIME column에 저장된 숫자를 다른 runtime처럼 GRID_TEMPORAL_VALUE로 거부하며, temporal_write_and_limits가 temporal 쓰기, key, 한계를 담습니다.
+- 바이트 예산과 정확히 같은 Rust page는 응답하고, 모든 runtime이 예산 거부를 같은 message로 알리며, INT-115가 이 message를 정합니다.
+- plain read-only query는 여섯 runtime 모두에서 binary 값을 그 byte로 돌려주며, INT-153이 이 형식을 정합니다.
+- catalog은 UNION ALL 피연산자나 + 항이 200개인 PostgreSQL 읽기를 더 이상 거부하지 않고, Rust는 다른 dialect에서도 읽기의 깊이를 제한하지 않으며, catalog_read가 이 읽기의 응답을 확인합니다.
 - apply chain, history와 state, lock 범위, finalize, stress plan, pooler는 여섯 런타임의 recipe `dbspec_apply`이며, 각 명령은 이름 있는 연결에서 공개 apply API를 한 번 호출하고, 그 native 시험은 사라졌다.
 - CR15-F: 공유되는 행 변경 결과(충돌, unique, 강제 변환, 생성 열, 스키마 변경, 외래 키, insert 형태)는 recipe case `row_mutation_lifecycle`이 맡고, Rust 시험은 INT-106a의 phase, 취소, 버려진 커밋만 남긴다.
 - introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
