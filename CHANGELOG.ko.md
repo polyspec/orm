@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 26937c03d1954313648b62912d1d2cf3f1384cf03971c979875410c57c0ad3c8 -->
+<!-- source-sha256: 2f7c31359109e30cecb4b16c61e24348a3b6c11649d18b84b03716e2ac9df65d -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe `schema_install`은 install이 밝히는 차이를 담는다. 모든 op의 outcome이 `message_suffix`를 받고, `install_external_drift`는 메시지가 `column user.coverage_missing does not exist`로 끝나기를 기대한다. `coverageItemsOf`를 읽던 `CoverageSchemaInstallNativeTest`의 세 시험은 지웠고, 그 recipe와 `SchemaSetTest`가 담는다. (#T334-3-4-15)
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
 - recipe op `dsn.connect`는 여섯 runtime 모두에서 자기가 연 연결에 `utils().run`으로 `SELECT 1`을 실행하므로, DSN이 답하는 database에 연결함을 확인한다. PHP `CoverageDsnTest`는 native로 남는 SQLite 최소 버전 검사(DSL-150)만 두고 feature 환경을 읽지 않는다.
