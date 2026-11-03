@@ -171,5 +171,5 @@ codes:
     origin: driver
   - code: CONNECTION_LOST         # the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
     origin: driver
-  - code: DRIVER                  # any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
+  - code: DRIVER                  # any other driver error, such as a connection that the server refuses (CFG-1), or a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE, and SQLite LOCKED (6, 262), which SQLite reports for no row-lock deadlock
     origin: driver
