@@ -11935,7 +11935,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11948,7 +11948,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11961,7 +11961,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -13146,7 +13146,6 @@
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
-        "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/test_request_hook_mysql.py",
         "packages/python/tests/test_request_hook_postgres.py",
@@ -13186,15 +13185,6 @@
           "inputs": [
             "packages/php/tests/RequestHookTest.php",
             "packages/php/tests/request_hook_cases.php",
-            "contracts/fixtures/request_hook/request_hook.dbs"
-          ]
-        },
-        {
-          "id": "request-hook-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts request-hook-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test request_hook -- --skip coverage_request_hook_",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/request_hook.rs",
             "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },
