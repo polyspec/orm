@@ -23,7 +23,8 @@
     "DBS-113",
     "INT-34",
     "CFG-34",
-    "CFG-35"
+    "CFG-35",
+    "INT-118"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -1459,7 +1460,7 @@
               "rows": [
                 [
                   {
-                    "null": true
+                    "null": "datetime"
                   }
                 ]
               ]
@@ -1542,10 +1543,10 @@
               "rows": [
                 [
                   {
-                    "null": true
+                    "null": "datetime"
                   },
                   {
-                    "null": true
+                    "null": "time"
                   }
                 ]
               ]
@@ -6801,7 +6802,8 @@
       "steps": [
         {
           "op": "sql.exec",
-          "sql": "CREATE TABLE refused_row (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+          "sql": "CREATE TABLE refused_row (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)",
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "sql.exec",
@@ -6809,7 +6811,8 @@
             "mysql": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'refused'",
             "postgres": "CREATE FUNCTION refused_row_refuse() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'refused'; END$$",
             "sqlite": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row BEGIN SELECT RAISE(ROLLBACK, 'refused'); END"
-          }
+          },
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "sql.exec",
@@ -6817,7 +6820,8 @@
             "mysql": "SELECT 1",
             "postgres": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW EXECUTE FUNCTION refused_row_refuse()",
             "sqlite": "SELECT 1"
-          }
+          },
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "catalog.describe_table",
@@ -6897,6 +6901,947 @@
               ],
               "has_more": false,
               "rows": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "temporal_precision_limit",
+      "requirements": [
+        "INT-101"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "refused": true,
+          "refused_message": "precision",
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))",
+          "only": [
+            "mysql"
+          ],
+          "reason": "dbspec declares a precision from 0 to 6, so only a native statement reaches the refusal of a TIME(7) by the MySQL server (DIA-54)"
+        },
+        {
+          "op": "sql.exec",
+          "refused": true,
+          "refused_message": "precision",
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t DATETIME(7))",
+          "only": [
+            "mysql"
+          ],
+          "reason": "dbspec declares a precision from 0 to 6, so only a native statement reaches the refusal of a DATETIME(7) by the MySQL server (DIA-54)"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))",
+          "only": [
+            "postgres",
+            "sqlite"
+          ],
+          "reason": "dbspec declares a precision from 0 to 6, so only a native statement declares a TIME(7), which PostgreSQL caps at 6 and SQLite keeps as its type text (DIA-54)"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "precision_limit",
+          "expect": {
+            "mysql": {
+              "error": "TABLE_NOT_FOUND"
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "t"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
+              "native_types": [
+                "bigint",
+                "time(6) without time zone"
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "t"
+              ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": false,
+              "native_types": [
+                "BIGINT",
+                "TIME(7)"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_character_capacity",
+      "requirements": [
+        "INT-111"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "start"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "2"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "start"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "start"
+          },
+          "index": 0,
+          "as": "at_start"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "start"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_start"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "three_bytes"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "three_bytes"
+          },
+          "index": 0,
+          "as": "at_three_bytes"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "at_three_bytes"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞𝄞"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "descriptor_column_name",
+      "requirements": [
+        "INT-109"
+      ],
+      "steps": [
+        {
+          "op": "catalog.table_page",
+          "table": "user",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "as": "users"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "users"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "column_name": ""
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "users"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "column_name": "a\u0000b"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page_with": {
+            "page": {
+              "ref": "users"
+            },
+            "order_by": [
+              "seq"
+            ],
+            "column_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "index": 0,
+          "expect": {
+            "mysql": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "postgres": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            },
+            "sqlite": {
+              "error": "ROW_SNAPSHOT_INVALID",
+              "message_suffix": "TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "missing_row_conflict",
+      "requirements": [
+        "INT-109"
+      ],
+      "steps": [
+        {
+          "op": "catalog.describe_table",
+          "table": "composite_account",
+          "as": "account"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "account"
+          },
+          "values": [
+            [
+              "tenant_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "account_id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "name",
+              {
+                "text": "gone"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "composite_account",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "tenant_id",
+            "account_id",
+            "name"
+          ],
+          "as": "page"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page"
+          },
+          "index": 0,
+          "as": "row"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "row"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "row"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "row"
+          },
+          "set": [
+            [
+              "name",
+              {
+                "text": "back"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "catalog_close_twice",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "steps": [
+        {
+          "op": "catalog.table_page",
+          "table": "user",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "as": "page"
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "page"
+          },
+          "index": 0,
+          "as": "row",
+          "expect": {
+            "mysql": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "postgres": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            },
+            "sqlite": {
+              "keys": [
+                {
+                  "int": "1"
+                }
+              ],
+              "key_indexes": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "row"
+          },
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_CLOSED"
+            },
+            "postgres": {
+              "error": "CATALOG_CLOSED"
+            },
+            "sqlite": {
+              "error": "CATALOG_CLOSED"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "deferred_foreign_key_at_commit",
+      "requirements": [
+        "INT-118"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE deferred_parent (id BIGINT NOT NULL PRIMARY KEY)",
+          "reason": "a foreign key that the case defers has no dbspec declaration"
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE deferred_child (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NOT NULL, FOREIGN KEY (parent_id) REFERENCES deferred_parent (id))",
+            "postgres": "CREATE TABLE deferred_child (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NOT NULL REFERENCES deferred_parent (id) DEFERRABLE INITIALLY DEFERRED)",
+            "sqlite": "CREATE TABLE deferred_child (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NOT NULL REFERENCES deferred_parent (id) DEFERRABLE INITIALLY DEFERRED)"
+          },
+          "reason": "a foreign key that the case defers has no dbspec declaration; MySQL has no deferred constraint and checks it at the statement"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "deferred_child",
+          "as": "child"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "child"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "parent_id",
+              {
+                "int": "9"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "ROW_COMMIT_REJECTED"
+            },
+            "sqlite": {
+              "error": "ROW_COMMIT_REJECTED"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM deferred_child",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
             }
           }
         }

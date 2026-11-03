@@ -152,6 +152,7 @@ final class ModelReadNativeTest extends TestCase
     }
 
     // Requirements: PRT-69, INT-90.
+    // Requirements: INT-68, INT-90.
     public function testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation(): void
     {
         $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();

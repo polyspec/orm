@@ -11,7 +11,7 @@ export { OrmError } from './runtime_error.js';
 export { CatalogConnection, CatalogRowSnapshot, connectCatalog } from './catalog.js';
 export type { CatalogAssignment, CatalogColumn, CatalogGridCell, CatalogGridResult, CatalogMutationResult, CatalogQueryLimits, CatalogQueryResult, CatalogTableKind, CatalogTableMetadata, CatalogTablePage, CatalogTableRef, CatalogValue } from './catalog.js';
 export { Db, TxFrame, registerModel } from './database.js';
-export type { ConnectOptions, Key, RequestHook, Schema, TransactionOptions } from './database.js';
+export type { ConnectOptions, Key, QueryPlanStep, RequestHook, Schema, TransactionOptions } from './database.js';
 export type { StatementEvent, StatementKind, StatementSubscriber } from './events.js';
 export type { DriverColumn, DriverName, DriverResult, DriverValue, Isolation, PoolStats } from './driver.js';
 export type { Notification, Subscription } from './listen.js';

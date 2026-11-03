@@ -50,6 +50,8 @@ const nothing: Value = { cls: '', shape: 'union', members: [] };
 export interface ScanSite {
   readonly name: string;
   readonly classes: readonly string[];
+  /** The count of values of the call; undefined for a call that spreads its values. */
+  readonly args: number | undefined;
 }
 
 /** The values that a value stands for: its members when it is a union, itself otherwise. */
@@ -347,7 +349,7 @@ class Scanner {
       const receivers = members(this.valueOf(call.callee.object));
       const models = receivers.filter(r => r.shape === 'model');
       for (const model of models) this.record(model.cls, name);
-      if (models.length > 0) this.sites.push({ name, classes: models.map(model => model.cls) });
+      if (models.length > 0) this.sites.push({ name, classes: models.map(model => model.cls), args: call.arguments.some(argument => argument.type === 'SpreadElement') ? undefined : call.arguments.length });
       const collections = receivers.filter(r => r.shape === 'collection');
       if (models.length === 1 && (modelCallbacks.has(name) || name.startsWith('addColumn'))) given = models[0];
       else if (models.length === 0 && collections.length === 1 && elementCallbacks.has(name)) given = { cls: collections[0]?.cls ?? '', shape: 'model' };

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: ca9465a6a4ca99d3a6b17795a97665886aa0a3c78bcc84bbb3b16af1a7558c53 -->
+<!-- source-sha256: 7b59eb44f64e5987bae5897a700c163e727c9328133658629f9d56e63c133354 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -22,6 +22,7 @@ classDiagram
         getSum()
         getAvg()
         getsPage()
+        getPagePlanSteps()
         getQuery()
         create()
         creates()

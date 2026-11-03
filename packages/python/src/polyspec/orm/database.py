@@ -3184,6 +3184,17 @@ def _record_inserted(ex: Executor, request: dict, key) -> None:
     frame.inserted.setdefault(request["entity"], set()).add(key)
 
 
+def page_plan_steps(ex: Executor, request: dict, params) -> list[dict]:
+    """Returns the steps of the plan of a page request, from the plan call that paginate runs."""
+    unsupported_on_markdown(ex.db, "getPagePlanSteps")
+    request, _ = _hooked(ex.db, request, params)
+    _check_lock(ex, request)
+    return [
+        {"role": step["role"], "tables": list(step["tables"]), "sql": step["sql"]}
+        for step in ex.db.plan(request)["plan"]["steps"]
+    ]
+
+
 def statement(ex: Executor, request: dict, params):
     """Returns the statement of the select request without running it."""
     unsupported_on_markdown(ex.db, "getQuery")

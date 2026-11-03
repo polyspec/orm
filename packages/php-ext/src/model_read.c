@@ -1038,27 +1038,71 @@ ZEND_METHOD(Polyspec_Orm_Model, getAvg)
     if (!read_aggregate(ZEND_THIS, "avg", return_value)) RETURN_THROWS();
 }
 
+/* The arguments of a page checked and its request built: the one request of getsPage and getPagePlanSteps. On success the
+ * caller owns db, frame, clone and request. */
+static bool page_request(zval *self, zend_long page, zend_long per_page, zval *db, zval *frame, zval *clone, zval *request)
+{
+    if (page < 1 || per_page < 1) { read_throw("CONFIG", "getsPage requires a positive page and perPage"); return false; }
+    zval *limit = model_state_property(model_state_of(Z_OBJ_P(self)), "limit");
+    if (limit != NULL && Z_TYPE_P(limit) != IS_NULL) { read_throw("CONFIG", "getsPage cannot be combined with limit"); return false; }
+    zval executor;
+    if (!read_model_call(self, "executor", &executor, 0, NULL)) return false;
+    zval *dbp = zend_hash_index_find(Z_ARRVAL(executor), 0), *framep = zend_hash_index_find(Z_ARRVAL(executor), 1);
+    if (dbp == NULL || framep == NULL) { zval_ptr_dtor(&executor); read_throw("INTERNAL", "executor result is incomplete"); return false; }
+    ZVAL_COPY(db, dbp);
+    ZVAL_COPY(frame, framep);
+    zval_ptr_dtor(&executor);
+    ZVAL_OBJ(clone, zend_objects_clone_obj(Z_OBJ_P(self)));
+    if (EG(exception) != NULL) { zval_ptr_dtor(db); zval_ptr_dtor(frame); return false; }
+    zval page_limit, left, right, offset;
+    array_init(&page_limit);
+    ZVAL_LONG(&left, page - 1);
+    ZVAL_LONG(&right, per_page);
+    mul_function(&offset, &left, &right);
+    add_assoc_zval(&page_limit, "offset", &offset);
+    add_assoc_long(&page_limit, "count", per_page);
+    model_state_property_set(model_state_of(Z_OBJ_P(clone)), "limit", &page_limit);
+    zval_ptr_dtor(&page_limit);
+    zval args[2];
+    ZVAL_STRING(&args[0], "paginate");
+    ZVAL_COPY(&args[1], db);
+    bool built = read_model_call(clone, "build", request, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    if (!built) { zval_ptr_dtor(clone); zval_ptr_dtor(db); zval_ptr_dtor(frame); return false; }
+    return true;
+}
+
+ZEND_METHOD(Polyspec_Orm_Model, getPagePlanSteps)
+{
+    static const char *const scalar_types[] = {"int", "int"};
+    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
+    zend_long page, per_page;
+    ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(page) Z_PARAM_LONG(per_page) ZEND_PARSE_PARAMETERS_END();
+    zval db, frame, clone, request;
+    if (!page_request(ZEND_THIS, page, per_page, &db, &frame, &clone, &request)) RETURN_THROWS();
+    zval args[2];
+    ZVAL_COPY(&args[0], &frame);
+    ZVAL_COPY(&args[1], &request);
+    bool ok = read_call(&db, "pagePlanSteps", return_value, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&request);
+    zval_ptr_dtor(&clone);
+    zval_ptr_dtor(&frame);
+    zval_ptr_dtor(&db);
+    if (!ok) RETURN_THROWS();
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, getsPage)
 {
     static const char *const scalar_types[] = {"int", "int"};
     if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
     zend_long page, per_page;
     ZEND_PARSE_PARAMETERS_START(2,2) Z_PARAM_LONG(page) Z_PARAM_LONG(per_page) ZEND_PARSE_PARAMETERS_END();
-    if (page < 1 || per_page < 1) { read_throw("CONFIG", "getsPage requires a positive page and perPage"); RETURN_THROWS(); }
-    zval *limit = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "limit");
-    if (limit != NULL && Z_TYPE_P(limit) != IS_NULL) { read_throw("CONFIG", "getsPage cannot be combined with limit"); RETURN_THROWS(); }
-    zval executor;
-    if (!read_model_call(ZEND_THIS, "executor", &executor, 0, NULL)) RETURN_THROWS();
-    zval *dbp=zend_hash_index_find(Z_ARRVAL(executor),0),*framep=zend_hash_index_find(Z_ARRVAL(executor),1);
-    if(dbp==NULL||framep==NULL){zval_ptr_dtor(&executor);read_throw("INTERNAL","executor result is incomplete");RETURN_THROWS();}
-    zval db,frame;ZVAL_COPY(&db,dbp);ZVAL_COPY(&frame,framep);
-    zval clone;ZVAL_OBJ(&clone,zend_objects_clone_obj(Z_OBJ_P(ZEND_THIS)));
-    if(EG(exception)!=NULL){zval_ptr_dtor(&executor);zval_ptr_dtor(&db);zval_ptr_dtor(&frame);RETURN_THROWS();}
-    zval page_limit;array_init(&page_limit);zval left,right,offset;ZVAL_LONG(&left,page-1);ZVAL_LONG(&right,per_page);mul_function(&offset,&left,&right);add_assoc_zval(&page_limit,"offset",&offset);add_assoc_long(&page_limit,"count",per_page);
-    model_state_property_set(model_state_of(Z_OBJ(clone)),"limit",&page_limit);zval_ptr_dtor(&page_limit);
-    zval kind,args[2],request;ZVAL_STRING(&kind,"paginate");ZVAL_COPY(&args[0],&kind);ZVAL_COPY(&args[1],&db);
-    if(!read_model_call(&clone,"build",&request,2,args)){zval_ptr_dtor(&kind);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);zval_ptr_dtor(&clone);zval_ptr_dtor(&executor);zval_ptr_dtor(&db);zval_ptr_dtor(&frame);RETURN_THROWS();}zval_ptr_dtor(&kind);zval_ptr_dtor(&args[0]);zval_ptr_dtor(&args[1]);
-    zval paginate_args[2],result;ZVAL_COPY(&paginate_args[0],&frame);ZVAL_COPY(&paginate_args[1],&request);bool ok=read_call(&db,"paginate",&result,2,paginate_args);zval_ptr_dtor(&paginate_args[0]);zval_ptr_dtor(&paginate_args[1]);zval_ptr_dtor(&clone);zval_ptr_dtor(&executor);zval_ptr_dtor(&frame);
+    zval db,frame,clone,request;
+    if(!page_request(ZEND_THIS,page,per_page,&db,&frame,&clone,&request))RETURN_THROWS();
+    zval paginate_args[2],result;ZVAL_COPY(&paginate_args[0],&frame);ZVAL_COPY(&paginate_args[1],&request);bool ok=read_call(&db,"paginate",&result,2,paginate_args);zval_ptr_dtor(&paginate_args[0]);zval_ptr_dtor(&paginate_args[1]);zval_ptr_dtor(&clone);zval_ptr_dtor(&frame);
     if(!ok){zval_ptr_dtor(&request);zval_ptr_dtor(&db);RETURN_THROWS();}
     zval *plan=zend_hash_index_find(Z_ARRVAL(result),0),*rows=zend_hash_index_find(Z_ARRVAL(result),1),*total_value=zend_hash_index_find(Z_ARRVAL(result),2);
     if(plan==NULL||rows==NULL||total_value==NULL){zval_ptr_dtor(&request);zval_ptr_dtor(&result);zval_ptr_dtor(&db);read_throw("INTERNAL","paginate result is incomplete");RETURN_THROWS();}

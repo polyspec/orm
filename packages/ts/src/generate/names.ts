@@ -1,14 +1,16 @@
 // Method names of generated models are parsed with the grammar of
 // docs/spec/dsl.md. Generation rejects names whose operator does not fit the
 // column type.
+import { CONFIG } from '../codes.js';
 import { type Entity, type Field as Column, type RuntimeModel as Manifest } from '../engine/model.js';
 import { opAllowed } from '../engine/validate.js';
 import { pascal, splitWords, words } from '../names.js';
+import { OrmError } from '../runtime_error.js';
 
 /** An underscore-separated segment no column name may contain. */
-const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
+const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext', 'tuple'];
 /** A prefix no column name may start with. */
-const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
+const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'fulltext'];
 /** Names no column may have. */
 const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
@@ -26,7 +28,7 @@ export function checkColumnNames(m: Manifest): void {
   for (const e of m.entities.values()) {
     for (const c of e.fields) {
       const problem = checkColumnName(c.name);
-      if (problem !== undefined) throw new Error(`${e.name}.${c.name}: ${problem}`);
+      if (problem !== undefined) throw new OrmError(CONFIG, `${e.name}.${c.name}: ${problem}`);
     }
   }
 }

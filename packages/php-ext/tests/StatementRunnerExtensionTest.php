@@ -41,12 +41,21 @@ final class StatementRunnerExtensionTest extends TestCase
         }, static fn(string $dsn) => self::runOutsideAndInside($dsn));
     }
 
-    // Requirements: INT-150.
+    // Requirements: INT-150b.
     #[DataProvider('drivers')]
     public function testStatementRunnerRefusesNonTextStatementWithConfig(string $driver): void
     {
         self::assertRunnerSurface();
         with_case_database($driver, static function (string $step): void {
         }, static fn(string $dsn) => self::nonTextStatementFailsWithConfig($dsn));
+    }
+
+    // Requirements: INT-150a.
+    #[DataProvider('drivers')]
+    public function testFrameAfterItsTransactionEnded(string $driver): void
+    {
+        self::assertRunnerSurface();
+        with_case_database($driver, static function (string $step): void {
+        }, static fn(string $dsn) => self::frameAfterItsTransactionEndedFailsWithConfig($dsn));
     }
 }

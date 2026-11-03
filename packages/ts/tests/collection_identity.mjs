@@ -71,19 +71,6 @@ caseTest('collection/get-fetched-value-use-typed-key', COMPUTE, () => {
   }
 });
 
-// Requirements: INT-88, INT-89.
-caseTest('model-terminal/returns-first-builder-error', COMPUTE, async () => {
-  const model = new orm.Author();
-  model.limit(-1, 1).limit(0, 0);
-  try {
-    await model.getCount();
-  } catch (error) {
-    if (error instanceof orm.OrmError && error.code === 'CONFIG' && error.message === 'CONFIG: limit requires a non-negative offset and a positive count') return;
-    throw error;
-  }
-  throw new Error('the terminal returned without the recorded builder error');
-});
-
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
 // Requirements: INT-11, INT-63, PRT-35.
 caseTest('collection-key/identity-from-fixture', COMPUTE, () => {

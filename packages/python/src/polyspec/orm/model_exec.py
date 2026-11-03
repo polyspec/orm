@@ -13,6 +13,7 @@ from polyspec.orm.database import (
     convert,
     key_of_values,
     key_value,
+    page_plan_steps,
     paginate as paginate_query,
     query,
     row_key,
@@ -1036,10 +1037,8 @@ def _group_value(db, column: dict, raw, schema: Entity):
     )
 
 
-def page_of(c: Core, page: int, per_page: int) -> dict:
-    """Returns one page of the matching rows and the total count."""
-    import math
-
+def _page_request(c: Core, page: int, per_page: int):
+    """Checks the arguments of a page and builds its request: the one request of getsPage and getPagePlanSteps."""
     if (
         isinstance(page, bool)
         or isinstance(per_page, bool)
@@ -1057,6 +1056,20 @@ def page_of(c: Core, page: int, per_page: int) -> dict:
     request = q.build("paginate")
     if request.error is not None:
         raise request.error
+    return ex, q, request
+
+
+def page_plan_steps_of(c: Core, page: int, per_page: int) -> list[dict]:
+    """Returns the steps of the plan that getsPage runs, in their order, without running it."""
+    ex, _, request = _page_request(c, page, per_page)
+    return page_plan_steps(ex, request.finish(), request.params)
+
+
+def page_of(c: Core, page: int, per_page: int) -> dict:
+    """Returns one page of the matching rows and the total count."""
+    import math
+
+    ex, q, request = _page_request(c, page, per_page)
     result = paginate_query(ex, request.finish(), request.params)
     items = _assemble(q, ex, request.external, result["result"])
     return {

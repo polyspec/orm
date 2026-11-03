@@ -342,6 +342,31 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return rows.ToArray(), nil
 		},
+		"group_count_views": func(s *served) (any, error) {
+			rows, err := markdownmodel.People().Connect(s.db).GroupByActive().GroupByAge().OrderByAgeDesc().GetsCount()
+			if err != nil {
+				return nil, err
+			}
+			counts := []int64{}
+			var first any
+			for row := range rows.All() {
+				counts = append(counts, row.Count())
+				if first != nil {
+					continue
+				}
+				active, err := row.Value("active")
+				if err != nil {
+					return nil, err
+				}
+				age, err := row.Value("age")
+				if err != nil {
+					return nil, err
+				}
+				_, unselected := row.Value("name")
+				first = map[string]any{"count": row.Count(), "active": active, "age": age, "unselected": orm.ErrorCode(unselected)}
+			}
+			return map[string]any{"length": rows.Len(), "counts": counts, "rows": rows.ToArray(), "first": first}, nil
+		},
 		"sum": func(s *served) (any, error) {
 			return markdownmodel.Tasks().Connect(s.db).SumPoints().GetSum()
 		},

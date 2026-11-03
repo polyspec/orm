@@ -1,7 +1,7 @@
 //! The Rust compiler fixtures of packages/rust/testing/compiler-fixtures/cases.json, one libtest-mimic trial
 //! `compiler_fixtures::<id>` per case: scripts/rust/compiler-fixtures.mts compiles the consumer of the case against the
 //! generated model under the cargo target lease, and the case declares its requirements in the file.
-//! Requirements: DBS-112, DBS-114, DBS-174, DSL-49, DSL-50, DSL-124, PLN-4, PLN-19.
+//! Requirements: DBS-112, DBS-114, DBS-174, DSL-10, DSL-19, DSL-47, DSL-49, DSL-50, DSL-67, DSL-96, DSL-98, DSL-123, DSL-124, PLN-4, PLN-19, PRT-14.
 
 use polyspec_orm_testcase::Trial;
 use std::fs;

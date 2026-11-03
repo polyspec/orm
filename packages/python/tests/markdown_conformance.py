@@ -326,6 +326,38 @@ def conformance_cases() -> dict:
             .to_array()
         )
 
+    def group_count_views(s):
+        rows = (
+            s.models.People()
+            .connect(s.db)
+            .group_by_active()
+            .group_by_age()
+            .order_by_age_desc()
+            .gets_count()
+        )
+        counts = []
+        first = None
+        for row in rows:
+            counts.append(row.count)
+            if first is None:
+                try:
+                    row.value("name")
+                    unselected = None
+                except OrmError as error:
+                    unselected = error.code
+                first = {
+                    "count": row.count,
+                    "active": row.value("active"),
+                    "age": row.value("age"),
+                    "unselected": unselected,
+                }
+        return {
+            "length": rows.length,
+            "counts": counts,
+            "rows": rows.to_array(),
+            "first": first,
+        }
+
     def group_count_no_rows(s):
         return (
             s.models.Tasks()
@@ -870,6 +902,7 @@ def conformance_cases() -> dict:
         "count": count,
         "group_count": group_count,
         "group_count_no_rows": group_count_no_rows,
+        "group_count_views": group_count_views,
         "sum": sum_,
         "avg": avg,
         "paginate": paginate,
