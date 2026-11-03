@@ -27,55 +27,6 @@ use Polyspec\Orm\RuntimeModel;
 #[Small]
 final class RuntimeModelTest extends TestCase
 {
-    public static function assertLoadSetReturnsExternalDocumentsMarked(): void
-    {
-        $owned = <<<'DBSPEC'
-dbspec 1 shop
-
-use core { account }
-
-table item {
-  seq i64
-  account_seq i64
-  primary key (seq)
-  index ix_item_account (account_seq)
-  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict
-}
-DBSPEC;
-        $external = <<<'DBSPEC'
-dbspec 1 core
-
-table account {
-  seq i64
-  primary key (seq)
-}
-DBSPEC;
-        $documents = RuntimeModel::loadSet($owned, $external);
-        self::assertSame(
-            [['shop', false], ['core', true]],
-            array_map(static fn($document): array => [$document->name, $document->external], $documents),
-        );
-        self::assertSame(
-            [['core', false]],
-            array_map(
-                static fn($document): array => [$document->name, $document->external],
-                RuntimeModel::loadSet($external, ''),
-            ),
-        );
-        self::assertSame(
-            'SCHEMA_INVALID',
-            self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", $external)),
-        );
-        self::assertSame(
-            'SCHEMA_INVALID',
-            self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", '')),
-        );
-        self::assertSame(
-            'SCHEMA_INVALID',
-            self::errorCode(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")),
-        );
-    }
-
     private static function bench(): RuntimeModel
     {
         return RuntimeModel::build(
@@ -91,12 +42,6 @@ DBSPEC;
             return $e->code_;
         }
         return 'no error';
-    }
-
-    // Requirements: DBS-156, SCH-12.
-    public function testLoadSetReturnsExternalDocumentsMarked(): void
-    {
-        self::assertLoadSetReturnsExternalDocumentsMarked();
     }
 
     // Requirements: DBS-111.
@@ -147,33 +92,6 @@ DBSPEC;
             'blind index setting'
         );
         self::assertTrue($author['columns']['json_setting']['codec'] === ['ordered_json'], 'ordered_json codec');
-    }
-
-    // Requirements: DBS-68, DBS-114.
-    // Requirements: PRT-9.
-    public function testDefaultSelectSetExcludesOnlySelectExplicit(): void
-    {
-        $bench = self::bench();
-        $selected = [];
-        foreach ($bench->entities['author']['columns'] as $name => $c) {
-            if ($c['select']) {
-                $selected[] = $name;
-            }
-        }
-        $explicit = [
-            'description',
-            'email_blind_index',
-            'phone_blind_index',
-            'ip',
-            'gz_extend',
-            'json_setting',
-            'jsons_tags',
-            'base64_extra',
-            'serialize_data',
-            'aes_key_version'
-        ];
-        $want = array_values(array_diff(array_keys($bench->entities['author']['columns']), $explicit));
-        self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
     }
 
     // Requirements: DSL-160.

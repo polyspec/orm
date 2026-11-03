@@ -18,7 +18,7 @@ import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, perf
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
 
 /** A native test command of a coverage owner or dependent (contracts/features.json). */
-export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; symbols?: Record<string, string> };
+export type NativeCommand = { runner: string; test: string; cases: string[]; dsn_env?: string; symbols?: Record<string, string>; recipe?: string; symbol?: string };
 /** The owning client part of a feature. */
 export type Owner = { part: string; tests: string[]; commands?: Record<string, NativeCommand[]> };
 /** A dependent part of a feature. */
@@ -30,7 +30,7 @@ export type Feature = { id: string; status?: string; parity?: string[]; coverage
 /** The feature manifest, contracts/features.json. */
 export type Manifest = { features?: Feature[] };
 /** One required execution: an owner or dependent part on one database. */
-type Item = { key: string; role: 'owner' | 'dependent'; dependent?: string; language: string; database: string; part: string; tests: string[]; cases: string[]; command: NativeCommand[] | undefined };
+type Item = { key: string; role: 'owner' | 'dependent'; dependent?: string; language: string; database: string; part: string; tests: string[]; cases: string[]; command: NativeCommand[] | undefined; recipe?: boolean; selected?: boolean };
 /** One observed case result. */
 type CaseResult = { id: string; database: string; value_json: string };
 /** The report of one execution of an item. */
@@ -40,7 +40,7 @@ type StepWriter = (text: string) => void;
 /** The outcome of run: an error message, or the collected output. */
 type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string };
 /** A native test planned for one execution. */
-type Spec = { format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] };
+type Spec = ({ format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] }) & { recipe?: string[] };
 type CargoSpec = Extract<Spec, { format: 'cargo' }>;
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
@@ -115,8 +115,11 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[], pa
       const command = selectCommandCases(owner.commands?.[database], selectedCases);
       const tests = coverage.kind === 'database' || selectedCases
         ? [...new Set((command ?? []).map(entry => entry.test))] : owner.tests;
+      // The cases of a recipe owner are the cases of its recipe on this database (FCV-12), which nativeTest compares.
+      const recipe = Array.isArray(command) && command.some(entry => entry?.recipe);
       items.push({ key: `${feature.id}/owner/${language}/${database}`,
-        role: 'owner', language, database, part: owner.part, tests, cases: ownerCases, command });
+        role: 'owner', language, database, part: owner.part, tests, recipe, selected: Boolean(selectedCases),
+        cases: recipe ? (command ?? []).flatMap(entry => entry.cases) : ownerCases, command });
     }
   }
   const dependentIds = new Set<string>();
@@ -267,8 +270,10 @@ export function checkCoverage(
         expected.add(key);
         const executions = reports[key];
         if (!executions) { errors.push(`${key}: no executed report`); continue; }
-        if (!Array.isArray(executions) || executions.length !== 2) {
-          errors.push(`${key}: exactly two executions required`);
+        // A recipe owner runs once (FCV-12): each case has a database of its own, so a second run observes nothing more.
+        const runs = item.recipe ? 1 : 2;
+        if (!Array.isArray(executions) || executions.length !== runs) {
+          errors.push(`${key}: exactly ${runs === 1 ? 'one execution' : 'two executions'} required`);
           continue;
         }
         for (const report of executions) {
@@ -291,11 +296,12 @@ export function checkCoverage(
               values.some(value => !seen.includes(value.id) || typeof value.value_json !== 'string' ||
                 value.database !== item.database || !value.value_json || !validJSON(value.value_json)))
             errors.push(`${key}: executed case IDs differ from contract`);
-          if (coverage.kind === 'database' &&
+          if (coverage.kind === 'database' && !item.recipe &&
               (typeof report.state_before !== 'string' || !report.state_before ||
                report.state_before !== report.state_after))
             errors.push(`${key}: database state changed or was not observed`);
         }
+        if (item.recipe) continue;
         if (!isDeepStrictEqual(executions[0]?.results, executions[1]?.results))
           errors.push(`${key}: results changed on repeated execution`);
         if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
@@ -376,7 +382,82 @@ export function run(program: string, args: string[], cwd: string | undefined, ti
   });
 }
 
+// recipeOutput is the lines a recipe runner wrote; a run in which no case passed wrote no file.
+async function recipeOutput(path: string): Promise<string> {
+  try { return await readFile(path, 'utf8'); }
+  catch (error) {
+    if (errorCode(error) !== 'ENOENT') throw error;
+    return '';
+  }
+}
+
+// recipeCaseIds is the ids of the cases of a recipe file that run on database: a case with `only` runs on the databases it
+// names (FCV-3). The recipe is the list of the cases of its owner.
+export function recipeCaseIds(text: string, database: string): string[] {
+  const recipe = JSON.parse(text) as { cases: { id: string; only?: string[] }[] };
+  return recipe.cases.filter(item => item.only === undefined || item.only.includes(database)).map(item => item.id);
+}
+
+// recipeTest plans the entry of a recipe owner (FCV-12). Every runtime runs the entry with its own test runner and the
+// recipe runner appends a `CASE` line for each case that passed to the file of ORM_RECIPE_RESULTS, so that one reader reads
+// every runtime. The entry takes no case argument and no database of the bench: its cases are the recipe's and each gets
+// a case database from the run (FCV-9).
+async function recipeTest(item: Item, command: NativeCommand, root: string): Promise<Spec> {
+  const recipe = command.recipe ?? '';
+  const keys = ['runner', 'test', 'cases', 'recipe', 'symbol'];
+  const named = command.runner === 'go' || command.runner === 'php';
+  if (Object.keys(command).some(key => !keys.includes(key)) || !item.tests.includes(command.test) ||
+      !recipe.startsWith('contracts/fixtures/') || !recipe.endsWith('.json') ||
+      (named ? !/^[A-Za-z_][A-Za-z0-9_]*$/.test(command.symbol ?? '') : command.symbol !== undefined))
+    throw new Error('invalid recipe test command');
+  const testPath = resolve(root, command.test);
+  if (await realpath(testPath) !== testPath) throw new Error('symbolic test path');
+  const expected = recipeCaseIds(await readFile(resolve(root, recipe), 'utf8'), item.database === 'none' ? '' : item.database);
+  const declared = [...command.cases].sort();
+  const listed = [...expected].sort();
+  if (command.cases.some(id => !expected.includes(id)) ||
+      (!item.selected && (declared.length !== listed.length || declared.some((id, index) => id !== listed[index]))))
+    throw new Error(`cases differ from recipe ${recipe}: declared ${declared.join(',')}; recipe ${listed.join(',')}`);
+  const symbol = command.symbol ?? '';
+  const directory = resolve(root, testDirectoryOf(item.language));
+  if (command.runner === 'node')
+    return { format: 'case', program: 'node', args: ['--conditions=orm-test', '--test', testPath], cwd: directory, recipe: expected };
+  if (command.runner === 'python') {
+    if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
+    const module = relative(root, testPath).replace(/\.py$/, '').split(sep).join('.');
+    return { format: 'case', program: process.env.ORM_PYTHON, args: ['-m', module], cwd: root, recipe: expected };
+  }
+  if (command.runner === 'php') {
+    const extension = item.language === 'php-extension' ? process.env.POLYSPEC_ORM_EXTENSION : undefined;
+    if (item.language === 'php-extension' && !extension)
+      throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
+    return { format: 'phpunit', program: 'php', cwd: root, symbols: [symbol], recipe: expected,
+      args: [...(extension ? ['-d', `extension=${extension}`] : []), resolve(root, 'vendor-php/bin/phpunit'),
+        '--configuration', resolve(directory, 'phpunit.xml.dist'), '--filter', `/::${symbol}( |$)/`, testPath],
+      ...(item.language === 'php-extension' ? { env: { ORM_PHP_MODE: 'extension' } } : {}) };
+  }
+  if (command.runner === 'go') {
+    if (!new RegExp(`\\bfunc\\s+${symbol}\\s*\\(`).test(await readFile(testPath, 'utf8'))) throw new Error(`test symbol ${symbol} is absent from declared test file`);
+    return { format: 'go', cwd: dirname(testPath), symbols: [symbol], recipe: expected };
+  }
+  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, symbols: [], recipe: expected };
+}
+
+// owningCrate is the directory of the Cargo manifest of a Rust test file, within the part of its owner.
+async function owningCrate(testPath: string, part: string): Promise<string> {
+  let crate = dirname(testPath);
+  while (crate.startsWith(part)) {
+    try { await realpath(resolve(crate, 'Cargo.toml')); return crate; }
+    catch (error) {
+      if (errorCode(error) !== 'ENOENT') throw error;
+      crate = dirname(crate);
+    }
+  }
+  throw new Error('Rust test has no owning Cargo manifest');
+}
+
 async function nativeTest(item: Item, command: NativeCommand, root: string): Promise<Spec> {
+  if (command && typeof command === 'object' && !Array.isArray(command) && command.recipe !== undefined) return recipeTest(item, command, root);
   const nativeRunner = command?.runner === 'go' || command?.runner === 'cargo';
   const phpSymbols = command?.runner === 'php' && command?.symbols !== undefined;
   const symbols = command?.symbols;
@@ -459,16 +540,7 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
   // is fixed: for Go, the package directory of the test file; for Rust, the crate that owns the test file.
   if (command.runner === 'go')
     return { format: 'go', cwd: dirname(testPath), symbols: nativeSymbols };
-  let crate = dirname(testPath);
-  while (crate.startsWith(resolve(root, item.part))) {
-    try { await realpath(resolve(crate, 'Cargo.toml')); break; }
-    catch (error) {
-      if (errorCode(error) !== 'ENOENT') throw error;
-      crate = dirname(crate);
-    }
-  }
-  if (!crate.startsWith(resolve(root, item.part))) throw new Error('Rust test has no owning Cargo manifest');
-  return { format: 'cargo', cwd: crate, testPath, symbols: nativeSymbols };
+  return { format: 'cargo', cwd: await owningCrate(testPath, resolve(root, item.part)), testPath, symbols: nativeSymbols };
 }
 
 // observedCases reads the observed cases of one execution of an item on `database` ('none' for an item without a database).
@@ -930,8 +1002,8 @@ export async function executeCoverage(
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
         for (const spec of native) if (spec.format === 'case') spec.cwd ??= cwd;
         const dsnEnv = command[0]?.dsn_env ?? '';
-        const dsn = item.database === 'none' ? null : process.env[dsnEnv] ?? '';
-        if (item.database !== 'none' && !dsn) {
+        const dsn = item.database === 'none' || item.recipe ? null : process.env[dsnEnv] ?? '';
+        if (item.database !== 'none' && !item.recipe && !dsn) {
           errors.push(`${key}: missing database DSN in ${dsnEnv}`);
           continue;
         }
@@ -1070,7 +1142,7 @@ export async function executeCoverage(
         // The deadline of one run is the sum of the deadlines of the processes that run starts. Two state readers and native
         // each process has its own timeoutMs.
         const count = (dsn ? 2 : 0) + processes.flat().length;
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        for (let attempt = 1; attempt <= (item.recipe ? 1 : 2); attempt++) {
           let failure: string | undefined;
           const passed = await runCase(`${key} run ${attempt}`, count * timeoutMs, async ({ step }) => {
             let caught = false;
@@ -1083,9 +1155,10 @@ export async function executeCoverage(
                 const entry = command[index];
                 if (!spec || !entry) throw new Error(`no native test ${index}`);
                 let output = '';
+                const recipeResults = spec.recipe ? join(directory, `${key.replaceAll('/', '_')}-${index}.results`) : undefined;
                 for (const child of processes[index] ?? []) {
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
-                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
+                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env, ...(recipeResults ? { ORM_RECIPE_RESULTS: recipeResults } : {}) }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
                   if (feature.id === 'performance_gate') {
                     const measurements = performanceMeasurementsFromOutput(
@@ -1102,6 +1175,10 @@ export async function executeCoverage(
                   // libtest writes `test <symbol> ... ok` result lines, and PHPUnit writes TeamCity events, to stdout. Since a test
                   // lines written to stderr must not be interleaved between them, Rust and PHP read only stdout.
                   output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';
+                }
+                if (recipeResults && spec.recipe) {
+                  results.push(...observedCases('case', await recipeOutput(recipeResults), entry.cases, spec.recipe, item.database));
+                  continue;
                 }
                 results.push(...observedCases(spec.format, output, entry.cases, spec.format === 'case' ? entry.cases : spec.symbols, item.database));
               }
