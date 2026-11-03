@@ -1005,7 +1005,7 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
 /**
  * The session sql_mode of every MySQL connection, so that a coercion, truncation or grouping result does not depend on
  * the server's setting; it also replaces the IGNORE_SPACE that mysql2's default client flags add
- * (tests/dsn/mysql-session.json, docs/spec/config.md "Runtime connection").
+ * (case mysql_session_settings of contracts/fixtures/dsn_connection, docs/spec/config.md "Runtime connection").
  */
 const MYSQL_SQL_MODE = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 

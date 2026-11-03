@@ -785,6 +785,20 @@ final class Recipe
             Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
             Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
             Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
+            if (isset($config['session_read'])) {
+                $read = $db->utils()->run(
+                    static fn (TxFrame $frame): array => $frame->run(
+                        StatementEvent::UTILITY,
+                        [],
+                        $config['session_read']['sql'],
+                    ),
+                );
+                Assert::assertSame(
+                    [$config['session_read']['row']],
+                    array_map(static fn (array $row): array => array_map('strval', $row), $read),
+                    $config['session_read']['sql'],
+                );
+            }
             if ($config['tls_version'] ?? false) {
                 $status = $db->utils()->run(
                     static fn (TxFrame $frame): array => $frame->run(

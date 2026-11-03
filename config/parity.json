@@ -342,7 +342,6 @@
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
-        "packages/php/tests/MysqlTlsCases.php",
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/php/tests/OrmGenProcessCase.php",
@@ -7804,6 +7803,7 @@
       "kind": "suite",
       "requirements": [
         "CFG-1",
+        "CFG-3",
         "CFG-16",
         "CFG-2",
         "CFG-19",
@@ -17834,45 +17834,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/ir_answers.rs",
           "symbol": "ir_answers"
-        }
-      ]
-    },
-    {
-      "id": "mysql-session",
-      "kind": "feature",
-      "requirements": [
-        "CFG-3"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestMySQLSessionSQLMode"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testSessionSqlMode"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
-          "id": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/session_sql_mode"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py",
-          "id": "test_session_sql_mode"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "session_sql_mode_is_the_declared_one"
         }
       ]
     },
