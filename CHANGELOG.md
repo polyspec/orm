@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - The apply chain, its history and state, the lock scope, finalize, the stress plan and the pooler are the recipe `dbspec_apply` in the six runtimes, each command one call of the public apply API on a named connection, and their native tests are removed.
 - CR15-F: the shared row mutation outcomes (conflict, unique, coercion, generated column, schema change, foreign key, insert forms) are the recipe case `row_mutation_lifecycle`; the Rust test keeps only the phases, cancellation and dropped commit of INT-106a.
 - Introspection is the recipe dbspec_introspect in all six runtimes: the round trips, the cases of tests/dbspec/introspect.json with the reasons of a PostgreSQL loose sequence and routine, the catalog query count and a failing catalog query; dialect-refusal holds its unknown dialect in five runtimes. Only the silent PDO error mode (DIA-133a) and the method of the PHP extension (DIA-133b) stay native (#T334-3-12-5)

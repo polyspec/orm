@@ -1102,7 +1102,7 @@ class DocumentParser {
         return { kind, precision: present(p, 'p') };
       }
       default:
-        this.at('type', tok, `${kind} is not a dbspec type`);
+        this.at('type', tok, `type "${kind}" is not a dbspec type`);
         return null;
     }
   }

@@ -21,7 +21,15 @@ export const repositoryRoot = new URL('../../..', import.meta.url).pathname;
  * item as a node:test subtest named `<id> [<database>]`.
  */
 export async function runCases(file, cases, timeoutMs, suite = cases) {
-  const items = featureItems(file);
+  return runItems(featureItems(file), file, cases, timeoutMs, suite);
+}
+
+/** Runs the cases of a test file on the one database that the file names, with no selection of the manifest. */
+export async function runCasesOn(database, file, cases, timeoutMs) {
+  return runItems([{ database, driver: database, dsn: null }], file, cases, timeoutMs, cases);
+}
+
+async function runItems(items, file, cases, timeoutMs, suite) {
   const requested = process.argv.slice(2);
   if (requested.length === 0) {
     for (const [id, body] of Object.entries(suite)) {
