@@ -28686,33 +28686,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_keys_test.go",
-          "id": "TestAESWriteUsesKeyOfCurrentVersion"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/write_uses_the_key_of_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/aes_keys.rs",
-          "id": "aes_write_uses_key_of_current_version"
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "write_uses_the_key_of_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::write_uses_the_key_of_the_current_version"
         },
         {
           "implementation": "rust",
@@ -28744,50 +28784,78 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
           "id": "AesUtilsNativeTest::testNativeStatusRotationAndTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
         }
       ]
     },
@@ -31119,50 +31187,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_rewrites_every_aes_column"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_rewrites_every_aes_column"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/aes_rotation_test.go",
-          "id": "TestRotateAESRowUpdatesAllAESColumnsAndVersion"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_rewrites_every_aes_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_rewrites_every_aes_column"
         }
       ]
     },
@@ -31176,50 +31267,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestAESRotation"
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationMysql/rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testAesRotation"
+          "test": "packages/php/tests/AesRotationMysqlTest.php",
+          "id": "AesRotationMysqlTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testAesRotation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "aesRotation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/aes_rotation.py",
-          "id": "test_aes_rotation_on_each_database"
+          "test": "packages/php-ext/tests/AesRotationMysqlRecipeExtensionTest.php",
+          "id": "AesRotationMysqlRecipeExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "aes_rotation",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=aes_rotation"
-          ]
+          "test": "packages/rust/tests/tests/aes_rotation_mysql.rs",
+          "id": "aes_rotation_mysql::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationPostgres/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationPostgresTest.php",
+          "id": "AesRotationPostgresTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationPostgresRecipeExtensionTest.php",
+          "id": "AesRotationPostgresRecipeExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_postgres.rs",
+          "id": "aes_rotation_postgres::rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_aes_rotation_test.go",
+          "id": "TestRecipeAesRotationSqlite/rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AesRotationSqliteTest.php",
+          "id": "AesRotationSqliteTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesRotationSqliteRecipeExtensionTest.php",
+          "id": "AesRotationSqliteRecipeExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/aes_rotation-sqlite.test.mjs",
+          "id": "rotation_takes_rows_not_at_the_current_version"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_aes_rotate.py",
-          "id": "test_rotates_every_row_not_at_the_current_version"
+          "test": "packages/python/tests/test_aes_rotation_sqlite.py",
+          "id": "rotation_takes_rows_not_at_the_current_version"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/aes_rotation_sqlite.rs",
+          "id": "aes_rotation_sqlite::rotation_takes_rows_not_at_the_current_version"
         }
       ]
     },

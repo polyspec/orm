@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a03b6fed45bc5f54050265019be14aee5e9c75573cdc9faa713f7cf6e51cfe41 -->
+<!-- source-sha256: d262a2919f7941c2644c33745b10b33c2c3bf07c2760c25d55b64f651c2a3329 -->
 # 변경 이력
 
 ## Unreleased
 
+- 모든 AES 열의 rotation, 현재 버전이 아닌 행의 rotation, 그 status, 현재 버전 key로의 쓰기를 여섯 runtime의 aes_rotation recipe 사례로 옮겼고 native rotation 테스트를 없앴다.
 - markdown 연결 거부(PRT-64)는 각 runtime이 실행하는 listener 위의 recipe case `markdown.connect`이며, 이것이 대신하는 native 시험은 없앴다. Rust의 거부된 TLS 연결은 메시지에 database 이름을 쓰지 않는다(CFG-16).
 - 인증서가 거부한 MySQL TLS 연결은 모든 client에서 `TLS connection failed`를 담은 `CONFIG`를 반환한다. Go, TypeScript, Rust는 `DRIVER`를 반환했다(CFG-16). TLS 연결과 그 거부는 recipe case다.
 - Go, PHP, PHP extension은 정수가 아닌 SQLite `busy_timeout`을, Go는 형식이 틀린 `_pragma`와 SQLite 경로 `/`를 `CONFIG`로 거부하고(CFG-11, CFG-12), PHP는 그 거부에서 경로를 말한다. 읽을 수 없는 MySQL `ssl-ca`는 이를 검사하는 모든 client에서 `is not a readable file`로 읽히고, Python의 음수 timeout 거부는 `statement timeout must not be negative`로 읽힌다. `CONFIG`를 반환하는 DSN은 파일을 만들지 않는다. CFG-36과 CFG-37의 거부되는 DSN과 설정 형식은 메시지까지 recipe case이며, 이들이 대신하는 native 시험은 없앴다.

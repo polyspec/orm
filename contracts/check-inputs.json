@@ -1396,15 +1396,6 @@
         "databases"
       ]
     },
-    "aes-rotation-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ]
-    },
     "codec-check": {
       "scope": "owner",
       "needs": [

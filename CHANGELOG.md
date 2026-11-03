@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- AES rotation of every AES column, of the rows not at the current version, its status, and the write with the key of the current version are cases of the aes_rotation recipe in all six runtimes, and the native rotation tests are gone.
 - The refusal of a markdown connect (PRT-64) is a recipe case, `markdown.connect`, on a listener each runtime runs, and the native tests it replaces are gone. A refused TLS connection in Rust names no database in its message (CFG-16).
 - A MySQL TLS connection that a certificate refuses returns `CONFIG` with `TLS connection failed` in every client: Go, TypeScript and Rust returned `DRIVER` (CFG-16). The TLS connection and its refusals are recipe cases.
 - Go, PHP and the PHP extension refuse a SQLite `busy_timeout` that is not a whole number, and Go refuses a malformed `_pragma` and the SQLite path `/`, each with `CONFIG` (CFG-11, CFG-12), and PHP names the path in that refusal. An unreadable MySQL `ssl-ca` reads `is not a readable file` in every client that checks it, and the Python refusal of a negative timeout reads `statement timeout must not be negative`. A DSN that returns `CONFIG` creates no file. The refused DSN and configuration forms of CFG-36 and CFG-37 are recipe cases, with their messages, and the native tests they replace are gone.
