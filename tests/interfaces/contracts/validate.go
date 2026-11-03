@@ -35,6 +35,7 @@ var outputs = map[string]map[string]string{
 	"Chain":             {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this", "python": "Self"},
 	"Model":             {"go": "(*{Entity}Model,error)", "php": "static", "rust": "polyspec_orm::Result<Self>", "typescript": "Promise<this>", "python": "Self"},
 	"Collection<Model>": {"go": "(*orm.Collection[*{Entity}Model],error)", "php": "Polyspec\\Orm\\Collection", "rust": "polyspec_orm::Result<polyspec_orm::Collection<Self>>", "typescript": "Promise<Collection<this>>", "python": "Collection[Self]"},
+	"QueryPlanStep[]":   {"go": "([]orm.QueryPlanStep,error)", "php": "array", "rust": "polyspec_orm::Result<Vec<polyspec_orm::QueryPlanStep>>", "typescript": "Promise<QueryPlanStep[]>", "python": "list[dict]"},
 	"GroupRows":         {"go": "(*orm.GroupRows,error)", "php": "Polyspec\\Orm\\GroupRows", "rust": "polyspec_orm::Result<polyspec_orm::GroupRows>", "typescript": "Promise<GroupRows>", "python": "GroupRows"},
 	"Count":             {"go": "(int64,error)", "php": "int", "rust": "polyspec_orm::Result<i64>", "typescript": "Promise<number>", "python": "int"},
 	"Aggregate":         {"go": "(float64,error)", "php": "float", "rust": "polyspec_orm::Result<f64>", "typescript": "Promise<number>", "python": "float"},

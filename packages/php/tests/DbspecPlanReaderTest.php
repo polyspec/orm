@@ -17,7 +17,8 @@ final class DbspecPlanReaderTest extends TestCase
 {
     public function testOneFileOpensPlansJson(): void
     {
-        $opener = 'file_get_contents(';
+        // The reader takes the path of the recipe through plan_vectors_at, which opens it.
+        $openers_of = ['file_get_contents(', 'plan_vectors_at('];
         foreach (['plan-cases' . '.json', 'plans-physical' . '.json'] as $target) {
             $openers = [];
             foreach (glob(__DIR__ . '/*.php') ?: [] as $path) {
@@ -29,7 +30,8 @@ final class DbspecPlanReaderTest extends TestCase
                     if (str_starts_with($code, '//') || str_starts_with($code, '*') || str_starts_with($code, '/*')) {
                         continue;
                     }
-                    if (str_contains($code, $opener) && str_contains($code, $target)) {
+                    $opens = str_contains($code, $openers_of[0]) || str_contains($code, $openers_of[1]);
+                    if ($opens && str_contains($code, $target)) {
                         $openers[] = basename($path);
                         break;
                     }

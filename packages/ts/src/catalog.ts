@@ -1302,7 +1302,8 @@ export class CatalogConnection {
       try {
         return await this.pool.reserve();
       } catch (error) {
-        const full = (error as { errno?: unknown }).errno === 1226;
+        // The driver error of the reserve holds the server's error as its cause.
+        const full = (error as { cause?: { errno?: unknown } }).cause?.errno === 1226;
         if (!full || Date.now() >= this.reopenUntil) throw error;
         await new Promise(resolve => { setTimeout(resolve, 10); });
       }
