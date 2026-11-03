@@ -13,6 +13,7 @@ from polyspec.orm.names import (
     category,
     check_column_names,
     column_name,
+    function_column,
     numeric,
     pascal,
     parse_chain,
@@ -266,6 +267,33 @@ def _resolved_prefix(model: RuntimeModel, e: Entity, name: str) -> str | None:
         return None
 
 
+def _takes(model: RuntimeModel, e: Entity, name: str) -> tuple[int, int] | None:
+    """The counts of values that a call of the chain or finder name takes, (least, most), or None for any other name."""
+    kind = _resolved_prefix(model, e, name)
+    pascal_name = "".join(part[:1].upper() + part[1:] for part in name.split("_"))
+    if kind in ("gets_by", "get_by", "get_count_by"):
+        prefix = {"gets_by": 6, "get_by": 5, "get_count_by": 10}[kind]
+        chain = pascal_name[prefix:]
+    elif kind == "condition":
+        chain = pascal_name
+        if name.startswith("and_"):
+            chain = pascal_name[3:]
+        elif name.startswith("or_"):
+            chain = pascal_name[2:]
+    else:
+        return None
+    keys = parse_chain(model, e, chain)
+    if (
+        len(keys) == 1
+        and keys[0].column
+        and not keys[0].compare
+        and keys[0].op in ("", "ne", "gt", "lt", "ge", "le")
+        and function_column(_field_of(e, keys[0].column))
+    ):
+        return (1, 2)
+    return (len(keys), len(keys))
+
+
 def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
     """Whether get_<key> reads a value that the scanned calls name: the relation result <entity>_model or
     <entity>_models of an entity of the set (the used tables of external documents included), or a name that an alias_,
@@ -328,6 +356,7 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
         if name.startswith("_"):
             continue
         attached = False
+        takes = []
         for class_name in site["classes"]:
             entity = m.entities.get(snake(class_name))
             if entity is None:
@@ -338,7 +367,9 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
                 or (is_getter and _named_getter(m, key, used))
             ):
                 attached = True
-                break
+                takes.append(
+                    None if name in _static_names(entity) else _takes(m, entity, name)
+                )
         if not attached:
             if is_getter:
                 unattached = True
@@ -349,6 +380,12 @@ def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
                 problems.append(
                     f"{site['classes'][0]}.{name} is not a model method: no column, chain or operator accepts it"
                 )
+        elif site["args"] is not None and all(
+            t is not None and not t[0] <= site["args"] <= t[1] for t in takes
+        ):
+            problems.append(
+                f"{site['classes'][0]}.{name} takes {takes[0][0]} values, not {site['args']}"
+            )
     if problems:
         raise OrmError(
             codes.GENERATOR_SCAN_UNATTACHED if unattached else codes.CONFIG,

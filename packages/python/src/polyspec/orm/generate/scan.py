@@ -522,7 +522,16 @@ def _scan_tree(
                     for receiver in receivers:
                         out[receiver].add(func.attr)
                     if sites is not None:
-                        sites.append({"name": func.attr, "classes": list(receivers)})
+                        spreads = any(isinstance(a, ast.Starred) for a in node.args)
+                        sites.append(
+                            {
+                                "name": func.attr,
+                                "classes": list(receivers),
+                                "args": None
+                                if spreads or node.keywords
+                                else len(node.args),
+                            }
+                        )
                     if (
                         func.attr in _MODEL_CALLBACKS
                         and node.args
