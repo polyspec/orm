@@ -55,7 +55,7 @@ def chain() -> list:
 class DbspecApplyTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
-    # Requirement: PLN-90. The in-memory SQLite case verifies the configured bound and
+    # Requirement: PLN-107. The in-memory SQLite case verifies the configured bound and
     # failed-step result when the driver reports a statement-level lock failure.
     def test_sqlite_statement_lock_timeout_is_failed_at_its_step(self) -> None:
         plans = chain()[:1]
@@ -92,7 +92,7 @@ class DbspecApplyTest(unittest.TestCase):
         finally:
             conn.close()
 
-    # Requirement: PLN-90. SQLite's apply lock waits on BEGIN EXCLUSIVE before any plan step.
+    # Requirement: PLN-107. SQLite's apply lock waits on BEGIN EXCLUSIVE before any plan step.
     def test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dbspec-lock-wait-") as tmp:
             path = os.path.join(tmp, "locked.sqlite3")

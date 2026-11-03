@@ -16700,7 +16700,7 @@
       "id": "py-dbspec-apply-sqlite-lock-faults",
       "kind": "feature",
       "requirements": [
-        "PLN-90"
+        "PLN-107"
       ],
       "bindings": [
         {
@@ -16713,7 +16713,12 @@
           "test": "packages/python/tests/dbspec_apply.py",
           "id": "test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/python"
+      }
     },
     {
       "id": "py-test-driver-cells",

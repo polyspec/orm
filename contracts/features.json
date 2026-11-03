@@ -4046,6 +4046,7 @@
         }
       ],
       "parity": [
+        "py-dbspec-apply-sqlite-lock-faults",
         "schema-definition",
         "coverage-schema-definition-dbspec-emit-round-trip",
         "coverage-schema-definition-dbspec-manifest-hash",
