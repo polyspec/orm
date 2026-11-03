@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The compiler fixtures wait for the cargo target lease outside their deadline: the Rust trial of each case has no deadline for that wait, as the build of tests/cargo-test.mts has none, and scripts/rust/compiler-fixtures.mts gives its own compile under the lease the PROCESS deadline, so a case that waits behind another run's build passes instead of failing with `deadline 5m0s exceeded` (T343-6).
 - The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.
 - The Go tests that assert only Go mechanics lie in internal test files with their reasons in `config/parity.json`, and `TestGenerateUsesRequestedGoPackageName` is bound to the Go-only generator unit.
 - `make client-db-rust-check` runs only the cases that no other target owns, the crate's public connection test needs no outside variable, the compiler fixtures run in order, and generate.mjs leaves no temporary directory.
