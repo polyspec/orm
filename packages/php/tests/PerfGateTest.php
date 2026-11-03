@@ -51,11 +51,12 @@ final class PerfGateTest extends TestCase
                     . 'none)'
             );
         }
-        $featureDatabase = getenv('ORM_FEATURE_DATABASE');
-        self::$featureCase = is_string($featureDatabase) && $featureDatabase !== '';
+        // PERF-1: the case of a database names it in ORM_PERF_DATABASE, and reads the bench database of that name.
+        $database = getenv('ORM_PERF_DATABASE');
+        self::$featureCase = is_string($database) && $database !== '';
         if (self::$featureCase) {
-            $dsn = requiredDsn('ORM_FEATURE_DSN');
-            self::$driver = $featureDatabase;
+            $dsn = requiredDsn('BENCH_' . strtoupper($database) . '_DSN');
+            self::$driver = $database;
         } else {
             $dsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
             self::$driver = 'mysql';
@@ -80,8 +81,8 @@ final class PerfGateTest extends TestCase
         // The legacy PHP library perf-check uses its recorded MySQL references. Feature
         // coverage cases report measurements without a fixed reference; the native wrapper
         // independently proves whether the extension is loaded.
-        $featureDatabase = getenv('ORM_FEATURE_DATABASE');
-        $hasReference = !is_string($featureDatabase) || $featureDatabase === '';
+        $database = getenv('ORM_PERF_DATABASE');
+        $hasReference = !is_string($database) || $database === '';
         $pkBound = $hasReference ? 1.35 : null;
         $listBound = $hasReference ? 1.25 : null;
         yield "pk$suffix" => ['pk', $pkBound];

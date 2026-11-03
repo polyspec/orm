@@ -6,6 +6,7 @@
 // path.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RequestHookTest.php
 // [--filter <case>]
+// Requirements: INT-78.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
