@@ -1,20 +1,21 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a1e3405c9d24865b07e1f82b7ffa91c0d78668604fe2b74e0c31565784d5e81e -->
+<!-- source-sha256: 647e54387a7e8b00e84b60d9026db332aab33eda2fc2fcbb099c670f72fd1025 -->
 # 변경 이력
 
 ## Unreleased
 
-- native 표에만 있던 규칙 diagnostic과 canonical 형태는 recipe `tests/dbspec/rules.json`의 case가 되었고, 여섯 runtime에서 돌려 명세와 어긋난 parser를 고쳤다: 실패한 used document나 `use` 줄은 diagnostic 하나만 보고하고 그 table은 더 보고하지 않는다(DBS-149, DBS-153). 반복된 `primary key` 줄은 반복만 보고한다. history table의 key, action, previous column은 기록 column의 사본이 아니다(DBS-91). type 위치는 단어를 받는다. diagram 좌표 `-0x1`은 `diagram` 오류다. 같은 문서의 `use` 두 번은 한 번만 보고한다. 알 수 없는 최상위 block 뒤의 줄은 자기 `syntax`를 보고한다. `encoding` 중단은 문서 전체 규칙을 건너뛴다.
+- audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - `make lint-ts`가 통과한다: Rust lane의 skip 목록은 JSON을 검증하는 reader로 읽고, `config/parity.json`은 binding의 `command`를 schema에 선언한다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - MySQL 시험 서버는 `'orm'@'127.0.0.1'` 옆에 `'orm'@'localhost'` 계정을 새 시작에서도 이미 실행 중인 서버에서도 가지므로, case DSN이 ProxySQL의 사용자 `orm`을 담을 때 `case-socket` DSN이 연결된다.
+- audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
 - Rust의 세 database stress apply는 각 database의 deadline을 step 수로 정한다. step마다 250 ms에 1분을 더한 값이다(testcase `step_budget`). apply는 step이 30 s 동안 없으면 멈추는 stall guard(testcase `StallGuard`)로 감시하며, step이 적용될 때마다 그 기한이 다시 시작된다. Go stress test와 같은 근거다. 11개 CPU 부하 프로세스 아래에서 세 실행을 동시에 돌리면, 기존 60 s probe deadline은 실행마다 `mysql.apply.stress_plan: exceeded 60s`로 실패했다(63.6~64 s). step 기준 deadline으로는 같은 부하에서 79.5~82.3 s에 통과하고, 단독으로는 22.7 s다(T343-5).
 - compiler fixture는 cargo target lease를 기다리는 시간을 deadline 밖에 둔다. 각 case의 Rust trial은 그 기다림에 deadline을 두지 않으며, tests/cargo-test.mts의 build에 deadline이 없는 것과 같다. scripts/rust/compiler-fixtures.mts는 lease 아래의 자기 compile에만 PROCESS deadline을 준다. 그래서 다른 실행의 build 뒤에서 기다리던 case는 `deadline 5m0s exceeded`로 실패하지 않고 통과한다(T343-6).
+- native 표에만 있던 규칙 diagnostic과 canonical 형태는 recipe `tests/dbspec/rules.json`의 case가 되었고, 여섯 runtime에서 돌려 명세와 어긋난 parser를 고쳤다: 실패한 used document나 `use` 줄은 diagnostic 하나만 보고하고 그 table은 더 보고하지 않는다(DBS-149, DBS-153). 반복된 `primary key` 줄은 반복만 보고한다. history table의 key, action, previous column은 기록 column의 사본이 아니다(DBS-91). type 위치는 단어를 받는다. diagram 좌표 `-0x1`은 `diagram` 오류다. 같은 문서의 `use` 두 번은 한 번만 보고한다. 알 수 없는 최상위 block 뒤의 줄은 자기 `syntax`를 보고한다. `encoding` 중단은 문서 전체 규칙을 건너뛴다.
 - dbspec의 한계와 stress unit은 recipe `tests/dbspec/limits.json`의 case이며, 그 문서는 `dbspec.format`의 줄 형태 `repeat`와 `fill`로 쓴다. native 한계 시험과 round trip만 하던 stress 시험은 사라졌고 `make dbspec-stress-bench`의 parse 시간 측정은 남는다.
 - DSL-49와 DSL-50의 chain 값은 recipe `dsl`과 `dsl-dynamic`의 case가 되었다. `markdown.send`는 Eq, Ne, Gt의 chain method와 list parameter를 받고, PHP extension과 Python의 native 시험을 지웠다. 컴파일러가 거부하는 사용은 Go, TypeScript, Rust에서 native로 남는다.
-- audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
-- audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
+
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
 - `make client-db-rust-check`는 다른 target이 소유하지 않은 case만 실행하고, crate의 public connection 시험은 외부 변수가 필요 없으며, compiler fixture는 순서대로 실행되고, generate.mjs는 임시 디렉터리를 남기지 않는다.
@@ -140,6 +141,7 @@
 - 데이터베이스 기능이 실행 데이터베이스에서 recipe로 도는 방식을 spec이 밝힌다: docs/spec/feature-coverage.md의 FCV-8부터 FCV-14까지가 전환, `databases` need와 TEST_ENV로 받는 데이터베이스, 제외 없는 세 데이터베이스, DSN 누락 실패, 사례별 결과, seed 소유, 네이티브 테스트를 정한다 (T334-3-4-0).
 - FCV-4의 `dsn.connect` op가 DSN 연결 recipe `contracts/fixtures/dsn_connection/dsn_connection.json`을 여섯 runtime과 세 데이터베이스에서 실행한다. 네이티브 DSN coverage 시험은 제거되고, parity unit이 여섯 recipe 항목을 묶는다 (T334-3-4).
 - model_writes recipe인 contracts/fixtures/model_writes/model_writes.json은 여섯 사례를 여섯 runtime에서 MySQL, PostgreSQL, SQLite로 실행한다(T334-3-4). config/parity.json은 model_writes-<database> unit을 묶는다. recipe가 다루는 손으로 쓴 save-key, arithmetic, CRUD write cycle과 round-trip 시험은 제거한다. write cycle은 ordered JSON과 codec 단언(COD-11, COD-12, COD-15, COD-38, DIA-26)을 유지하고, create_parts 네이티브 시험은 StatementEvent의 batch 단언 때문에 남긴다. PHP extension의 native write layer는 INT-151로 명세하고 여덟 시험에 묶는다(T334-3-4).
+SQLite에서 같은 행을 쓰는 두 connection의 잠금 대기는 busy timeout 뒤 `CANCELED`로 끝나고 재시도되지 않는다. SQLite는 row-lock 교착을 보고하지 않으므로 SQLITE_LOCKED(6, 262)는 모든 runtime에서 `DRIVER`이며, transaction_deadlock_retry는 여섯 runtime 모두에서 sqlite case를 실행한다 (PLN-24, CFG-12) (T343-3)
 - model_writes feature는 ordered-json text의 반복된 member name을 모든 owner(Go, PHP, php-extension, Rust, TypeScript, Python)와 MySQL, PostgreSQL, SQLite에 선언하므로, 일반 Rust 실행은 ORM_FEATURE_DATABASE 없이 실패하는 대신 선언된 symbol로 이 case를 건너뛴다(T343-2)
 - model_writes feature는 Go owner에서 ordered-json text의 반복된 member name을 선언한다(MySQL, PostgreSQL, SQLite): Go case는 `{"a":1,"b":2,"a":3}`을 Author json 설정으로 저장하고 다시 읽으므로, 다른 owner가 실행하는 case를 Go owner도 실행한다(T343-2-1)
 - generated Go model은 jsontext 값의 반복된 member name을 보존한다: ordered-json 값을 json.Marshaler 분기 전에 원본 text 그대로 취하며, 그 분기는 파싱된 member map을 다시 직렬화했으므로 `{"a":1,"b":2,"a":3}`이 SQLite에서 `{"a":3,"b":2}`로 돌아오지 않는다 (DIA-26) (T343-2-1-1)
