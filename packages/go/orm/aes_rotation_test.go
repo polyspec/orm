@@ -143,3 +143,24 @@ func mustAESKeyring(t *testing.T, keys map[int32]string, current int32) AESKeyri
 	}
 	return keyring
 }
+
+// HostDecodeVersioned is an API of Go alone (FCV-2).
+// Requirements: COD-6.
+func TestHostAESDecodesByStoredVersion(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyring, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := HostDecodeVersioned(oldValue, []string{"aes"}, 1, keyring)
+	if err != nil || decoded != "old@example.test" {
+		t.Fatalf("versioned decode = %#v, %v", decoded, err)
+	}
+	if _, err := HostDecodeVersioned(oldValue, []string{"aes"}, 2, keyring); err == nil {
+		t.Fatal("wrong stored version was accepted")
+	}
+}

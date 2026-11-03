@@ -3,7 +3,12 @@
   "requirements": [
     "INT-55",
     "INT-77",
-    "INT-91"
+    "INT-91",
+    "DBS-108",
+    "DBS-119",
+    "DBS-120",
+    "SCH-7",
+    "SCH-11"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -5448,6 +5453,663 @@
                     ]
                   }
                 ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_set_several_fixture_first",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../decimal_schema.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../decimal_schema.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "decimal_case",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "op": "model.create",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "b"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "EventProbe",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_set_several_other_first",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "../decimal_schema.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "statement_events.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "decimal_case",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "amount",
+                "large_value"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "EventProbe",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_set_unregistered",
+      "requirements": [
+        "DBS-119"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "owner"
+        },
+        {
+          "op": "schema.install",
+          "connection": "owner",
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "owner",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          }
+        },
+        {
+          "op": "statements.count",
+          "steps": [
+            {
+              "op": "model.count",
+              "model": "EventProbe",
+              "expect": {
+                "mysql": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "postgres": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "sqlite": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "b"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "postgres": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "sqlite": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "count": 0
+            },
+            "postgres": {
+              "count": 0
+            },
+            "sqlite": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "op": "schema.register",
+          "schema": {
+            "documents": [
+              "../decimal_schema.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "statements.count",
+          "steps": [
+            {
+              "op": "model.count",
+              "model": "EventProbe",
+              "expect": {
+                "mysql": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "postgres": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "sqlite": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "model": "EventProbe",
+              "values": {
+                "label": {
+                  "text": "b"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "postgres": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                },
+                "sqlite": {
+                  "error": "SCHEMA_HASH_MISMATCH"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "count": 0
+            },
+            "postgres": {
+              "count": 0
+            },
+            "sqlite": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "op": "schema.register",
+          "schema": {
+            "documents": [
+              "statement_events.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "EventProbe",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "schema_set_edited_manifest",
+      "requirements": [
+        "DBS-120",
+        "SCH-7",
+        "SCH-11"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "statements.count",
+          "steps": [
+            {
+              "op": "schema.install",
+              "schema": {
+                "documents": [
+                  "statement_events.dbs"
+                ],
+                "manifest_replace": {
+                  "from": "varchar(32)",
+                  "to": "varchar(33)"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            },
+            {
+              "op": "schema.register",
+              "schema": {
+                "documents": [
+                  "statement_events.dbs"
+                ],
+                "manifest_replace": {
+                  "from": "varchar(32)",
+                  "to": "varchar(33)"
+                }
+              },
+              "expect": {
+                "mysql": {
+                  "error": "CONFIG"
+                },
+                "postgres": {
+                  "error": "CONFIG"
+                },
+                "sqlite": {
+                  "error": "CONFIG"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "count": 0
+            },
+            "postgres": {
+              "count": 0
+            },
+            "sqlite": {
+              "count": 0
+            }
+          }
+        },
+        {
+          "op": "schema.connect",
+          "schema": {
+            "documents": [
+              "statement_events.dbs"
+            ],
+            "manifest_replace": {
+              "from": "varchar(32)",
+              "to": "varchar(33)"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        },
+        {
+          "op": "schema.install",
+          "schema": {
+            "documents": [
+              "statement_events.dbs"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "bool": true
+              }
+            },
+            "postgres": {
+              "value": {
+                "bool": true
+              }
+            },
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "model": "EventProbe",
+          "values": {
+            "label": {
+              "text": "a"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "EventProbe",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
               }
             }
           }

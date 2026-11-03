@@ -504,7 +504,7 @@ static bool schema_utils_install_body(zval *db, void *opaque, zval *result)
             smart_str_append(&names, Z_STR_P(name));
         } ZEND_HASH_FOREACH_END();
         smart_str_0(&names);
-        db_throw_orm("CONFIG", "the database holds only some tables of the document set: %s",
+        db_throw_orm("CONFIG", "install found only some tables of the document set: %s",
             names.s == NULL ? "" : ZSTR_VAL(names.s));
         smart_str_free(&names);
         zval_ptr_dtor(&present);

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 9d89b632c0783aaa74153ab3e8f35aaf6a37f8d8336d568a349399cae9b5d39e -->
+<!-- source-sha256: 7d02b70b552be9cbfce9d4e27d84268dd0e4784883e6165fecb4473ad8de8fd3 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -213,7 +213,7 @@ classDiagram
 
 모델 행은 선언 필드, 추가 컬럼, 관계 결과, `new<Name>`으로 추가한 값을 하나의 명칭 공간에 저장하며 명칭 중복을 거부한다. getter는 선언 타입을 반환한다. setter는 필드를 변경하고 dirty로 표시한다. update는 optimistic locking에 필요한 필드를 제외하고 dirty 필드만 전송한다. 원본 version은 변경 전에 읽어 update 조건에 사용한다.
 
-- **INT-160** plan 열이 타입을 명시한 추가 열은 모든 runtime에서 그 타입을 반환한다. `i16`, `i32`, `i64`, `f64`, `bool`, `date`, `datetime`은 그 타입의 선언 열과 같이 디코드한다. text는 범위 안의 정수 숫자 그대로일 때만 그 타입의 정수이므로, 범위를 넘거나 소수부가 있는 DECIMAL은 `CODEC_DECODE`로 실패한다. TypeScript는 COD-45의 범위를 지킨다. `i16`이나 `i32` 열을 합하는 scalar subquery의 plan 타입은 `i64`다. 합은 열의 범위를 벗어나기 때문이다. 그 밖의 타입이거나 타입이 없는 plan 열은 driver 값을 반환한다.
+- **INT-160** plan 열이 타입을 명시한 추가 열은 모든 runtime에서 그 타입을 반환한다. `i16`, `i32`, `i64`, `f64`, `bool`, `date`, `datetime`은 그 타입의 선언 열과 같이 디코드한다. text는 범위 안의 정수 숫자 그대로일 때만 그 타입의 정수이므로, 범위를 넘거나 소수부가 있는 DECIMAL은 `CODEC_DECODE`로 실패한다. TypeScript는 COD-45의 범위를 지킨다. `i16`이나 `i32` 열을 합하는 scalar subquery의 plan 타입은 `i64`다. 합은 열의 범위를 벗어나기 때문이다. 그 밖의 타입이거나 타입이 없는 plan 열은 driver 값을 반환한다. SQLite는 i64 범위를 넘는 SUM을 스스로 거부하므로 그 read는 `CODEC_DECODE`가 아니라 `DRIVER`로 실패한다.
 
 relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust의 relation getter는 error도 돌려준다. related row가 없는 행은 결과 없음으로 읽히고, 저장된 relation 값의 type이 getter 결과와 다르면 `INTERNAL`이다. collection keying은 결정적이다. 중복 key는 선언된 정책을 따르고, 선언되지 않은 key function은 오류다.
 
@@ -253,6 +253,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-94** `polyspec/orm-php-ext` package의 PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
 - **INT-95** `polyspec/orm-php-ext` package의 `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
 - **INT-156** `packages/php/composer.json`은 `packages/php/src`가 그 class나 function을 부르는 모든 PHP extension을 선언한다. 모든 PHP build에 있는 extension(Core, standard, date, pcre, Reflection, SPL, random, hash)은 빼고, client가 그것 없이 돌 수 없으면 `require`에, 한 database나 기능만 쓰면 그 기능과 함께 `suggest`에 둔다.
+- **INT-156a** `polyspec/orm-php-ext` 패키지의 PHP 확장은 `SchemaUtils`를 native로 구현한다. 이 class와 `register`, `install`, `addTablesAndColumns`, `exists`, `installed`, `empty` method는 internal이고, subscriber 실패는 설치를 `SUBSCRIBER`로 멈추고 table을 남기지 않으며, `Schema`가 아닌 object와 잘못된 식별자는 statement를 보내기 전에 거부한다.
 - **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.
 - **INT-130** `AESKeyring`(Go `AESKeyring`, PHP `AesKeyring`, TypeScript `AESKeyring`, Python `AesKeyring`, Rust `AesKeyring`)은 선언된 AES key version과 현재 version(Go `CurrentAESVersion`)을 가지며, INT-60의 keyring 인자이다.
 - **INT-131** `AESUtils`(Go `AESUtils`, PHP `AesUtils`, TypeScript `AESUtils`, Python `AesUtils`, Rust `AesUtils`)는 `aes()`(INT-60)의 값이고, INT-60의 연산인 `status(model, keyring)`과 `rotate(model, keyring)`을 노출한다.
