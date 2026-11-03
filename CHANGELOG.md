@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.
 - The four expected revision natives are gone from all six runtimes: the case `expect_revision` of the recipe conformance_verification holds a match, a mismatch, an update and a delete on every database (#T334-3-6-2)
 - The parity units of the catalog temporal text and the grid order read their Go tests from the normal run, with no bench database (#T334-3-6-2)
@@ -10,8 +11,9 @@
 - The cleanup errors of apply (PLN-97 to PLN-101, PLN-106) and a rollback of a recorded step outside the plan are cases of the `dbspec.apply_fault` recipe in every runtime, through injected statements; the native tests are gone (#T334-3-18).
 - `conformance-generated-methods-check` also compares the bodies `now_defaults`, `delete_recursive` and `affected_counts` with the expects of their recipe cases.
 - The group_rows_db natives and the physical check are gone; the recipe holds the values and the exact read-only statements (#T334-3-4-25)
-- The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
 - `active_frame()` of Python is a stated requirement (INT-161) with its native test, the recipe `utils` refuses `setLocal` outside a transaction, and the recipe `aes_rotation` holds the status counts of several key versions.
+- The recipe `statement_events` holds the failure of a subscriber with an ORM error, and the native statement event tests of Go and Python are gone.
+- The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.

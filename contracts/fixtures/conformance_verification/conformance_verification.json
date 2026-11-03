@@ -1,6 +1,10 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
+  "DSL-137",
+  "DIA-37",
+  "DIA-14",
+  "DIA-11",
   "FCV-2",
   "FCV-3",
   "FCV-4",
@@ -7458,6 +7462,7 @@
   {
    "id": "conditions_values",
    "requirements": [
+    "DIA-37",
     "DSL-29",
     "DSL-30",
     "DSL-31",
@@ -13117,6 +13122,7 @@
   {
    "id": "relations",
    "requirements": [
+    "DIA-37",
     "DSL-79",
     "DSL-80",
     "DSL-81",
@@ -20974,6 +20980,9 @@
   {
    "id": "functions",
    "requirements": [
+    "DIA-14",
+    "DIA-37",
+    "DSL-137",
     "DSL-54",
     "DSL-131",
     "DSL-132",
@@ -25167,6 +25176,8 @@
   {
    "id": "creates_and_save",
    "requirements": [
+    "DIA-11",
+    "DIA-37",
     "DSL-104",
     "DSL-109"
    ],
