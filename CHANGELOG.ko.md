@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b39ea483c58679cf97fc7935c2f90597ff6a2120977749e001091396b8f7e103 -->
+<!-- source-sha256: df78c0cfeea3ae8aea6e68933e3491b575e64afbe0bc036cf94fe26300587b81 -->
 # 변경 이력
 
 ## Unreleased
 
+- commit에서 연결을 잃은 PHP catalog가 이후 계속 `CONNECTION_LOST`로 실패하지 않고 다음 호출에 새 연결로 읽는다(INT-118). `catalog_connection` recipe case `row_commit_outcomes`가 commit을 거부하는 PostgreSQL deferred trigger와 commit 중 backend를 끝내는 trigger로 이를 담는다.
 - 생성 파일 검사의 set 오류, 파일 진단, `differs:`와 `missing:` 줄은 `generator.refused`와 `generator.check`로 여섯 runtime 모두에서 `generator` recipe의 case이며, 그 native는 지운다 (#T334-3-20)
 - 부호 있는 64비트 범위를 넘는 MySQL unsigned 값의 `read_only_query`가 모든 runtime에서 정확한 숫자를 돌려준다(INT-102). Go, Rust, PHP library, PHP extension은 이를 거부했다. recipe case `grid_number_values`가 이를 담는다.
 - read-only grid query의 decimal과 숫자 칸이 `catalog_connection` recipe case `grid_decimal_values`, `grid_number_values`가 되었다. Rust 시험 `grid_decimals`, `grid_numbers`는 사라졌다.

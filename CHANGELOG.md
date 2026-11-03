@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A PHP catalog whose commit lost its connection reads over a new connection at its next call instead of failing with `CONNECTION_LOST` from then on (INT-118). The recipe case `row_commit_outcomes` of `catalog_connection` holds it, with a PostgreSQL deferred trigger that rejects the commit and one that ends the backend during it.
 - The set errors, the file diagnostics and the `differs:` and `missing:` lines of the generated file check are cases of the `generator` recipe in all six runtimes through `generator.refused` and `generator.check`, and their natives are gone (#T334-3-20)
 - `read_only_query` of a MySQL unsigned value beyond the signed 64-bit range returns its exact digits in every runtime (INT-102): Go, Rust, the PHP library and the PHP extension refused it. The recipe case `grid_number_values` holds it.
 - The decimal and number cells of a read-only grid query are the recipe cases `grid_decimal_values` and `grid_number_values` of `catalog_connection`; the Rust tests `grid_decimals` and `grid_numbers` are gone.
