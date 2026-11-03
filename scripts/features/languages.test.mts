@@ -91,7 +91,6 @@ caseTest('shared feature tests come from parity test globs or exact bindings, wh
   assert.equal(isFeatureTestPath('php', 'packages/php/tests/CannedCatalogPdo.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP doubles remain support files');
   assert.equal(isFeatureTestPath('rust', 'packages/rust/orm/tests/common/test_support.rs', globs, [], internal, support), false, 'declared Rust test modules remain support files');
   assert.equal(isImplementationInternalTest('python', 'packages/python/tests/entry_point_check.py', internal), true, 'the package entry-point owner test is implementation-internal');
-  assert.equal(isFeatureTestPath('rust', 'packages/rust/tests/tests/common/coverage_database.rs', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('typescript', 'packages/ts/tests/coverage_performance_gate.test.mjs', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('typescript', 'packages/ts/tests/coverage_performance_report.mjs', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('php', 'packages/php/testing/interfaces/php.php', globs, boundTestPaths('php', parity), internal, support), false);

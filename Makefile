@@ -404,7 +404,7 @@ get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
 get-page-plan-steps-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
 get-page-plan-steps-check/rust: lease-tool
-	cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_complex_query::get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page -- --exact --test-threads=1
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_sqlite -- --exact complex_query_sqlite::page_plan_steps
 
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
 # its results (PASS, FAIL and reason), and the elapsed time, and that it reports a case past its deadline as FAIL,
@@ -1531,23 +1531,11 @@ feature-go-unit:
 # feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
 # (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
 # `--test client_bench_dsn` or `--bin conformance`) and FEATURE_TEST (the exact name of the test) are passed by
-# config/parity.json. The test is selected by its exact name, since a target also holds the database tests that
-# feature-rust-database runs. It runs through tests/cargo-test.mts,
+# config/parity.json. The test is selected by its exact name. It runs through tests/cargo-test.mts,
 # the runner of every Rust test, which gives the test binaries the copied programs they read (polyspec_orm_testcase::program).
 .PHONY: feature-rust-unit
 feature-rust-unit:
 	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && $(CARGO_TEST) feature-rust-unit -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --exact $(FEATURE_TEST)
-
-# feature-rust-database runs one Rust database test of a feature against one database, as a parity binding names it:
-# FEATURE_CRATE, FEATURE_CARGO_TARGET and FEATURE_TEST as feature-rust-unit, and FEATURE_DATABASE with FEATURE_DSN_ENV (the
-# database, and the variable that holds its DSN). The test needs that database, so it is selected by its exact name only where
-# the database is given: the feature checker runs it with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN set for each database of its
-# coverage item (scripts/features/coverage.mts), and this target does the same for the one database that the binding names.
-# A database test that the plain suite cannot run is an ignored trial, which the feature checker runs with --include-ignored, so
-# this target includes ignored tests too; --exact keeps the run to the named test.
-.PHONY: feature-rust-database
-feature-rust-database:
-	$(WITH_TEST_ENV) cd $(FEATURE_CRATE) && ORM_FEATURE_DATABASE=$(FEATURE_DATABASE) ORM_FEATURE_DSN="$$$(FEATURE_DSN_ENV)" $(CARGO_TEST) feature-rust-database -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline $(FEATURE_CARGO_TARGET) -- --test-threads=1 --include-ignored --exact $(FEATURE_TEST)
 
 # feature-check is the feature coverage and all verification commands. Its aggregate feature-coverage target depends on the runtime/database
 # cells and the exclusive performance target; CI runs each SQL cell, each runtime's Markdown target, and performance in separate groups.
