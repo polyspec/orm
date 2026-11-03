@@ -5217,38 +5217,48 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/dsn_connection"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestDriverFromDSN"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/dsn_connection"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "coverage_generated_model_connection_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=coverage_generated_model_connection_sqlite"
-          ]
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/dsn_connection"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/DsnConnectionRecipeTest.php",
-          "id": "DsnConnectionRecipeTest::testSqlite"
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"dsn_connection\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"dsn_connection\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"dsn_connection\""
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
-          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite"
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"dsn_connection\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"dsn_connection\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"dsn_connection\""
         },
         {
           "implementation": "typescript",
@@ -5259,6 +5269,40 @@
           "implementation": "python",
           "test": "packages/python/tests/test_dsn_connection_sqlite.py",
           "id": "dsn_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::dsn_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::dsn_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::dsn_connection"
+        }
+      ]
+    },
+    {
+      "id": "connection-driver-from-dsn",
+      "kind": "feature",
+      "requirements": [
+        "CFG-40"
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/go"
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestDriverFromDSN"
         }
       ]
     },

@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: f496a7e59c07f8db0deff37c2048349a24687e0bbc77a342dd6a00fb8f4f6b16 -->
+<!-- source-sha256: 971a0b28f9611d3938beeb9adf26a2896923f0b826f6b3743c7372299535198c -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -28,6 +28,7 @@
   - `collection-composite-key-encoding`(PRT-35)는 FCV-2 driver 항목으로 모든 runtime에서 native로 남습니다. composite key의 encoded text와 구성 요소의 타입은 driver 행에서 읽히며, 여섯 runtime이 모두 가진 public 호출 중 구성 요소를 받거나 그 text를 돌려주는 것은 없습니다.
   - `group-row-driver-cell-forms`(INT-68, INT-90)는 모든 runtime에서 FCV-2의, recipe 값이 담을 수 없는 입력으로 native로 남는다. text나 float인 count와 반복된 열은 driver cell의 형태이고, listener의 답은 count가 JSON number이고 행이 JSON object이므로(PRT-69) 그중 어느 것도 담지 못한다. `collection-recipe`(`tests/collection/collection.json`)는 나머지 group row 동작을 모두 `ir.answer`로 담으며 새 op가 필요 없다. PHP의 `toArray` 선언 형태와 PHP extension의 iterator는 다른 runtime에 없는 FCV-2 binding surface로, parity 단위 없이 native 시험으로 남는다.
   - `connection-cancelled-transaction-session-state`(CFG-39)는 Go에서 native로 남는다. handle의 context는 Go에만 있고, 다른 runtime에는 그것으로 callback 도중 transaction을 취소하는 호출이 없다.
+  - `connection-driver-from-dsn`(CFG-40)는 Go에서 native로 남는다. `DriverFromDSN`은 연결을 열지 않고 데이터베이스를 돌려주는 Go 고유 함수이며, recipe 형식의 어떤 op도 그것을 호출하지 않는다.
   - `connection-first-statement-lost`(CFG-38)는 이 동작이 PHP와 PHP extension에만 있으므로 두 runtime에서 native로 남는다. 두 runtime은 pool 없이 connection 하나를 두므로 첫 statement가 종료된 session을 만난다. 다른 runtime의 pool은 server가 종료한 idle connection을 버리고(INT-92, `pool-idle-server-end`), 다음 statement는 새 connection에서 성공한다.
   - `connection-mysql-tls-unsupported-options`, `connection-statement-timeout-negative-refused`, `connection-dsn-other-parameters`(CFG-6, CFG-18, CFG-20)는 FCV-2의 driver entry로 Rust에서, 마지막은 Go에서도 native로 남는다. sqlx와 go-sql-driver가 매개변수에서 읽는 것은 어떤 public call도 돌려주지 않는 driver option이고, Rust 설정의 부호 없는 타입은 음수 값을 컴파일 때 거부한다. 다른 runtime의 거부는 `dsn-reject-checked`와 `dsn-reject-parameters`의 case다.
   - `transaction-control-methods-are-private`(DSL-124)는 FCV-2의 binding surface로 모든 runtime에서 native로 남는다. 메서드가 공개되지 않았다는 사실에는 recipe op가 이름 붙일 공개 호출이 없기 때문이다. `sqlite-minimum-driver-version`(DSL-150)도 native로 남는다. 각 runtime이 자기 driver에서 버전을 읽고, 그 비교에는 공개 호출이 없다.

@@ -74,7 +74,8 @@
         "dsn_connection-postgres",
         "dsn_connection-sqlite",
         "dsn-reject-checked",
-        "dsn-reject-parameters"
+        "dsn-reject-parameters",
+        "connection-driver-from-dsn"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -103,7 +104,6 @@
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",
-        "packages/go/model/coverage_dsn_test.go",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/go/orm/sqlite_path_test.go",
@@ -871,112 +871,7 @@
             }
           }
         },
-        "dependents": [
-          {
-            "id": "generated_go_model",
-            "language": "go",
-            "part": "packages/go/model",
-            "tests": [
-              "packages/go/model/coverage_dsn_test.go"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/mysql"
-                  },
-                  "case_database": true
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/postgres"
-                  },
-                  "case_database": true
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_dsn_test.go",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/sqlite"
-                  },
-                  "case_database": true
-                }
-              ]
-            }
-          },
-          {
-            "id": "generated_rust_model",
-            "language": "rust",
-            "part": "packages/rust/tests/tests/integration_program",
-            "tests": [
-              "packages/rust/tests/tests/integration_program/main.rs"
-            ],
-            "cases": [
-              "dsn_model_connection"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_mysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_postgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration_program/main.rs",
-                  "cases": [
-                    "dsn_model_connection"
-                  ],
-                  "symbols": {
-                    "dsn_model_connection": "coverage_generated_model_connection_sqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                }
-              ]
-            }
-          }
-        ]
+        "dependents": []
       }
     },
     {

@@ -439,6 +439,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The preempted test of DbspecRenderTest failed in test (feature_verify_other) of main CI run 41324077414 with nine DSN errors, because it ran the whole file without the database DSNs. testBehaviourPhysical (CR16-1-3) now carries the group database, which the preempted run excludes; the physical cases still run in dbspec-php-check/render (CR55).
 - The drop step refuses a binary log purge that the replica did not apply, and names the replica SQL thread state and its last error; the start of the test servers no longer reuses a MySQL replica whose SQL thread stopped, and reports it with its last error (G5.55-2).
 - The UTC connection behaviour (CFG-2, DIA-57, DSL-141) runs as cases of the `dsn_connection` recipe in every client, and `model.connect` takes `case?<query>`. A TypeScript MySQL connection whose TLS handshake refuses the certificate now returns `CONFIG`, as CFG-16 states, instead of `DRIVER`.
+- Go `DriverFromDSN` is a requirement of its own (CFG-40), and the generated model connections of Go and Rust no longer have tests beside the recipes that connect them.
 
 ## 0.0.21
 
