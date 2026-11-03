@@ -3696,18 +3696,6 @@
         "packages/php/tests/WarningStreamProtocol.php"
       ]
     },
-    "temp-sqlite-fixture-rust-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "rust"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/tests/Cargo.toml",
-        "packages/rust/tests/tests/common/temp_sqlite.rs",
-        "packages/rust/tests/tests/refusal_before_request.rs"
-      ]
-    },
     "native-api-equivalence-check": {
       "scope": "owner",
       "needs": [
@@ -3840,20 +3828,11 @@
       "needs": [
         "go",
         "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "php-extension-tools"
+        "node-modules"
       ],
       "inputs": [
-        "tests/conformance/vectors.sqlite.json",
         "packages/go/model/refusal_test.go",
-        "packages/php/tests/RefusalBeforeRequestTest.php",
-        "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
         "packages/ts/tests/refusal-before-request.mjs",
-        "packages/python/tests/test_refusal.py",
-        "packages/rust/tests/tests/refusal_before_request.rs",
         "packages/rust/testing/compiler-fixtures/cases.json"
       ]
     },

@@ -8,7 +8,6 @@
       "roots": [
         "packages/go/bindmessages",
         "packages/go/cmd",
-        "packages/go/complexquery",
         "packages/go/decimalmodel",
         "packages/go/engine",
         "packages/go/generator",
@@ -22,8 +21,7 @@
         "packages/go/bench"
       ],
       "tests": [
-        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go",
-        "packages/go/complexquery/coverage_*_test.go"
+        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
@@ -1088,7 +1086,6 @@
         "packages/rust/tests/tests/common/result_code.rs",
         "packages/rust/orm/tests/common/clock_test_support.rs",
         "packages/rust/schema/tests/common/json_lines.rs",
-        "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/tests/src/lib.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/src/recipe_apply.rs",
@@ -9154,6 +9151,123 @@
       ]
     },
     {
+      "id": "connection_pool-mysql",
+      "kind": "suite",
+      "requirements": [
+        "CFG-5a"
+      ],
+      "file": "contracts/fixtures/connection_pool/connection_pool.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "symbol": "TestRecipeConnectionPoolMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "symbol": "connection_pool_mysql"
+        }
+      ]
+    },
+    {
+      "id": "connection_pool-postgres",
+      "kind": "suite",
+      "requirements": [
+        "CFG-5a"
+      ],
+      "file": "contracts/fixtures/connection_pool/connection_pool.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "symbol": "TestRecipeConnectionPoolPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_postgres.rs",
+          "symbol": "connection_pool_postgres"
+        }
+      ]
+    },
+    {
+      "id": "connection_pool-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "CFG-5a"
+      ],
+      "file": "contracts/fixtures/connection_pool/connection_pool.json",
+      "cases": "$.cases[*].id",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "symbol": "TestRecipeConnectionPoolSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_sqlite.rs",
+          "symbol": "connection_pool_sqlite"
+        }
+      ]
+    },
+    {
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
@@ -13366,11 +13480,6 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolSize"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testPoolOptions"
@@ -13382,23 +13491,48 @@
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dsn_features.mjs",
-          "id": "dsn/pool-bounds"
-        },
-        {
-          "implementation": "typescript",
           "test": "packages/ts/tests/pool_bounds.mjs",
           "id": "connection/pool-invalid-options-refused"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/the_pool_size_is_the_open_maximum"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "the_pool_size_is_the_open_maximum"
+        },
+        {
           "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_options"
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "the_pool_size_is_the_open_maximum"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_size_bound"
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::the_pool_size_is_the_open_maximum"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/an_unset_or_zero_pool_size_opens_at_most_ten"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "an_unset_or_zero_pool_size_opens_at_most_ten"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "an_unset_or_zero_pool_size_opens_at_most_ten"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::an_unset_or_zero_pool_size_opens_at_most_ten"
         }
       ]
     },
@@ -13412,7 +13546,7 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolIdleSizeAndLifetime"
+          "id": "TestPoolLifetime"
         },
         {
           "implementation": "php",
@@ -13443,6 +13577,26 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "pool_idle_size_and_lifetime"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/an_idle_size_above_the_pool_size_is_refused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "an_idle_size_above_the_pool_size_is_refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "an_idle_size_above_the_pool_size_is_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::an_idle_size_above_the_pool_size_is_refused"
         }
       ]
     },
@@ -13464,34 +13618,29 @@
           "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolSize"
-        },
-        {
           "implementation": "typescript",
           "test": "packages/ts/tests/pool_bounds.mjs",
           "id": "connection/pool-open-limit/sqlite"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-open-limit/mysql"
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/transactions_wait_at_the_open_maximum"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-open-limit/postgres"
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "transactions_wait_at_the_open_maximum"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_concurrent_transactions_and_the_limit"
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "transactions_wait_at_the_open_maximum"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_size_bound"
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::transactions_wait_at_the_open_maximum"
         }
       ]
     },
@@ -13515,17 +13664,17 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/timezone_test.go",
-          "id": "TestPoolIdleSizeAndLifetime"
+          "id": "TestPoolLifetime"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-idle-lifetime/mysql"
+          "id": "connection/pool-lifetime/mysql"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/pool_bounds.mjs",
-          "id": "connection/pool-idle-lifetime/postgres"
+          "id": "connection/pool-lifetime/postgres"
         },
         {
           "implementation": "python",
@@ -13536,6 +13685,46 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "pool_idle_size_and_lifetime"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/the_idle_size_closes_what_it_does_not_keep"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "the_idle_size_closes_what_it_does_not_keep"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "the_idle_size_closes_what_it_does_not_keep"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::the_idle_size_closes_what_it_does_not_keep"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_connection_pool_test.go",
+          "id": "TestRecipeConnectionPoolMysql/an_unset_idle_size_keeps_the_pool_size"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+          "id": "an_unset_idle_size_keeps_the_pool_size"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_connection_pool_mysql.py",
+          "id": "an_unset_idle_size_keeps_the_pool_size"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+          "id": "connection_pool_mysql::an_unset_idle_size_keeps_the_pool_size"
         }
       ]
     },
@@ -29059,6 +29248,11 @@
       ],
       "bindings": [
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "test_privileges_are_unsupported_off_postgres"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
           "id": "TestTransactions"
@@ -30103,58 +30297,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "id": "TestRecipeUtilsSqlite/stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testTransactions"
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testSqlite with data set \"stats_report_the_pool_of_the_connection\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testNativeUtilsReportThePoolStatistics"
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testSqlite with data set \"stats_report_the_pool_of_the_connection\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "transactions"
+          "test": "packages/ts/tests/utils_recipe-sqlite.test.mjs",
+          "id": "stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_stats_report_the_pool_of_the_db"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
+          "test": "packages/python/tests/test_utils_recipe_sqlite.py",
+          "id": "stats_report_the_pool_of_the_connection"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "transactions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_TEST=transactions"
-          ]
+          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "id": "utils_recipe_sqlite::stats_report_the_pool_of_the_connection"
         }
       ]
     },
@@ -42120,42 +42289,12 @@
         {
           "implementation": "go",
           "test": "packages/go/model/refusal_test.go",
-          "id": "TestRefusalBeforeAnyRequest"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/refusal_test.go",
           "id": "TestRefusalIsATypedError"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RefusalBeforeRequestTest.php",
-          "id": "RefusalBeforeRequestTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
-          "id": "RefusalBeforeRequestExtensionTest::testEachChainOfTheErrorsVectorIsRefusedBeforeAnyRequest"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/refusal-before-request.mjs",
-          "id": "each chain of the errors vector is refused before any request"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/refusal-before-request.mjs",
           "id": "tsc accepts each chain of the errors vector as a promise and refuses it as rows"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_refusal.py",
-          "id": "test_each_chain_of_the_errors_vector_is_refused_before_any_request"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/refusal_before_request.rs",
-          "id": "refusal_before_request"
         },
         {
           "implementation": "rust",
@@ -42206,6 +42345,21 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/compiler_fixtures.rs",
           "id": "compiler_fixtures::refusal-unjoined-model-placement-e0308"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"errors\""
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "errors"
         }
       ]
     },
