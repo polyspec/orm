@@ -830,7 +830,7 @@ async function main() {
     const row = await new ClockCell().connect(db).getBySeq(created.getSeq());
     await row.delete();
     const at6 = row.getAt6();
-    return { p0_truncated: row.getAt0() === at6.slice(0, 19), p3_truncated: row.getAt3() === at6.slice(0, 23) };
+    return { at6_fixed: at6 === '2026-06-01 12:34:56.999999', p0_truncated: row.getAt0() === at6.slice(0, 19), p3_truncated: row.getAt3() === at6.slice(0, 23) };
   });
   await run('clock_compare_six_digits', async () => {
     fixClock(db, '2026-06-01 12:34:56.999999');

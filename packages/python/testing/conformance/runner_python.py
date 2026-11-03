@@ -1724,6 +1724,7 @@ def main():
         row.delete()
         at6 = row.get_at6()
         return {
+            "at6_fixed": at6 == "2026-06-01 12:34:56.999999",
             "p0_truncated": row.get_at0() == at6[:19],
             "p3_truncated": row.get_at3() == at6[:23],
         }

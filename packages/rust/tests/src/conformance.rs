@@ -1287,6 +1287,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             row.delete(false).await?;
             let at6 = row.get_at6()?;
             Ok::<Value, polyspec_orm::Error>(json!({
+                "at6_fixed": at6.format("%Y-%m-%d %H:%M:%S%.6f").to_string() == "2026-06-01 12:34:56.999999",
                 "p0_truncated": row.get_at0()? == at6.trunc_subsecs(0),
                 "p3_truncated": row.get_at3()? == at6.trunc_subsecs(3),
             }))
