@@ -83,6 +83,123 @@ export function expectedOfCase(recipeCase: Case, database: string): Output {
   return { result: shape(held.map(step => stepValue(step, database))), statements: plain(events) as Json[] };
 }
 
+type Vector = { name: string; expect: { result?: Json; statements?: { [key: string]: Json }[] } };
+
+/** The vector file of a database (DIA-37). */
+export const vectorFile = (database: string): string =>
+  join(root, 'tests/conformance', database === 'mysql' ? 'vectors.json' : `vectors.${database}.json`);
+
+/** The vectors that no recipe case holds, each with where its expectation lives. */
+export const NO_RECIPE_CASE: Record<string, string> = {
+  errors: 'the refusal tests of each runtime (T334-3-5-2) read its chains',
+  clock_truncate_write: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
+  clock_compare_six_digits: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
+};
+
+/** Why the values of a vector result cannot equal its recipe case, which derives them from the seed of the recipe (T334-3-5). */
+const SEED_RESULTS = new Set([
+  'conditions_values', 'terminal_by', 'terminal_reuse', 'expression_forms', 'joins', 'subqueries', 'aggregates', 'empty_reads',
+  'functions', 'column_pairs', 'aes_status',
+]);
+
+/**
+ * The result of a vector as its recipe case states it. A body folds a step into a boolean, a size or a null for no error,
+ * and the recipe holds what the runtime returns: the error code of the step, its rows, its count.
+ */
+const RESULT_FORMS: Record<string, (result: Json) => Json> = {
+  relation_empty: () => [],
+  contains_null: result => ({ count: (result as { count: Json }).count }),
+  audit_lazy: result => {
+    const { rolled_back: _, ...rest } = result as Record<string, Json>;
+    return { ...rest, rolled_back: 'CALLBACK' };
+  },
+  transactions: result => (result as Json[]).filter((_, index) => index !== 2).map(item => (item === true ? 'CALLBACK' : item)),
+  empty_reads: result => {
+    const { gets: _, page, ...rest } = result as Record<string, Json>;
+    const { items: _items, ...held } = page as Record<string, Json>;
+    return { ...rest, page: held };
+  },
+  now_defaults: () => [1],
+  expect_revision: result => {
+    const { delete_match: _, ...rest } = result as Record<string, Json>;
+    return rest;
+  },
+  delete_lock: () => ['FOREIGN_KEY'],
+};
+
+function unwrapped(value: Json): Json {
+  const held = plain(value);
+  if (Array.isArray(held)) return held.map(unwrapped);
+  if (held !== null && typeof held === 'object') return Object.fromEntries(Object.entries(held).map(([name, item]) => [name, unwrapped(item)]));
+  return held;
+}
+
+const leaves = (value: Json): string[] => {
+  if (Array.isArray(value)) return value.flatMap(leaves);
+  if (value !== null && typeof value === 'object') return Object.values(value).flatMap(leaves);
+  return [JSON.stringify(value)];
+};
+
+const stepsOf = (steps: Step[]): Step[] =>
+  steps.flatMap(step => [step, ...stepsOf((step as { steps?: Step[] }).steps ?? [])]);
+
+const MASKED = new Set(['$SEQ', '$TS', '$AES', '$NOW'].map(text => JSON.stringify(text)));
+
+/**
+ * What a vector states and its recipe case does not, on one database. Statements compare field by field, `$SEQ` being any
+ * integer. A result value is held when an expect of the case holds it; an error message is held by its code and suffix.
+ */
+export function vectorDifferences(vector: Vector, recipeCase: Case, database: string): string[] {
+  const out: string[] = [];
+  const steps = stepsOf(recipeCase.steps);
+  const captured = steps.find(step => step.op === 'events.captured');
+  const events = captured?.expect?.[database] as { value?: Json } | undefined;
+  const got = (events === undefined ? [] : unwrapped(events.value ?? null)) as { [key: string]: Json }[];
+  const want = vector.expect.statements ?? [];
+  if (got.length !== want.length) out.push(`${want.length} statements in the vector, ${got.length} in the case`);
+  else {
+    for (const [index, statement] of want.entries()) {
+      for (const [field, value] of Object.entries(statement)) {
+        if (field === 'binds') continue;
+        if (JSON.stringify(got[index]?.[field]) !== JSON.stringify(value)) out.push(`statement ${index} ${field}: ${JSON.stringify(value)} in the vector, ${JSON.stringify(got[index]?.[field])} in the case`);
+      }
+      const binds = statement.binds as Json[];
+      const held = got[index]?.binds as Json[];
+      if (binds.length !== held.length) out.push(`statement ${index} has ${binds.length} binds in the vector, ${held.length} in the case`);
+      for (const [position, bind] of binds.entries()) {
+        const same = bind === '$SEQ' ? Number.isInteger(held[position]) : JSON.stringify(bind) === JSON.stringify(held[position]);
+        if (!same) out.push(`statement ${index} bind ${position}: ${JSON.stringify(bind)} in the vector, ${JSON.stringify(held[position])} in the case`);
+      }
+    }
+  }
+  const expects = steps.filter(step => step.op !== 'events.captured' && step.expect?.[database] !== undefined).map(step => step.expect?.[database] as Json);
+  const have = new Map<string, number>();
+  for (const leaf of expects.flatMap(expect => leaves(unwrapped(expect)))) have.set(leaf, (have.get(leaf) ?? 0) + 1);
+  const suffixes = expects.flatMap(expect => {
+    const suffix = (expect as { message_suffix?: Json }).message_suffix;
+    return typeof suffix === 'string' ? [suffix] : [];
+  });
+  const result = vector.expect.result ?? null;
+  const stated = leaves(RESULT_FORMS[vector.name]?.(result) ?? result).filter(leaf => !MASKED.has(leaf));
+  const total = [...have.values()].reduce((sum, count) => sum + count, 0);
+  if (SEED_RESULTS.has(vector.name)) {
+    if (total < stated.length) out.push(`${stated.length} result values in the vector, ${total} in the expects of the case`);
+    return out;
+  }
+  for (const leaf of stated) {
+    const message = /^"([A-Z][A-Z0-9_]*): (.*)"$/.exec(leaf);
+    if (message !== null) {
+      if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the vector is in no expect of the case`);
+      if (!suffixes.some(suffix => (message[2] as string).endsWith(suffix))) out.push(`the message ${leaf} of the vector has no message_suffix in the case`);
+      continue;
+    }
+    const count = have.get(leaf) ?? 0;
+    if (count === 0) out.push(`the result value ${leaf} of the vector is in no expect of the case`);
+    else have.set(leaf, count - 1);
+  }
+  return out;
+}
+
 /** Each statement of a body against the fields that the statement of the expect states. */
 export function compareOutput(name: string, got: Output, want: Output): void {
   assert.deepEqual(got.result, want.result, `${name}: the result differs from its expect`);

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5699f38f2e3c0d3357a1c2e00ef9596ef7a2929890f1b7997763060ebb8dac75 -->
+<!-- source-sha256: 14c027283a98b4980de38ad5f4eb5095a5607b7f5dff4384cc9d50cf3dfacb54 -->
 # 변경 이력
 
 ## Unreleased
@@ -662,6 +662,8 @@
 - found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
 - Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
 - transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).
+- recipe 형식 F16 `within`을 제거했다. 어떤 runner도 fixture도 쓰지 않았다.
+- vector 파일에서 expect가 빠지기 전까지, 모든 conformance vector가 데이터베이스별로 recipe case와 같음을 시험이 확인한다. statement는 필드별로 비교한다.
 - KSTD-5-89-9: 완성된 inventory에서 static `var/tools/bin/node scripts/features/check.mts`는 21 feature contracts, error 0을 보고한다. source `9b5a`가 누락 test 파일을 해결했고 DSL-76 shared case는 MySQL, PostgreSQL, SQLite에서 여섯 client가 database마다 두 번 통과했다 (`058143`).
 - KSTD-5-89-10: 구현 내부 test는 각 구현의 `internal` 목록에 선언되고 shared feature 소유권에서 제외된다. languages owner unit은 13개 case를 통과했으며, 기존 DIA-20/21 binding과 맞지 않던 Go MySQL-only fixture 기대값도 바로잡았다.
 - KSTD-2-11-16-1: PHP library와 native extension이 SQLite, PostgreSQL, MySQL에서 활성 statement를 중단하고 rollback한 뒤 root handle 재사용을 유지한다. Library owner는 7 tests / 61 assertions, extension owner는 4 / 44를 통과했다. Raw log와 hash는 checklist에 기록했다.
