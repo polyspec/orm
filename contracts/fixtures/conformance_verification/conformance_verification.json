@@ -29197,9 +29197,6 @@
   },
   {
    "id": "added_sum_above_i64",
-   "only": [
-    "mysql"
-   ],
    "requirements": [
     "INT-160"
    ],
@@ -29211,7 +29208,7 @@
     },
     {
      "op": "sql.exec",
-     "reason": "two values of account_id that sum above the i64 of its plan type; a MySQL SUM of them is a DECIMAL",
+     "reason": "two values of account_id that sum above the i64 of its plan type",
      "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, 9000000000000000000, 'a'), (900, 9000000000000000001, 'b')"
     },
     {
@@ -29254,7 +29251,7 @@
        "error": "CODEC_DECODE"
       },
       "sqlite": {
-       "error": "CODEC_DECODE"
+       "error": "DRIVER"
       }
      }
     }
@@ -29262,9 +29259,6 @@
   },
   {
    "id": "added_sum_fractional",
-   "only": [
-    "mysql"
-   ],
    "requirements": [
     "INT-160"
    ],
@@ -29276,13 +29270,64 @@
     },
     {
      "op": "sql.exec",
+     "reason": "the key that holds account_id at its declared type goes first, so that the column can change",
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE composite_membership DROP FOREIGN KEY fk_composite_membership_account"
+    },
+    {
+     "op": "sql.exec",
      "reason": "a stored column that no longer holds the i64 of the plan type, as a column altered behind the schema does",
-     "sql": "ALTER TABLE soft_record MODIFY seq DECIMAL(20,2) NOT NULL"
+     "only": [
+      "mysql"
+     ],
+     "sql": "ALTER TABLE composite_account MODIFY account_id DECIMAL(20,2) NOT NULL"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the key that holds account_id at its declared type goes first, so that the column can change",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE composite_membership DROP CONSTRAINT fk_composite_membership_account"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that no longer holds the i64 of the plan type, as a column altered behind the schema does",
+     "only": [
+      "postgres"
+     ],
+     "sql": "ALTER TABLE composite_account ALTER COLUMN account_id TYPE numeric(20,2)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the table that refers to composite_account goes first; SQLite cannot change a column, and its CHECK refuses a fraction",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE composite_membership"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite cannot change a column, so the table is made again",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "DROP TABLE composite_account"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a stored column that no longer holds the i64 of the plan type, as a column altered behind the schema does",
+     "only": [
+      "sqlite"
+     ],
+     "sql": "CREATE TABLE composite_account (tenant_id INTEGER NOT NULL, account_id REAL NOT NULL, name TEXT NOT NULL, PRIMARY KEY (tenant_id, account_id))"
     },
     {
      "op": "sql.exec",
      "reason": "the fractional value of that column",
-     "sql": "INSERT INTO soft_record (seq, name) VALUES (1.5, 'a')"
+     "sql": "INSERT INTO composite_account (tenant_id, account_id, name) VALUES (900, 1.5, 'a')"
     },
     {
      "op": "model.query",
@@ -29297,14 +29342,14 @@
       {
        "expr": {
         "sub": {
-         "model": "SoftRecord",
+         "model": "CompositeAccount",
          "aggregate": {
           "agg": "sum",
-          "column": "seq"
+          "column": "account_id"
          },
          "where": {
-          "name": {
-           "text": "a"
+          "tenant_id": {
+           "int": "900"
           }
          }
         }

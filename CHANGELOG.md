@@ -3,6 +3,10 @@
 
 ## Unreleased
 
+- CR32 records what the exit 137 of catalog_read_budgets on the PHP extension is not; its sender stays unknown and no fix is made.
+- CR31 states what holds: the PHP extension already computes and declares CatalogColumn::$checkPrecision.
+- The coverage test binds no healthy run by a number of its own, and a process that never ends tests the process deadline (#T334-3-4-19)
+- orm pins kit 0.0.93 and takes its `ci-pipeline.yml`, where the install of the PHP symbol extractor moved into `ci-setup`. (#T334-3-4-18)
 - The feature checker reads a recipe owner from the results its runner writes (FCV-12): every recipe runner appends a `CASE` line to the file of `ORM_RECIPE_RESULTS` when a case passes, the owner names its recipe, and the recipe is its list of cases, so request_hook lists its sixteen cases rather than fourteen.
 - A Go test of `packages/go/internal/buildconstraints` reads every Go file of the modules of `go.work` and fails on a build tag other than a platform constraint or a tag of `GO_TEST_TAGS`; the failing dbspec harness fixture moved to `packages/go/engine/dbspec/testdata/fixture` without a tag.
 - The statement runner runs in the recipe `statement_runner` alone in the six runtimes: its native and coverage tests are gone, except the refusals of FCV-2.
@@ -191,6 +195,8 @@
 
 A SQLite lock wait between two connections that write the same row ends with `CANCELED` after the busy timeout and is not retried, because SQLite reports no row-lock deadlock: SQLITE_LOCKED (6, 262) is `DRIVER` in every runtime, and transaction_deadlock_retry runs the sqlite case in all six runtimes (PLN-24, CFG-12) (T343-3)
 
+- CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.
+- CR15-2: `install` over some tables of a set has one message in every runtime: Go, PHP, the PHP extension and Rust each had their own text, and SCH-10 states it and that of a differing database.
 - CR15-2: the add tables and columns behaviour is five cases of the schema_install recipe, `dbspec.add_tables_steps` is a recipe of its own, the native tests are gone, and a refusal case can check its message with `message_contains`.
 - The Rust restore reads the key of the request as the request hook left it, before the planner renumbers its parameters, so a hook that sets the key after the label restores the row again (T326-15-1-1).
 - Every dbspec compare runner refuses a missing recipes directory with its own path before it reads any recipe file of it; an empty directory is still refused with the recipe file it lacks (T334-3-18-3-1).

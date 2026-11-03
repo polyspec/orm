@@ -6837,6 +6837,25 @@
       }
     },
     {
+      "id": "php-extension-schema-utils-native",
+      "kind": "feature",
+      "requirements": [
+        "INT-156a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
       "id": "php-extension-required-modules",
       "kind": "feature",
       "requirements": [
@@ -6847,25 +6866,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
           "id": "DeclarationsTest::testRequiredModules"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "archive",
-        "package": "polyspec/orm-php-ext"
-      }
-    },
-    {
-      "id": "php-extension-pad-in",
-      "kind": "feature",
-      "requirements": [
-        "CPX-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
-          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
         }
       ],
       "owner": {
@@ -9542,7 +9542,51 @@
         "DSL-118",
         "DSL-119",
         "DSL-123",
+        "DSL-29",
+        "DSL-30",
+        "DSL-31",
+        "DSL-45",
+        "DSL-46",
+        "DSL-48",
+        "DSL-55",
+        "DSL-36",
+        "DSL-58",
+        "DSL-59",
         "DSL-60",
+        "DSL-57",
+        "DSL-69",
+        "DSL-23",
+        "DSL-72",
+        "DSL-73",
+        "DSL-75",
+        "DSL-76",
+        "DSL-70",
+        "DSL-53",
+        "DSL-74",
+        "DSL-61",
+        "DSL-62",
+        "DSL-63",
+        "DSL-64",
+        "DSL-67",
+        "DSL-56",
+        "DSL-54",
+        "DSL-131",
+        "DSL-132",
+        "DSL-133",
+        "DSL-134",
+        "DSL-135",
+        "DSL-139",
+        "DSL-140",
+        "DSL-144",
+        "DSL-145",
+        "DSL-146",
+        "COD-6",
+        "COD-15",
+        "DSL-143",
+        "COD-41",
+        "COD-42",
+        "DSL-99",
+        "INT-160",
         "DSL-115",
         "DSL-155",
         "CPX-5",
@@ -9629,7 +9673,51 @@
         "DSL-118",
         "DSL-119",
         "DSL-123",
+        "DSL-29",
+        "DSL-30",
+        "DSL-31",
+        "DSL-45",
+        "DSL-46",
+        "DSL-48",
+        "DSL-55",
+        "DSL-36",
+        "DSL-58",
+        "DSL-59",
         "DSL-60",
+        "DSL-57",
+        "DSL-69",
+        "DSL-23",
+        "DSL-72",
+        "DSL-73",
+        "DSL-75",
+        "DSL-76",
+        "DSL-70",
+        "DSL-53",
+        "DSL-74",
+        "DSL-61",
+        "DSL-62",
+        "DSL-63",
+        "DSL-64",
+        "DSL-67",
+        "DSL-56",
+        "DSL-54",
+        "DSL-131",
+        "DSL-132",
+        "DSL-133",
+        "DSL-134",
+        "DSL-135",
+        "DSL-139",
+        "DSL-140",
+        "DSL-144",
+        "DSL-145",
+        "DSL-146",
+        "COD-6",
+        "COD-15",
+        "DSL-143",
+        "COD-41",
+        "COD-42",
+        "DSL-99",
+        "INT-160",
         "DSL-115",
         "DSL-155",
         "CPX-5",
@@ -9716,7 +9804,51 @@
         "DSL-118",
         "DSL-119",
         "DSL-123",
+        "DSL-29",
+        "DSL-30",
+        "DSL-31",
+        "DSL-45",
+        "DSL-46",
+        "DSL-48",
+        "DSL-55",
+        "DSL-36",
+        "DSL-58",
+        "DSL-59",
         "DSL-60",
+        "DSL-57",
+        "DSL-69",
+        "DSL-23",
+        "DSL-72",
+        "DSL-73",
+        "DSL-75",
+        "DSL-76",
+        "DSL-70",
+        "DSL-53",
+        "DSL-74",
+        "DSL-61",
+        "DSL-62",
+        "DSL-63",
+        "DSL-64",
+        "DSL-67",
+        "DSL-56",
+        "DSL-54",
+        "DSL-131",
+        "DSL-132",
+        "DSL-133",
+        "DSL-134",
+        "DSL-135",
+        "DSL-139",
+        "DSL-140",
+        "DSL-144",
+        "DSL-145",
+        "DSL-146",
+        "COD-6",
+        "COD-15",
+        "DSL-143",
+        "COD-41",
+        "COD-42",
+        "DSL-99",
+        "INT-160",
         "DSL-115",
         "DSL-155",
         "CPX-5",
@@ -17367,72 +17499,6 @@
       }
     },
     {
-      "id": "schema-empty-content",
-      "kind": "feature",
-      "requirements": [
-        "INT-58"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/install_test.go",
-          "id": "TestSchemaEmpty"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testSchemaEmpty"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "schemaEmpty"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_empty_counts_tables_and_views_but_not_the_orm_tables"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "schema_empty",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=schema_empty"
-          ]
-        }
-      ]
-    },
-    {
       "id": "py-test-rollback-fault-entry-package",
       "kind": "feature",
       "requirements": [
@@ -22013,45 +22079,6 @@
       ]
     },
     {
-      "id": "schema-exists-literal-underscore-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "INT-57"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/schema_exists_underscore_test.go",
-          "id": "TestSchemaExistsEscapesUnderscoreSQLite"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SchemaExistsSqliteTest.php",
-          "id": "SchemaExistsSqliteTest::testEscapesUnderscoreInSchemaPrefix"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-          "id": "SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "schemaExistsUnderscore"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_inspection.py",
-          "id": "test_exists_and_installed_read_the_prefixed_tables_of_a_schema"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/schema_exists_underscore.rs",
-          "id": "schema_exists_escapes_underscore_sqlite"
-        }
-      ]
-    },
-    {
       "id": "client-schema-utils-exists",
       "kind": "api",
       "requirements": [
@@ -25986,63 +26013,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/model.mjs",
           "id": "failedSavepointEnd"
-        }
-      ]
-    },
-    {
-      "id": "schema-install-renders-document-set",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/install_test.go",
-          "id": "TestSchemaEmpty"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/install_test.go",
-          "id": "TestInstallAppliesRenderedStatements"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testInstallRendersTheDocumentSet"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "schemaEmpty"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install.py",
-          "id": "test_installs_into_an_empty_database_and_then_creates_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "schema_empty",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=schema_empty"
-          ]
         }
       ]
     },
@@ -30636,72 +30606,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/model.mjs",
           "id": "styledStates"
-        }
-      ]
-    },
-    {
-      "id": "schema-existence-and-installation",
-      "kind": "feature",
-      "requirements": [
-        "INT-57"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/model_test.go",
-          "id": "TestTransactions"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testUtilities"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
-          "id": "SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model.mjs",
-          "id": "transactions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/schema_inspection.py",
-          "id": "test_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration_program/main.rs",
-          "id": "transactions",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration_program",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=transactions"
-          ]
         }
       ]
     },
@@ -41062,6 +40966,8 @@
         "INT-54",
         "INT-55",
         "INT-56",
+        "INT-57",
+        "INT-58",
         "PLN-44",
         "SCH-10",
         "SCH-11",
@@ -41123,6 +41029,8 @@
         "INT-54",
         "INT-55",
         "INT-56",
+        "INT-57",
+        "INT-58",
         "PLN-44",
         "SCH-10",
         "SCH-11",
@@ -41184,6 +41092,8 @@
         "INT-54",
         "INT-55",
         "INT-56",
+        "INT-57",
+        "INT-58",
         "PLN-44",
         "SCH-10",
         "SCH-11",
@@ -43400,6 +43310,25 @@
           "id": "composite_components_preserve_typed_identity_and_shared_encoding"
         }
       ]
+    },
+    {
+      "id": "php-extension-pad-in",
+      "kind": "feature",
+      "requirements": [
+        "CPX-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+          "id": "ModelTypesSurfaceTest::testPadInMatchesUserlandForBucketSizesSparseAndStringKeys"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     }
   ],
   "errors": {

@@ -820,7 +820,11 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return outcome{}, err
 	}
-	var db *orm.DB
+	// A model op that names no connection and no row runs on the case connection (FCV-4).
+	db := c.db
+	if len(s.Row) > 0 {
+		db = nil
+	}
 	if s.Connection != "" {
 		bound, ok := c.bound[s.Connection]
 		if !ok {

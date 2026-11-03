@@ -30,36 +30,6 @@ final class SchemaUtilsNativeTest extends TestCase
         );
     }
 
-    // Requirements: INT-57.
-    public function testExistsEscapesUnderscoreInSqliteSchemaName(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-underscore-');
-        self::assertIsString($path);
-        try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $pdo = $db->pdo();
-            $pdo->exec('CREATE TABLE fooXbar__sample (id INTEGER)');
-            $before = $pdo->query(
-                "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
-                . "AND name NOT LIKE 'sqlite_%' ORDER BY name"
-            )->fetchAll(\PDO::FETCH_ASSOC);
-            $schema = $db->utils()->schema();
-
-            for ($attempt = 0; $attempt < 2; $attempt++) {
-                self::assertFalse($schema->exists('foo_bar'));
-                self::assertSame($before, $pdo->query(
-                    "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
-                    . "AND name NOT LIKE 'sqlite_%' ORDER BY name"
-                )->fetchAll(\PDO::FETCH_ASSOC));
-            }
-            $db->close();
-        } finally {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-    }
-
     public function testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable(): void
     {
         $this->assertSchemaMutationRejected(
@@ -282,7 +252,7 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
-    // Requirements: DBS-108, INT-56, INT-58, SCH-7, SCH-8.
+    // Requirements: INT-156a.
     public function testNativeSchemaInspectionAndRegistration(): void
     {
         $class = new \ReflectionClass(SchemaUtils::class);
