@@ -737,8 +737,15 @@ function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValu
   const statement = state.statement(sql);
   statement.setReturnArrays(true);
   sink.columns(sqliteColumns(statement));
-  for (const row of statement.iterate(...sqliteValues(params))) {
-    if (!sink.row(arrayRows([row])[0] ?? [])) break;
+  const rows = statement.iterate(...sqliteValues(params));
+  try {
+    for (const row of rows) {
+      if (!sink.row(arrayRows([row])[0] ?? [])) break;
+    }
+  } catch (error) {
+    // A statement that failed stays cached; left unreset, its next run reports the same error whatever it binds.
+    rows.return?.();
+    throw error;
   }
 }
 

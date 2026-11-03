@@ -15453,6 +15453,31 @@
           }
         },
         {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "text": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
           "op": "catalog.table_page",
           "table": "key_lifecycle",
           "limit": 10,
