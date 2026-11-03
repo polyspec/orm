@@ -19,4 +19,3 @@ fn tls_options_follow_sqlx_parameter_support() {
     }
 }
 
-/// The DSN of `var`. The test fails if it is missing or empty.

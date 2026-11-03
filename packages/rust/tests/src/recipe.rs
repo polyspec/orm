@@ -2549,31 +2549,37 @@ mod database {
     /// Runs `writers` writers at the same time, each on its own connection, each committing `writes` transactions that read
     /// the Service count and insert one Service with no retry, and returns the Service count (CFG-12).
     async fn transaction_writers(dsn: &str, writers: u64, writes: u64) -> Result<i64, String> {
-        let mut running = Vec::new();
-        for index in 0..writers {
-            let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
-            running.push(tokio::spawn(async move {
-                let mut result = Ok(());
-                for write in 0..writes {
-                    result = db
-                        .transaction(async || {
-                            model::Service::new().connect(&db).get_count().await?;
-                            model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
-                            Ok(())
-                        })
-                        .retry(0)
-                        .await;
-                    if result.is_err() {
-                        break;
-                    }
-                }
-                db.close().await;
-                result
-            }));
-        }
-        for writer in running {
-            writer.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
-        }
+        // A transaction future is not Send, so each writer runs on a thread of its own with its own runtime.
+        let threads: Vec<_> = (0..writers)
+            .map(|index| {
+                let dsn = dsn.to_owned();
+                std::thread::spawn(move || -> Result<(), String> {
+                    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|e| e.to_string())?;
+                    runtime.block_on(async move {
+                        let db = model::connect(&dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+                        let mut result = Ok(());
+                        for write in 0..writes {
+                            result = db
+                                .transaction(async || {
+                                    model::Service::new().connect(&db).get_count().await?;
+                                    model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
+                                    Ok(())
+                                })
+                                .retry(0)
+                                .await;
+                            if result.is_err() {
+                                break;
+                            }
+                        }
+                        db.close().await;
+                        result.map_err(|e| e.to_string())
+                    })
+                })
+            })
+            .collect();
+        tokio::task::spawn_blocking(move || threads.into_iter().try_for_each(|writer| writer.join().map_err(|_| "a writer panicked".to_owned())?))
+            .await
+            .map_err(|e| e.to_string())??;
         let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
         let count = model::Service::new().connect(&db).get_count().await.map_err(|e| e.to_string());
         db.close().await;
@@ -3157,7 +3163,7 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 22] = [
+    const MODEL_OPS: [&str; 31] = [
         "model.connect",
         "transaction.deadlock",
         "model.restore",
@@ -3475,7 +3481,7 @@ mod database {
                 Some("lower" | "upper") => Output::fields(json!({ "value": {
                     "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } })),
-                other => return Err(format!("clock.read has no edge {other:?}")),
+                other => return Err(fault(format!("clock.read has no edge {other:?}"))),
             },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
@@ -3835,11 +3841,11 @@ mod database {
                 Output::fields(json!({ "value": { "int": count.to_string() } }))
             }
             "wait.start" => {
-                *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
+                *super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
                 Output::fields(json!({}))
             }
             "wait.at_least" => {
-                let started = (*WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+                let started = (*super::WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
                     .ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
                 let (waited, want) = (started.elapsed().as_millis(), u128::from(crate::recipe_reads::read(step, "ms")["ms"].as_u64().unwrap_or_default()));
                 if waited < want {
@@ -5065,13 +5071,13 @@ mod tables {
             let name = raw["as"].as_str().ok_or_else(|| format!("column {raw} names no as"))?;
             let expr = &raw["expr"];
             if let Some(sub) = expr.get("sub") {
-                let (sub, column) = (sub.clone(), name.to_owned());
+                let (sub, column, handles) = (sub.clone(), name.to_owned(), self.handles.clone());
                 core.add_column_sub(
                     name,
                     Arc::new(move |outer: &Core| -> Core {
                         let build = || -> Result<Core, String> {
                             let mut child = core_of(sub["model"].as_str().ok_or_else(|| format!("sub {sub} names no model"))?)?;
-                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None, handles: self.handles.clone() }.query(&mut child, &sub, true)?;
+                            Build { joined: HashMap::new(), outer: Some(outer.id()), db: None, handles: handles.clone() }.query(&mut child, &sub, true)?;
                             Ok(child)
                         };
                         match build() {
