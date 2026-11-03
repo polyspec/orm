@@ -2175,6 +2175,494 @@
      }
     }
    ]
+  },
+  {
+   "id": "page_plan_steps",
+   "requirements": [
+    "DSL-159"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 20,
+      "count": 20
+     },
+     "plan": true,
+     "plan_count": [],
+     "plan_sql": true,
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`product_seq` AS `a__product_seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`is_close` AS `a__is_close`, `a`.`content` AS `a__content` FROM `product_review` AS `a` WHERE `a`.`product_seq` IN (?)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" DESC LIMIT $2 OFFSET $3",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN ($1)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "count": {},
+         "role": "main",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "count",
+         "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
+         "tables": [
+          "product"
+         ]
+        },
+        {
+         "count": {},
+         "role": "relation",
+         "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN (?)",
+         "tables": [
+          "product_review"
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "limit": {
+      "offset": 20,
+      "count": 20
+     },
+     "expect": {
+      "mysql": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      },
+      "postgres": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      },
+      "sqlite": {
+       "json": {
+        "keys": [],
+        "page": 2,
+        "pages": 1,
+        "per_page": 20,
+        "total": 4
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "statements",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" DESC LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?"
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 0,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 0
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "where": {
+      "service_seq": {
+       "int": "7"
+      }
+     },
+     "relations": [
+      {
+       "model": "ProductReview",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ],
+       "alias": "reviews"
+      }
+     ],
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "unconnected": true,
+     "page": true,
+     "plan": true,
+     "plan_page": {
+      "page": 1,
+      "per_page": 20
+     },
+     "plan_count": [],
+     "expect": {
+      "mysql": {
+       "error": "CONFIG"
+      },
+      "postgres": {
+       "error": "CONFIG"
+      },
+      "sqlite": {
+       "error": "CONFIG"
+      }
+     }
+    }
+   ]
   }
  ]
 }

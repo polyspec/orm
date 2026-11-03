@@ -30370,7 +30370,8 @@
         "PRT-81",
         "PRT-82",
         "DIA-24",
-        "PRT-33"
+        "PRT-33",
+        "DBS-67"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",

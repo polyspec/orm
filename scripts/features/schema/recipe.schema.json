@@ -4867,6 +4867,33 @@
                 "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
                 "const": true
               },
+              "plan_page": {
+                "description": "The page and size that plan passes as they are, refused values included, in place of those of limit; limit then belongs to the chain unless page is set.",
+                "type": "object",
+                "required": [
+                  "page",
+                  "per_page"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "page": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "per_page": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "plan_sql": {
+                "description": "Each step of plan also holds sql, the text of its statement.",
+                "const": true
+              },
+              "unconnected": {
+                "description": "The chain is built without connecting its model: connection then names nothing that runs.",
+                "const": true
+              },
               "plan_count": {
                 "description": "The texts counted in the upper-cased statement of each step of plan.",
                 "type": "array",

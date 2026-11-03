@@ -441,10 +441,13 @@
       "pick",
       "plan",
       "plan_count",
+      "plan_page",
+      "plan_sql",
       "relation",
       "relations",
       "remove_columns",
       "tuples",
+      "unconnected",
       "where"
     ],
     "events.subscribe": [
