@@ -633,6 +633,10 @@
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
         {
+          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
+        },
+        {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
           "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid"
         },
@@ -2577,26 +2581,6 @@
             {
               "test": "packages/go/orm/catalog_sqlite_sequence_test.go",
               "id": "TestCatalogSQLiteSequenceRestoration"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "files": [
-        "packages/php-ext/tests/DbspecReleaseHooksTest.php"
-      ],
-      "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks; it tests the build, not ORM client behavior.",
-      "units": [
-        {
-          "id": "php-extension-release-omits-private-hooks",
-          "requirements": [
-            "PRT-18"
-          ],
-          "bindings": [
-            {
-              "test": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
-              "id": "testReleaseExtensionOmitsPrivateHooks"
             }
           ]
         }
