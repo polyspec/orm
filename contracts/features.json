@@ -78,7 +78,8 @@
         "dsn-reject-checked",
         "dsn-reject-parameters",
         "connection-driver-from-dsn",
-        "connection-catalog-session-through-a-pooler"
+        "connection-catalog-session-through-a-pooler",
+        "connection-sqlite-crashed-holder"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -188,7 +189,8 @@
         "packages/python/tests/test_connection_pool_sqlite.py",
         "packages/rust/tests/tests/connection_pool_mysql.rs",
         "packages/rust/tests/tests/connection_pool_postgres.rs",
-        "packages/rust/tests/tests/connection_pool_sqlite.rs"
+        "packages/rust/tests/tests/connection_pool_sqlite.rs",
+        "packages/go/orm/sqlite_crashed_holder_test.go"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -568,6 +570,14 @@
             "packages/ts/src/bind_check.ts",
             "tests/bind/vectors.json"
           ]
+        },
+        {
+          "id": "connection-sqlite-crashed-holder-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestSQLiteCrashedHolderLeavesNoLock$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/sqlite_crashed_holder_test.go"
+          ]
         }
       ],
       "coverage": {
@@ -577,7 +587,8 @@
             "part": "packages/go/orm",
             "tests": [
               "packages/go/orm/recipe_dsn_connection_test.go",
-              "packages/go/orm/recipe_connection_pool_test.go"
+              "packages/go/orm/recipe_connection_pool_test.go",
+              "packages/go/orm/sqlite_crashed_holder_test.go"
             ],
             "commands": {
               "mysql": [

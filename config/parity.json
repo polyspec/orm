@@ -26121,6 +26121,25 @@
       ]
     },
     {
+      "id": "connection-sqlite-crashed-holder",
+      "kind": "feature",
+      "requirements": [
+        "CFG-43"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/sqlite_crashed_holder_test.go",
+          "id": "TestSQLiteCrashedHolderLeavesNoLock"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "dsn_connection",
+        "part": "owner/go"
+      }
+    },
+    {
       "id": "connection-sqlite-read-during-write",
       "kind": "feature",
       "requirements": [
