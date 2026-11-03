@@ -1621,7 +1621,8 @@ final class Recipe
             . "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
         $plans = [self::dbspecBound($step['plan'], $bound)];
         $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable('2026-10-01T00:00:00Z');
-        $pdo = dbspec_failing_pdo('dbspec_apply_fault', []);
+        $noRow = array_fill_keys($step['no_row_queries'] ?? [], 'SELECT 1 WHERE 0');
+        $pdo = dbspec_failing_pdo('dbspec_apply_fault', [], $noRow);
         if (($step['applied_first'] ?? false) === true) {
             Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         }

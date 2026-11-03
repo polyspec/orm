@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The manifest, analysis and format units of the schema definition bind only their recipe: Go `TestFormat` is gone, the invalid byte joins the stated native unit `dbspec-encoding-and-limit-natives`, and the test of the origin of the extension classes is internal (#T334-3-18).
+- An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
 - - The session messages and the refused surfaces of a markdown connection are cases of the recipe tests/bind/messages.json in all six runtimes, by the new op markdown.session and the markdown.send form surface; the natives that held them are gone (#T334-3-6-2)
 - The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - The statement event bind of a secret and the secret bind slot are gone: no statement has bound a secret since AES moved to the client, so `$SECRET` left INT-91, DSL-68, PRT-32 and every client.

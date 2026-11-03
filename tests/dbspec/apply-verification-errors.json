@@ -544,6 +544,66 @@
           }
         }
       ]
+    },
+    {
+      "id": "effect-query-without-a-row",
+      "requirements": [
+        "PLN-96"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 create_from_empty",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64",
+            "  total decimal(10,2) default 0.00",
+            "  primary key (id)",
+            "  index ix_orders_user (user_id)",
+            "  foreign key fk_orders_user (user_id) references users (id) on delete restrict on update restrict",
+            "}",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  mail varchar(64)",
+            "  age i32 null",
+            "  primary key (id)",
+            "  unique uq_users_mail (mail)",
+            "  check ck_users_age (age >= 0)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.apply_fault",
+          "plan": {
+            "ref": "plan"
+          },
+          "call": "rollback",
+          "applied_first": true,
+          "sql": [
+            "UPDATE \"dbspec$plans\" SET state = 'applying', step = 0"
+          ],
+          "no_row_queries": [
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?"
+          ],
+          "expect": {
+            "none": {
+              "failure_ends_with": "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ? returned no row"
+            }
+          }
+        }
+      ]
     }
   ]
 }

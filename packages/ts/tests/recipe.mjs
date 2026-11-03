@@ -2532,6 +2532,7 @@ async function checkApplyFault(step, bound, database) {
   let failAt = 0;
   let cause;
   let fail = new Map();
+  let noRow = [];
   const connection = {
     exec(sql) {
       if (fail.has(sql)) throw fail.get(sql);
@@ -2542,6 +2543,7 @@ async function checkApplyFault(step, bound, database) {
         reads++;
         if (reads === failAt) throw cause;
       }
+      if (noRow.includes(sql)) return { all: () => [], get: () => undefined, setReturnArrays: () => undefined };
       return db.prepare(sql);
     },
   };
@@ -2552,6 +2554,7 @@ async function checkApplyFault(step, bound, database) {
       cause = new Error('catalog read failed');
       failAt = reads + step.fail_catalog_read;
     }
+    noRow = step.no_row_queries ?? [];
     fail = new Map((step.fail_statements ?? []).map(f => [
       f.statement,
       Object.assign(new Error(f.message), f.sqlite_result === undefined ? {} : { errcode: f.sqlite_result }),

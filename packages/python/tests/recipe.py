@@ -1150,10 +1150,13 @@ class _FaultConnection:
         self.fail_at = 0
         self.reads = 0
         self.fail: dict[str, Exception] = {}
+        self.no_row: list[str] = []
 
     def execute(self, sql: str, args: Any) -> dict:
         if sql in self.fail:
             raise self.fail[sql]
+        if sql in self.no_row:
+            return {"rows": [], "insert_id": None, "affected": 0}
         if sql.startswith("SELECT type, name, tbl_name"):
             self.reads += 1
             if self.cause is not None and self.reads == self.fail_at:
@@ -1180,6 +1183,7 @@ def _dbspec_apply_fault(step: dict, bound: dict, database: str) -> None:
         if "fail_catalog_read" in step:
             fault.cause = RuntimeError("catalog read failed")
             fault.fail_at = fault.reads + step["fail_catalog_read"]
+        fault.no_row = step.get("no_row_queries", [])
         for f in step.get("fail_statements", []):
             injected = sqlite3.OperationalError(f["message"])
             if "sqlite_result" in f:

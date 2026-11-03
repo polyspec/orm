@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9b921d04348cceceaa2796057af94249ebf8508ab6d35672655d586c4ae4d455 -->
+<!-- source-sha256: ebed2958d0c1b56bfc741e3fc79954bb40df8996a0039d6cba9d12e712c4003d -->
 # 변경 이력
 
 ## Unreleased
 
+- schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).
+- 행이 없는 effect 질의는 모든 runtime에서 `<query> returned no row`이고(Rust는 `returned 0 rows; want one`이었다), `dbspec.apply_fault` recipe가 그것을 시험하며, native 시험은 없앴다 (#T334-3-18).
 - - markdown 연결의 session message와 거부되는 surface는 새 op markdown.session과 markdown.send의 surface 형식으로 여섯 runtime 모두에서 recipe tests/bind/messages.json의 case가 되고, 이를 시험하던 native는 사라졌다 (#T334-3-6-2)
 - transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.

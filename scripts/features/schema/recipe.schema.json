@@ -1847,6 +1847,13 @@
               }
             }
           },
+          "no_row_queries": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
           "stop_on_applied": {
             "type": "string"
           },
