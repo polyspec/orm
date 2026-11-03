@@ -80,7 +80,7 @@ final class RuntimeModel
         $errors = [];
         foreach ($results as $i => $result) {
             foreach ($result->diagnostics as $d) {
-                $errors[] = "{$labels[$i]}:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+                $errors[] = "{$labels[$i]}: {$d->line}:{$d->column} {$d->rule}: document {$result->name}: {$d->message}";
             }
             if ($result->document !== null) {
                 $documents[] = $result->document;

@@ -27,6 +27,8 @@ def connect_dsn(dsn, database, case_dsn, socket=None):
     """The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step."""
     if dsn is None or dsn == "case":
         return case_dsn
+    if dsn.startswith("case?"):
+        return f"{case_dsn}{'&' if '?' in case_dsn else '?'}{dsn[len('case?'):]}"
     if dsn != "case-socket":
         return dsn
     if database != "mysql":

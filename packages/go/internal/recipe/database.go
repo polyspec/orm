@@ -5,6 +5,7 @@ package recipe
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -60,8 +61,12 @@ type databaseCase struct {
 type databaseStep struct {
 	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
-	Vectors        string          `json:"vectors"`
-	Case           string          `json:"case"`
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
+	// Paths is the document files of dbspec.introspect, relative to the recipe.
+	Paths []string `json:"paths"`
+	// CatalogOf is the other dialect whose catalog queries dbspec.introspect sends, which fail.
+	CatalogOf      string          `json:"catalog_of"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -75,6 +80,7 @@ type databaseStep struct {
 	SQL            json.RawMessage `json:"sql"`
 	Refused        bool            `json:"refused"`
 	RefusedMessage string          `json:"refused_message"`
+	RefusedCode    string          `json:"refused_code"`
 	MaxRows        int             `json:"max_rows"`
 	MaxBytes       int             `json:"max_bytes"`
 	Page           json.RawMessage `json:"page"`
@@ -205,6 +211,8 @@ type outcome struct {
 }
 
 type databaseContext struct {
+	// held is the pool of the connection that sql.hold_connection holds.
+	held *sql.DB
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
 	attempts  int
 	t         *testing.T
@@ -275,6 +283,36 @@ func caseSocketDSN(caseDSN, socket string) (string, error) {
 	return "mysql://" + m[1] + "@localhost/" + m[2] + "?socket=" + socket, nil
 }
 
+// refusedConnect reports whether the server refused the connection of catalog, whose first statement opens it, with text in
+// its message. The connection of the case stays.
+func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err error, code, text string) error {
+	if err == nil {
+		_, err = catalog.CurrentNamespace(c.ctx)
+		err = closeFirst(err, catalog.Close())
+	}
+	if err == nil {
+		return errors.New("the server accepted the connection that the step expects it to refuse")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), text) {
+		return fmt.Errorf("the server refused the connection for another reason: %w", err)
+	}
+	if got := orm.ErrorCode(err); got != code {
+		return fmt.Errorf("the refused connection has the code %q, want %q: %w", got, code, err)
+	}
+	return nil
+}
+
+// userFromDatabaseDSN is the case DSN with the user that user_from_database names: the prefix and the last 28 characters of
+// the name of the case database, without a password.
+func userFromDatabaseDSN(dsn, prefix string) string {
+	match := mysqlCaseDSN.FindStringSubmatch(dsn)
+	name := match[2]
+	if len(name) > 28 {
+		name = name[len(name)-28:]
+	}
+	return "mysql://" + prefix + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+}
+
 // mysqlCaseDSN splits a MySQL DSN into its user and its database: mysql://user@host:port/database.
 var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 
@@ -282,6 +320,12 @@ var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
 func connectDSN(dsn, database, caseDSN string) (string, error) {
+	if query, ok := strings.CutPrefix(dsn, "case?"); ok {
+		if strings.Contains(caseDSN, "?") {
+			return caseDSN + "&" + query, nil
+		}
+		return caseDSN + "?" + query, nil
+	}
 	switch dsn {
 	case "", "case":
 		return caseDSN, nil
@@ -523,6 +567,9 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		}
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
+		}
+		if keeps, ok := expected["keeps_callback"]; ok && keeps == true && !errors.Is(err, errCallback) {
+			return fmt.Errorf("error %q does not keep the error of the callback", err.Error())
 		}
 		if want, ok := expected["rollback"]; ok {
 			var coded *orm.Error
@@ -855,22 +902,34 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
 		}
 		return outcome{}, closeFirst(err, closeErr)
+	case "sql.hold_connection":
+		raw := testdb.Open(c.t, c.database, userFromDatabaseDSN(c.dsn, s.UserFromDatabase))
+		held, err := raw.Conn(c.ctx)
+		if err != nil {
+			return outcome{}, closeFirst(err, raw.Close())
+		}
+		c.held = raw
+		c.t.Cleanup(func() { _ = held.Close(); _ = raw.Close() })
+		return outcome{}, nil
+	case "sql.release_connection":
+		// The pool closes the connection that the step holds, returned or not.
+		held := c.held
+		c.held = nil
+		return outcome{}, held.Close()
 	case "catalog.close":
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
 		dsn := c.dsn
 		if s.UserFromDatabase != "" {
-			match := mysqlCaseDSN.FindStringSubmatch(dsn)
-			name := match[2]
-			if len(name) > 28 {
-				name = name[len(name)-28:]
-			}
-			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+			dsn = userFromDatabaseDSN(dsn, s.UserFromDatabase)
 		}
 		catalog, err := orm.ConnectCatalog(dsn)
-		if err != nil {
+		if err != nil && s.RefusedMessage == "" {
 			return outcome{}, err
+		}
+		if s.RefusedMessage != "" {
+			return outcome{}, refusedConnect(c, catalog, err, s.RefusedCode, s.RefusedMessage)
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {
@@ -1076,6 +1135,18 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
 		return transactionDeadlock(s, c)
+	case "dbspec.introspect":
+		if s.CatalogOf != "" {
+			if err := introspectFailureStep(s, c); err != nil {
+				return outcome{}, err
+			}
+			return outcome{fields: map[string]any{"failed": true}}, nil
+		}
+		queries, err := introspectStep(s, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"queries": queries}}, nil
 	case "events.server_transactions":
 		return serverTransactions(s, c)
 	case "dbspec.ddl_behavior":
@@ -1696,7 +1767,9 @@ var declaredPrecision = regexp.MustCompile(`\(([0-9]+)\)`)
 // cannot be decided fails the step.
 func plainTime(v time.Time, nativeType, database string) (any, error) {
 	kind := temporalKind(nativeType)
-	v = v.UTC()
+	if v.Location() != time.UTC {
+		return nil, fmt.Errorf("the time value %s reads in %s, not in UTC (CFG-2)", v, v.Location())
+	}
 	if kind == "date" {
 		return map[string]any{"date": v.Format("2006-01-02")}, nil
 	}

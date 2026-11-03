@@ -22,8 +22,8 @@ class ModelSocketRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testMysql(array $case): void
+    public function testMysql(string $id): void
     {
-        $this->runCase($case, 'mysql');
+        $this->runCase($id, 'mysql');
     }
 }

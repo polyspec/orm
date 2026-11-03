@@ -1,3 +1,4 @@
+# Requirements: DIA-18, DIA-56, DSL-137.
 # The suite unit conformance_verification-mysql (docs/spec/feature-coverage.md FCV-3): the recipe
 # contracts/fixtures/conformance_verification/conformance_verification.json on mysql.
 from .recipe import recipe_tests

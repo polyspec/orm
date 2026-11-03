@@ -84,10 +84,11 @@ static void orm_error_previous(const char *code, str message, zend_object *previ
 }
 static zval *prop(zval *o, const char *n) { return obj_get(o, n); }
 static str zs(zend_string *s) { return (str){ZSTR_VAL(s), ZSTR_LEN(s)}; }
-static void append_error(sbuf *b, str label, const diag *d) {
+/* A diagnostic of a document of a file, the file and then the form of SCH-12. */
+static void append_error(sbuf *b, str label, str name, const diag *d) {
     if (b->n)
         sb_ch(b, '\n');
-    sb_fmt(b, "%S:%d:%d: %S: %S", label, d->line, d->column, d->rule, d->message);
+    sb_fmt(b, "%S: %d:%d %S: document %S: %S", label, d->line, d->column, d->rule, name, d->message);
 }
 /* A diagnostic of a manifest text, in the form of SCH-12. */
 static void append_manifest_error(sbuf *b, str name, const diag *d) {
@@ -153,7 +154,7 @@ static void documents_parse(zval *owned, zval *external, zval *out, bool manifes
                 if (manifest)
                     append_manifest_error(&errors, dbs_header_name(texts[i]), &ds.v[q]);
                 else
-                    append_error(&errors, labels[i], &ds.v[q]);
+                    append_error(&errors, labels[i], dbs_header_name(texts[i]), &ds.v[q]);
         }
         if (d) {
             zval z;

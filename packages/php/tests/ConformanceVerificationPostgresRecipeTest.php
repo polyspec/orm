@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: PRT-77.
+// Requirements: DIA-18, DIA-56, DSL-137, PRT-77.
 // The conformance_verification recipe, contracts/fixtures/conformance_verification/conformance_verification.json, on
 // postgres (docs/spec/feature-coverage.md FCV-3 and FCV-4).
 declare(strict_types=1);
@@ -31,8 +31,8 @@ class ConformanceVerificationPostgresRecipeTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testPostgres(array $case): void
+    public function testPostgres(string $id): void
     {
-        $this->runCase($case, 'postgres');
+        $this->runCase($id, 'postgres');
     }
 }

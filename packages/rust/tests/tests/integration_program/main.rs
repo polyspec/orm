@@ -114,36 +114,6 @@ use polyspec_orm_case_database::CaseDatabase;
 
 const TARGET_POOL_SIZE: u32 = 4;
 
-/// A generated model connects through model::connect to a case database of `driver` where the bench set is installed, and reads.
-async fn coverage_generated_model_connection_for(driver: &str) {
-    let t = Target::installed(driver).await;
-    let db = model::connect(&t.dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: model::connect: {e}"));
-    Author::new().connect(&db).get_count().await.or_panic(|e| format!("{driver}: count: {e}"));
-    db.close().await;
-    t.finish().await;
-}
-
-#[tokio::test]
-// Requirements: CFG-1.
-async fn coverage_generated_model_connection_mysql() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    coverage_generated_model_connection_for("mysql").await;
-}
-
-#[tokio::test]
-// Requirements: CFG-1.
-async fn coverage_generated_model_connection_postgres() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    coverage_generated_model_connection_for("postgres").await;
-}
-
-#[tokio::test]
-// Requirements: CFG-1.
-async fn coverage_generated_model_connection_sqlite() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    coverage_generated_model_connection_for("sqlite").await;
-}
-
 struct Target {
     driver: &'static str,
     dsn: String,

@@ -65,7 +65,7 @@ export const GO_LANE_PACKAGES = [
 export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 
-  'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
+  'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
 // The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs
 // the PHP database test files of the php lane with that build loaded, through kit's run-tests in extension mode (S10 of
@@ -84,7 +84,7 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
   env: { ORM_PHP_MODE: 'extension' },
 }));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
-const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool', 'aes_rotation'];
+const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_pool', 'aes_rotation'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
 // The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
 // behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit
