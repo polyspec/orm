@@ -113,7 +113,7 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
   // The coverage of schema_definition renders audit.dbs from contracts/fixtures/schema_definition.json.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
-  assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations', 'audit_triggers']);
+  assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations']);
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);

@@ -1763,6 +1763,11 @@ mod database {
         }
         /// model.connect with aes_keyring: opens the connection with that keyring; a dispatcher without AES models refuses
         /// it by name.
+        /// model.connect with audit_source (FCV-4, CFG-8); a recipe without audited models refuses it by name.
+        fn connect_audited<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _source: &'a Value) -> ModelFuture<'a> {
+            let refusal = format!("model.connect {name}: this recipe binds no audited models");
+            Box::pin(async move { Err(refusal) })
+        }
         fn connect_keyring<'a>(&'a mut self, name: &'a str, _dsn: &'a str, _pool_size: u32, _keyring: &'a Value) -> ModelFuture<'a> {
             Box::pin(async move { Err(format!("model.connect {name}: this recipe binds no AES models")) })
         }
@@ -2036,7 +2041,18 @@ mod database {
         Ok(())
     }
 
-    /// A transaction step with isolation or read_only: its steps run in db.transaction with those options, the form
+    /// The audit values of a transaction step: the column names of the audit record table and their text values (CFG-8).
+    fn audit_values(raw: &Value) -> Result<Vec<(String, String)>, Failure> {
+        let Some(map) = raw.as_object() else { return Err(Failure::Step(format!("audit {raw} is not an object"))) };
+        map.iter()
+            .map(|(column, wrapper)| match wrapper["text"].as_str() {
+                Some(text) => Ok((column.clone(), text.to_owned())),
+                None => Err(Failure::Step(format!("the audit value of {column} is not a text: {wrapper}"))),
+            })
+            .collect()
+    }
+
+    /// A transaction step with isolation, read_only or audit: its steps run in db.transaction with those options, the form
     /// that carries them, and the case state is reached through a lock, since that callback may be called again.
     async fn transaction_with_options(
         db: &Db,
@@ -2070,6 +2086,9 @@ mod database {
         }
         if step["read_only"].as_bool() == Some(true) {
             transaction = transaction.read_only();
+        }
+        if step.get("audit").is_some() {
+            transaction = transaction.audit(audit_values(&step["audit"])?);
         }
         match transaction.await {
             Ok(()) => Ok(Output::fields(ok_value())),
@@ -2351,7 +2370,7 @@ mod database {
                 let fail = step["fail"].as_bool().unwrap_or(false);
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
-                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) {
+                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) || step.get("audit").is_some() {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
                 }
                 db.transaction_once(|| async move {
@@ -2587,9 +2606,13 @@ mod database {
             };
             let dsn = super::connect_dsn(step["dsn"].as_str(), context.database, &context.dsn, std::env::var("ORM_TEST_MYSQL_SOCKET").ok().as_deref())
                 .map_err(Failure::Step)?;
-            match step.get("aes_keyring") {
-                Some(keyring) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
-                None => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
+            match (step.get("aes_keyring"), step.get("audit_source")) {
+                (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
+                (None, Some(source)) => {
+                    let resolved = resolve_audit_source(source, context).map_err(Failure::Step)?;
+                    context.models.connect_audited(name, &dsn, pool_size, &resolved).await.map_err(Failure::Call)?
+                }
+                (None, None) => context.models.connect(name, &dsn, pool_size).await.map_err(Failure::Call)?,
             };
             return Ok(Output::fields(json!({})));
         }
@@ -2603,6 +2626,15 @@ mod database {
         let resolved = resolve_model_step(step, context).map_err(Failure::Step)?;
         let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
         Ok(Output::fields(fields))
+    }
+
+    /// The audit_source of a model.connect with its values resolved.
+    fn resolve_audit_source(source: &Value, context: &Context<'_>) -> Result<Value, String> {
+        let mut resolved = source.clone();
+        if source.get("values").is_some() {
+            resolved["values"] = resolve_map(&source["values"], context)?;
+        }
+        Ok(resolved)
     }
 
     /// The fields of a model op with its values resolved, as a catalog op resolves its arguments.
@@ -3152,8 +3184,19 @@ mod tables {
     use crate::bench_models::{CaseModels, Connections};
 
     /// The models of the table recipes and their tables (FCV-4): a model op on any other model fails by name.
-    const TABLE_MODELS: [(&str, &str); 5] =
-        [("HookItem", "hook_item"), ("HookEntry", "hook_entry"), ("HookUpsert", "hook_upsert"), ("RotRow", "rot_row"), ("ChunkAuthor", "chunk_author")];
+    const TABLE_MODELS: [(&str, &str); 11] = [
+        ("HookItem", "hook_item"),
+        ("HookEntry", "hook_entry"),
+        ("HookUpsert", "hook_upsert"),
+        ("RotRow", "rot_row"),
+        ("ChunkAuthor", "chunk_author"),
+        ("Item", "item"),
+        ("Card", "card"),
+        ("Tag", "tag"),
+        ("Membership", "membership"),
+        ("Label", "label"),
+        ("Audit", "audit"),
+    ];
 
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
@@ -3363,6 +3406,18 @@ mod tables {
             connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
         }
 
+        async fn connect_audited(&mut self, connections: &mut Connections, name: &str, dsn: &str, pool_size: u32, source: &Value) -> Result<Value, String> {
+            let source: polyspec_orm::AuditSource = if source["fail"].as_bool() == Some(true) {
+                Arc::new(|| Err(polyspec_orm::Error::Engine { code: "CALLBACK".into(), msg: "the audit source failed".into() }))
+            } else {
+                let values = pairs(&source["values"])?;
+                Arc::new(move || Ok(values.clone()))
+            };
+            let config = Config { audit_source: Some(source), ..Config::default() };
+            self.bases.remove(name);
+            connections.open(name, dsn, self.schema, pool_size, config).await.map_err(orm)
+        }
+
         async fn run(&mut self, connections: &mut Connections, op: &str, connection: &str, step: &Value) -> Result<Value, String> {
             if op == "hook.records" {
                 return Ok(self.records());
@@ -3437,7 +3492,21 @@ mod tables {
                 }
                 "model.restore" => {
                     let row = self.row(model, &db, &step["values"])?;
-                    restore(&row).await.map_err(orm)?;
+                    let restored = restore(&row).await.map_err(orm)?;
+                    // With columns, the rows expect compares the row that restore returns (INT-38).
+                    match step.get("columns") {
+                        Some(columns) => Ok(json!({ "rows": [project(&restored, &names(columns))?] })),
+                        None => Ok(json!({})),
+                    }
+                }
+                // The key form sets the key and the assignments on a new model, with no read before it, so a key that names
+                // no row is an update that matches none (FCV-4).
+                "model.update" if step.get("key").is_some() => {
+                    let mut row = self.row(model, &db, &step["key"])?;
+                    for (column, value) in pairs(&step["set"])? {
+                        row.core_mut().set(&column, value);
+                    }
+                    update(&mut row, false).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "model.get_by" => {

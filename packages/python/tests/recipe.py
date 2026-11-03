@@ -1923,6 +1923,12 @@ TABLE_MODELS = {
     "HookUpsert": "hook_upsert",
     "RotRow": "rot_row",
     "ChunkAuthor": "chunk_author",
+    "Item": "item",
+    "Card": "card",
+    "Tag": "tag",
+    "Membership": "membership",
+    "Label": "label",
+    "Audit": "audit",
 }
 
 
@@ -2010,6 +2016,16 @@ def _table_model_get_by(step: dict, context: dict) -> dict:
 
 
 def _table_model_update(step: dict, context: dict) -> dict:
+    # The key form sets the key and the assignments on a new model, with no read before it, so a key that names no row
+    # is an update that matches none (FCV-4).
+    if "key" in step:
+        db = _connection_of(step, context)
+        row = _new_row(context, db, _table_of(step["model"]))
+        _set_columns(
+            row,
+            _assignments(step["key"], context) + _assignments(step["set"], context),
+        ).update()
+        return {}
     # A bound row carries the connection it was bound on, so the step names no connection.
     row = _bound_value(step["row"], context)
     _set_columns(row, _assignments(step["set"], context)).update()
@@ -2067,11 +2083,12 @@ def _table_model_duplicate_create(step: dict, context: dict) -> dict:
 
 def _table_model_restore(step: dict, context: dict) -> dict:
     db = _connection_of(step, context)
-    _set_columns(
+    restored = _set_columns(
         _new_row(context, db, _table_of(step["model"])),
         _assignments(step["values"], context),
     ).restore()
-    return {}
+    # With columns, the rows expect compares the row that restore returns (INT-38).
+    return {"rows": [_project(restored, step["columns"])]} if "columns" in step else {}
 
 
 def _table_model_query(step: dict, context: dict) -> dict:
@@ -2722,11 +2739,29 @@ def _op_transaction(step: dict, context: dict) -> dict:
         options["isolation"] = step["isolation"]
     if step.get("read_only") is True:
         options["readOnly"] = True
+    if "audit" in step:
+        options["audit"] = dict(_assignments(step["audit"], context))
     _connection_of(step, context).transaction(run, options)
     return {"value": {"bool": True}}
 
 
-_MODEL_OPS = model_ops(_native, _database_value, _step_argument)
+def _audit_source_of(step: dict, context: dict) -> dict:
+    """The connect option of the audit_source of a model.connect (FCV-4, CFG-8): the source returns its values or fails
+    with its own error."""
+    spec = step.get("audit_source")
+    if spec is None:
+        return {}
+    if spec.get("fail"):
+
+        def failing() -> dict:
+            raise CallbackError("the audit source failed")
+
+        return {"auditSource": failing}
+    values = dict(_assignments(spec["values"], context))
+    return {"auditSource": lambda: values}
+
+
+_MODEL_OPS = model_ops(_native, _database_value, _step_argument, _audit_source_of)
 _TABLE_OPS = {
     "model.create": _table_model_create,
     "model.get_by": _table_model_get_by,
