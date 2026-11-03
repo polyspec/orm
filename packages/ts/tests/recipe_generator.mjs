@@ -1,6 +1,7 @@
 // The generator.generate op of the recipe helper (docs/spec/feature-coverage.md FCV-4): it writes the scanned TypeScript sources of
 // a step under a temporary root and calls generateTypeScript with that root as the scan input.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -82,5 +83,34 @@ export function checkGenerator(step, dir, database) {
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// checkGeneratedFiles runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this client.
+export function checkGeneratedFiles(step, dir) {
+  const client = resolve(import.meta.dirname, '..');
+  const work = mkdtempSync(join(tmpdir(), 'orm-recipe-generator-check-'));
+  const out = join(work, 'model');
+  const gen = (...extra) => {
+    const done = spawnSync(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', resolve(dir, step.document_set), '--out', out, ...extra], { cwd: client, encoding: 'utf8' });
+    return { code: done.status, output: done.stdout + done.stderr };
+  };
+  const expect = (lines, file) => assert.deepEqual(gen('--check'), {
+    code: lines.length ? 1 : 0,
+    output: lines.map(line => `${line.replaceAll('<file>', file)}\n`).join(''),
+  });
+  try {
+    assert.equal(gen().code, 0, 'the generation');
+    expect(step.unchanged, '');
+    const name = readdirSync(out).sort().find(entry => readFileSync(join(out, entry)).length > 0);
+    assert.ok(name, `${out} holds no generated file`);
+    const file = join(out, name);
+    const text = readFileSync(file);
+    text[0] ^= 1;
+    writeFileSync(file, text);
+    expect(step.changed, file);
+    assert.deepEqual(readFileSync(file), text, 'the check wrote the file');
+  } finally {
+    rmSync(work, { recursive: true, force: true });
   }
 }

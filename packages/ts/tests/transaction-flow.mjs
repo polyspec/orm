@@ -1,6 +1,6 @@
 // The execution flow of a TypeScript transaction, on a SQLite file: asynchronous work started inside the callback shares
 // the callback's AsyncLocalStorage context and therefore the transaction, a statement that overlaps another statement
-// on the transaction connection returns CONFIG. The test of DSL-121 and DSL-122 (docs/spec/dsl.md "Transactions").
+// on the transaction connection returns CONFIG. The test of DSL-121, INT-47 and DSL-122 (docs/spec/dsl.md "Transactions").
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

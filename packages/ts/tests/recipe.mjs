@@ -12,7 +12,7 @@ import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -23,7 +23,7 @@ import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, nativeSession, within } from './coverage_case.mjs';
@@ -83,6 +83,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'dbspec.introspect_sqlite') await checkIntrospectSqlite(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
+          else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -485,6 +486,29 @@ async function fixtureSchema(setPath) {
 
 const NONE_FIXTURE = 'none';
 
+/**
+ * Installs the fixture of a recipe on the empty database of dsn and inserts its seed rows, so that a native conformance
+ * body reads the rows that the expects of the recipe state (tests/conformance/check/recipe_vectors.mts).
+ */
+export async function prepareRecipeDatabase(path, database, dsn) {
+  const recipe = JSON.parse(readFileSync(path, 'utf8'));
+  const { schema, installFirst } = await fixtureSchema(resolve(root, recipe.fixture));
+  const db = await Db.connect(dsn);
+  const catalog = await connectCatalog(dsn);
+  try {
+    for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
+    const namespace = await catalog.currentNamespace();
+    const context = { catalog, namespace, database, dsn, bound: new Map(), tablePath: true, db, schema, dir: resolve(root, dirname(path)) };
+    for (const [table, values] of Object.entries(recipe.seed?.rows ?? {})) {
+      const metadata = await catalog.describeTable({ namespace, name: table });
+      for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
+    }
+  } finally {
+    await catalog.close();
+    await db.close();
+  }
+}
+
 async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {
@@ -832,6 +856,8 @@ async function runStep(s, context) {
     if (expected?.error === undefined || typeof code !== 'string') throw error;
     assert.equal(code, expected.error, `the error code (${error.message})`);
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
+    if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
+    if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
     if (expected.rollback !== undefined) {
       assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
@@ -1429,15 +1455,62 @@ Object.assign(OPS, {
   },
   async transaction(s, context) {
     // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-    const options = { retry: 0 };
+    // An absent retry passes 0 unless default_retry leaves it out, and the first conflicts attempts end with the public conflict (INT-43, INT-48).
+    const options = s.default_retry === true ? {} : { retry: s.retry ?? 0 };
     if (s.isolation !== undefined) options.isolation = s.isolation;
     if (s.read_only === true) options.readOnly = true;
+    if (s.timeout_ms !== undefined) options.timeoutMs = s.timeout_ms;
     if (s.audit !== undefined) options.audit = auditValues(s.audit, context);
-    await connectionOf(s, context).transaction(async () => {
-      await runNested(s.steps, context);
-      if (s.fail) throw callbackError;
-    }, options);
+    let attempts = 0;
+    try {
+      await connectionOf(s, context).transaction(async () => {
+        attempts++;
+        await runNested(s.steps, context);
+        if (s.fail) throw callbackError;
+        if (attempts <= (s.conflicts ?? 0)) throw transactionConflict('the recipe conflict');
+      }, options);
+    } finally {
+      context.attempts = attempts;
+    }
     return okValue;
+  },
+  'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
+  // Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so the
+  // database ends one flow with its deadlock error, the client retries it, and both commit.
+  async 'transaction.deadlock'(s, context) {
+    const write = (connection, key, name) => MODEL_OPS['model.update']({ op: 'model.update', connection, model: s.model, key, set: { [s.column]: { text: name } } }, context);
+    let held = 0;
+    let releaseBoth;
+    const bothHeld = new Promise(resolve => { releaseBoth = resolve; });
+    let attempts = 0;
+    let deadlocks = 0;
+    const flow = (connection, index) => {
+      const name = `flow-${index}`;
+      let runs = 0;
+      return refOf(connection, context).transaction(async () => {
+        attempts++;
+        const first = ++runs === 1;
+        try {
+          await write(connection, s.rows[index], name);
+        } finally {
+          if (first && ++held === 2) releaseBoth();
+          if (first) await bothHeld;
+        }
+        try {
+          await write(connection, s.rows[1 - index], name);
+        } catch (error) {
+          if (first && error?.code === codes.DEADLOCK) deadlocks++;
+          throw error;
+        }
+      }, { isolation: 'read_committed', retry: 3 });
+    };
+    await Promise.all(s.connections.map(flow));
+    const names = [];
+    for (const key of s.rows) {
+      const { rows } = await MODEL_OPS['model.get_by']({ op: 'model.get_by', connection: s.connections[0], model: s.model, key, columns: [s.column] }, context);
+      names.push(rows[0][0].text);
+    }
+    return { attempts, deadlocks, same_flow: names[0] === names[1] && ['flow-0', 'flow-1'].includes(names[0]) };
   },
 });
 
@@ -1686,7 +1759,8 @@ function chainBuilt(s, context) {
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
   if (s.from !== undefined) return byKey(refOf(s.from, context));
-  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const model = coreModel(s.model, context);
+  const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
@@ -1737,10 +1811,13 @@ const TABLE_OPS = {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
-      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      const steps = s.plan_page === undefined
+        ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
+        : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
       return { json: steps.map(step => {
         const sql = step.sql.toUpperCase();
-        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
@@ -2248,6 +2325,7 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');
@@ -2256,9 +2334,11 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.runtime_model': {
-      const texts = await Promise.all(step.documents.map(path => readFile(resolve(dir, path), 'utf8')));
-      const model = modelOfDocuments(parseDocumentSet(texts));
+      const read = paths => Promise.all(paths.map(path => readFile(resolve(dir, path), 'utf8')));
+      const model = modelOfDocuments(parseDocumentSet(await read(step.documents), await read(step.external ?? [])));
       assert.deepEqual([...model.entities.keys()], expect.entities, 'entities');
+      if (expect.manifest_text !== undefined) assert.equal(model.manifestText, `${expect.manifest_text.join('\n')}\n`, 'manifest text');
+      if (expect.manifest_hash !== undefined) assert.equal(model.manifestHash, expect.manifest_hash, 'manifest hash');
       for (const [name, values] of Object.entries(expect.models ?? {})) {
         const entity = model.entities.get(name);
         const got = {
@@ -2266,7 +2346,7 @@ async function checkDbspecFiles(step, dir, database) {
           aes_version: entity.aesVersion, audit_column: entity.auditColumn, audit_record: entity.auditRecord,
           key_names: [...entity.indexes].sort(),
           fields: Object.fromEntries(entity.fields.map(f => [f.name, {
-            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, codec: [...f.stages],
+            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, select_explicit: !f.selected, codec: [...f.stages],
             blind_index: f.blindIndex, primary_key: f.primary, foreign_key: f.foreign,
           }])),
         };

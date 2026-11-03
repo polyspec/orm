@@ -1,6 +1,6 @@
 //! The execution flow of a Rust transaction, on a SQLite file: a transaction is active in the tokio task that opened it,
 //! so a task spawned inside the callback has no active transaction and an unconnected model there returns CONFIG, and two
-//! statements of the callback that overlap on the transaction connection return CONFIG. The test of DSL-121 and DSL-122
+//! statements of the callback that overlap on the transaction connection return CONFIG. The test of DSL-121, INT-47 and DSL-122
 //! (docs/spec/dsl.md "Transactions").
 
 use polyspec_orm::{Db, Model};

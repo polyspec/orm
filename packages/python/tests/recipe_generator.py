@@ -3,6 +3,8 @@ step under a temporary root and calls generate_models with that root as the scan
 
 import ast
 import re
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -129,3 +131,50 @@ def check_generator(step: dict, recipe_dir: Path, database: str) -> None:
     for part in want["value"].get("text", {}).get("excludes", []):
         if part in text:
             raise AssertionError(f"generated text holds {part}")
+
+
+def check_generated_files(step: dict, recipe_dir: Path) -> None:
+    """Runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this client."""
+    with tempfile.TemporaryDirectory(prefix="orm-recipe-generator-check-") as work:
+        out = Path(work) / "model"
+        out.mkdir()
+
+        def gen(*extra: str) -> tuple:
+            done = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "polyspec.orm.bin_orm_gen",
+                    "gen",
+                    "--set",
+                    str((recipe_dir / step["document_set"]).resolve()),
+                    "--out",
+                    str(out),
+                    *extra,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            return done.returncode, done.stdout + done.stderr
+
+        def expect(lines: list, file: str) -> None:
+            want = "".join(line.replace("<file>", file) + "\n" for line in lines)
+            got = gen("--check")
+            if got != (1 if lines else 0, want):
+                raise AssertionError(f"generator.check: got {got}, want {want!r}")
+
+        code, output = gen()
+        if code != 0:
+            raise AssertionError(f"generator.check: generate exit {code}: {output}")
+        expect(step["unchanged"], "")
+        file = next(
+            path for path in sorted(out.iterdir()) if path.is_file() and path.stat().st_size
+        )
+        text = bytearray(file.read_bytes())
+        text[0] ^= 1
+        file.write_bytes(bytes(text))
+        expect(step["changed"], str(file))
+        if file.read_bytes() != bytes(text):
+            raise AssertionError(f"generator.check: the check wrote {file}")

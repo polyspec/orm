@@ -527,6 +527,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "ir.param_uses" => return ir_param_uses(step, database, dir),
         "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
+        "generator.check" => return recipe_generator::check_files(step, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
@@ -1347,7 +1348,8 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
     });
     let Some(built) = loaded else {
         let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
-        return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+        let named = want["rule"].as_str().is_none_or(|rule| error.to_string().contains(rule));
+        return if want["error"].as_str() == Some(error.code()) && named { Ok(()) } else { Err(format!("error {error}, want {want}")) };
     };
     if let Some(hash) = want["manifest_hash"].as_str() {
         if built.manifest_hash != hash {
@@ -1364,9 +1366,26 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
 /// The dbspec.runtime_model op (FCV-4): the entity names of the runtime model of the documents, and the values that the expect
 /// names of the entities and fields it names.
 fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
-    let (_, documents) = read_documents(dir, &step_documents(step))?;
+    let owned = step_documents(step);
+    let paths: Vec<String> = owned.iter().cloned().chain(strings_of(&step["external"])).collect();
+    let (_, mut documents) = read_documents(dir, &paths)?;
+    for document in documents.iter_mut().skip(owned.len()) {
+        document.external = true;
+    }
     let refs: Vec<&Document> = documents.iter().collect();
     let model = dbspec::runtime_model(&refs).map_err(|errors| format!("{errors:?}"))?;
+    let built = dbspec::manifest(&refs).map_err(|errors| format!("{errors:?}"))?;
+    if let Some(lines) = want["manifest_text"].as_array() {
+        let text: String = lines.iter().filter_map(Value::as_str).map(|line| format!("{line}\n")).collect();
+        if built.manifest_text != text {
+            return Err(format!("manifest text {:?}, want {text:?}", built.manifest_text));
+        }
+    }
+    if let Some(hash) = want["manifest_hash"].as_str() {
+        if built.manifest_hash != hash {
+            return Err(format!("manifest hash {}, want {hash}", built.manifest_hash));
+        }
+    }
     let names: Vec<&str> = model.entities.iter().map(|e| e.name.as_str()).collect();
     if json!(names) != want["entities"] {
         return Err(format!("entities {names:?}, want {}", want["entities"]));
@@ -1385,7 +1404,7 @@ fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), St
             .map(|f| {
                 let view = json!({
                     "type": f.ty.name(), "nullable": f.nullable, "default": f.default.is_some(),
-                    "default_now": f.default == Some(dbspec::FieldDefault::Now), "codec": f.codec,
+                    "default_now": f.default == Some(dbspec::FieldDefault::Now), "select_explicit": f.select_explicit, "codec": f.codec,
                     "blind_index": f.blind_index.clone().unwrap_or_default(), "primary_key": f.primary_key, "foreign_key": f.foreign_key,
                 });
                 (f.name.clone(), view)
@@ -2304,6 +2323,9 @@ mod database {
         Snapshot(RowSnapshot),
     }
 
+    /// What separates the message of a failed orm call from the text of the error and of its cause.
+    pub(crate) const ERROR_DETAIL: char = '\u{1}';
+
     /// Why a step has no result: the error of the call, whose code an expect may name, or a fault of the step or the helper,
     /// which has no code and always fails the case.
     enum Failure {
@@ -2397,6 +2419,8 @@ mod database {
         /// The event subscriptions and the recordings of the events ops, by the names of `as`.
         subscriptions: HashMap<String, Subscription>,
         recordings: HashMap<String, Arc<Mutex<super::statement::Recorded>>>,
+        /// The callback runs of the transaction step that ended last (transaction.attempts).
+        attempts: u64,
     }
 
     /// One trial for each case of the recipe at `path`, relative to the repository root, on `database` ("mysql",
@@ -2640,7 +2664,7 @@ mod database {
         let bound = HashMap::from([("database".to_owned(), Bound::Json(json!({ "text": case_database.name() })))]);
         let dsn = case_database.dsn().to_owned();
         let mut context =
-            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, subscriptions: HashMap::new(), recordings: HashMap::new() };
+            Context { namespace, database, dsn, bound, db, dir, models: models(), schemas, subscriptions: HashMap::new(), recordings: HashMap::new(), attempts: 0 };
         let outcome = seed_and_steps(catalog, recipe, case, &mut context).await;
         context.models.close().await;
         outcome
@@ -2698,7 +2722,10 @@ mod database {
         context: &mut Context<'_>,
     ) -> Result<Output, Failure> {
         let state = tokio::sync::Mutex::new((catalog, context));
+        let attempts = std::sync::atomic::AtomicU64::new(0);
+        let conflicts = step["conflicts"].as_u64().unwrap_or(0);
         let callback = async || {
+            let attempt = attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             let mut guard = state.lock().await;
             let (catalog, context) = &mut *guard;
             for nested in steps {
@@ -2707,9 +2734,20 @@ mod database {
             if fail {
                 return Err(polyspec_orm::Error::Config(CALLBACK_FAILED.to_owned()));
             }
+            if attempt <= conflicts {
+                return Err(polyspec_orm::transaction_conflict("the recipe conflict"));
+            }
             Ok(())
         };
-        let mut transaction = db.transaction(callback).retry(0);
+        let mut transaction = db.transaction(callback);
+        // An absent retry passes 0 unless default_retry leaves it out (INT-43).
+        if step["default_retry"].as_bool() != Some(true) {
+            let retry = u32::try_from(step["retry"].as_u64().unwrap_or(0)).map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
+            transaction = transaction.retry(retry);
+        }
+        if let Some(timeout) = step["timeout_ms"].as_u64() {
+            transaction = transaction.timeout_ms(timeout);
+        }
         if let Some(level) = step["isolation"].as_str() {
             transaction = transaction.isolation(match level {
                 "read_uncommitted" => polyspec_orm::Isolation::ReadUncommitted,
@@ -2725,7 +2763,9 @@ mod database {
         if step.get("audit").is_some() {
             transaction = transaction.audit(audit_values(&step["audit"])?);
         }
-        match transaction.await {
+        let result = transaction.await;
+        state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
+        match result {
             Ok(()) => Ok(Output::fields(ok_value())),
             Err(polyspec_orm::Error::Config(message)) if message == CALLBACK_FAILED => Err(Failure::Call(format!("{CALLBACK}: {message}"))),
             Err(error) => Err(orm(error)),
@@ -2810,8 +2850,9 @@ mod database {
 
     /// The ops that the model dispatcher of the case runs (FCV-4), by their full names; every other op is a call of the catalog
     /// or of the case connection.
-    const MODEL_OPS: [&str; 21] = [
+    const MODEL_OPS: [&str; 22] = [
         "model.connect",
+        "transaction.deadlock",
         "model.restore",
         "hook.install",
         "hook.records",
@@ -2857,12 +2898,16 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
-                let (message, cause) = match message.strip_suffix(super::DRIVER_CAUSE) {
+                let mut parts = message.split(ERROR_DETAIL);
+                let (message, text, cause) = (parts.next().unwrap_or_default().to_owned(), parts.next(), parts.next());
+                let (message, driver_cause) = match message.strip_suffix(super::DRIVER_CAUSE) {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
                 let Some(want) = want_error else { return Err(format!("{UNEXPECTED_ERROR}{message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
+                let exact = expected.as_ref().and_then(|e| e.get("message")).and_then(Value::as_str);
+                let want_cause = expected.as_ref().and_then(|e| e.get("cause")).and_then(Value::as_str);
                 let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
                 // The transaction op composes this message from the callback error and the rollback error it returns.
                 if let Some(rollback) = expected.as_ref().and_then(|e| e.get("rollback")).and_then(Value::as_str) {
@@ -2875,9 +2920,11 @@ mod database {
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
+                        _ if exact.is_some() && text != exact => Err(format!("error message {text:?}, want {exact:?}")),
+                        _ if want_cause.is_some() && cause != want_cause => Err(format!("error cause {cause:?}, want {want_cause:?}")),
                         _ => match holds {
                             Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
-                            _ if wants_cause && !cause => Err(format!("error {message:?} has no driver cause")),
+                            _ if wants_cause && !driver_cause => Err(format!("error {message:?} has no driver cause")),
                             _ => Ok(()),
                         },
                     },
@@ -3060,20 +3107,27 @@ mod database {
                 let fail = step["fail"].as_bool().unwrap_or(false);
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
-                if step.get("isolation").is_some() || step["read_only"].as_bool() == Some(true) || step.get("audit").is_some() {
+                let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
+                if optioned.iter().any(|option| step.get(*option).is_some()) || step["read_only"].as_bool() == Some(true) {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
                 }
-                db.transaction_once(|| async move {
-                    for nested in &steps {
-                        Box::pin(run_step(catalog, nested, context)).await?;
-                    }
-                    if fail {
-                        return Err(CALLBACK_FAILED.to_owned());
-                    }
-                    Ok::<(), String>(())
-                })
-                .await
-                .map_err(|e| match e {
+                let ran = std::sync::atomic::AtomicU64::new(0);
+                let ran_ref = &ran;
+                let (once_catalog, once_context) = (&mut *catalog, &mut *context);
+                let result = db
+                    .transaction_once(|| async move {
+                        ran_ref.store(1, std::sync::atomic::Ordering::SeqCst);
+                        for nested in &steps {
+                            Box::pin(run_step(once_catalog, nested, once_context)).await?;
+                        }
+                        if fail {
+                            return Err(CALLBACK_FAILED.to_owned());
+                        }
+                        Ok::<(), String>(())
+                    })
+                    .await;
+                context.attempts = ran.load(std::sync::atomic::Ordering::SeqCst);
+                result.map_err(|e| match e {
                     TransactionOnceError::Callback(message) if message == CALLBACK_FAILED => Failure::Call(format!("{CALLBACK}: {message}")),
                     TransactionOnceError::Callback(message) => match message.strip_prefix(UNEXPECTED_ERROR) {
                         // The error of a public call reaches the transaction as the call returned it.
@@ -3089,6 +3143,7 @@ mod database {
                 })?;
                 Output::fields(ok_value())
             }
+            "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
                 let name = bound_name(step).map_err(fault)?;
@@ -3410,7 +3465,8 @@ mod database {
         // hook.records reads the records of the case, on no connection.
         let connection = match step["connection"].as_str() {
             Some(name) => name,
-            None if step.get("row").is_some() || op == "hook.records" => "",
+            None if op == "transaction.deadlock" => step["connections"][0].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connections")))?,
+            None if step.get("row").is_some() || op == "hook.records" || step["unconnected"].as_bool() == Some(true) => "",
             // A model op of the table path with no connection runs on the case connection, as in the other runtimes.
             None if context.models.table_path() => {
                 context.models.adopt(CASE_CONNECTION, context.db.clone());
@@ -3418,7 +3474,13 @@ mod database {
             }
             None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
         };
-        let resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
+        let mut resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
+        // Each flow of transaction.deadlock opens its own connection on its own thread.
+        if op == "transaction.deadlock" {
+            let socket = std::env::var_os("ORM_TEST_MYSQL_SOCKET");
+            let dsn = super::connect_dsn(None, context.database, &context.dsn, socket.as_deref().and_then(std::ffi::OsStr::to_str)).map_err(Failure::Step)?;
+            resolved["dsn"] = json!(dsn);
+        }
         let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
         Ok(Output::fields(fields))
     }
@@ -4024,10 +4086,14 @@ mod tables {
         }
     }
 
-    /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
+    /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it. After it
+    /// come the text of the error and of its cause, each after ERROR_DETAIL, which an expect with `message` or `cause` reads.
     fn orm(error: OrmError) -> String {
-        let cause = if std::error::Error::source(&error).is_some() { super::DRIVER_CAUSE } else { "" };
-        format!("{}: {error}{cause}", error.code())
+        use crate::recipe::database::ERROR_DETAIL;
+        let source = std::error::Error::source(&error).map(ToString::to_string);
+        let driver = if source.is_some() { super::DRIVER_CAUSE } else { "" };
+        let cause = source.unwrap_or_default();
+        format!("{}: {error}{driver}{ERROR_DETAIL}{error}{ERROR_DETAIL}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
@@ -4561,13 +4627,13 @@ mod tables {
             return Ok(());
         }
         if raw.get("object").is_some() {
-            let value = object_of(raw)?;
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
                 // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
                 let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
+                let value = object_of(raw)?;
                 row.core.set_json(column, value.clone());
                 row.values.insert(column.to_owned(), Val::Json(value));
             }
@@ -4649,7 +4715,9 @@ mod tables {
                 self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
             } else {
                 let mut core = core_of(step["model"].as_str().ok_or_else(|| format!("{} names no model", step["op"]))?)?;
-                core.connect(db);
+                if step["unconnected"].as_bool() != Some(true) {
+                    core.connect(db);
+                }
                 let mut build = Build::default();
                 let paged = step["page"].as_bool() == Some(true);
                 build.query(&mut core, step, !paged && step["offset"].is_null())?;
@@ -4689,18 +4757,28 @@ mod tables {
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
             if step["plan"].as_bool() == Some(true) {
-                let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
-                if count == 0 {
-                    return Err("a plan needs a limit above 0".into());
-                }
-                let steps = get_page_plan_steps(&core, offset / count + 1, count).await.map_err(orm)?;
+                let (page, per_page) = if step["plan_page"].is_null() {
+                    let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                    if count == 0 {
+                        return Err("a plan needs a limit above 0".into());
+                    }
+                    (offset / count + 1, count)
+                } else {
+                    let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                    (number("page")?, number("per_page")?)
+                };
+                let steps = get_page_plan_steps(&core, page, per_page).await.map_err(orm)?;
                 let list: Vec<Value> = steps
                     .iter()
                     .map(|plan_step| {
                         let sql = plan_step.sql.to_uppercase();
                         let count: serde_json::Map<String, Value> =
                             names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
-                        json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count })
+                        let mut shown = json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count });
+                        if step["plan_sql"].as_bool() == Some(true) {
+                            shown["sql"] = json!(plan_step.sql);
+                        }
+                        shown
                     })
                     .collect();
                 return Ok(json!({ "json": list }));
