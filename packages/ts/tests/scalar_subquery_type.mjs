@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from '@polyspec/ordered-json';
