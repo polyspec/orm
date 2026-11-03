@@ -20,7 +20,7 @@ caseTest('the build step keeps packages and build flags and runs no test', COMPU
 });
 
 // Every go test of the repository builds the test entry point (protocol §3), whose file and tests carry the tag ormtest:
-// a run without it would leave rollback_fault_test.go and statement_fault_test.go out unseen. The tags of a run are merged
+// a run without it would leave rollback_fault_entry_test.go and statement_fault_test.go out unseen. The tags of a run are merged
 // with GO_TEST_TAGS, in either flag form, and a run with no tags gets them alone.
 caseTest('every go test run carries the test entry point tag', COMPUTE, () => {
   assert.deepEqual(GO_TEST_TAGS, ['ormtest']);

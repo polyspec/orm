@@ -83,7 +83,7 @@ final class Recipe
     /** The dbspec ops on parsed texts that dbspecStep runs (FCV-4). */
     private const DBSPEC_OPS = [
         'dbspec.parse', 'dbspec.parse_plan', 'dbspec.emit_plan', 'dbspec.diff', 'dbspec.plan_steps', 'dbspec.add_tables_steps', 'dbspec.chain',
-        'dbspec.compare',
+        'dbspec.compare', 'dbspec.introspect_refusal',
     ];
 
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
@@ -178,115 +178,123 @@ final class Recipe
             return;
         }
         $bound = [];
-        foreach ($case['steps'] as $index => $step) {
+        foreach ($case['steps'] as $index => $raw) {
+            $step = new RecipeStep($raw, $database);
             try {
-                if ($step['op'] === 'ir.validate') {
-                    self::validateStep($step, $path, $database);
-                    continue;
-                }
-                if ($step['op'] === 'ir.answer') {
-                    self::answerStep($step);
-                    continue;
-                }
-                if ($step['op'] === 'collection.key') {
-                    self::collectionKeyStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'planner.compile') {
-                    self::planStep($step, $path, $database);
-                    continue;
-                }
-                if ($step['op'] === 'generator.check') {
-                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
-                    continue;
-                }
-                if ($step['op'] === 'generator.refused') {
-                    RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
-                    continue;
-                }
-                if ($step['op'] === 'ir.param_uses') {
-                    self::paramUsesStep($step, $path, $database);
-                    continue;
-                }
-                if ($step['op'] === 'planner.columns') {
-                    self::plannerColumnsStep($step, $path, $database);
-                    continue;
-                }
-                if ($step['op'] === 'generator.generate') {
-                    RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
-                    continue;
-                }
-                if (in_array($step['op'], self::DBSPEC_OPS, true)) {
-                    self::dbspecStep($step, $bound, $database);
-                    continue;
-                }
-                if ($step['op'] === 'dsn.connect') {
-                    self::dsnConnectStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'dbspec.introspect_shown') {
-                    self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
-                    continue;
-                }
-                if ($step['op'] === 'dbspec.apply_fault') {
-                    self::dbspecApplyFaultStep($step, $bound, $database);
-                    continue;
-                }
-                if ($step['op'] === 'dbspec.introspect_sqlite') {
-                    self::dbspecIntrospectSqliteStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'markdown.session') {
-                    self::markdownSessionStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'markdown.connect') {
-                    self::markdownConnectStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'keyring.versions') {
-                    self::keyringVersionsStep($step, $database);
-                    continue;
-                }
-                if ($step['op'] === 'markdown.builder') {
-                    self::markdownBuilderStep($step, $database);
-                    continue;
-                }
-                if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
-                    self::dbspecFileStep($step, $path, $database);
-                    continue;
-                }
-                if (in_array($step['op'], self::MERMAID_OPS, true)) {
-                    self::mermaidStep($step, $bound, $path, $database);
-                    continue;
-                }
-                if ($step['op'] === 'markdown.send') {
-                    if (array_key_exists('process_zone', $step)) {
-                        // The process zone holds while the step runs, so the public call sees it, and is restored
-                        // after it.
-                        $saved = date_default_timezone_get();
-                        date_default_timezone_set($step['process_zone']);
-                        try {
-                            self::sendStep($step);
-                        } finally {
-                            date_default_timezone_set($saved);
-                        }
-                    } else {
-                        self::sendStep($step);
-                    }
-                    continue;
-                }
-                if ($step['op'] === 'model.assign') {
-                    self::assignStep($step);
-                    continue;
-                }
-                self::step($step, $bound, $database);
+                self::fileStep($step, $bound, $path, $database);
+                $step->check();
             } catch (\PHPUnit\Framework\AssertionFailedError $failure) {
                 Assert::fail(
-                    "recipe $path case {$case['id']} step $index ({$step['op']}) on $database: {$failure->getMessage()}"
+                    "recipe $path case {$case['id']} step $index ({$raw['op']}) on $database: {$failure->getMessage()}"
                 );
             }
         }
+    }
+
+    /** Runs a step of a case on no database through the op that it names. */
+    private static function fileStep(RecipeStep $step, array &$bound, string $path, string $database): void
+    {
+        if ($step['op'] === 'ir.validate') {
+            self::validateStep($step, $path, $database);
+            return;
+        }
+        if ($step['op'] === 'ir.answer') {
+            self::answerStep($step);
+            return;
+        }
+        if ($step['op'] === 'collection.key') {
+            self::collectionKeyStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'planner.compile') {
+            self::planStep($step, $path, $database);
+            return;
+        }
+        if ($step['op'] === 'generator.check') {
+            RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            return;
+        }
+        if ($step['op'] === 'generator.refused') {
+            RecipeGenerator::checkRefused($step, dirname(__DIR__, 3) . '/' . dirname($path));
+            return;
+        }
+        if ($step['op'] === 'ir.param_uses') {
+            self::paramUsesStep($step, $path, $database);
+            return;
+        }
+        if ($step['op'] === 'planner.columns') {
+            self::plannerColumnsStep($step, $path, $database);
+            return;
+        }
+        if ($step['op'] === 'generator.generate') {
+            RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+            return;
+        }
+        if (in_array($step['op'], self::DBSPEC_OPS, true)) {
+            self::dbspecStep($step, $bound, $database);
+            return;
+        }
+        if ($step['op'] === 'dsn.connect') {
+            self::dsnConnectStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'dbspec.introspect_shown') {
+            self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+            return;
+        }
+        if ($step['op'] === 'dbspec.apply_fault') {
+            self::dbspecApplyFaultStep($step, $bound, $database);
+            return;
+        }
+        if ($step['op'] === 'dbspec.introspect_sqlite') {
+            self::dbspecIntrospectSqliteStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'markdown.session') {
+            self::markdownSessionStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'markdown.connect') {
+            self::markdownConnectStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'keyring.versions') {
+            self::keyringVersionsStep($step, $database);
+            return;
+        }
+        if ($step['op'] === 'markdown.builder') {
+            self::markdownBuilderStep($step, $database);
+            return;
+        }
+        if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
+            self::dbspecFileStep($step, $path, $database);
+            return;
+        }
+        if (in_array($step['op'], self::MERMAID_OPS, true)) {
+            self::mermaidStep($step, $bound, $path, $database);
+            return;
+        }
+        if ($step['op'] === 'markdown.send') {
+            if ($step->has('process_zone')) {
+                // The process zone holds while the step runs, so the public call sees it, and is restored
+                // after it.
+                $saved = date_default_timezone_get();
+                date_default_timezone_set($step['process_zone']);
+                try {
+                    self::sendStep($step);
+                } finally {
+                    date_default_timezone_set($saved);
+                }
+            } else {
+                self::sendStep($step);
+            }
+            return;
+        }
+        if ($step['op'] === 'model.assign') {
+            self::assignStep($step);
+            return;
+        }
+        self::step($step, $bound, $database);
     }
 
     /**
@@ -294,7 +302,13 @@ final class Recipe
      * names (relative to the recipe file) added, and checks the outcome of the expect of database: {value: {bool:
      * true}} for an accepted request, {error: CODE} for a request that fails with CODE.
      */
-    private static function validateStep(array $step, string $path, string $database): void
+    private static function userFromDatabaseDsn(string $dsn, string $prefix): string
+    {
+        preg_match('#/([^/?]+)(?:\?.*)?$#', $dsn, $name);
+        return (string) preg_replace('#^mysql://[^@]+@#', 'mysql://' . $prefix . substr($name[1], -28) . '@', $dsn);
+    }
+
+    private static function validateStep(RecipeStep $step, string $path, string $database): void
     {
         $outcome = $step['expect'][$database] ?? Assert::fail("ir.validate has no expect for $database");
         $root = dirname(__DIR__, 3);
@@ -322,7 +336,7 @@ final class Recipe
     }
 
     /** The model of the schema of a planner step and its input with the manifest_hash of that schema. */
-    private static function plannerRequest(array $step, string $path): array
+    private static function plannerRequest(RecipeStep $step, string $path): array
     {
         $schema = realpath(dirname(dirname(__DIR__, 3) . '/' . $path) . '/' . $step['schema']);
         if ($schema === false) {
@@ -333,7 +347,7 @@ final class Recipe
     }
 
     /** States the uses of each parameter of a validated request (DIA-31, PRT-67). */
-    private static function paramUsesStep(array $step, string $path, string $database): void
+    private static function paramUsesStep(RecipeStep $step, string $path, string $database): void
     {
         [$model, $request] = self::plannerRequest($step, $path);
         $validator = new Validator($model);
@@ -355,7 +369,7 @@ final class Recipe
      * States the output columns that the names of the step select from the first statement of the plan of each dialect: their
      * type and whether they are hidden (PRT-69, DIA-33).
      */
-    private static function plannerColumnsStep(array $step, string $path, string $database): void
+    private static function plannerColumnsStep(RecipeStep $step, string $path, string $database): void
     {
         [$model, $request] = self::plannerRequest($step, $path);
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
@@ -378,7 +392,7 @@ final class Recipe
      * {value: {mysql, postgres, sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect
      * must reject with.
      */
-    private static function planStep(array $step, string $path, string $database): void
+    private static function planStep(RecipeStep $step, string $path, string $database): void
     {
         if ($database !== self::NONE) {
             Assert::fail('planner.compile runs without a database');
@@ -460,7 +474,7 @@ final class Recipe
      * @param array<string, mixed> $step
      * @param array<string, mixed> $bound
      */
-    private static function dbspecStep(array $step, array &$bound, string $database): void
+    private static function dbspecStep(RecipeStep $step, array &$bound, string $database): void
     {
         $op = $step['op'];
         $expect = $step['expect'][$database] ?? Assert::fail("$op has no expect for $database");
@@ -517,6 +531,13 @@ final class Recipe
                 'statements' => array_map(static fn(PlanStep $s): string => $s->statement, $result[1]),
                 'differences' => $result[2],
             ];
+        } elseif ($op === 'dbspec.introspect_refusal') {
+            $got = self::dialectRefusal(
+                $step['dialect'],
+                static fn() => Dbspec::introspect(new \PDO('sqlite::memory:'), $step['dialect'], 'introspected'),
+            );
+            Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+            return;
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
             if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
@@ -525,7 +546,7 @@ final class Recipe
                     $step['dialect'],
                     static fn() => Dbspec::planSteps($source, $plan, $step['dialect']),
                 );
-                Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+                Assert::assertSame(self::sortedKeys($expect->all()), self::sortedKeys($got), "$op: result differs from the expect");
                 return;
             }
             $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
@@ -534,7 +555,7 @@ final class Recipe
         } else {
             Assert::fail("OP_UNKNOWN $op");
         }
-        Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+        Assert::assertSame(self::sortedKeys($expect->all()), self::sortedKeys($got), "$op: result differs from the expect");
     }
 
     /**
@@ -648,14 +669,14 @@ final class Recipe
      * request.kind. The normalized result of the chain must equal the normalized expect.none.value. An OrmException
      * of the chain is the result {error: CODE}; any other exception fails the case.
      */
-    private static function answerStep(array $step): void
+    private static function answerStep(RecipeStep $step): void
     {
-        $outcome = $step['expect']['none'] ?? [];
-        $params = array_key_exists('params', $outcome);
-        if (!array_key_exists('value', $outcome) && !$params) {
+        $outcome = $step['expect']['none'] ?? new RecipeStep([]);
+        $params = $outcome->has('params');
+        if (!$outcome->has('value') && !$params) {
             Assert::fail('ir.answer has neither expect.none.value nor params');
         }
-        if ($params && array_key_exists('answers', $step)) {
+        if ($params && $step->has('answers')) {
             Assert::fail('a params expect needs one answer, not answers');
         }
         $want = $params ? $outcome['params'] : $outcome['value'];
@@ -664,7 +685,7 @@ final class Recipe
             Assert::fail("chain {$step['chain']} is no markdown conformance case");
         }
         $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
-        $server = array_key_exists('answers', $step)
+        $server = $step->has('answers')
             ? start_markdown_test_server(['--keyed', json_encode($step['answers'], $flags)])
             : start_markdown_test_server(['{"ok":true}', json_encode($step['answer'], $flags)]);
         $served = new Served();
@@ -696,7 +717,7 @@ final class Recipe
      * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
      * PRT-35).
      */
-    private static function collectionKeyStep(array $step, string $database): void
+    private static function collectionKeyStep(RecipeStep $step, string $database): void
     {
         $got = ['groups' => [], 'types' => []];
         $seen = [];
@@ -724,7 +745,7 @@ final class Recipe
         } catch (OrmException $error) {
             $got = ['error' => $error->code_, 'message' => $error->getMessage()];
         }
-        Assert::assertSame($step['expect'][$database], $got);
+        Assert::assertSame($step['expect'][$database]->all(), $got);
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
@@ -806,7 +827,7 @@ final class Recipe
     }
 
     /** The markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply of the step. */
-    private static function markdownConnectStep(array $step, string $database): void
+    private static function markdownConnectStep(RecipeStep $step, string $database): void
     {
         $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
         $code = null;
@@ -831,10 +852,11 @@ final class Recipe
      * The markdown.session op (FCV-4, PRT-64): on a listener that answers each line with the next of the replies of the
      * step, a read-only transaction that holds a nested one, then a transaction, whose error is compared with the expect.
      */
-    private static function markdownSessionStep(array $step, string $database): void
+    private static function markdownSessionStep(RecipeStep $step, string $database): void
     {
         $server = \Polyspec\Orm\Tests\start_markdown_test_server($step['replies']);
-        $db = Orm::connect($server[2], new Config());
+        $port = parse_url($server[2], PHP_URL_PORT);
+        $db = Orm::connect("markdown://127.0.0.1:$port/{$step['corpus']}?token={$step['token']}", new Config());
         $code = null;
         $message = '';
         $empty = static function (): void {
@@ -886,7 +908,7 @@ final class Recipe
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
-    private static function dsnConnectStep(array $step, string $database): void
+    private static function dsnConnectStep(RecipeStep $step, string $database): void
     {
         $expect = $step['expect'][$database] ?? null;
         if ($expect === null) {
@@ -959,7 +981,7 @@ final class Recipe
      * manifest is given, parses its manifest and external texts back as a set without diagnostics, gives the same
      * hashes in the reversed order, and renders statements in each dialect that create the tables of expect created.
      */
-    private static function dbspecSet(array $step, array $expect): void
+    private static function dbspecSet(RecipeStep $step, RecipeStep $expect): void
     {
         $owned = array_values($step['owned'] ?? []);
         $all = array_merge($owned, array_values($step['external'] ?? []));
@@ -1002,7 +1024,7 @@ final class Recipe
             if (($rendered->statements ?? []) === []) {
                 Assert::fail("$dialect renders no statements");
             }
-            if (array_key_exists('created', $expect)) {
+            if ($expect->has('created')) {
                 Assert::assertSame(
                     $expect['created'],
                     self::createdTables($rendered->statements),
@@ -1050,7 +1072,7 @@ final class Recipe
      * Runs one dbspec op of a recipe step through the public calls of Dbspec and checks the result against the expect
      * of none (the Go twin is checkDBSpec in packages/go/internal/recipe/dbspec.go; the semantics are the same).
      */
-    private static function dbspecFileStep(array $step, string $path, string $database): void
+    private static function dbspecFileStep(RecipeStep $step, string $path, string $database): void
     {
         $expect = $step['expect'][$database] ?? Assert::fail("{$step['op']} has no expect for $database");
         $dir = dirname(dirname(__DIR__, 3) . '/' . $path);
@@ -1076,9 +1098,9 @@ final class Recipe
                 return;
             case 'dbspec.render':
                 [, $documents] = self::dbspecDocuments($dir, $step['documents']);
-                if (array_key_exists('dialect', $step)) {
+                if ($step->has('dialect')) {
                     $got = self::dialectRefusal($step['dialect'], static fn() => Dbspec::render($documents, $step['dialect']));
-                    Assert::assertSame($expect, $got, 'refused dialect');
+                    Assert::assertSame($expect->all(), $got, 'refused dialect');
                     return;
                 }
                 foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
@@ -1093,11 +1115,11 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
-                [$text, $set] = array_key_exists('document', $step)
+                [$text, $set] = $step->has('document')
                     ? [self::dbspecFile($dir, $step['document']), []]
                     : self::inlineDocument($step);
                 $analysis = Dbspec::analyze($text, $set);
-                if (array_key_exists('document', $step) && $analysis->diagnostics !== []) {
+                if ($step->has('document') && $analysis->diagnostics !== []) {
                     Assert::fail(self::diagnostics($analysis->diagnostics));
                 }
                 $parsed = Dbspec::parse($text, $set);
@@ -1111,7 +1133,7 @@ final class Recipe
                 self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);
                 return;
             case 'dbspec.parse_positions':
-                if (array_key_exists('document', $step)) {
+                if ($step->has('document')) {
                     $parsed = Dbspec::parse(self::dbspecFile($dir, $step['document']), []);
                 } else {
                     [$text, $set] = self::inlineDocument($step);
@@ -1137,7 +1159,7 @@ final class Recipe
                     Assert::fail('dbspec.format has no text');
                 }
                 [$text, $set] = self::inlineDocument($step);
-                if (array_key_exists('diagnostics', $expect)) {
+                if ($expect->has('diagnostics')) {
                     self::checkRefusal($text, $set, $expect['diagnostics']);
                     return;
                 }
@@ -1164,7 +1186,7 @@ final class Recipe
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
                     // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
-                    if (array_key_exists('diagnostics', $expect)) {
+                    if ($expect->has('diagnostics')) {
                         $prefix = "{$expect['error']}: ";
                         Assert::assertStringStartsWith($prefix, $error->getMessage());
                         $problems = explode('; ', substr($error->getMessage(), strlen($prefix)));
@@ -1180,7 +1202,7 @@ final class Recipe
                     array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
                     'documents',
                 );
-                if (array_key_exists('manifest_hash', $expect)) {
+                if ($expect->has('manifest_hash')) {
                     Assert::assertSame($expect['manifest_hash'], Dbspec::manifest($documents)->manifest->manifestHash, 'manifest hash');
                 }
                 return;
@@ -1191,10 +1213,10 @@ final class Recipe
                 );
                 $model = RuntimeModel::build(RuntimeModel::parseSet($read($step['documents']), $read($step['external'] ?? [])));
                 Assert::assertSame($expect['entities'], array_keys($model->entities), 'entities');
-                if (array_key_exists('manifest_text', $expect)) {
+                if ($expect->has('manifest_text')) {
                     Assert::assertSame(implode("\n", $expect['manifest_text']) . "\n", $model->manifestText, 'manifest text');
                 }
-                if (array_key_exists('manifest_hash', $expect)) {
+                if ($expect->has('manifest_hash')) {
                     Assert::assertSame($expect['manifest_hash'], $model->manifestHash, 'manifest hash');
                 }
                 $named = static function (array $have, array $want) use (&$named): array {
@@ -1317,7 +1339,7 @@ final class Recipe
      *
      * @return array{string, array<string, string>}
      */
-    private static function inlineDocument(array $step): array
+    private static function inlineDocument(RecipeStep $step): array
     {
         $crlf = ($step['crlf'] ?? false) === true;
         $mixed = ($step['mixed'] ?? false) === true;
@@ -1482,7 +1504,7 @@ final class Recipe
      *
      * @param array<string, array{decoded: bool, value: mixed, error: ?OrmException}> $bound
      */
-    private static function mermaidStep(array $step, array &$bound, string $path, string $database): void
+    private static function mermaidStep(RecipeStep $step, array &$bound, string $path, string $database): void
     {
         $got = $step['op'] === 'dbspec.export_mermaid'
             ? self::exportStep($step, $path)
@@ -1502,7 +1524,7 @@ final class Recipe
     }
 
     /** The result of an export step: the Mermaid text and the dropped [kind, table, name] of its document (docs/spec/mermaid.md). */
-    private static function exportStep(array $step, string $path): array
+    private static function exportStep(RecipeStep $step, string $path): array
     {
         // The inline text and the other documents of its set, or the .dbs file document (FCV-4).
         [$source, $set] = self::inlineDocument($step);
@@ -1522,7 +1544,7 @@ final class Recipe
      * emitted document and the dropped list, or with skeleton_of whether the skeleton of the document equals the one of
      * the file that skeleton_of names.
      */
-    private static function importStep(array $step, array $bound, string $path): array
+    private static function importStep(RecipeStep $step, array $bound, string $path): array
     {
         $mermaid = $step['mermaid'];
         $text = is_string($mermaid) ? $mermaid : self::mermaidReference($mermaid, $bound);
@@ -1642,13 +1664,13 @@ final class Recipe
      * error that
      * the call raises before it sends a message.
      */
-    private static function sendStep(array $step): void
+    private static function sendStep(RecipeStep $step): void
     {
         self::loadBindModels();
         [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
-            if (array_key_exists('surface', $step)) {
+            if ($step->has('surface')) {
                 self::refusedSurface($step['surface'], $db);
-            } elseif (array_key_exists('begin', $step)) {
+            } elseif ($step->has('begin')) {
                 $db->transaction(static fn(): null => null, '', $step['begin']['read_only'] === true);
             } else {
                 self::sendQuery($step, $db);
@@ -1665,7 +1687,7 @@ final class Recipe
      * @param array<string, mixed> $step
      * @param array<string, mixed> $bound
      */
-    private static function dbspecApplyFaultStep(array $step, array $bound, string $database): void
+    private static function dbspecApplyFaultStep(RecipeStep $step, array $bound, string $database): void
     {
         $expect = $step['expect'][$database];
         $master = "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master\n"
@@ -1752,7 +1774,7 @@ final class Recipe
      *
      * @param array<string, mixed> $step
      */
-    private static function dbspecIntrospectShownStep(array $step, string $dir, string $database): void
+    private static function dbspecIntrospectShownStep(RecipeStep $step, string $dir, string $database): void
     {
         $vectors = json_decode((string) file_get_contents($dir . '/' . $step['vectors']), true, 512, JSON_THROW_ON_ERROR);
         $found = null;
@@ -1792,7 +1814,7 @@ final class Recipe
      *
      * @param array<string, mixed> $step
      */
-    private static function dbspecIntrospectSqliteStep(array $step, string $database): void
+    private static function dbspecIntrospectSqliteStep(RecipeStep $step, string $database): void
     {
         $pdo = new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
         foreach ($step['sql'] as $statement) {
@@ -1815,7 +1837,7 @@ final class Recipe
      * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
      * versions (INT-74, INT-130), against the expect of database.
      */
-    private static function keyringVersionsStep(array $step, string $database): void
+    private static function keyringVersionsStep(RecipeStep $step, string $database): void
     {
         $expect = $step['expect'][$database];
         try {
@@ -1833,7 +1855,7 @@ final class Recipe
      * Runs one markdown.builder step (FCV-4): the builder calls on the slots model, then getCount, on the listener of
      * sendFirst. The terminal returns the first recorded error before it sends a message (INT-88, INT-89).
      */
-    private static function markdownBuilderStep(array $step, string $database): void
+    private static function markdownBuilderStep(RecipeStep $step, string $database): void
     {
         self::loadBindModels();
         $caught = null;
@@ -1866,7 +1888,7 @@ final class Recipe
      * a text wrapper, the only one the typed setter of the case takes; the nil case is excluded in PHP
      * (SetVarcharValue takes a string, not null).
      */
-    private static function assignStep(array $step): void
+    private static function assignStep(RecipeStep $step): void
     {
         self::loadBindModels();
         [$message, $code] = self::sendFirst(static function (mixed $db) use ($step): void {
@@ -1953,7 +1975,7 @@ final class Recipe
      * the
      * untyped PHP path receives, so the public call refuses it with CODEC_ENCODE.
      */
-    private static function sendQuery(array $step, mixed $db): void
+    private static function sendQuery(RecipeStep $step, mixed $db): void
     {
         $column = $step['column'];
         $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
@@ -2000,7 +2022,7 @@ final class Recipe
     }
 
     /** Maps the op of step to its call and checks the result against the expect of database. */
-    private static function step(array $step, array &$bound, string $database): void
+    private static function step(RecipeStep $step, array &$bound, string $database): void
     {
         $result = ['decoded' => false, 'value' => null, 'error' => null];
         $styles = $step['styles'] ?? [];
@@ -2496,12 +2518,13 @@ final class Recipe
      * Runs one step and compares the keys that its expect names. A step whose expect is {"error": CODE} passes only
      * when the call fails with that orm error code; `as` binds the bound object of the op or its value.
      */
-    private static function databaseStep(array $step, array &$context): void
+    private static function databaseStep(array $raw, array &$context): void
     {
         // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
-        if (isset($step['expect_unnamed'])) {
-            $step['expect'] = $step['expect_unnamed'];
+        if (isset($raw['expect_unnamed'])) {
+            $raw['expect'] = $raw['expect_unnamed'];
         }
+        $step = new RecipeStep($raw);
         $expected = isset($step['expect'][$context['database']])
             ? self::resolveRefs($step['expect'][$context['database']], $context)
             : null;
@@ -2524,6 +2547,9 @@ final class Recipe
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
+            if (($expected['keeps_callback'] ?? false) === true) {
+                Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
+            }
             if (isset($expected['rollback'])) {
                 Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
                 Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
@@ -2531,12 +2557,14 @@ final class Recipe
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
+            $step->checkOutcome($expected, 'error', 'message_suffix', 'message', 'cause', 'message_holds', 'rollback', 'driver_cause');
             return;
         } catch (CallbackFailed $failure) {
             // The step ends with its failed callback, so an enclosing transaction goes on (FCV-4).
             if (!is_array($expected) || ($expected['error'] ?? null) !== 'CALLBACK') {
                 throw $failure;
             }
+            $step->checkOutcome($expected, 'error');
             return;
         }
         if (isset($step['as'])) {
@@ -2546,6 +2574,7 @@ final class Recipe
             $context['fields'][$step['as']] = $actual;
         }
         if ($expected === null) {
+            $step->check();
             return;
         }
         if (array_key_exists('error', $expected)) {
@@ -2568,6 +2597,7 @@ final class Recipe
                     . ', got ' . json_encode($got, JSON_UNESCAPED_UNICODE)
             );
         }
+        $step->check();
     }
 
     /** The value with the members of every object sorted by name and each integral number as an integer. */
@@ -2588,7 +2618,7 @@ final class Recipe
     }
 
     /** Maps the op of a step to its one call of the public API and returns the fields that its expect compares. */
-    private static function databaseOp(array $s, array &$context): array
+    private static function databaseOp(RecipeStep $s, array &$context): array
     {
         $catalog = $context['catalog'];
         // A step names its own namespace when it has one (a MySQL system view is in information_schema).
@@ -2693,14 +2723,18 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnectDsn = $context['dsn'];
-                if (isset($s['user_from_database'])) {
-                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
-                    $reconnectDsn = (string) preg_replace(
-                        '#^mysql://[^@]+@#',
-                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
-                        $reconnectDsn
-                    );
+                $reconnectDsn = isset($s['user_from_database'])
+                    ? self::userFromDatabaseDsn($context['dsn'], $s['user_from_database'])
+                    : $context['dsn'];
+                if (isset($s['refused_message'])) {
+                    try {
+                        Catalog::connect($reconnectDsn);
+                    } catch (OrmException $error) {
+                        Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
+                        return [];
+                    }
+                    Assert::fail('the server accepted the connection that the step expects it to refuse');
                 }
                 $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
@@ -3054,6 +3088,8 @@ final class Recipe
                 Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
                 $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
                 return [];
+            case 'dbspec.introspect':
+                return RecipeIntrospect::step($s, $context);
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
@@ -3090,6 +3126,12 @@ final class Recipe
                         throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
                     }
                 }
+                return [];
+            case 'sql.hold_connection':
+                $context['held'] = case_admin(self::userFromDatabaseDsn($context['dsn'], $s['user_from_database']));
+                return [];
+            case 'sql.release_connection':
+                unset($context['held']);
                 return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
@@ -3157,7 +3199,7 @@ final class Recipe
      * Connects the DSN of the op. An unsupported URL or an absent SQLite file fails with CONFIG, and the expect may
      * name file_created: the file is created by no failing connection.
      */
-    private static function connectOp(array $s, array &$context): array
+    private static function connectOp(RecipeStep $s, array &$context): array
     {
         $expected = $s['expect'][$context['database']] ?? [];
         $dsn = $s['dsn'];
@@ -3463,7 +3505,7 @@ final class Recipe
      * its bind values are those of the statement: the DIA-6 transform on MySQL, which refuses a blank text with
      * IR_INVALID, and the text as it is on PostgreSQL.
      */
-    private static function querySearch(array $s, array $context): array
+    private static function querySearch(RecipeStep $s, array $context): array
     {
         if ($s['model'] !== 'Author') {
             Assert::fail("model {$s['model']} has no query.search entry");
@@ -3478,7 +3520,7 @@ final class Recipe
     }
 
     /** query.search_chain (FCV-4): the statement of the generated fulltext method of the mode, through getQuery. */
-    private static function querySearchChain(array $s, array $context): array
+    private static function querySearchChain(RecipeStep $s, array $context): array
     {
         if ($s['model'] !== 'Author') {
             Assert::fail("model {$s['model']} has no query.search_chain entry");
@@ -3502,7 +3544,7 @@ final class Recipe
     }
 
     /** The connection that an op names, or the case connection when the op names none (FCV-4). */
-    private static function connectionOf(array $s, array $context): Db
+    private static function connectionOf(RecipeStep $s, array $context): Db
     {
         if (!isset($s['connection'])) {
             return $context['db'];
@@ -3544,7 +3586,7 @@ final class Recipe
      * @param array<string, mixed> $context
      * @return array<string, mixed>
      */
-    private static function serverTransactions(array $s, array &$context): array
+    private static function serverTransactions(RecipeStep $s, array &$context): array
     {
         $db = self::connectionOf($s, $context);
         $frameRows = static fn (string $text): array => $db->utils()->run(
@@ -3595,7 +3637,7 @@ final class Recipe
      * holds its first row until the other holds its own, so the database ends one flow with its deadlock error, the client
      * retries it, and both commit.
      */
-    private static function transactionDeadlock(array $s, array $context): array
+    private static function transactionDeadlock(RecipeStep $s, array $context): array
     {
         $key = static fn(array $row): array => [
             (string) self::chainValue($row['tenant_id'], $context),
@@ -3646,7 +3688,7 @@ final class Recipe
             $attempts += (int) $runs;
             $deadlocks += (int) $deadlocked;
         }
-        $db = self::connectionOf(['connection' => $s['connections'][0]], $context);
+        $db = self::connectionOf(new RecipeStep(['connection' => $s['connections'][0]]), $context);
         $names = [];
         foreach ($s['rows'] as $row) {
             $read = (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db)
@@ -3859,7 +3901,7 @@ final class Recipe
     /** Applies the fields of q to model, in the order that a chain writes them. */
     private static function chainQuery(
         Model $model,
-        array $q,
+        array|RecipeStep $q,
         object $build,
         array $context,
         bool $withLimit = true,
@@ -3986,7 +4028,7 @@ final class Recipe
     }
 
     /** The model of a read: the fields of the step applied. A terminal by runs through chainKey. */
-    private static function chainBuilt(array $s, array $context): Model
+    private static function chainBuilt(RecipeStep $s, array $context): Model
     {
         // A bound chain is read again: a terminal leaves it as it was (DSL-98).
         if (isset($s['from'])) {
@@ -4018,7 +4060,7 @@ final class Recipe
     }
 
     /** The name and the arguments of the keys of a terminal by, in the written order. */
-    private static function chainKey(array $s, array $context): array
+    private static function chainKey(RecipeStep $s, array $context): array
     {
         $names = [];
         $args = [];
@@ -4050,13 +4092,13 @@ final class Recipe
     }
 
     /** The expect of the database of the case compares rows of wrappers. */
-    private static function chainWantsRows(array $s, array $context): bool
+    private static function chainWantsRows(RecipeStep $s, array $context): bool
     {
         return isset($s['expect'][$context['database']]['rows']);
     }
 
     /** The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation. */
-    private static function chainCells(iterable $parents, array $s): array
+    private static function chainCells(iterable $parents, RecipeStep $s): array
     {
         $rel = $s['relation'] ?? null;
         $rows = [];
@@ -4120,7 +4162,7 @@ final class Recipe
     }
 
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
-    private static function chainWrite(array $s, array $context, \Closure $terminal): array
+    private static function chainWrite(RecipeStep $s, array $context, \Closure $terminal): array
     {
         $table = ($s['unconnected'] ?? false) === true
             ? self::chainModel($s['model'], $context)
@@ -4143,7 +4185,7 @@ final class Recipe
     }
 
     /** The model that an update or a delete writes through: the bound row, or a new model set from values, which writes with no read. */
-    private static function chainTarget(array $s, array $context): Model
+    private static function chainTarget(RecipeStep $s, array $context): Model
     {
         $model = isset($s['row'])
             ? self::boundValue(is_string($s['row']) ? $s['row'] : $s['row']['ref'], $context)
@@ -4165,7 +4207,7 @@ final class Recipe
     }
 
     /** A model op of a fixture that generates no models: each field maps to one call of the public builder (FCV-4). */
-    private static function tableModelOp(array $s, array $context): array
+    private static function tableModelOp(RecipeStep $s, array $context): array
     {
         switch ($s['op']) {
             case 'model.chain':
@@ -4186,6 +4228,9 @@ final class Recipe
                     $row = $model->{'getBy' . $name}(...$args);
                 } else {
                     $row = $model->get();
+                }
+                if (($s['json_output'] ?? false) === true && $row !== null) {
+                    return ['json' => $row->toJson()];
                 }
                 if (isset($s['ordered_text']) && $row !== null) {
                     return ['json' => $row->{'get' . self::pascal($s['ordered_text'])}()->payload()->raw()];
@@ -4282,7 +4327,7 @@ final class Recipe
     }
 
     /** The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile. */
-    private static function chainGets(array $s, array $context): array
+    private static function chainGets(RecipeStep $s, array $context): array
     {
         $model = self::chainBuilt($s, $context);
         if (($s['compile'] ?? false) === true) {
@@ -4509,7 +4554,9 @@ final class Recipe
             // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
             return ['int' => $value];
         }
-        if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
+        // A PHP string is its bytes, so a plain value with no column type is binary when it is not text (INT-153).
+        if (is_string($value) && (preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1
+            || ($nativeType === null && mb_check_encoding($value, 'UTF-8') === false))) {
             return ['bytes_hex' => bin2hex($value)];
         }
         if (is_string($value)) {

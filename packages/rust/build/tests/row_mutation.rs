@@ -2,7 +2,7 @@
 mod physical_fixture;
 
 use polyspec_orm_build::{
-    catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableMetadata, TableRef},
+    catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
@@ -14,8 +14,10 @@ use std::sync::{
 mod lock_probe;
 
 #[tokio::test]
-// Requirements: INT-106, INT-118, PRT-79.
-async fn native_updates_lock_compare_verify_and_rollback() {
+// Runtime-unique (FCV-14): the phase publisher, the cancellation flag and a commit future that can be dropped exist only in
+// the Rust update_row, delete_row and insert_row; what any runtime answers is the recipe case row_mutation_lifecycle.
+// Requirements: INT-106a, INT-118, PRT-79.
+async fn mutation_phases_follow_the_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
 }
@@ -48,11 +50,7 @@ async fn check() {
             catalog.update_row(&original, &[("n".into(), P::I(11))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap();
         assert_eq!(result.rows[0], vec![GridCell::Integer(1), GridCell::Integer(11), GridCell::Integer(12)]);
         assert_eq!(events.lock().unwrap().last(), Some(&MutationPhase::Committed));
-        let conflict =
-            catalog.update_row(&original, &[("n".into(), P::I(12))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap_err();
-        assert!(conflict.starts_with("ROW_CONFLICT"));
         let updated = RowSnapshot::from_page(&catalog.table_page(&table, 1, 0).await.unwrap(), 0).unwrap();
-        assert!(catalog.update_row(&updated, &[("n".into(), P::I(20))], cancelled.clone(), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.is_err());
         assert_current_row(&mut catalog, &table, &updated).await;
         cancelled.store(true, Ordering::SeqCst);
         assert!(catalog
@@ -68,16 +66,6 @@ async fn check() {
             .unwrap_err()
             .starts_with("JOB_CANCELLED"));
         assert_current_row(&mut catalog, &table, &updated).await;
-        assert!(catalog
-            .update_row(&updated, &[("n".into(), P::S("12".into()))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-            .await
-            .is_err());
-        assert_current_row(&mut catalog, &table, &updated).await;
-        assert!(catalog
-            .update_row(&updated, &[("g".into(), P::I(99))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err()
-            .starts_with("ROW_UPDATE_INVALID"));
         let cancelled_after_write = Arc::new(AtomicBool::new(false));
         let stop = cancel_after_apply(&cancelled_after_write);
         assert!(catalog
@@ -100,15 +88,6 @@ async fn check() {
         assert_eq!(result.rows[0], vec![GridCell::Integer(0), GridCell::Integer(12), GridCell::Integer(13)]);
         assert_eq!(events.lock().unwrap().last(), Some(&MutationPhase::Committed));
         let moved = RowSnapshot::from_page(&catalog.table_page(&table, 1, 0).await.unwrap(), 0).unwrap();
-        seed.exec(&format!("ALTER TABLE {name} ADD COLUMN extra INTEGER"), &[]).await.unwrap();
-        let error = catalog
-            .update_row(&moved, &[("n".into(), P::I(13))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err();
-        assert!(error.starts_with("ROW_SCHEMA_CHANGED"));
-        seed.exec(&format!("ALTER TABLE {name} DROP COLUMN extra"), &[]).await.unwrap();
-        assert_current_row(&mut catalog, &table, &moved).await;
-        catalog.update_row(&moved, &[("n".into(), P::I(12))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap();
         // At its Locked phase the update stops while another connection probes the real database lock
         // (lock_probe), and then is cancelled, so it rolls back and the row stays as it was.
         let held = Arc::new(Mutex::new(None));
@@ -158,47 +137,7 @@ async fn check() {
         let stop = cancel_after_apply(&cancel_delete);
         assert!(catalog.delete_row(&moved, cancel_delete, stop, std::sync::Arc::new(|| Ok(()))).await.unwrap_err().starts_with("JOB_CANCELLED"));
         assert_current_row(&mut catalog, &table, &moved).await;
-        let child = format!("{name}_child");
-        seed.exec(&format!("CREATE TABLE {child}(id BIGINT PRIMARY KEY,parent_id INTEGER NOT NULL,FOREIGN KEY(parent_id) REFERENCES {name}(id))"), &[])
-            .await
-            .unwrap();
-        seed.exec(&format!("INSERT INTO {child}(id,parent_id) VALUES(1,0)"), &[]).await.unwrap();
-        assert!(catalog.delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.is_err());
-        assert_current_row(&mut catalog, &table, &moved).await;
-        seed.exec(&format!("DROP TABLE {child}"), &[]).await.unwrap();
-        let deleted = catalog.delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap();
-        assert_eq!(deleted, 1);
-        assert!(catalog
-            .delete_row(&moved, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(())))
-            .await
-            .unwrap_err()
-            .starts_with("ROW_CONFLICT"));
-        let after = catalog.table_page(&table, 2, 0).await.unwrap();
-        assert_eq!(after.result.rows.len(), 1);
-        assert_eq!(after.result.rows[0][0], GridCell::Integer(2));
-        let descriptor = after.metadata.clone();
-        let inserted = insert_without_cancellation(&catalog, &descriptor, &[("id", P::I(3)), ("n", P::I(30))], publish.clone()).await.unwrap();
-        assert_eq!(inserted.rows[0], vec![GridCell::Integer(3), GridCell::Integer(30), GridCell::Integer(31)]);
-        assert!(insert_without_cancellation(&catalog, &descriptor, &[("id", P::I(3)), ("n", P::I(40))], publish.clone())
-            .await
-            .unwrap_err()
-            .starts_with("ROW_CONFLICT"));
-        let omitted_key = insert_without_cancellation(&catalog, &descriptor, &[("n", P::I(40))], publish.clone()).await;
-        if dialect == "sqlite" {
-            let inserted = omitted_key.expect("SQLite INTEGER PRIMARY KEY returns its rowid alias");
-            assert!(matches!(inserted.rows[0].as_slice(), [GridCell::Integer(key), GridCell::Integer(40), GridCell::Integer(41)] if *key > 3));
-            seed.exec(&format!("DELETE FROM {name} WHERE n=40"), &[]).await.unwrap();
-        } else {
-            assert!(omitted_key.unwrap_err().starts_with("ROW_INSERT_IDENTITY_REQUIRED"));
-        }
-        for values in [
-            vec![("id".into(), P::I(4)), ("n".into(), P::I(30))],
-            vec![("id".into(), P::I(4)), ("n".into(), P::S("40".into()))],
-            vec![("id".into(), P::I(4)), ("g".into(), P::I(40))],
-            vec![("id".into(), P::I(4)), ("id".into(), P::I(5))],
-        ] {
-            assert!(catalog.insert_row(&descriptor, &values, Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.is_err());
-        }
+        let descriptor = catalog.table_page(&table, 2, 0).await.unwrap().metadata.clone();
         let flag = Arc::new(AtomicBool::new(false));
         let stop = cancel_after_apply(&flag);
         assert!(catalog
@@ -233,7 +172,7 @@ async fn check() {
         drop(pending);
         assert_eq!(completion.await.unwrap(), MutationPhase::Committed);
         let page = catalog.table_page(&table, 10, 0).await.unwrap();
-        assert_eq!(page.result.rows[1], vec![GridCell::Integer(3), GridCell::Integer(31), GridCell::Integer(32)]);
+        assert_eq!(page.result.rows[1], vec![GridCell::Integer(2), GridCell::Integer(31), GridCell::Integer(32)]);
         if dialect == "postgres" {
             let baseline = RowSnapshot::from_page(&page, 1).unwrap();
             let function = format!("{name}_commit_block");
@@ -306,34 +245,12 @@ async fn check() {
             let current = tool_db::GridQueryResult { columns: after.result.columns.clone(), rows: vec![after.result.rows[1].clone()] };
             baseline.check_current(&after.metadata, &current).unwrap();
         }
-        let defaults = format!("{name}_defaults");
-        seed.exec(&format!("CREATE TABLE {defaults}(id BIGINT NOT NULL PRIMARY KEY,n BIGINT NOT NULL DEFAULT 7,label VARCHAR(20))"), &[]).await.unwrap();
-        let default_ref = TableRef { namespace: table.namespace.clone(), name: defaults.clone() };
-        let default_descriptor = catalog.describe_table(&default_ref).await.unwrap();
-        let result = insert_without_cancellation(&catalog, &default_descriptor, &[("id", P::I(5))], publish.clone()).await.unwrap();
-        assert_eq!(result.rows[0], vec![GridCell::Integer(5), GridCell::Integer(7), GridCell::Null]);
-        let result =
-            insert_without_cancellation(&catalog, &default_descriptor, &[("id", P::I(6)), ("label", P::Null(tool_db::ParamType::Text))], publish.clone())
-                .await
-                .unwrap();
-        assert_eq!(result.rows[0], vec![GridCell::Integer(6), GridCell::Integer(7), GridCell::Null]);
-        seed.exec(&format!("DROP TABLE {defaults}"), &[]).await.unwrap();
         catalog.close().await;
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.unwrap();
         physical_fixture::finish_physical_dialect(db, seed, dialect, "finished").await;
     }
     std::fs::remove_file(path).unwrap();
     assert!(!commit_rejection_misclassified, "explicit PostgreSQL constraint rejection must not be indeterminate");
-}
-
-async fn insert_without_cancellation(
-    catalog: &CatalogConnection,
-    descriptor: &TableMetadata,
-    values: &[(&str, P)],
-    publish: Arc<dyn Fn(MutationPhase) + Send + Sync>,
-) -> Result<tool_db::GridQueryResult, String> {
-    let values: Vec<(String, P)> = values.iter().map(|(column, value)| ((*column).to_owned(), value.clone())).collect();
-    catalog.insert_row(descriptor, &values, Arc::new(AtomicBool::new(false)), publish, Arc::new(|| Ok(()))).await
 }
 
 async fn assert_current_row(catalog: &mut CatalogConnection, table: &TableRef, snapshot: &RowSnapshot) {

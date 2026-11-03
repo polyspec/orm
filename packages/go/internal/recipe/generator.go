@@ -58,7 +58,7 @@ type generatorExpect struct {
 
 // checkGenerator runs one generator.generate step of the Go runtime and checks it against the expect of database.
 func checkGenerator(t *testing.T, dir string, s step, database string) error {
-	raw, ok := s.Expect[database]
+	raw, ok := s.k("expect").Expect[database]
 	if !ok {
 		return fmt.Errorf("generator.generate has no expect for %s", database)
 	}
@@ -67,12 +67,12 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 		return fmt.Errorf("generator.generate expect: %w", err)
 	}
 	var o generatorOptions
-	if len(s.Options) > 0 {
-		if err := json.Unmarshal(s.Options, &o); err != nil {
+	if len(s.k("options").Options) > 0 {
+		if err := json.Unmarshal(s.k("options").Options, &o); err != nil {
 			return fmt.Errorf("generator.generate options: %w", err)
 		}
 	}
-	names, text, err := generateScanned(t, dir, s.Schema, o)
+	names, text, err := generateScanned(t, dir, s.k("schema").Schema, o)
 	if want.Error != "" {
 		if err == nil {
 			return fmt.Errorf("generation succeeded, want error %s", want.Error)
@@ -347,7 +347,7 @@ func checkGeneratedFiles(dir string, s step) error {
 		return errors.New("generator.check: no source path")
 	}
 	module := filepath.Join(filepath.Dir(source), "..", "..")
-	set, err := filepath.Abs(filepath.Join(dir, s.GenSet))
+	set, err := filepath.Abs(filepath.Join(dir, s.k("document_set").GenSet))
 	if err != nil {
 		return err
 	}
@@ -396,7 +396,7 @@ func checkGeneratedFiles(dir string, s step) error {
 	if err := os.WriteFile(filepath.Join(out, "zz_notes.go"), []byte("package model\n"), 0o600); err != nil {
 		return err
 	}
-	if err := expect(s.Same, ""); err != nil {
+	if err := expect(s.k("unchanged").Same, ""); err != nil {
 		return err
 	}
 	for _, entry := range entries {
@@ -412,7 +412,7 @@ func checkGeneratedFiles(dir string, s step) error {
 		if err := os.WriteFile(file, text, 0o600); err != nil {
 			return err
 		}
-		if err := expect(s.Diff, file); err != nil {
+		if err := expect(s.k("changed").Diff, file); err != nil {
 			return err
 		}
 		after, err := os.ReadFile(file)
@@ -425,7 +425,7 @@ func checkGeneratedFiles(dir string, s step) error {
 		if err := os.Remove(file); err != nil {
 			return err
 		}
-		if err := expect(s.Gone, file); err != nil {
+		if err := expect(s.k("removed").Gone, file); err != nil {
 			return err
 		}
 		if _, err := os.Lstat(file); !errors.Is(err, os.ErrNotExist) {
@@ -447,7 +447,7 @@ func checkRefusedGeneration(dir string, s step) error {
 		return err
 	}
 	defer func() { _ = os.RemoveAll(work) }()
-	for name, entry := range s.Tree {
+	for name, entry := range s.k("files").Tree {
 		var text string
 		if err := json.Unmarshal(entry, &text); err != nil {
 			var from struct {
@@ -468,7 +468,7 @@ func checkRefusedGeneration(dir string, s step) error {
 	}
 	out := filepath.Join(work, "model")
 	args := []string{"run", "./cmd/orm-gen", "gen", "--lang", "go", "--set", filepath.Join(work, "dbspec-set.json"), "--out", out}
-	if s.Compare {
+	if s.k("check").Compare {
 		args = append(args, "--check")
 	}
 	command := exec.Command("go", args...)
@@ -479,7 +479,7 @@ func checkRefusedGeneration(dir string, s step) error {
 		return fmt.Errorf("generator.refused: got %v, stdout %q, want exit 1 and nothing", err, stdout)
 	}
 	rest := string(exit.Stderr)
-	for _, part := range s.Parts {
+	for _, part := range s.k("parts").Parts {
 		at := strings.Index(rest, part)
 		if at < 0 {
 			return fmt.Errorf("generator.refused: the output lacks %q in order:\n%s", part, exit.Stderr)

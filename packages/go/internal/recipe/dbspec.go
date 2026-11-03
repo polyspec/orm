@@ -54,11 +54,11 @@ func linesText(lines []string) string {
 // checkDBSpec runs one dbspec op of a recipe step through the public calls of the dbspec package and checks the
 // result against the expect of database.
 func checkDBSpec(s step, dir, database string) error {
-	raw, ok := s.Expect[database]
+	raw, ok := s.k("expect").Expect[database]
 	if !ok {
-		return fmt.Errorf("%s has no expect for %s", s.Op, database)
+		return fmt.Errorf("%s has no expect for %s", s.k("op").Op, database)
 	}
-	switch s.Op {
+	switch s.k("op").Op {
 	case "dbspec.parse_emit":
 		var want struct {
 			Identical bool `json:"identical"`
@@ -66,7 +66,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		texts, documents, err := readDocuments(dir, s.Documents)
+		texts, documents, err := readDocuments(dir, s.k("documents").Documents)
 		if err != nil {
 			return err
 		}
@@ -84,7 +84,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		_, documents, err := readDocuments(dir, s.Documents)
+		_, documents, err := readDocuments(dir, s.k("documents").Documents)
 		if err != nil {
 			return err
 		}
@@ -105,16 +105,16 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		_, documents, err := readDocuments(dir, s.Documents)
+		_, documents, err := readDocuments(dir, s.k("documents").Documents)
 		if err != nil {
 			return err
 		}
-		if s.Dialect != "" {
-			got, err := dialectRefusal(s.Dialect, func() { dbspec.Render(documents, dbspec.Dialect(s.Dialect)) })
+		if s.k("dialect").Dialect != "" {
+			got, err := dialectRefusal(s.k("dialect").Dialect, func() { dbspec.Render(documents, dbspec.Dialect(s.k("dialect").Dialect)) })
 			if err != nil {
 				return err
 			}
-			if want.Refused != s.Dialect {
+			if want.Refused != s.k("dialect").Dialect {
 				return fmt.Errorf("refused %v, want %q", got, want.Refused)
 			}
 			return nil
@@ -136,15 +136,15 @@ func checkDBSpec(s step, dir, database string) error {
 			return err
 		}
 		text, set := inlineDocument(s)
-		if s.Document != "" {
-			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.Document)))
+		if s.k("document").Document != "" {
+			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("document").Document)))
 			if err != nil {
 				return err
 			}
 			text, set = string(raw), nil
 		}
 		analysis := dbspec.Analyze(text, set)
-		if s.Document != "" && len(analysis.Diagnostics) > 0 {
+		if s.k("document").Document != "" && len(analysis.Diagnostics) > 0 {
 			return errors.New(runtimemodel.DiagnosticsError(analysis.Diagnostics))
 		}
 		parsed, positions, diagnostics := dbspec.Parse(text, set)
@@ -165,8 +165,8 @@ func checkDBSpec(s step, dir, database string) error {
 			return err
 		}
 		text, set := inlineDocument(s)
-		if s.Document != "" {
-			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.Document)))
+		if s.k("document").Document != "" {
+			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("document").Document)))
 			if err != nil {
 				return err
 			}
@@ -197,7 +197,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		if len(s.Text) == 0 {
+		if len(s.k("text").Text) == 0 {
 			return errors.New("dbspec.format has no text")
 		}
 		text, set := inlineDocument(s)
@@ -235,7 +235,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		model, invalid := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
+		model, invalid := runtimemodel.LoadSet(linesText(s.k("owned").Owned), linesText(s.k("external").External))
 		if invalid != nil {
 			if invalid.Code() != want.Error {
 				return fmt.Errorf("%v, want %+v", invalid, want)
@@ -284,11 +284,11 @@ func checkDBSpec(s step, dir, database string) error {
 			}
 			return texts, nil
 		}
-		owned, err := read(s.Documents)
+		owned, err := read(s.k("documents").Documents)
 		if err != nil {
 			return err
 		}
-		external, err := read(s.External)
+		external, err := read(s.k("external").External)
 		if err != nil {
 			return err
 		}
@@ -314,7 +314,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		got := dbspec.ParseSet(s.Owned, s.External)
+		got := dbspec.ParseSet(s.k("owned").Owned, s.k("external").External)
 		if len(got) != len(want.Documents) {
 			return fmt.Errorf("%d documents, want %d", len(got), len(want.Documents))
 		}
@@ -351,10 +351,10 @@ func checkDBSpec(s step, dir, database string) error {
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
-		name := filepath.Join(dir, filepath.FromSlash(s.Path))
+		name := filepath.Join(dir, filepath.FromSlash(s.k("path").Path))
 		var text string
 		var diagnostics []dbspec.Diagnostic
-		if s.Op == "dbspec.read_file" {
+		if s.k("op").Op == "dbspec.read_file" {
 			var err error
 			text, diagnostics, err = dbspec.ReadFile(name)
 			if err != nil {
@@ -365,7 +365,7 @@ func checkDBSpec(s step, dir, database string) error {
 			if err != nil {
 				return err
 			}
-			name = s.Path
+			name = s.k("path").Path
 			text, diagnostics = dbspec.ReadBytes(name, raw)
 		}
 		if len(want.Errors) > 0 {
@@ -389,7 +389,7 @@ func checkDBSpec(s step, dir, database string) error {
 		if len(diagnostics) != 0 {
 			return errors.New(runtimemodel.DiagnosticsError(diagnostics))
 		}
-		raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.Path)))
+		raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(s.k("path").Path)))
 		if err != nil {
 			return err
 		}
@@ -404,7 +404,7 @@ func checkDBSpec(s step, dir, database string) error {
 			return fmt.Errorf("emission differs:\n%s\nwant\n%s", emitted, text)
 		}
 	default:
-		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
+		return fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 	}
 	return nil
 }
@@ -489,10 +489,10 @@ func (l *textLines) UnmarshalJSON(data []byte) error {
 
 func inlineDocument(s step) (string, map[string]string) {
 	set := map[string]string{}
-	for name, lines := range s.Set {
-		set[name] = joinText(lines, s.CRLF, s.Mixed)
+	for name, lines := range s.k("set").Set {
+		set[name] = joinText(lines, s.k("crlf").CRLF, s.k("mixed").Mixed)
 	}
-	return joinText(s.Text, s.CRLF, s.Mixed), set
+	return joinText(s.k("text").Text, s.k("crlf").CRLF, s.k("mixed").Mixed), set
 }
 
 // emitStable parses text with the set, emits it, and checks that the emission parses and emits to itself.
@@ -613,11 +613,11 @@ func createdTables(statements []string) []string {
 // manifest is given, parses its manifest and external texts back as a set without diagnostics, gives the same manifest
 // in the reversed order, and renders non-empty statements in each dialect that create the tables of created.
 func checkSet(s step, diagnostics []setDiagnostic, manifest *setManifest, created []string) error {
-	all := append(slices.Clone(s.Owned), s.External...)
+	all := append(slices.Clone(s.k("owned").Owned), s.k("external").External...)
 	documents := make([]*dbspec.Document, 0, len(all))
 	for i, text := range all {
 		set := map[string]string{}
-		for name, other := range s.Parsing {
+		for name, other := range s.k("parsing").Parsing {
 			set[name] = other
 		}
 		for j, other := range all {
@@ -629,7 +629,7 @@ func checkSet(s step, diagnostics []setDiagnostic, manifest *setManifest, create
 		if len(parseDiagnostics) > 0 {
 			return fmt.Errorf("document %d: %s", i+1, runtimemodel.DiagnosticsError(parseDiagnostics))
 		}
-		document.External = i >= len(s.Owned)
+		document.External = i >= len(s.k("owned").Owned)
 		documents = append(documents, document)
 	}
 	built, refusals := dbspec.ManifestOf(documents)
