@@ -121,6 +121,7 @@
             "cases": { "$ref": "#/$defs/cases" },
             "symbols": { "type": "object", "additionalProperties": { "type": "string" } },
             "dsn_env": { "type": "string" },
+            "case_database": { "const": true },
             "recipe": { "$ref": "#/$defs/text" },
             "symbol": { "$ref": "#/$defs/text" },
             "database": { "enum": ["mysql", "postgres", "sqlite"] }

@@ -4,11 +4,13 @@
     "DBS-65",
     "DBS-85",
     "DBS-111",
-    "DBS-112"
+    "DBS-112",
+    "DBS-100",
+    "DBS-103"
   ],
   "cases": [
     {
-      "id": "entities-of-a-document",
+      "id": "entities-of-the-bench-set",
       "requirements": [
         "DBS-111",
         "DBS-112"
@@ -17,7 +19,8 @@
         {
           "op": "dbspec.runtime_model",
           "documents": [
-            "../../contracts/fixtures/bench/bench.dbs"
+            "../../contracts/fixtures/bench/bench.dbs",
+            "../../contracts/fixtures/bench/bench_reader.dbs"
           ],
           "expect": {
             "none": {
@@ -45,7 +48,9 @@
                 "bind_cell",
                 "audit_record",
                 "audited_note",
-                "audited_note_history"
+                "audited_note_history",
+                "note_reader",
+                "shared_note"
               ],
               "models": {
                 "author": {
@@ -124,7 +129,10 @@
                 }
               }
             }
-          }
+          },
+          "external": [
+            "../../contracts/fixtures/bench/bench_shared.dbs"
+          ]
         }
       ]
     },
@@ -173,6 +181,96 @@
                 "item": {
                   "audit_column": "audit_seq",
                   "audit_record": "audit"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-holds-no-comment-or-diagram",
+      "requirements": [
+        "DBS-100",
+        "DBS-103",
+        "DBS-111"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.runtime_model",
+          "documents": [
+            "runtime-model-members.dbs",
+            "runtime-model-accounts.dbs"
+          ],
+          "expect": {
+            "none": {
+              "entities": [
+                "tenant",
+                "member"
+              ],
+              "manifest_text": [
+                "dbspec 1 accounts",
+                "",
+                "table tenant {",
+                "  id i64 identity",
+                "  name varchar(50)",
+                "  primary key (id)",
+                "}",
+                "dbspec 1 members",
+                "",
+                "use accounts { tenant }",
+                "",
+                "table member_row {",
+                "  id i64 identity",
+                "  tenant_id i64",
+                "  note text",
+                "  secret bytes null",
+                "  aes_key_version i32",
+                "  updated_at datetime(6) default now",
+                "  deleted_at datetime(6) null",
+                "  primary key (id)",
+                "  index ix_member_tenant (tenant_id)",
+                "  foreign key fk_member_tenant (tenant_id) references tenant (id) on delete restrict on update restrict",
+                "  settings {",
+                "    entity member",
+                "    updated updated_at",
+                "    soft_delete deleted_at",
+                "    select explicit aes_key_version",
+                "    codec secret ordered_json aes",
+                "    aes_version aes_key_version",
+                "  }",
+                "}"
+              ],
+              "manifest_hash": "sha256:2e217b76a2ae17adcc3afdae1ff64e41f32244e575f06d51c507fcf5ba65f652",
+              "models": {
+                "member": {
+                  "table": "member_row",
+                  "identity": "id",
+                  "updated": "updated_at",
+                  "soft_delete": "deleted_at",
+                  "aes_version": "aes_key_version",
+                  "fields": {
+                    "secret": {
+                      "type": "bytes",
+                      "nullable": true,
+                      "codec": [
+                        "ordered_json",
+                        "aes"
+                      ]
+                    },
+                    "aes_key_version": {
+                      "select_explicit": true
+                    },
+                    "note": {
+                      "select_explicit": false
+                    },
+                    "tenant_id": {
+                      "foreign_key": true
+                    },
+                    "updated_at": {
+                      "default": true
+                    }
+                  }
                 }
               }
             }

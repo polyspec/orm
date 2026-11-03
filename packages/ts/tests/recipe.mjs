@@ -12,7 +12,7 @@ import { createInterface } from 'node:readline';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, codes, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { DbspecApplyError, addTablesAndColumnsSteps, applyPlans, exportMermaid, importMermaid, introspectDbspec, rollbackPlans } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -507,7 +507,7 @@ async function runCaseOn({ name, recipe, recipeCase, database, schema, caseDatab
     const namespace = await catalog.currentNamespace();
     const bound = new Map([['database', { text: caseDatabase.name }]]);
     const classes = schema === undefined ? {} : classesFromModel(registerModel(schema.manifestText, schema.manifestHash, schema.externalText));
-    context = { catalog, namespace, database, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
+    context = { catalog, namespace, database, caseOnly: recipeCase.only, dsn: caseDatabase.dsn, bound, tablePath: recipe.fixture !== GENERATED_FIXTURE, db, schema, classes, dir: dirname(resolve(root, name)), closers, closed: false, records: [], hookBases: new Map(), fields: new Map() };
     for (const rows of [recipe.seed?.rows, recipeCase.seed?.rows]) {
       for (const [table, values] of Object.entries(rows ?? {})) {
         const metadata = await catalog.describeTable({ namespace, name: table });
@@ -800,11 +800,11 @@ const OP_DEADLINE_MS = 20000;
 async function runStep(s, context) {
   const op = OPS[s.op] ?? MODEL_OPS[s.op];
   if (op === undefined) throw new Error(`OP_UNKNOWN ${s.op}`);
-  // A step with only runs on the databases it names, and its expect names exactly those; a step without only names every database.
+  // A step runs on the databases of its only, else of the only of its case, else on every database, and its expect names exactly those.
   if (s.only !== undefined && !s.only.includes(context.database)) return;
   if (s.expect !== undefined) {
     const named = Object.keys(s.expect).sort().join(',');
-    const want = (s.only ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
+    const want = (s.only ?? context.caseOnly ?? ['mysql', 'postgres', 'sqlite']).slice().sort().join(',');
     if (named !== want) throw new Error(`the expect of ${s.op} names ${named}, want ${want}`);
   }
   const expected = s.expect === undefined ? undefined : resolveRefs(s.expect[context.database], context);
@@ -816,6 +816,8 @@ async function runStep(s, context) {
     if (expected?.error === undefined || typeof code !== 'string') throw error;
     assert.equal(code, expected.error, `the error code (${error.message})`);
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
+    if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
+    if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
@@ -1409,15 +1411,62 @@ Object.assign(OPS, {
   },
   async transaction(s, context) {
     // The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-    const options = { retry: 0 };
+    // An absent retry passes 0 unless default_retry leaves it out, and the first conflicts attempts end with the public conflict (INT-43, INT-48).
+    const options = s.default_retry === true ? {} : { retry: s.retry ?? 0 };
     if (s.isolation !== undefined) options.isolation = s.isolation;
     if (s.read_only === true) options.readOnly = true;
+    if (s.timeout_ms !== undefined) options.timeoutMs = s.timeout_ms;
     if (s.audit !== undefined) options.audit = auditValues(s.audit, context);
-    await connectionOf(s, context).transaction(async () => {
-      await runNested(s.steps, context);
-      if (s.fail) throw callbackError;
-    }, options);
+    let attempts = 0;
+    try {
+      await connectionOf(s, context).transaction(async () => {
+        attempts++;
+        await runNested(s.steps, context);
+        if (s.fail) throw callbackError;
+        if (attempts <= (s.conflicts ?? 0)) throw transactionConflict('the recipe conflict');
+      }, options);
+    } finally {
+      context.attempts = attempts;
+    }
     return okValue;
+  },
+  'transaction.attempts': (_, context) => ({ value: { int: String(context.attempts) } }),
+  // Two flows write two rows in opposite order (PLN-24): each holds its first row until the other holds its own, so the
+  // database ends one flow with its deadlock error, the client retries it, and both commit.
+  async 'transaction.deadlock'(s, context) {
+    const write = (connection, key, name) => MODEL_OPS['model.update']({ op: 'model.update', connection, model: s.model, key, set: { [s.column]: { text: name } } }, context);
+    let held = 0;
+    let releaseBoth;
+    const bothHeld = new Promise(resolve => { releaseBoth = resolve; });
+    let attempts = 0;
+    let deadlocks = 0;
+    const flow = (connection, index) => {
+      const name = `flow-${index}`;
+      let runs = 0;
+      return refOf(connection, context).transaction(async () => {
+        attempts++;
+        const first = ++runs === 1;
+        try {
+          await write(connection, s.rows[index], name);
+        } finally {
+          if (first && ++held === 2) releaseBoth();
+          if (first) await bothHeld;
+        }
+        try {
+          await write(connection, s.rows[1 - index], name);
+        } catch (error) {
+          if (first && error?.code === codes.DEADLOCK) deadlocks++;
+          throw error;
+        }
+      }, { isolation: 'read_committed', retry: 3 });
+    };
+    await Promise.all(s.connections.map(flow));
+    const names = [];
+    for (const key of s.rows) {
+      const { rows } = await MODEL_OPS['model.get_by']({ op: 'model.get_by', connection: s.connections[0], model: s.model, key, columns: [s.column] }, context);
+      names.push(rows[0][0].text);
+    }
+    return { attempts, deadlocks, same_flow: names[0] === names[1] && ['flow-0', 'flow-1'].includes(names[0]) };
   },
 });
 
@@ -2228,6 +2277,7 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
+        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');
@@ -2236,9 +2286,11 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.runtime_model': {
-      const texts = await Promise.all(step.documents.map(path => readFile(resolve(dir, path), 'utf8')));
-      const model = modelOfDocuments(parseDocumentSet(texts));
+      const read = paths => Promise.all(paths.map(path => readFile(resolve(dir, path), 'utf8')));
+      const model = modelOfDocuments(parseDocumentSet(await read(step.documents), await read(step.external ?? [])));
       assert.deepEqual([...model.entities.keys()], expect.entities, 'entities');
+      if (expect.manifest_text !== undefined) assert.equal(model.manifestText, `${expect.manifest_text.join('\n')}\n`, 'manifest text');
+      if (expect.manifest_hash !== undefined) assert.equal(model.manifestHash, expect.manifest_hash, 'manifest hash');
       for (const [name, values] of Object.entries(expect.models ?? {})) {
         const entity = model.entities.get(name);
         const got = {
@@ -2246,7 +2298,7 @@ async function checkDbspecFiles(step, dir, database) {
           aes_version: entity.aesVersion, audit_column: entity.auditColumn, audit_record: entity.auditRecord,
           key_names: [...entity.indexes].sort(),
           fields: Object.fromEntries(entity.fields.map(f => [f.name, {
-            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, codec: [...f.stages],
+            type: f.type, nullable: f.nullable, default: f.hasDefault, default_now: f.defaultNow, select_explicit: !f.selected, codec: [...f.stages],
             blind_index: f.blindIndex, primary_key: f.primary, foreign_key: f.foreign,
           }])),
         };

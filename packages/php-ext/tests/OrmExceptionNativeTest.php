@@ -18,13 +18,6 @@ use RuntimeException;
 
 final class OrmExceptionNativeTest extends TestCase
 {
-    // Requirements: PRT-77.
-    public function testNativeValueFunctionIrCarriesNameAndParameterIndexes(): void
-    {
-        require_once dirname(__DIR__, 2) . '/php/tests/DsnTest.php';
-        \Polyspec\Orm\Tests\DsnTest::assertValueFunctionIr();
-    }
-
     public function testOrmConnectionFactoryIsProvidedByTheExtension(): void
     {
         $class = new ReflectionClass(Orm::class);

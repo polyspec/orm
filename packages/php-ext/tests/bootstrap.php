@@ -23,7 +23,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/ModelTestFailingPdo.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionFailureCases.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageConformanceVerificationTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageDsnTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageTransactionsTest.php';
 require_once __DIR__ . '/NativeMethodAssertions.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 // The library tests that the extension tests extend or call, and the helper classes of the extension tests, one

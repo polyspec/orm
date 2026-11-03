@@ -2759,7 +2759,9 @@
         "tests/planner/runtime-model.json",
         "tests/planner/runtime-model.dbs",
         "tests/dbspec/runtime-model.json",
-        "tests/dbspec/runtime-model-shop.dbs"
+        "tests/dbspec/runtime-model-shop.dbs",
+        "tests/dbspec/runtime-model-accounts.dbs",
+        "tests/dbspec/runtime-model-members.dbs"
       ]
     },
     "model-types-php-extension-check": {
@@ -3847,7 +3849,6 @@
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
-        "packages/php/tests/CoverageTransactionsTest.php",
         "packages/php/models.txt"
       ]
     },
@@ -3934,23 +3935,6 @@
         "packages/php/tests/WarningStreamProtocol.php"
       ]
     },
-    "cpx5-duplicate-relation-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/Cpx5DuplicateRelationCases.php",
-        "packages/php/tests/Cpx5DuplicateRelationTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php"
-      ]
-    },
     "temp-sqlite-fixture-rust-helper-check": {
       "scope": "owner",
       "needs": [
@@ -3960,9 +3944,7 @@
         "Makefile",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/tests/tests/common/temp_sqlite.rs",
-        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-        "packages/rust/tests/tests/integration/main.rs",
-        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+        "packages/rust/tests/tests/refusal_before_request.rs"
       ]
     },
     "native-api-equivalence-check": {

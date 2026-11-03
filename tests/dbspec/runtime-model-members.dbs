@@ -1,0 +1,24 @@
+dbspec 1 members
+
+use accounts { tenant }
+
+table member_row {
+  id i64 identity
+  tenant_id i64
+  note text
+  secret bytes null
+  aes_key_version i32
+  updated_at datetime(6) default now
+  deleted_at datetime(6) null
+  primary key (id)
+  index ix_member_tenant (tenant_id)
+  foreign key fk_member_tenant (tenant_id) references tenant (id) on delete restrict on update restrict
+  settings {
+    entity member
+    updated updated_at
+    soft_delete deleted_at
+    select explicit aes_key_version
+    codec secret ordered_json aes
+    aes_version aes_key_version
+  }
+}

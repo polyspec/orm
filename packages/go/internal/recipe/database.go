@@ -16,6 +16,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -115,6 +117,15 @@ type databaseStep struct {
 	Sequence int64 `json:"sequence"`
 	Isolation string          `json:"isolation"`
 	ReadOnly  bool            `json:"read_only"`
+	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
+	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
+	TimeoutMs    int  `json:"timeout_ms"`
+	Retry        *int `json:"retry"`
+	DefaultRetry bool `json:"default_retry"`
+	Conflicts    int  `json:"conflicts"`
+	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
+	Connections []string `json:"connections"`
+	Unconnected bool     `json:"unconnected"`
 	Amount    json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
@@ -172,6 +183,8 @@ type outcome struct {
 }
 
 type databaseContext struct {
+	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
+	attempts int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -431,7 +444,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 
 // runStepWith runs a step through op and compares the fields that its expect names.
 func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
-	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/schema/recipe.schema.json).
+	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
 	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
 		return nil
 	}
@@ -466,6 +479,15 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		}
 		if suffix, ok := expected["message_suffix"].(string); ok && !strings.HasSuffix(err.Error(), suffix) {
 			return fmt.Errorf("error message %q does not end with %q", err.Error(), suffix)
+		}
+		if message, ok := expected["message"].(string); ok && err.Error() != message {
+			return fmt.Errorf("error message %q, want %q", err.Error(), message)
+		}
+		if want, ok := expected["cause"].(string); ok {
+			cause := errors.Unwrap(err)
+			if cause == nil || cause.Error() != want {
+				return fmt.Errorf("error cause %v, want %q", cause, want)
+			}
 		}
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
@@ -894,12 +916,22 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		// The options of the transaction (INT-46): a nested transaction that names one is refused with CONFIG.
-		options := []orm.TransactionOption{orm.Retry(0)}
+		var options []orm.TransactionOption
+		switch {
+		case s.DefaultRetry:
+		case s.Retry != nil:
+			options = append(options, orm.Retry(*s.Retry))
+		default:
+			options = append(options, orm.Retry(0))
+		}
 		if s.Isolation != "" {
 			options = append(options, orm.Isolation(orm.IsolationLevel(s.Isolation)))
 		}
 		if s.ReadOnly {
 			options = append(options, orm.ReadOnly())
+		}
+		if s.TimeoutMs > 0 {
+			options = append(options, orm.TimeoutMs(s.TimeoutMs))
 		}
 		if s.Audit != nil {
 			values, err := auditValues(s.Audit, c)
@@ -908,19 +940,29 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			}
 			options = append(options, orm.Audit(values))
 		}
+		attempts := 0
 		err = db.Transaction(func() error {
+			attempts++
 			if err := runNested(s.Steps, c); err != nil {
 				return err
 			}
 			if s.Fail {
 				return errCallback
 			}
+			if attempts <= s.Conflicts {
+				return orm.TransactionConflict("the recipe conflict")
+			}
 			return nil
 		}, options...)
+		c.attempts = attempts
 		if err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "transaction.attempts":
+		return countOutcome(int64(c.attempts)), nil
+	case "transaction.deadlock":
+		return transactionDeadlock(s, c)
 	case "dbspec.ddl_behavior":
 		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err
@@ -1005,6 +1047,89 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return out, err
 	}
 	return requestOp(s, c)
+}
+
+// transactionDeadlock runs two flows that write two rows in opposite order (PLN-24): each flow holds its first row until
+// the other holds its own, so the database ends one flow with its deadlock error, the client retries it, and both commit.
+func transactionDeadlock(s databaseStep, c *databaseContext) (outcome, error) {
+	var keys [2]json.RawMessage
+	if err := json.Unmarshal(s.Rows, &keys); err != nil {
+		return outcome{}, err
+	}
+	// flowWrite writes the name of a flow to one row through the model.update of this helper.
+	flowWrite := func(connection string, key json.RawMessage, name string) error {
+		set, err := json.Marshal(map[string]any{s.Column: map[string]any{"text": name}})
+		if err != nil {
+			return err
+		}
+		_, err = modelOp(databaseStep{Op: "model.update", Connection: connection, Model: s.Model, Key: key, Set: set}, c)
+		return err
+	}
+	var held sync.WaitGroup
+	held.Add(2)
+	var attempts, deadlocks atomic.Int64
+	errs := make([]error, 2)
+	var flows sync.WaitGroup
+	for i, connection := range s.Connections {
+		flows.Add(1)
+		go func() {
+			defer flows.Done()
+			db, err := connectionOf(databaseStep{Connection: connection}, c)
+			if err != nil {
+				held.Done()
+				errs[i] = err
+				return
+			}
+			name := fmt.Sprintf("flow-%d", i)
+			run := 0
+			errs[i] = db.Transaction(func() error {
+				run++
+				attempts.Add(1)
+				first := flowWrite(connection, keys[i], name)
+				if run == 1 {
+					held.Done()
+					held.Wait()
+				}
+				if first != nil {
+					return first
+				}
+				second := flowWrite(connection, keys[1-i], name)
+				if run == 1 && orm.ErrorCode(second) == orm.CodeDeadlock {
+					deadlocks.Add(1)
+				}
+				return second
+			}, orm.Isolation(orm.ReadCommitted), orm.Retry(3))
+		}()
+	}
+	flows.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return outcome{}, err
+		}
+	}
+	db, err := connectionOf(databaseStep{Connection: s.Connections[0]}, c)
+	if err != nil {
+		return outcome{}, err
+	}
+	var names [2]string
+	for i, raw := range keys {
+		key, err := modelValues(raw, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		rows, err := compositeAccountRows(db, key)
+		if err != nil {
+			return outcome{}, err
+		}
+		if names[i], err = rows[0].GetName(); err != nil {
+			return outcome{}, err
+		}
+	}
+	return outcome{fields: map[string]any{
+		"attempts":  attempts.Load(),
+		"deadlocks": deadlocks.Load(),
+		"same_flow": names[0] == names[1] && (names[0] == "flow-0" || names[0] == "flow-1"),
+	}}, nil
 }
 
 // connectionOf is the connection that an op names with its connection field, or the case connection when the field is

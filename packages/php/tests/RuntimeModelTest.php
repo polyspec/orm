@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 // The runtime model of the bench set contracts/fixtures/bench/dbspec-set.json (docs/spec/dbspec.md "Runtime model"):
-// entities, the default select set, codec value types, the generated models
+// codec value types, the generated models
 // and their manifest hash, i16 fields, and a connection configuration without
 // a schema path. Database behavior is in RuntimeDbTest.php.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeModelTest.php
@@ -42,56 +42,6 @@ final class RuntimeModelTest extends TestCase
             return $e->code_;
         }
         return 'no error';
-    }
-
-    // Requirements: DBS-111.
-    public function testEntitiesInDocumentOrder(): void
-    {
-        $bench = self::bench();
-        $want = [
-            'author',
-            'user',
-            'service',
-            'service_region',
-            'service_member',
-            'composite_account',
-            'composite_membership',
-            'soft_record',
-            'soft_link',
-            'account',
-            'project',
-            'account_project',
-            'task',
-            'hex_cell',
-            'time_cell',
-            'clock_cell',
-            'day_cell',
-            'upsert_cell',
-            'uuid_cell',
-            'ip_hex_cell',
-            'bind_cell',
-            'audit_record',
-            'audited_note',
-            'audited_note_history',
-            'note_reader',
-            'shared_note'
-        ];
-        self::assertTrue(
-            array_keys($bench->entities) === $want,
-            'entities ' . implode(',', array_keys($bench->entities))
-        );
-        $author = $bench->entities['author'];
-        self::assertTrue($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');
-        self::assertTrue(
-            $author['updated'] === 'updated_ts' && $author['aes_version'] === 'aes_key_version',
-            'author settings'
-        );
-        self::assertTrue($bench->entities['soft_record']['soft_delete'] === 'deleted_at', 'soft delete setting');
-        self::assertTrue(
-            $author['columns']['aes_hex_email']['blind_index'] === 'email_blind_index',
-            'blind index setting'
-        );
-        self::assertTrue($author['columns']['json_setting']['codec'] === ['ordered_json'], 'ordered_json codec');
     }
 
     // Requirements: DSL-160.
@@ -213,39 +163,6 @@ final class RuntimeModelTest extends TestCase
         self::assertTrue($type('getCreatedTs') === 'DateTimeImmutable', 'datetime type');
     }
 
-    // Requirements: DBS-112.
-    public function testI16Field(): void
-    {
-        $root = dirname(__DIR__, 3);
-        $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary "
-            . "key (seq)\n}\n";
-        $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
-        self::assertTrue($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
-        $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
-        generateModels(['small.dbs' => $doc], "$out-source", $out, 'Polyspec\\Orm\\Tests\\Small');
-        $body = (string) file_get_contents("$out/SmallValue.php");
-        array_map('unlink', glob("$out/*.php"));
-        rmdir($out);
-        array_map('unlink', glob("$out-source/*"));
-        rmdir("$out-source");
-        self::assertTrue(
-            str_contains(
-                $body,
-                'public function getLevel(): int'
-            ) && str_contains($body, 'public function getRank(): ?int'),
-            'i16 accessors'
-        );
-        $engine = new Engine($model, 'postgres', 4);
-        $ir = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash, 'kind' => 'all', 'entity' => 'small_value',
-            'where' => [
-                'items' => [['pred' => ['column' => 'level', 'op' => 'between', 'ps' => [0, 1]]]]
-            ], 'n_params' => 2];
-        self::assertTrue(
-            str_contains($engine->compile($ir)['steps'][0]['sql'], '"a"."level" BETWEEN $1 AND $2'),
-            'i16 condition'
-        );
-    }
-
     public function testAColumnWhoseConditionMethodIsAModelMethodIsRefused(): void
     {
         // jsonText is a public static method of Model. A column json_text would generate an instance method of that
@@ -268,66 +185,6 @@ final class RuntimeModelTest extends TestCase
             str_contains($message, 'the condition method jsonText is also the model method jsonText'),
             "refused: $message"
         );
-    }
-
-    // Requirements: DBS-115.
-    public function testInsertBindsTheClockOfAnOmittedDefaultNowColumnExceptOnMySQL(): void
-    {
-        // The test of DIA-24 (docs/spec).
-        $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at "
-            . "datetime(6) default now\n  primary key (id)\n}\n";
-        $model = RuntimeModel::build(RuntimeModel::parse(['clocked.dbs' => $doc]));
-        self::assertTrue(
-            $model->entities['note']['columns']['created_at'][
-                'default_now'
-            ] && !$model->entities['note']['columns']['rank']['default_now'],
-            'default_now flag'
-        );
-        $set = [['column' => 'rank', 'p' => 0], ['column' => 'body', 'p' => 1]];
-        $single = [
-            'ir_version' => 1,
-            'manifest_hash' => $model->manifestHash,
-            'kind' => 'insert',
-            'entity' => 'note',
-            'set' => $set,
-            'n_params' => 4
-        ];
-        $multi = $single + ['rows' => [[2, 3]]];
-        $q = ['mysql' => '`', 'postgres' => '"', 'sqlite' => '"'];
-        foreach ($q as $dialect => $quote) {
-            $engine = new Engine($model, $dialect, 4);
-            foreach (['single' => [$single, 1], 'multi' => [$multi, 2]] as $kind => [$ir, $rows]) {
-                $step = $engine->compile($ir)['steps'][0];
-                $now = array_values(
-                    array_filter($step['bind_slots'], static fn(array $b): bool => $b['from'] === 'now')
-                );
-                if ($dialect !== 'mysql') {
-                    self::assertTrue(
-                        str_contains(
-                            $step['sql'],
-                            '("rank", "body", "created_at")'
-                        ) && count($now) === $rows && count($step['bind_slots']) === 3 * $rows,
-                        "$dialect $kind insert binds created_at: {$step['sql']}"
-                    );
-                } else {
-                    self::assertTrue(
-                        !str_contains(
-                            $step['sql'],
-                            'created_at'
-                        ) && $now === [] && count($step['bind_slots']) === 2 * $rows,
-                        "$dialect $kind insert leaves created_at to the database: {$step['sql']}"
-                    );
-                }
-            }
-            $assigned = $single;
-            $assigned['set'][] = ['column' => 'created_at', 'p' => 2];
-            $assigned['n_params'] = 3;
-            $step = $engine->compile($assigned)['steps'][0];
-            self::assertTrue(
-                array_filter($step['bind_slots'], static fn(array $b): bool => $b['from'] === 'now') === [],
-                "$dialect an assigned created_at binds no clock: {$step['sql']}"
-            );
-        }
     }
 
     // Requirements: DBS-119.

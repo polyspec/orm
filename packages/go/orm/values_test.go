@@ -13,7 +13,6 @@ import (
 // applies to the compared column and binds none.
 func TestFuncIR(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	// Requirements: PRT-77.
 	params := []any{"preceding"}
 	got := SecondsAgo(30).irFunc(func(v any) int {
 		params = append(params, v)
