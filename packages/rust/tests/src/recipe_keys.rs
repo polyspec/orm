@@ -64,6 +64,7 @@ pub fn check_keys(path: &str, text: &str) -> Result<(), String> {
 mod tests {
     #[test]
     fn model_connect_opens_the_case_database_the_socket_or_the_text() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         use crate::recipe::connect_dsn;
         let case = "mysql://root@127.0.0.1:3306/orm_case_17";
         assert_eq!(connect_dsn(None, "mysql", case, None).unwrap(), case);
