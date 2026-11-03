@@ -82,3 +82,22 @@ caseTest('a changed text, bind or result of a vector is a difference', COMPUTE, 
   differs(item => { item.expect.result = { changed: 'not in the case' }; }, /result value "not in the case"/);
   differs(item => { item.expect.statements.pop(); }, /statements in the vector/);
 });
+
+caseTest('a changed size, boolean or text of a folded or seed vector is a difference', COMPUTE, () => {
+  const cases = new Map(recipeCases().map(item => [item.id, item]));
+  const changed = (name: string, change: (result: never) => unknown, pattern: RegExp) => {
+    const vector = structuredClone(vectorsOf('sqlite').find(item => item.name === name)) as unknown as { name: string; expect: { result: unknown } };
+    assert.deepEqual(vectorDifferences(vector as never, cases.get(name) as never, 'sqlite'), []);
+    vector.expect.result = change(vector.expect.result as never);
+    assert.match(vectorDifferences(vector as never, cases.get(name) as never, 'sqlite').join('\n'), pattern, name);
+  };
+  changed('transactions', (result: unknown[]) => [false, ...result.slice(1)], /\$\[0\]: false/);
+  changed('transactions', (result: unknown[]) => [result[0], result[1], 2, ...result.slice(3)], /\$\[2\]: 2/);
+  changed('relation_empty', () => 1, /\$: 1/);
+  changed('delete_lock', () => [[1, 0, 'none'], [1, 1, 'FOREIGN_KEY']], /\$\[0\]\[0\]: 1/);
+  changed('now_defaults', () => ({ created_equals_updated: false, created_near_clock: true }), /created_equals_updated/);
+  changed('audit_lazy', (result: object) => ({ ...result, rolled_back: false }), /rolled_back/);
+  changed('terminal_by', (result: { one: object }) => ({ ...result, one: { ...result.one, name: 'changed' } }), /name: "changed"/);
+  changed('column_pairs', (result: object) => ({ ...result, col_decimal_i64: 'CHANGED' }), /col_decimal_i64/);
+  changed('aes_status', (result: object) => ({ ...result, versions: '2:100000' }), /versions/);
+});

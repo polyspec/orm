@@ -118,36 +118,67 @@ export const NO_RECIPE_CASE: Record<string, string> = {
   clock_compare_six_digits: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
 };
 
-/** Why the values of a vector result cannot equal its recipe case, which derives them from the seed of the recipe (T334-3-5). */
-const SEED_RESULTS = new Set([
-  'conditions_values', 'terminal_by', 'terminal_reuse', 'expression_forms', 'joins', 'subqueries', 'aggregates', 'empty_reads',
-  'functions', 'column_pairs', 'aes_status',
-]);
+/**
+ * The result of a vector built from the steps of its case: a body folds a step into a boolean, a size or a null for no
+ * error, and the recipe holds what the runtime returns. Each value then compares with the vector.
+ */
+const RESULT_SHAPES: Record<string, (steps: Json[]) => Json> = {
+  ...shapes,
+  contains_null: ([count]) => ({ code: null, count }) as Json,
+  audit_lazy: ([rolled, before, read, unchanged, written, after]) => ({ after, before, read, rolled_back: rolled === 'CALLBACK', unchanged, written }) as Json,
+  transactions: ([first, second, count, rows, local, left]) => [first === 'CALLBACK', count, size(rows), local, second === 'CALLBACK', left] as Json,
+  // The first delete has no expect, so it passes only with no error, which the body writes as none.
+  delete_lock: ([users, members, refused, user, member]) => [[size(users), size(members), 'none'], [size(user), size(member), refused]] as Json,
+  expect_revision: ([_rolled, before, updated, update_mismatch, after_mismatch, delete_mismatch, kept, deleted, left]) => ({
+    after_mismatch, before, delete_match: null, delete_mismatch, deleted, kept, left, update_mismatch, updated,
+  }) as Json,
+};
 
 /**
- * The result of a vector as its recipe case states it. A body folds a step into a boolean, a size or a null for no error,
- * and the recipe holds what the runtime returns: the error code of the step, its rows, its count.
+ * The cases whose counts come from the seed of the recipe, not from the bench rows of the vector (T334-3-5). Their result
+ * compares in shape and in every other value, and a number need only be a number: the recipe states its own.
  */
-const RESULT_FORMS: Record<string, (result: Json) => Json> = {
-  relation_empty: () => [],
-  contains_null: result => ({ count: (result as { count: Json }).count }),
-  audit_lazy: result => {
-    const { rolled_back: _, ...rest } = result as Record<string, Json>;
-    return { ...rest, rolled_back: 'CALLBACK' };
+const SEED_SHAPES: Record<string, (steps: Json[]) => Json> = {
+  conditions_values: steps => steps,
+  terminal_by: shapes.terminal_by as (steps: Json[]) => Json,
+  terminal_reuse: shapes.terminal_reuse as (steps: Json[]) => Json,
+  expression_forms: ([count, rows, or_count]) => ({ count, or_count, rows }) as Json,
+  joins: ([rows, compared, modules]) => ({ compared, module: withoutKeys((modules as { module: Json }[])[0]?.module as Json, ['service_seq']), rows }) as Json,
+  subqueries: ([rows]) => (rows as { seq: Json; read_total: Json }[]).map(row => [row.seq, row.read_total]) as Json,
+  aggregates: ([sum, avg, groups, page]) => ({ avg, groups, page, sum }) as Json,
+  empty_reads: shapes.empty_reads as (steps: Json[]) => Json,
+  functions: ([a, b, c, d, months]) => ({ counts: [a, b, c, d], months: (months as { start_month: Json }[]).map(row => row.start_month) }) as Json,
+  column_pairs: ([col_i32_i64, col_text_varchar, in_i32_i64, join_i32_i64, relation, col_varchar_i64, col_decimal_i64, in_varchar_i64, join_varchar_i64, relation_varchar_i64]) => ({
+    col_decimal_i64, col_i32_i64, col_text_varchar, col_varchar_i64, in_i32_i64, in_varchar_i64, join_i32_i64, join_varchar_i64, relation_i32_i64: size(relation), relation_varchar_i64,
+  }) as Json,
+  aes_status: ([status]) => {
+    const { current, pending, versions } = status as { current: Json; pending: Json; versions: Record<string, Json> };
+    return { current, pending, versions: Object.entries(versions).map(([version, rows]) => `${version}:${String(rows)}`).join(',') };
   },
-  transactions: result => (result as Json[]).filter((_, index) => index !== 2).map(item => (item === true ? 'CALLBACK' : item)),
-  empty_reads: result => {
-    const { gets: _, page, ...rest } = result as Record<string, Json>;
-    const { items: _items, ...held } = page as Record<string, Json>;
-    return { ...rest, page: held };
-  },
-  now_defaults: () => [1],
-  expect_revision: result => {
-    const { delete_match: _, ...rest } = result as Record<string, Json>;
-    return rest;
-  },
-  delete_lock: () => ['FOREIGN_KEY'],
 };
+
+const withoutKeys = (value: Json, names: string[]): Json =>
+  Object.fromEntries(Object.entries(value as Record<string, Json>).filter(([name]) => !names.includes(name)));
+
+const isNumber = (value: Json): boolean => typeof value === 'number' || (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value));
+
+/** The paths where a stated value and a built value differ; with loose, two numbers of the seed are the same. */
+function resultDifferences(stated: Json, built: Json, loose: boolean, path = '$'): string[] {
+  if (stated === '$SEQ' || stated === '$TS') return [];
+  if (loose && isNumber(stated) && isNumber(built)) return [];
+  const version = (value: Json) => (typeof value === 'string' ? /^(\d+):\d+$/.exec(value)?.[1] : undefined);
+  if (loose && version(stated) !== undefined && version(stated) === version(built)) return [];
+  if (Array.isArray(stated) && Array.isArray(built)) {
+    if (!loose && stated.length !== built.length) return [`${path}: ${stated.length} items in the vector, ${built.length} in the case`];
+    if (stated.length !== built.length && typeof stated[0] !== 'object') return [`${path}: ${stated.length} items in the vector, ${built.length} in the case`];
+    return stated.flatMap((item, index) => (index < built.length ? resultDifferences(item, built[index] as Json, loose, `${path}[${index}]`) : []));
+  }
+  if (stated !== null && built !== null && typeof stated === 'object' && typeof built === 'object') {
+    const names = new Set([...Object.keys(stated), ...Object.keys(built)]);
+    return [...names].flatMap(name => resultDifferences((stated as Record<string, Json>)[name] ?? null, (built as Record<string, Json>)[name] ?? null, loose, `${path}.${name}`));
+  }
+  return JSON.stringify(stated) === JSON.stringify(built) ? [] : [`${path}: ${JSON.stringify(stated)} in the vector, ${JSON.stringify(built)} in the case`];
+}
 
 function unwrapped(value: Json): Json {
   const held = plain(value);
@@ -195,20 +226,25 @@ export function vectorDifferences(vector: Vector, recipeCase: Case, database: st
     }
   }
   const expects = steps.filter(step => step.op !== 'events.captured' && step.expect?.[database] !== undefined).map(step => step.expect?.[database] as Json);
+  const values = expects.map(expect => {
+    const held = unwrapped(expect) as Record<string, Json>;
+    if (held !== null && typeof held === 'object' && !Array.isArray(held) && 'error' in held) return held.error as Json;
+    return held as Json;
+  });
+  const result = vector.expect.result ?? null;
+  const seed = SEED_SHAPES[vector.name];
+  const shape = seed ?? RESULT_SHAPES[vector.name];
+  if (shape !== undefined) return [...out, ...resultDifferences(result, shape(values.map(value => {
+    const held = value as { value?: Json } | null;
+    return held !== null && typeof held === 'object' && !Array.isArray(held) && 'value' in held && vector.name !== 'affected_counts' ? held.value as Json : value;
+  })), seed !== undefined)];
   const have = new Map<string, number>();
   for (const leaf of expects.flatMap(expect => leaves(unwrapped(expect)))) have.set(leaf, (have.get(leaf) ?? 0) + 1);
   const suffixes = expects.flatMap(expect => {
     const suffix = (expect as { message_suffix?: Json }).message_suffix;
     return typeof suffix === 'string' ? [suffix] : [];
   });
-  const result = vector.expect.result ?? null;
-  const stated = leaves(RESULT_FORMS[vector.name]?.(result) ?? result).filter(leaf => !MASKED.has(leaf));
-  const total = [...have.values()].reduce((sum, count) => sum + count, 0);
-  if (SEED_RESULTS.has(vector.name)) {
-    if (total < stated.length) out.push(`${stated.length} result values in the vector, ${total} in the expects of the case`);
-    return out;
-  }
-  for (const leaf of stated) {
+  for (const leaf of leaves(result).filter(item => !MASKED.has(item))) {
     const message = /^"([A-Z][A-Z0-9_]*): (.*)"$/.exec(leaf);
     if (message !== null) {
       if (!have.has(JSON.stringify(message[1]))) out.push(`the code of the message ${leaf} of the vector is in no expect of the case`);
