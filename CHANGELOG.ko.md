@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a22fc556f8006fb10c6ff46d26a8ea0ab101864dfb147b232e1489710fec9bf1 -->
+<!-- source-sha256: 3da0c7e38f8a190e0502a8d2bc59dbfd75464982e8065acbdcf961d416260291 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR15-F: MySQL insert 문장을 보는 TypeScript와 Python 시험을 c55a726cf에서 소유 unit으로 되살린다(INT-123b, INT-123c). 가짜 driver가 관찰하는 문장만 맡는다.
 - CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
 - conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
 - 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.

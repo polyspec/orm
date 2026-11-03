@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CR15-F: the TypeScript and Python tests of the MySQL insert statements return from c55a726cf as owner units (INT-123b, INT-123c), which hold only the statements a fake driver observes.
 - CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
 - The expected fields of the conformance vector files are gone with their chains and calls: `tests/conformance/vectors.json` keeps the vector names and requirements, and `vectors.postgres.json` and `vectors.sqlite.json` fold into the expects of the recipe `conformance_verification`.
 - The whole-run conformance checker is gone: `make conformance-check` runs the native bodies that remain and the result helpers, the state contracts of `contracts/interfaces.json` compare with their recipe cases in a test, and the database state reader is `tests/conformance/check/state.mts`.
