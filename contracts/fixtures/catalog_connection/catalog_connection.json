@@ -21,7 +21,9 @@
     "INT-112",
     "SCH-5",
     "DBS-113",
-    "INT-34"
+    "INT-34",
+    "CFG-34",
+    "CFG-35"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "seed": {
@@ -2059,7 +2061,9 @@
     {
       "id": "catalog_read_budgets",
       "requirements": [
-        "INT-115"
+        "INT-115",
+        "CFG-34",
+        "CFG-35"
       ],
       "steps": [
         {
@@ -2263,6 +2267,55 @@
           }
         },
         {
+          "op": "sql.exec",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
+          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection",
+          "sql": {
+            "mysql": "DO SLEEP(2)",
+            "postgres": "SELECT pg_sleep(2)"
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.processlist WHERE db = DATABASE() AND info LIKE CONCAT('%CROSS', ' JOIN `user` c%')",
+            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'",
+            "sqlite": "SELECT 0"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
           "op": "catalog.read_only_grid_query",
           "sql": {
             "mysql": "SELECT a.seq FROM `user` a CROSS JOIN `user` b CROSS JOIN `user` c",
@@ -2279,6 +2332,55 @@
             },
             "sqlite": {
               "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql",
+            "postgres"
+          ],
+          "reason": "CFG-35: the statement that a budget stopped is gone from the server within 2 s of the stop, read next on another connection",
+          "sql": {
+            "mysql": "DO SLEEP(2)",
+            "postgres": "SELECT pg_sleep(2)"
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT COUNT(*) FROM information_schema.processlist WHERE db = DATABASE() AND info LIKE CONCAT('%CROSS', ' JOIN `user` c%')",
+            "postgres": "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database() AND state = 'active' AND query LIKE '%CROSS' || ' JOIN \"user\" c%'",
+            "sqlite": "SELECT 0"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  }
+                ]
+              ]
             }
           }
         },

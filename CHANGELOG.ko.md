@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 12ec7801c8464c2e7841a2f7f3db79ca9d6d874777e65b2d6bbf7d98ecb2890e -->
+<!-- source-sha256: fddda755983cb29e573516eb807817811050a87c68dafead1f1b23849b6c9647 -->
 # 변경 이력
 
 ## Unreleased
 
+- 결과 읽기를 멈춘 클라이언트가 더는 ProxySQL을 중단시키지 못한다. 시험 서버는 `mysql-threshold_resultset_size`를 65536으로 정하고, CFG-34와 CFG-35는 ProxySQL 설정을 사용자에게 명시하며, `catalog_read_budgets`는 예산으로 멈춘 문이 사라졌음을 다른 연결에서 읽는다. Rust catalog는 멈춘 읽기의 socket을 즉시 닫는다.
 - `client-pooler-check`의 모든 lane은 database가 있는 recipe unit을 pooler를 거쳐 실행한다. PHP, PHP extension, TypeScript, Python lane은 unit마다 명령 하나로 `config/parity.json`에서 이를 가져온다.
 - Rust catalog 읽기의 예산 중단은 ProxySQL을 거쳐도 즉시 `CATALOG_LIMIT`을 반환한다: MySQL과 PostgreSQL에서 읽기는 `ROLLBACK` 없이 반환하고 그 연결은 닫힌다.
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).

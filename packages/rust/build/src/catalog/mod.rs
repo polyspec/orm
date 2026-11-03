@@ -103,6 +103,7 @@ impl CatalogConnection {
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         if stopped_by_budget(&result) && self.dialect != "sqlite" {
+            connection.close_now();
             return result;
         }
         finish_read_only(&mut connection, result).await
@@ -129,6 +130,7 @@ impl CatalogConnection {
         let mut connection = self.read_only_connection(sql).await?;
         let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         if stopped_by_budget(&result) && self.dialect != "sqlite" {
+            connection.close_now();
             return result;
         }
         finish_read_only(&mut connection, result).await
@@ -185,8 +187,8 @@ pub(super) async fn begin_session(connection: &mut Conn, begin: &str) -> Result<
 }
 
 /// Whether a budget stopped the read. The rest of the result is unread, and a ROLLBACK would first read all of it, so on MySQL and
-/// PostgreSQL the read returns without one: the connection closes when it drops, and the server ends the statement and the
-/// transaction with it. The thread id of CONNECTION_ID cannot stop the statement instead: through ProxySQL, KILL QUERY names a session
+/// PostgreSQL the read returns without one and closes its socket at once, and the server ends the statement and the transaction with
+/// it (CFG-35). The thread id of CONNECTION_ID cannot stop the statement instead: through ProxySQL, KILL QUERY names a session
 /// of ProxySQL and answers OK for any other id. SQLite stops the read with its handle, so it rolls back as usual.
 fn stopped_by_budget<T>(result: &Result<T, String>) -> bool {
     matches!(result, Err(error) if error.starts_with(polyspec_orm::codes::CATALOG_LIMIT))

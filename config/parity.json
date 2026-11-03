@@ -8631,7 +8631,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -8693,7 +8695,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -8755,7 +8759,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",

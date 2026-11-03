@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 42da33edb717077618c6807767ab577a740d74c0a7c9d628ffe9f1ff4565d5b5 -->
+<!-- source-sha256: 7d423f41a07ff02fde673063dfbef138199e7f7ce77693ce42add1ba371251fa -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -88,7 +88,11 @@ PgBouncer 설정:
 - **CFG-31** 문 취소는 PgBouncer를 거치면 best effort이며 보장되지 않는다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달하지만, 이 경로는 신뢰할 수 없다. PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있으며, 다중 프로세스 구성에서는 peering이 1.19에서 들어오기 전까지 취소 요청이 유실되었다. SQLx 0.9에는 CancelRequest API가 없어 Rust 클라이언트에는 PgBouncer를 거치는 지원되는 취소 경로가 없다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다. 유실된 취소는 문을 계속 실행 상태로 두므로, 호출자는 취소가 서버에 닿는다고 의존해서는 안 된다.
 - **CFG-32** `polyspec-orm` crate, 곧 Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
 - **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
+ProxySQL 설정:
 
-ProxySQL은 기본 multiplexing으로 실행하며 ORM 전용 설정이 필요 없다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
+- **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
+- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다.
+
+ProxySQL은 기본 multiplexing으로 실행한다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 
 migration plan 적용은 pooler를 거치지 않고 primary에 직접 연결한다. 적용이 세션 범위의 MySQL `GET_LOCK`이나 PostgreSQL advisory lock을 잡기 때문이다([plans](plans.md#apply)).
