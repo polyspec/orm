@@ -351,6 +351,7 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - FCV-2 states why `recipe-unknown-keys` and the three `hot-path-performance-measurement` units stay native: a loader refusal comes before any case, and a time is no value that a case can expect
 - The markdown DSN refusals of PRT-63 are cases of `dsn_reject`; DSL-60, DSL-115, DSL-155, CPX-5 and DSL-128 are held by `conformance_verification`, with the new cases `core_conditions`, `core_columns_and_pages`, `core_writes` and `core_duplicate_relation`, and their native units went. FCV-2 states why the four model core units stay native.
 - The padding of an `IN` list (CPX-4) is the case `core_in_list_padding`, which reads the statements of one to five values on three databases, and the padded tuples of `composite_key_rows`. The native padding tests of the runtimes went. The native `Request::padIn` of the PHP extension is CPX-6.
+- The projection, binds and rows of the hot path reads (PRT-2, PRT-34) are the case `core_projected_reads` of `conformance_verification` on three databases, and their native tests went.
 
 ## 0.0.21
 

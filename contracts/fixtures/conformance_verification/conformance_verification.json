@@ -110,7 +110,9 @@
   "DSL-155",
   "CPX-5",
   "DSL-128",
-  "CPX-4"
+  "CPX-4",
+  "PRT-2",
+  "PRT-34"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -47193,6 +47195,887 @@
               },
               {
                "int": "7"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_projected_reads",
+   "requirements": [
+    "PRT-2",
+    "PRT-34"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 1
+     },
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "service_seq": {
+          "int": "7"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "is_close": {
+          "bool": false
+         }
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "column": "seq",
+       "dir": "desc"
+      }
+     ],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 100
+     },
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 99906,
+         "name": "author-99906"
+        },
+        {
+         "seq": 99706,
+         "name": "author-99706"
+        },
+        {
+         "seq": 99606,
+         "name": "author-99606"
+        },
+        {
+         "seq": 99506,
+         "name": "author-99506"
+        },
+        {
+         "seq": 95206,
+         "name": "author-95206"
+        },
+        {
+         "seq": 95106,
+         "name": "author-95106"
+        },
+        {
+         "seq": 95006,
+         "name": "author-95006"
+        },
+        {
+         "seq": 90206,
+         "name": "author-90206"
+        },
+        {
+         "seq": 90106,
+         "name": "author-90106"
+        },
+        {
+         "seq": 4906,
+         "name": "author-4906"
+        },
+        {
+         "seq": 2906,
+         "name": "author-2906"
+        },
+        {
+         "seq": 2406,
+         "name": "author-2406"
+        },
+        {
+         "seq": 2306,
+         "name": "author-2306"
+        },
+        {
+         "seq": 2206,
+         "name": "author-2206"
+        },
+        {
+         "seq": 2106,
+         "name": "author-2106"
+        },
+        {
+         "seq": 2006,
+         "name": "author-2006"
+        },
+        {
+         "seq": 1906,
+         "name": "author-1906"
+        },
+        {
+         "seq": 1706,
+         "name": "author-1706"
+        },
+        {
+         "seq": 1606,
+         "name": "author-1606"
+        },
+        {
+         "seq": 1506,
+         "name": "author-1506"
+        },
+        {
+         "seq": 1406,
+         "name": "author-1406"
+        },
+        {
+         "seq": 1306,
+         "name": "author-1306"
+        },
+        {
+         "seq": 1206,
+         "name": "author-1206"
+        },
+        {
+         "seq": 1006,
+         "name": "author-1006"
+        },
+        {
+         "seq": 906,
+         "name": "author-906"
+        },
+        {
+         "seq": 806,
+         "name": "author-806"
+        },
+        {
+         "seq": 706,
+         "name": "author-706"
+        },
+        {
+         "seq": 606,
+         "name": "author-606"
+        },
+        {
+         "seq": 506,
+         "name": "author-506"
+        },
+        {
+         "seq": 306,
+         "name": "author-306"
+        },
+        {
+         "seq": 206,
+         "name": "author-206"
+        },
+        {
+         "seq": 106,
+         "name": "author-106"
+        },
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "100"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND \"a\".\"is_close\" = $2 ORDER BY \"a\".\"seq\" DESC LIMIT $3 OFFSET $4"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND \"a\".\"is_close\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "7"
+              },
+              {
+               "bool": false
+              },
+              {
+               "int": "100"
+              },
+              {
+               "int": "0"
               }
              ]
             }

@@ -12,7 +12,6 @@ export interface GeneratedModels {
 
 const clientScans = [
   'testing/conformance/runner_typescript.mts', 'tests/chain-types.mjs', 'tests/connection_utc.mjs',
-  'tests/coverage_hot_path_read_correctness.mjs',
   'tests/coverage_performance_gate.mjs',
   'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts', 'tests/group_rows_db.mjs',
   'tests/model-new-output-name.mjs', 'tests/model.mjs', 'tests/model_json_output.test.mts',

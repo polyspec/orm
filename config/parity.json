@@ -385,7 +385,6 @@
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
-        "packages/php/tests/hot_path_read_correctness.php",
         "packages/php/tests/limit_columns_peak.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/model-types-weak-caller.php",
@@ -8282,46 +8281,6 @@
       ]
     },
     {
-      "id": "hot-path-read-correctness",
-      "kind": "feature",
-      "requirements": [
-        "PRT-2",
-        "PRT-34"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_hot_path_read_correctness_test.go",
-          "id": "TestHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
-          "id": "CoverageHotPathReadCorrectnessTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
-          "id": "CoverageHotPathReadCorrectnessExtensionTest::testHotPathReadCorrectness"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
-          "id": "hot_path_read_correctness"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_hot_path_read_correctness.py",
-          "id": "test_hot_path_read_correctness"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-          "id": "hot_path_read_correctness"
-        }
-      ]
-    },
-    {
       "id": "install-changed-database",
       "kind": "suite",
       "requirements": [
@@ -9666,7 +9625,9 @@
         "DSL-155",
         "CPX-5",
         "DSL-128",
-        "CPX-4"
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9803,7 +9764,9 @@
         "DSL-155",
         "CPX-5",
         "DSL-128",
-        "CPX-4"
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9940,7 +9903,9 @@
         "DSL-155",
         "CPX-5",
         "DSL-128",
-        "CPX-4"
+        "CPX-4",
+        "PRT-2",
+        "PRT-34"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",

@@ -421,11 +421,9 @@ testcase-check/rust:
 	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
 # Runs only the Rust cases that share the private SQLite fixture helper.
-.PHONY: temp-sqlite-fixture-rust-helper-check temp-sqlite-fixture-rust-helper-check/hot-path
-temp-sqlite-fixture-rust-helper-check:
-	+$(MAKE) --no-print-directory -k temp-sqlite-fixture-rust-helper-check/hot-path
-temp-sqlite-fixture-rust-helper-check/hot-path: lease-tool
-	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-hot-path -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test coverage_hot_path_read_correctness hot_path_read_correctness -- --test-threads=1 --exact
+.PHONY: temp-sqlite-fixture-rust-helper-check
+temp-sqlite-fixture-rust-helper-check: lease-tool
+	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test refusal_before_request refusal_before_request -- --test-threads=1 --exact
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
