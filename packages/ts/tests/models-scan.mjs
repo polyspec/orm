@@ -1,5 +1,5 @@
 // models script check: the scan targets are exactly the sources that call a model,
-// and the committed src/models/models.ts equals the generator output of that scan.
+// and every generated model set of the models script equals the generator output.
 // Requirements: SCH-1.
 // Usage: node --test packages/ts/tests/models-scan.mjs (after tsc -p packages/ts/tsconfig.build.json)
 import { caseTest } from '../../../tests/testcase.mts';
@@ -59,11 +59,13 @@ caseTest('the models script scans exactly the sources that call models', 10000, 
   assert.deepEqual(names(scanned), names(calling));
 });
 
-// Deadline 30 s: one orm-gen process creates the models and compares them.
-caseTest('the committed models equal the generator output', 30000, () => {
-  const result = spawnSync(process.execPath, ['dist/bin/orm-gen.js', ...modelsArgs(), '--check'], { cwd: client, encoding: 'utf8' });
-  assert.equal(result.error, undefined);
-  assert.deepEqual({ status: result.status, stdout: result.stdout, stderr: result.stderr }, { status: 0, stdout: '', stderr: '' });
+// Deadline 30 s: one orm-gen process per generated entry creates its models and compares them.
+caseTest('every generated model set equals the generator output', 30000, () => {
+  for (const model of generatedModels) {
+    const result = spawnSync(process.execPath, ['dist/bin/orm-gen.js', ...generatorArgs(model), '--check'], { cwd: client, encoding: 'utf8' });
+    assert.equal(result.error, undefined);
+    assert.deepEqual({ out: model.out, status: result.status, stdout: result.stdout, stderr: result.stderr }, { out: model.out, status: 0, stdout: '', stderr: '' });
+  }
 });
 
 // Collects the identifier names an AST node refers to, outside its import declarations.
