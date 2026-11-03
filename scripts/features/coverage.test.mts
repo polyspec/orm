@@ -1286,6 +1286,8 @@ caseTest('a coverage process deadline is not shorter than the longest declared t
 caseTest('a process that never ends is stopped at its deadline', PROCESS, async () => {
   const result = await run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 100);
   assert.equal(result.error, 'timeout after 100 ms');
+  assert.ok(result.pid !== undefined, 'the run reports the pid it started');
+  assert.throws(() => process.kill(result.pid as number, 0), { code: 'ESRCH' });
 });
 
 // A go symbol <parent>/<case> names a subtest: go test -run applies each level of a pattern to every test, so the plain

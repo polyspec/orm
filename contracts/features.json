@@ -8779,10 +8779,7 @@
       "tests": [
         "packages/go/orm/codec_test.go",
         "packages/go/orm/aes_rotation_test.go",
-        "packages/go/orm/aes_json_test.go",
         "packages/go/orm/aes_keys_test.go",
-        "packages/php/tests/AesJsonTest.php",
-        "packages/rust/orm/tests/aes_json.rs",
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/codec_case.mjs",
@@ -8805,9 +8802,7 @@
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/CodecCauseTest.php",
         "packages/ts/tests/aes-read-row-without-version-cell.mjs",
-        "packages/python/tests/aes_json.py",
         "packages/php/tests/ModelTest.php",
-        "packages/php-ext/tests/AesJsonTestExtensionTest.php",
         "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_codec_test.go",
@@ -8840,7 +8835,6 @@
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run 'Codec|AES|Rotation|BlindIndex|TestRecipeCodecNone' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/aes_json_test.go",
             "packages/go/orm/aes_keys_test.go",
             "packages/go/orm/aes_rotation_test.go",
             "packages/go/orm/codec_test.go",
@@ -8926,26 +8920,8 @@
           ]
         },
         {
-          "id": "aes-json-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/AesJsonTest.php",
-            "contracts/fixtures/secret_config.dbs"
-          ]
-        },
-        {
-          "id": "aes-json-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts aes-json-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_json",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/aes_json.rs",
-            "contracts/fixtures/secret_config.dbs"
-          ]
-        },
-        {
           "id": "encryption-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_codec_none && packages/python/.venv/bin/python -m packages.python.tests.aes_json && packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_authenticated_encryption && packages/python/.venv/bin/python -m packages.python.tests.test_codec_none && packages/python/.venv/bin/python -m packages.python.tests.test_aes_version_codes",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_authenticated_encryption.py",
@@ -8955,21 +8931,9 @@
             "packages/python/src/polyspec/orm/aes.py",
             "packages/python/src/polyspec/orm/codec.py",
             "contracts/fixtures/authenticated_encryption.json",
-            "packages/python/tests/aes_json.py",
             "contracts/fixtures/secret_config.dbs",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/tests/test_aes_version_codes.py"
-          ]
-        },
-        {
-          "id": "aes-json-php-extension",
-          "command": "make -s aes-json-php-extension-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile",
-            "contracts/check-inputs.json",
-            "packages/php/tests/AesJsonTest.php",
-            "contracts/fixtures/secret_config.dbs"
           ]
         }
       ],
@@ -12061,7 +12025,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -12074,7 +12038,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -12087,7 +12051,7 @@
                     "conformance_vector"
                   ],
                   "symbols": {
-                    "conformance_vector": "coverage_conformance_vector"
+                    "conformance_vector": "coverage_conformance_vector_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -13272,7 +13236,6 @@
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
-        "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/test_request_hook_mysql.py",
         "packages/python/tests/test_request_hook_postgres.py",
@@ -13312,15 +13275,6 @@
           "inputs": [
             "packages/php/tests/RequestHookTest.php",
             "packages/php/tests/request_hook_cases.php",
-            "contracts/fixtures/request_hook/request_hook.dbs"
-          ]
-        },
-        {
-          "id": "request-hook-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts request-hook-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test request_hook -- --skip coverage_request_hook_",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/request_hook.rs",
             "contracts/fixtures/request_hook/request_hook.dbs"
           ]
         },

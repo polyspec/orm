@@ -485,6 +485,29 @@ async function fixtureSchema(setPath) {
 
 const NONE_FIXTURE = 'none';
 
+/**
+ * Installs the fixture of a recipe on the empty database of dsn and inserts its seed rows, so that a native conformance
+ * body reads the rows that the expects of the recipe state (tests/conformance/check/recipe_vectors.mts).
+ */
+export async function prepareRecipeDatabase(path, database, dsn) {
+  const recipe = JSON.parse(readFileSync(path, 'utf8'));
+  const { schema, installFirst } = await fixtureSchema(resolve(root, recipe.fixture));
+  const db = await Db.connect(dsn);
+  const catalog = await connectCatalog(dsn);
+  try {
+    for (const shared of [...installFirst, schema]) await db.utils().schema().install(shared);
+    const namespace = await catalog.currentNamespace();
+    const context = { catalog, namespace, database, dsn, bound: new Map(), tablePath: true, db, schema, dir: resolve(root, dirname(path)) };
+    for (const [table, values] of Object.entries(recipe.seed?.rows ?? {})) {
+      const metadata = await catalog.describeTable({ namespace, name: table });
+      for (const row of values) await catalog.insertRow(metadata, assignments(row, context));
+    }
+  } finally {
+    await catalog.close();
+    await db.close();
+  }
+}
+
 async function runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step }) {
   const db = await Db.connect(caseDatabase.dsn);
   try {

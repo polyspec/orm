@@ -4018,6 +4018,62 @@
         "packages/**"
       ]
     },
+    "conformance-generated-methods-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "tests/conformance/vectors.postgres.json",
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/internal/conformance/**",
+        "packages/ts/testing/conformance/runner_typescript.mts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/testing/conformance/runner_python.py",
+        "packages/php/testing/conformance/runner.php",
+        "packages/rust/tests/src/conformance.rs",
+        "Makefile"
+      ]
+    },
+    "conformance-fixed-clock-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "tests/conformance/vectors.postgres.json",
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/internal/conformance/**",
+        "packages/ts/testing/conformance/runner_typescript.mts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/testing/conformance/runner_python.py",
+        "packages/php/testing/conformance/runner.php",
+        "packages/rust/tests/src/conformance.rs",
+        "Makefile"
+      ]
+    },
     "conformance-refusal-check": {
       "scope": "owner",
       "needs": [
@@ -4134,15 +4190,6 @@
         "packages/go/orm/sqlite_version_test.go",
         "packages/go/orm/db.go",
         "packages/go/orm/sqlite/sqlite.go"
-      ]
-    },
-    "aes-json-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
       ]
     },
     "feature-coverage/go/mysql": {
