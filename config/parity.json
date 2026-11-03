@@ -9667,7 +9667,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9799,7 +9806,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9931,7 +9945,14 @@
         "DSL-104",
         "DSL-109",
         "INT-38",
-        "INT-39"
+        "INT-39",
+        "COD-3",
+        "DIA-24",
+        "DIA-27",
+        "DSL-105",
+        "INT-101",
+        "PRT-6",
+        "PRT-67"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
