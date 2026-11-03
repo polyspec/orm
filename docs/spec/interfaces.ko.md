@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: a2cf08af4e3bc0809bb4a8ec27bed1a40c535963a1b5f5a0411a3be52d692da6 -->
+<!-- source-sha256: 8bd927f9fc9080484ab5c27a339e2a0cdc6cd1a1ebb5130cddcefbd8c9d1ee16 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -197,7 +197,7 @@ classDiagram
 - **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청과 bind된 매개변수 값을 계획 직전에 hook에 전달한다. bind된 매개변수 값은 읽기 전용이고, hook은 제공된 매개변수 추가 수단으로만 매개변수를 덧붙인다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
 - **INT-79** `stats()`는 연결 풀의 개수를 돌려준다: 최대 열린 연결 수, 열린 연결 수, 사용 중인 연결 수, 유휴 연결 수(Go `DBStats`, PHP `Stats`, TypeScript `PoolStats`, Python `DbStats`).
 - **INT-150** 문 실행기는 모든 runtime에서 하나의 모양을 가진 public API다: `utils().run(fn)`이 유일한 public 문 실행기다. 이 함수는 연결의 transaction frame으로 `fn`을 호출한다. 활성 transaction이 없으면 transaction을 열고, 있으면 그에 참여한다. 연 transaction은 `transaction`과 같이 끝내며 재시도하지 않는다. frame의 `run(kind, tables, sql, params)`(TypeScript `TxFrame.run`과 같은 순서와 의미, 모든 runtime 동일, `params`는 선택)는 종류 `kind`의 statement 하나를 실행하고, `tables` 목록(없으면 빈 목록)을 건드리며, statement event 하나를 기록(INT-77)하고 행을 포함한 statement 결과를 돌려준다. frame은 활성 transaction을 쓰며 새로 열지 않는다. 텍스트가 아닌 statement는 `CONFIG`로 실패하고, 그 밖의 오류는 statement의 database 오류 코드다. Python도 `utils().run(fn)`으로 같은 frame을 받으며, `active_frame()`은 열린 transaction frame 또는 없음을 계속 돌려준다. 판정(T345): frame 호출의 의미와 인자 이름은 모든 runtime이 공유한다. 공개 frame 호출이 아직 없는 runtime은 TypeScript의 위치 인자 순서 `(kind, tables, sql, params)`를 쓴다. Python의 공개 `TxFrame.run`은 시그니처를 유지하며, 매개변수 `values`는 `params`와 다른 기록된 차이이고 이름을 바꾸지 않는다. runtime은 이 규칙에 나열하고 사유를 적은 예외로만 실행기를 뺄 수 있다. 선언된 예외는 없으므로 모든 runtime이 구현한다.
-- **INT-160** Python: `Db.active_frame()`은 public이며 연결에 열린 트랜잭션 frame을 반환하고, 열린 것이 없으면 `None`을 반환한다. `utils().run(fn)`의 callback 안에서는 `fn`이 받는 frame이고, `transaction` 안에서는 합류한 `utils().run(fn)`이 받는 frame이며, 트랜잭션이 끝나면 다시 `None`이다.
+- **INT-161** Python: `Db.active_frame()`은 public이며 연결에 열린 트랜잭션 frame을 반환하고, 열린 것이 없으면 `None`을 반환한다. `utils().run(fn)`의 callback 안에서는 `fn`이 받는 frame이고, `transaction` 안에서는 합류한 `utils().run(fn)`이 받는 frame이며, 트랜잭션이 끝나면 다시 `None`이다.
 - **INT-150a** Go, PHP, PHP extension, TypeScript, Python은 transaction이 끝난 뒤 쓰는 frame에 `CONFIG`로 실패하고 statement를 보내지 않는다. Rust frame은 그것을 빌린 callback보다 오래 살 수 없으므로 compiler가 그 사용을 거부한다.
 - **INT-150b** PHP, PHP extension, TypeScript, Python은 텍스트가 아닌 statement에 `CONFIG`로 실패하고 statement를 보내지 않는다. Go와 Rust의 `run`은 statement를 text로 받으므로 compiler가 그 사용을 거부한다.
 - **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.
@@ -213,6 +213,8 @@ classDiagram
 ## 8. Row 값·dirty 상태·관계 — IF-21 ~ IF-24
 
 모델 행은 선언 필드, 추가 컬럼, 관계 결과, `new<Name>`으로 추가한 값을 하나의 명칭 공간에 저장하며 명칭 중복을 거부한다. getter는 선언 타입을 반환한다. setter는 필드를 변경하고 dirty로 표시한다. update는 optimistic locking에 필요한 필드를 제외하고 dirty 필드만 전송한다. 원본 version은 변경 전에 읽어 update 조건에 사용한다.
+
+- **INT-160** plan 열이 타입을 명시한 추가 열은 모든 runtime에서 그 타입을 반환한다. `i16`, `i32`, `i64`, `f64`, `bool`, `date`, `datetime`은 그 타입의 선언 열과 같이 디코드한다. text는 범위 안의 정수 숫자 그대로일 때만 그 타입의 정수이므로, 범위를 넘거나 소수부가 있는 DECIMAL은 `CODEC_DECODE`로 실패한다. TypeScript는 COD-45의 범위를 지킨다. `i16`이나 `i32` 열을 합하는 scalar subquery의 plan 타입은 `i64`다. 합은 열의 범위를 벗어나기 때문이다. 그 밖의 타입이거나 타입이 없는 plan 열은 driver 값을 반환한다. SQLite는 i64 범위를 넘는 SUM을 스스로 거부하므로 그 read는 `CODEC_DECODE`가 아니라 `DRIVER`로 실패한다.
 
 relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust의 relation getter는 error도 돌려준다. related row가 없는 행은 결과 없음으로 읽히고, 저장된 relation 값의 type이 getter 결과와 다르면 `INTERNAL`이다. collection keying은 결정적이다. 중복 key는 선언된 정책을 따르고, 선언되지 않은 key function은 오류다.
 
@@ -252,6 +254,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-94** `polyspec/orm-php-ext` package의 PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
 - **INT-95** `polyspec/orm-php-ext` package의 `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
 - **INT-156** `packages/php/composer.json`은 `packages/php/src`가 그 class나 function을 부르는 모든 PHP extension을 선언한다. 모든 PHP build에 있는 extension(Core, standard, date, pcre, Reflection, SPL, random, hash)은 빼고, client가 그것 없이 돌 수 없으면 `require`에, 한 database나 기능만 쓰면 그 기능과 함께 `suggest`에 둔다.
+- **INT-156a** `polyspec/orm-php-ext` 패키지의 PHP 확장은 `SchemaUtils`를 native로 구현한다. 이 class와 `register`, `install`, `addTablesAndColumns`, `exists`, `installed`, `empty` method는 internal이고, subscriber 실패는 설치를 `SUBSCRIBER`로 멈추고 table을 남기지 않으며, `Schema`가 아닌 object와 잘못된 식별자는 statement를 보내기 전에 거부한다.
 - **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.
 - **INT-130** `AESKeyring`(Go `AESKeyring`, PHP `AesKeyring`, TypeScript `AESKeyring`, Python `AesKeyring`, Rust `AesKeyring`)은 선언된 AES key version과 현재 version(Go `CurrentAESVersion`)을 가지며, INT-60의 keyring 인자이다.
 - **INT-131** `AESUtils`(Go `AESUtils`, PHP `AesUtils`, TypeScript `AESUtils`, Python `AesUtils`, Rust `AesUtils`)는 `aes()`(INT-60)의 값이고, INT-60의 연산인 `status(model, keyring)`과 `rotate(model, keyring)`을 노출한다.

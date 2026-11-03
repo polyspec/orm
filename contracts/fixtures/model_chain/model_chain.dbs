@@ -1,0 +1,55 @@
+dbspec 1 model_chain
+
+table author {
+  seq i64 identity
+  name varchar(191)
+  updated_ts datetime(6) default now
+  is_close bool default false
+  is_display bool default false
+  read_count i32 default 0
+  user_seq i64
+  service_member_seq i64
+  service_seq i64
+  start_dt datetime(6)
+  price decimal(13,3) null
+  ip bytes null
+  gz_extend bytes null
+  json_setting text null
+  base64_extra text null
+  primary key (seq)
+  index ix_author_service_member (service_member_seq)
+  index ix_user (user_seq, is_close)
+  foreign key fk_author_service_member (service_member_seq) references service_member (seq) on delete restrict on update restrict
+  foreign key fk_author_user (user_seq) references user (seq) on delete restrict on update restrict
+  settings {
+    updated updated_ts
+    select explicit ip gz_extend json_setting base64_extra
+    codec base64_extra base64
+    codec gz_extend gz
+    codec ip ip
+    codec json_setting ordered_json
+  }
+}
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table service_member {
+  seq i64 identity
+  service_seq i64
+  user_seq i64
+  primary key (seq)
+  index ix_service_member_service (service_seq)
+  index ix_service_member_user (user_seq)
+  foreign key fk_service_member_user (user_seq) references user (seq) on delete restrict on update restrict
+}
+
+table composite_account {
+  tenant_id i64
+  account_id i64
+  name varchar(191)
+  primary key (tenant_id, account_id)
+}
