@@ -288,15 +288,6 @@ static zval *read_object_prop(zval *object, const char *name)
     return zend_read_property(Z_OBJCE_P(object), Z_OBJ_P(object), name, strlen(name), 1, &EG(uninitialized_zval));
 }
 
-static bool read_is_numeric(zval *value, bool *numeric)
-{
-    zval result;
-    if (!php_function_call1("is_numeric", value, &result)) return false;
-    *numeric = zend_is_true(&result);
-    zval_ptr_dtor(&result);
-    return true;
-}
-
 static bool read_convert_resource(zval *value)
 {
     if (Z_TYPE_P(value) != IS_RESOURCE) return true;

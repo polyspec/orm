@@ -92,9 +92,10 @@ static void append_error(sbuf *b, str label, str name, const diag *d) {
 }
 /* A diagnostic of a manifest text, in the form of SCH-12. */
 static void append_manifest_error(sbuf *b, str name, const diag *d) {
-    if (b->n)
+    if (b->n) {
         sb_ch(b, ';');
         sb_ch(b, ' ');
+    }
     sb_fmt(b, "%d:%d %S: document %S: %S", d->line, d->column, d->rule, name, d->message);
 }
 /* manifest: the labels are not file names, and the diagnostics take the form of SCH-12. */
@@ -316,9 +317,10 @@ static void build_docs(documentv *docs, zval *out) {
     if (!dbs_manifest(docs, &m, &ds)) {
         sbuf b = {0};
         for (size_t i = 0; i < ds.n; i++) {
-            if (b.n)
+            if (b.n) {
                 sb_ch(&b, ';');
                 sb_ch(&b, ' ');
+            }
             sb_fmt(&b, "%d:%d %S: %S", ds.v[i].line, ds.v[i].column, ds.v[i].rule, ds.v[i].message);
         }
         orm_error("SCHEMA_INVALID", sb_str(&b));
@@ -444,7 +446,7 @@ static void append_read_result(sbuf *errors, zval *texts, zend_ulong index, zval
 
 static void finish_document_parse(zval *texts, zval *result, dbs_arena *arena, dbs_arena *saved)
 {
-    documents_parse(&texts[0], &texts[1], result);
+    documents_parse(&texts[0], &texts[1], result, false);
     zval_ptr_dtor(&texts[0]);
     zval_ptr_dtor(&texts[1]);
     dbs_leave(arena, saved);
