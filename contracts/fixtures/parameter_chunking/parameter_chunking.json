@@ -283,63 +283,39 @@
           },
           "expect": {
             "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             },
             "sqlite": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "text": ""
-                  }
-                ],
-                [
-                  {
-                    "int": "1"
-                  },
-                  {
-                    "text": "a"
-                  }
-                ]
+              "json": [
+                {
+                  "seq": 0,
+                  "name": ""
+                },
+                {
+                  "seq": 1,
+                  "name": "a"
+                }
               ]
             }
           }
@@ -355,6 +331,8 @@
           "model": "ChunkPair",
           "columns": [
             "tenant_id",
+            "enabled",
+            "label",
             "batch_no"
           ],
           "where": {
@@ -371,63 +349,51 @@
           },
           "expect": {
             "mysql": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
-                  }
-                ],
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "2"
-                  }
-                ]
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
               ]
             },
             "postgres": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
-                  }
-                ],
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "2"
-                  }
-                ]
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
               ]
             },
             "sqlite": {
-              "rows": [
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "1"
-                  }
-                ],
-                [
-                  {
-                    "int": "0"
-                  },
-                  {
-                    "int": "2"
-                  }
-                ]
+              "json": [
+                {
+                  "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
+                  "batch_no": 1
+                },
+                {
+                  "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
+                  "batch_no": 2
+                }
               ]
             }
           }

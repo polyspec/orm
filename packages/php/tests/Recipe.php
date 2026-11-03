@@ -67,6 +67,7 @@ final class Recipe
         'model.save',
         'model.update',
         'model.chain',
+        'db.notify',
         'utils.lock',
         'utils.set_local',
         'utils.local',
@@ -1480,7 +1481,7 @@ final class Recipe
         Assert::assertNull($message, 'the terminal sent a message before its error');
         $expect = $step['expect'][$database];
         Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
-        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
+        Assert::assertSame($expect['message'], $caught->getMessage());
     }
 
     /**
@@ -3546,6 +3547,9 @@ final class Recipe
                     return [];
                 }
                 self::chainTarget($s, $context)->delete($recursive);
+                return [];
+            case 'db.notify':
+                self::connectionOf($s, $context)->notify($s['channel'], $s['payload']);
                 return [];
             case 'utils.lock':
                 self::connectionOf($s, $context)->utils()->lock($s['name']);

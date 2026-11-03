@@ -678,6 +678,12 @@
       "name",
       "op"
     ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
+    ],
     "utils.was_inserted": [
       "connection",
       "expect",

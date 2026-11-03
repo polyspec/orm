@@ -1712,14 +1712,14 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 	}
 	var want struct {
 		Error           string `json:"error"`
-		MessageContains string `json:"message_contains"`
+		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
 		return err
 	}
 	code, message := fn(t, s.Calls)
-	if code != want.Error || !strings.Contains(message, want.MessageContains) {
-		return fmt.Errorf("the terminal returned %q %q, want %q with %q", code, message, want.Error, want.MessageContains)
+	if code != want.Error || message != want.Message {
+		return fmt.Errorf("the terminal returned %q %q, want %q %q", code, message, want.Error, want.Message)
 	}
 	return nil
 }

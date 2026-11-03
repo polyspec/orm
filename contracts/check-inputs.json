@@ -910,8 +910,7 @@
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
-        "databases"
+        "rust"
       ],
       "inputs": [
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
@@ -3779,7 +3778,6 @@
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
@@ -3850,13 +3848,10 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-        "packages/php-ext/tests/CoverageStatementEventsTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/php/models.txt"
       ]
     },
@@ -3909,9 +3904,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
         "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",

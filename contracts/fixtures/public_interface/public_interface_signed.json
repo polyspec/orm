@@ -19,7 +19,7 @@
           "expect": {
             "none": {
               "error": "CONFIG",
-              "message_contains": "non-negative offset"
+              "message": "CONFIG: limit requires a non-negative offset and a positive count"
             }
           }
         }

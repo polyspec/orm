@@ -4296,10 +4296,6 @@
         "packages/php/tests/StatementEventsTest.php",
         "packages/rust/orm/tests/statement_events.rs",
         "packages/go/orm/coverage_statement_events_test.go",
-        "packages/php/tests/CoverageStatementEventsTest.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
-        "packages/php-ext/tests/CoverageStatementEventsTest.php",
-        "packages/ts/tests/coverage_statement_events.mjs",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
@@ -4479,7 +4475,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageStatementEventsTest.php"
+              "packages/php/tests/StatementEventsRecipeTest.php"
             ],
             "inputs": [
               "packages/php/tests/statement_events_run.php",
@@ -4492,12 +4488,12 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/StatementEventsRecipeTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4505,12 +4501,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/StatementEventsRecipeTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4518,12 +4514,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/StatementEventsRecipeTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -4533,7 +4529,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageStatementEventsTest.php"
+              "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php"
             ],
             "inputs": [
               "packages/php/tests/statement_events_run.php",
@@ -4546,12 +4542,12 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4559,12 +4555,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4572,12 +4568,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
                   "cases": [
                     "statement_events"
                   ],
                   "symbols": {
-                    "statement_events": "testStatementEvents"
+                    "statement_events": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -4638,7 +4634,9 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_statement_events.mjs"
+              "packages/ts/tests/statement_events-mysql.test.mjs",
+              "packages/ts/tests/statement_events-postgres.test.mjs",
+              "packages/ts/tests/statement_events-sqlite.test.mjs"
             ],
             "inputs": [
               "packages/ts/tests/case-database.mjs",
@@ -4650,7 +4648,7 @@
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_events.mjs",
+                  "test": "packages/ts/tests/statement_events-mysql.test.mjs",
                   "cases": [
                     "statement_events"
                   ],
@@ -4660,7 +4658,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_events.mjs",
+                  "test": "packages/ts/tests/statement_events-postgres.test.mjs",
                   "cases": [
                     "statement_events"
                   ],
@@ -4670,7 +4668,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_statement_events.mjs",
+                  "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
                   "cases": [
                     "statement_events"
                   ],
@@ -4720,7 +4718,8 @@
                     "failed_statement",
                     "subscriber_error",
                     "unsubscribe",
-                    "install"
+                    "install",
+                    "notify"
                   ],
                   "recipe": "contracts/fixtures/statement_events/statement_events.json"
                 }
@@ -5999,7 +5998,6 @@
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
-        "packages/python/tests/test_schema_install_uses.py",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
         "packages/python/tests/schema_inspection.py",
@@ -6080,7 +6078,7 @@
         },
         {
           "id": "install-register-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|SeveralSchemas|UnregisteredSchema|EditedManifest)' packages/php/tests/SchemaSetTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'test(RegisterSendsNoStatement|InstallVerifiesTheDatabase|ExternalDocuments|EditedManifest)' packages/php/tests/SchemaSetTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/SchemaSetTest.php",
@@ -6093,7 +6091,7 @@
         },
         {
           "id": "install-register-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs register_sends_no_statement external_documents",
+          "command": "node packages/ts/tests/schema-set.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
@@ -6104,7 +6102,7 @@
         },
         {
           "id": "install-schema-set-typescript",
-          "command": "node packages/ts/tests/schema-set.mjs several_schemas unregistered_schema edited_manifest external_documents",
+          "command": "node packages/ts/tests/schema-set.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/schema-set.mjs",
@@ -6146,10 +6144,9 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_schema_install_uses.py",
             "packages/python/tests/test_installed_differences.py",
             "packages/python/tests/test_schema_inspection.py",
             "packages/python/tests/test_schema_utils.py",
@@ -6200,7 +6197,7 @@
         },
         {
           "id": "install-schema-set-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSet(MySQL|Postgres|SQLite)|TestSchemaSetUnregistered(MySQL|Postgres|SQLite)|TestSchemaSetEditedManifest(MySQL|Postgres|SQLite))$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/decimalmodel -run '^(TestSchemaSetEditedManifest(MySQL|Postgres|SQLite))$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/decimalmodel/schema_set_test.go",
@@ -9143,7 +9140,8 @@
           "root_in_chunking",
           "split_root_null_identity",
           "split_root_composite_null_identity",
-          "split_root_retains_falsey_identities"
+          "split_root_retains_falsey_identities",
+          "model_parameter_after_schema_change"
         ],
         "owners": {
           "go": {
@@ -9163,7 +9161,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingMysql"
@@ -9177,7 +9176,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingPostgres"
@@ -9191,7 +9191,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "TestRecipeParameterChunkingSqlite"
@@ -9218,7 +9219,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9231,7 +9233,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9244,7 +9247,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9270,7 +9274,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9283,7 +9288,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9296,7 +9302,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9322,7 +9329,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9335,7 +9343,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9348,7 +9357,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json"
                 }
@@ -9374,7 +9384,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testMysql"
@@ -9388,7 +9399,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testPostgres"
@@ -9402,7 +9414,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testSqlite"
@@ -9430,7 +9443,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testMysql"
@@ -9444,7 +9458,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testPostgres"
@@ -9458,7 +9473,8 @@
                     "root_in_chunking",
                     "split_root_null_identity",
                     "split_root_composite_null_identity",
-                    "split_root_retains_falsey_identities"
+                    "split_root_retains_falsey_identities",
+                    "model_parameter_after_schema_change"
                   ],
                   "recipe": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
                   "symbol": "testSqlite"
@@ -9552,13 +9568,10 @@
         "packages/ts/tests/driver-error.mjs",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
         "packages/go/orm/recipe_immutable_write_test.go",
-        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-        "packages/ts/tests/coverage_constraints_and_relations.mjs",
         "contracts/fixtures/refusal.dbs",
         "packages/python/tests/test_driver_errors.py",
         "packages/python/tests/coverage_constraints_and_relations.py",
-        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/tests/unit/driver_cause.rs",
         "packages/php-ext/tests/DbspecRenderTestExtensionTest.php"
@@ -9729,66 +9742,78 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+              "packages/php/tests/ImmutableWriteRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+                  "test": "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ImmutableWriteRecipeTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testSqlite"
                 }
               ]
             },
             "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ]
           },
           "rust": {
@@ -9859,51 +9884,76 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_constraints_and_relations.mjs"
+              "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
+              "packages/ts/tests/immutable_write-mysql.test.mjs",
+              "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
+              "packages/ts/tests/immutable_write-postgres.test.mjs",
+              "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+              "packages/ts/tests/immutable_write-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-mysql.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-postgres.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+                  "test": "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/immutable_write-sqlite.test.mjs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ]
             },
             "inputs": [
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ]
           },
           "python": {
@@ -9960,65 +10010,76 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
+              "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-              "contracts/fixtures/audit.dbs",
-              "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
-              "contracts/fixtures/refusal.dbs"
+              "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+              "contracts/fixtures/immutable_write/immutable_write.json",
+              "contracts/fixtures/immutable_write/refusal.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testMysql"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testPostgres"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "test": "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+                  "symbol": "testSqlite"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "testConstraintErrors",
-                    "external_relation": "testExternalRelation",
-                    "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -13000,17 +13061,15 @@
         "packages/go/orm/request_hook_test.go",
         "packages/go/orm/coverage_request_hook_test.go",
         "packages/ts/tests/request_hook.mjs",
-        "packages/ts/tests/coverage_request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/test_request_hook_mysql.py",
         "packages/python/tests/test_request_hook_postgres.py",
         "packages/python/tests/test_request_hook_sqlite.py",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
+        "packages/php-ext/tests/RequestHookTestExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -13186,7 +13245,7 @@
               "packages/php/tests/RequestHookSqliteRecipeTest.php"
             ],
             "inputs": [
-              "packages/php/tests/request_hook_cases.php",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
@@ -13367,7 +13426,7 @@
               "packages/ts/tests/request_hook-sqlite.test.mjs"
             ],
             "inputs": [
-              "packages/ts/tests/request_hook_run.mjs",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/ts/tests/case-database.mjs",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
@@ -13546,10 +13605,9 @@
               "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/request_hook_cases.php",
+              "contracts/fixtures/request_hook/request_hook.json",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/request_hook/request_hook.dbs",
-              "packages/php/tests/CoverageRequestHookTest.php"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [

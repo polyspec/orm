@@ -872,6 +872,7 @@
             "utils.lock",
             "utils.set_local",
             "utils.local",
+            "db.notify",
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
             "utils.groups"
@@ -1151,6 +1152,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.set_local"
+        },
+        {
+          "$ref": "#/$defs/ops/db.notify"
         },
         {
           "$ref": "#/$defs/ops/utils.local"
@@ -1622,14 +1626,14 @@
                 "type": "object",
                 "required": [
                   "error",
-                  "message_contains"
+                  "message"
                 ],
                 "additionalProperties": false,
                 "properties": {
                   "error": {
                     "type": "string"
                   },
-                  "message_contains": {
+                  "message": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -6417,6 +6421,31 @@
           "name": {
             "type": "string",
             "minLength": 1
+          }
+        }
+      },
+      "db.notify": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "channel",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.notify"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload": {
+            "type": "string"
           }
         }
       },
