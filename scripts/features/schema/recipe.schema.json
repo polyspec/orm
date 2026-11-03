@@ -81,7 +81,8 @@
                           "enum": [
                             "model.connect",
                             "sql.exec",
-                            "dbspec.ddl_behavior"
+                            "dbspec.ddl_behavior",
+                            "dbspec.introspect"
                           ]
                         }
                       }
@@ -719,6 +720,10 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "keeps_callback": {
+              "description": "A ROLLBACK error keeps the error that the callback of its transaction returned (CFG-15).",
+              "const": true
+            },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
@@ -799,6 +804,7 @@
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
             "dbspec.ddl_behavior",
+            "dbspec.introspect",
             "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
@@ -863,6 +869,7 @@
             "dbspec.compare",
             "dbspec.emit_plan",
             "dbspec.plan_steps",
+            "dbspec.introspect_refusal",
             "dbspec.add_tables_steps",
             "utils.aes_status",
             "dbspec.parse_emit",
@@ -936,6 +943,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect"
         },
         {
           "$ref": "#/$defs/ops/dbspec.introspect_shown"
@@ -1026,6 +1036,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.plan_steps"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_refusal"
         },
         {
           "$ref": "#/$defs/ops/dbspec.add_tables_steps"
@@ -1941,6 +1954,66 @@
           }
         }
       },
+      "dbspec.introspect": {
+        "description": "Renders a document set for the database, applies it on one native connection of the case database with the statements of its vector, introspects that database and compares the result (DIA-133) and the catalog queries (DIA-198).",
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "properties": { "paths": true },
+            "required": ["paths"]
+          },
+          {
+            "properties": { "vectors": true, "case": true },
+            "required": ["vectors", "case"]
+          },
+          {
+            "properties": { "catalog_of": true },
+            "required": ["catalog_of"]
+          }
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect"
+          },
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "catalog_of": {
+            "type": "string",
+            "description": "Introspects the empty case database with the catalog queries of this other dialect, which fail."
+          },
+          "expect": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "const": true
+                },
+                "queries": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
       "dbspec.introspect_shown": {
         "type": "object",
         "required": [
@@ -2782,6 +2855,45 @@
                   "text": {
                     "type": "string",
                     "description": "The plan text of EmitPlan: the lines of the plan, each ended by a newline."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.introspect_refusal": {
+        "type": "object",
+        "description": "Introspection on an in-memory SQLite connection with a dialect that is none of DBS-174.",
+        "required": [
+          "op",
+          "dialect",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_refusal"
+          },
+          "dialect": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "refused"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "refused": {
+                    "type": "string"
                   }
                 }
               }
@@ -3747,8 +3859,7 @@
         "required": [
           "op",
           "metadata",
-          "values",
-          "expect"
+          "values"
         ],
         "additionalProperties": false,
         "properties": {
@@ -8237,6 +8348,18 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "table",
+                  "partitioned",
+                  "view",
+                  "materialized_view",
+                  "foreign",
+                  "virtual",
+                  "shadow"
+                ]
+              },
               "columns": {
                 "type": "array",
                 "items": {
@@ -8780,6 +8903,7 @@
             "months_ago",
             "months_later",
             "seconds_ago",
+            "seconds_later",
             "now"
           ]
         },

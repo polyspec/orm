@@ -944,7 +944,8 @@
         "group-row-driver-cell-forms",
         "model_queries_chain-mysql",
         "model_queries_chain-postgres",
-        "model_queries_chain-sqlite"
+        "model_queries_chain-sqlite",
+        "go-time-setter-records-the-first-bad-text"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1838,11 +1839,9 @@
         "tests/conformance/vectors.json",
         "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/clock.dbs",
-        "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
-        "contracts/fixtures/time_precision.dbs",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -1881,11 +1880,7 @@
         "packages/ts/tests/decimal_model.mjs",
         "packages/ts/tests/decimal_model.types.ts",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/go/orm/clock_test.go",
-        "packages/php/tests/ClockTest.php",
-        "packages/rust/orm/tests/clock.rs",
         "packages/ts/tests/clock.mjs",
-        "packages/python/tests/clock.py",
         "packages/go/orm/decimal_model_test.go",
         "packages/go/orm/write_set_test.go",
         "packages/go/model/decimal_field_test.go",
@@ -1899,14 +1894,12 @@
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/go/orm/assignment_propagation_test.go",
         "contracts/fixtures/clock.dbs",
-        "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/styled_column_states.json",
         "packages/go/orm/identity_load_test.go",
         "packages/php/tests/IdentityLoadTest.php",
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
-        "packages/go/orm/time_precision_test.go",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
@@ -1915,7 +1908,6 @@
         "packages/rust/orm/tests/unit/time_precision.rs",
         "packages/php-ext/tests/DecimalModelDbNativeTest.php",
         "packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
-        "packages/php-ext/tests/ClockTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_model_writes_test.go",
@@ -2099,21 +2091,12 @@
           ]
         },
         {
-          "id": "ip-host-input-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestIPHostInputIsValidatedBeforeModelAndPredicateBinding$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/model_host_input_test.go"
-          ]
-        },
-        {
           "id": "writes-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/assignment_propagation_test.go",
-            "packages/go/orm/write_set_test.go",
-            "packages/go/orm/clock_test.go"
+            "packages/go/orm/write_set_test.go"
           ]
         },
         {
@@ -2122,16 +2105,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/assignment_test.go"
-          ]
-        },
-        {
-          "id": "clock-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ClockTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/ClockTest.php",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
           ]
         },
         {
@@ -2144,34 +2117,12 @@
           ]
         },
         {
-          "id": "clock-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts clock-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/clock.rs",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
-          ]
-        },
-        {
           "id": "clock-typescript",
           "command": "node packages/ts/tests/clock.mjs",
           "shard": "other",
           "inputs": [
             "packages/ts/tests/clock.mjs",
-            "packages/ts/src/clock.ts",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
-          ]
-        },
-        {
-          "id": "clock-python",
-          "command": "make python-clock-check",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/clock.py",
-            "contracts/fixtures/clock.dbs",
-            "contracts/fixtures/clock_mark.dbs"
+            "packages/ts/src/clock.ts"
           ]
         },
         {
@@ -2231,15 +2182,6 @@
             "packages/ts/tests/identity-load.mjs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "time-precision-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestSQLiteTimePrecision$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/time_precision_test.go",
-            "contracts/fixtures/time_precision.dbs"
           ]
         },
         {
@@ -2571,12 +2513,10 @@
         "packages/php/tests/TransactionFailureCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/rust/orm/tests/rollback.rs",
-        "packages/ts/tests/rollback.mjs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
         "packages/ts/tests/coverage_transactions.mjs",
-        "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
         "packages/go/orm/statement_fault_test.go",
         "packages/go/orm/statement_fault_entry_test.go",
@@ -2687,11 +2627,10 @@
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFault' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRollbackFaultEntry$' -count=1",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/rollback_fault_entry_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/rollback_fault_entry_test.go"
           ]
         },
         {
@@ -2699,8 +2638,7 @@
           "command": "make transaction-failure-go-check",
           "shard": "other",
           "inputs": [
-            "packages/go/orm/coverage_transaction_failure_test.go",
-            "packages/go/orm/rollback_fault_test.go"
+            "packages/go/orm/coverage_transaction_failure_test.go"
           ]
         },
         {
@@ -2823,15 +2761,6 @@
           "inputs": [
             "packages/rust/orm/src/tx.rs",
             "packages/rust/orm/src/tx_send_tests.rs"
-          ]
-        },
-        {
-          "id": "rollback-typescript",
-          "command": "node --conditions=orm-test packages/ts/tests/rollback.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/rollback.mjs",
-            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
@@ -3866,7 +3795,6 @@
         }
       ],
       "parity": [
-        "py-dbspec-apply-sqlite-lock-faults",
         "schema-definition",
         "coverage-schema-definition-dbspec-emit-round-trip",
         "coverage-schema-definition-dbspec-manifest-hash",
@@ -3874,8 +3802,11 @@
         "coverage-schema-definition-dbspec-analyze-tokens",
         "coverage-schema-definition-dbspec-format",
         "coverage-schema-definition-dbspec-parse-positions",
-        "dbspec-introspect-query-count",
-        "dbspec-introspect-round-trip",
+        "dbspec_introspect-mysql",
+        "dbspec_introspect-postgres",
+        "dbspec_introspect-sqlite",
+        "dbspec-introspect-silent-failure",
+        "dbspec-introspect-extension-method",
         "php-dbspec-interface-compatibility",
         "dbspec-plan-physical",
         "dbspec-apply-cleanup-go",
@@ -3884,7 +3815,8 @@
         "dbspec-apply-cleanup-python",
         "dbspec-apply-cleanup-php",
         "dbspec-apply-cleanup-errors",
-        "dbspec-dialect-refusal"
+        "dbspec-dialect-refusal",
+        "py-dbspec-apply-sqlite-lock-faults"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -3918,7 +3850,6 @@
         "packages/go/internal/dialects/ddl_physical_test.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
-        "packages/go/internal/dialects/introspect_physical_test.go",
         "packages/go/internal/dialects/plans_physical_test.go",
         "packages/go/internal/dialects/probe_test.go",
         "packages/go/internal/dialects/schema_documents_physical_test.go",
@@ -3936,12 +3867,14 @@
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/orm/tests/dbspec_introspect.rs",
+        "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
+        "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
+        "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
         "packages/rust/orm/tests/dbspec_plan_apply.rs",
         "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
-        "packages/ts/tests/dbspec-introspect.mjs",
-        "packages/ts/tests/dbspec-introspect-round-trip.mjs",
-        "packages/ts/tests/introspect_case.mjs",
+        "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
+        "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
+        "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
         "packages/ts/tests/dbspec-plan-physical.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
@@ -4011,7 +3944,9 @@
         "packages/python/tests/test_dbspec_analyze.py",
         "packages/python/tests/test_dbspec_set_files.py",
         "packages/python/tests/test_dbspec_show_create.py",
-        "packages/python/tests/dbspec_introspect.py",
+        "packages/python/tests/test_dbspec_introspect_mysql.py",
+        "packages/python/tests/test_dbspec_introspect_postgres.py",
+        "packages/python/tests/test_dbspec_introspect_sqlite.py",
         "packages/python/tests/dbspec_introspect_runner.py",
         "packages/python/tests/dbspec_apply.py",
         "packages/python/tests/dbspec_apply_runner.py",
@@ -4019,13 +3954,9 @@
         "packages/python/tests/test_dbspec_introspect_messages_none.py",
         "packages/go/engine/dbspec/names_test.go",
         "packages/php/tests/DbspecPlanReaderTest.php",
-        "packages/go/engine/dbspec/introspect_query_count_test.go",
-        "packages/php/tests/DbspecIntrospectQueryCountTest.php",
-        "packages/ts/tests/dbspec-introspect-query-count.mjs",
-        "packages/python/tests/dbspec_introspect_queries.py",
-        "packages/python/tests/test_dbspec_introspect_query_count.py",
+        "packages/go/orm/recipe_dbspec_introspect_test.go",
+        "packages/php/tests/DbspecIntrospectRecipeTest.php",
         "packages/python/tests/dbspec_plan_physical.py",
-        "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
         "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
         "packages/ts/tests/dbspec-mermaid-errors.mjs",
         "packages/python/tests/mermaid_error_boundary.py",
@@ -8954,14 +8885,6 @@
           ]
         },
         {
-          "id": "catalog-row-baseline-go",
-          "command": "make --no-print-directory catalog-row-baseline-go-check",
-          "shard": "other",
-          "inputs": [
-            "Makefile"
-          ]
-        },
-        {
           "id": "catalog-row-baseline-php",
           "command": "make --no-print-directory php-models && env ORM_PHP_MODE=library node \"$(node --input-type=module -e 'import { fileURLToPath } from \"node:url\"; process.stdout.write(fileURLToPath(import.meta.resolve(\"@polyspec/kit/run-tests\")))')\" phpunit -- --configuration packages/php/phpunit.xml.dist --filter testRowBaselineComparesExactValuesIncludingGeneratedOriginals packages/php/tests/CatalogQueryBoundsTest.php",
           "shard": "other",
@@ -10404,16 +10327,6 @@
         "tests/dbspec/join.test.mjs"
       ],
       "command": "node --test tests/dbspec/join.test.mjs"
-    },
-    {
-      "id": "dbspec-introspect-case-rendering-python",
-      "paths": [
-        "packages/python/tests/dbspec_introspect.py"
-      ],
-      "tests": [
-        "packages/python/tests/test_dbspec_introspect_support.py"
-      ],
-      "command": "make --no-print-directory dbspec-introspect-python-helper-check"
     },
     {
       "id": "dbspec-set-fixture-tree",

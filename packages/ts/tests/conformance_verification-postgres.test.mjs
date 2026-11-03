@@ -1,3 +1,4 @@
+// Requirements: DIA-18, DIA-56, DSL-137.
 // The suite unit conformance_verification-postgres (docs/spec/feature-coverage.md FCV-3).
 import { runRecipe } from './recipe.mjs';
 

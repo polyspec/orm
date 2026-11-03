@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 5f6f7b21affc97527b87d6c9ccbb3092948f3937cf1a4baba1e6cfe7ede93dc9 -->
+<!-- source-sha256: 78beb97d4e8a84f29b61e0e6402fd0641a672a2a22353a9ffebc54ccd1c6aa54 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -297,7 +297,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 
 ## Introspection
 
-- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 `make dbspec-introspect-check`가 Go에서 하듯 같은 round trip과 case를 PHP 클라이언트, TypeScript 클라이언트, PHP 확장, Rust 클라이언트, Python 클라이언트로 실행한다(`make dbspec-introspect-python-check`는 venv의 python으로 `packages/python/tests/dbspec_introspect.py`를 실행하고 MySQL, PostgreSQL, SQLite case를 검사한다). `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
+- **DIA-133** introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. recipe `contracts/fixtures/dbspec_introspect/dbspec_introspect.json`은 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. 실패한 catalog query는 호출의 error다. recipe case `catalog_query_failure`는 빈 SQLite database를 MySQL의 catalog query로 introspect한다. `make dbspec-introspect-<client>-check`는 recipe를 클라이언트 하나로 실행하고, Go 시험 suite가 그 entry를 실행한다. `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(Go, PHP, TypeScript, Rust, Python, PHP 확장; PHP 확장은 `tests/dbspec/introspect`의 runner이고 Python runner는 `packages/python/tests/dbspec_introspect_runner.py`)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
 
 ### 문서
 
@@ -358,6 +358,8 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 - **DIA-153** SQLite는 table 항목을 `CREATE TABLE` text에서 읽는다. column 정의는 renderer 형식, 곧 따옴표 친 이름, 선언 type, `NULL`이나 `NOT NULL`, 있으면 default일 때 읽는다. 다른 clause(`CHECK`, `REFERENCES`, `UNIQUE`, `COLLATE` 등)가 있는 column은 미지원이다. renderer 형식이 아닌 `CHECK`, `UNIQUE`, `FOREIGN KEY` 항목은 그 kind와 constraint 이름을 붙여 보고하며, 이름이 없으면 빈 이름이다. `UNIQUE` 항목이나 clause의 자동 index는 따로 보고하지 않는다. 다른 형식의 primary key 항목과 그 밖의 항목은 table을 빼게 한다.
 - **DIA-191** CHECK가 없는 column을 포함해, declared type이 dbspec type이 없는 SQLite column은 `declared type <type> with CHECK <check> has no dbspec type` 이유로 보고된다. 여기서 `<check>`는 column의 CHECK text를 JSON 문자열로 쓴 것이고, CHECK가 없으면 `""`이다. 여섯 client 모두 CHECK가 없는 column에 이 빈 문자열 형식을 정확히 사용한다. Go client는 `%q`로, TypeScript client는 `JSON.stringify`로 `<check>`를 쓰며, Python client도 같은 text를 쓴다.
 - **DIA-198** introspection의 catalog query 수는 dialect별로 고정되어 table 수에 좌우되지 않는다.
+- **DIA-133a** PHP와 PHP extension: 실패한 catalog query는 PDO connection의 모든 error mode에서, silent mode에서도 호출의 error다.
+- **DIA-133b** PHP-extension package `polyspec/orm-php-ext`은 `Dbspec::introspect`를 native로 구현하고, 그 method가 library의 method를 대신한다.
 
 ## Markdown IR executor
 
