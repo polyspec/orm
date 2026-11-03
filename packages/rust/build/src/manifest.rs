@@ -49,7 +49,12 @@ pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
     for (path, result) in paths.0.iter().chain(&paths.1).zip(set) {
         match result.document {
             Some(document) => documents.push(document),
-            None => failures.push(diagnostics(path, result.diagnostics)),
+            None => {
+                let name = result.name.as_deref().unwrap_or_default();
+                failures.push(
+                    result.diagnostics.iter().map(|d| format!("{path}: {}:{} {}: document {name}: {}", d.line, d.column, d.rule, d.message)).collect::<Vec<_>>().join("\n"),
+                );
+            }
         }
     }
     if !failures.is_empty() {
