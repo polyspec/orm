@@ -8887,10 +8887,6 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func() (string, error)"
   },
-  "packages/go/model/author.go::AuthorModel.GetOwner": {
-    "exported": true,
-    "signature": "receiver=*AuthorModel func() (*UserModel, error)"
-  },
   "packages/go/model/author.go::AuthorModel.GetOwnerService": {
     "exported": true,
     "signature": "receiver=*AuthorModel func() (*ServiceModel, error)"
@@ -9379,10 +9375,6 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
   },
-  "packages/go/model/author.go::AuthorModel.LeftJoinUserSeqWithSeq": {
-    "exported": true,
-    "signature": "receiver=*AuthorModel func[C hasSeq](child C) *AuthorModel"
-  },
   "packages/go/model/author.go::AuthorModel.LikeCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
@@ -9862,10 +9854,6 @@
   "packages/go/model/author.go::AuthorModel.ReadCount": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argIntEq](v0 T0) *AuthorModel"
-  },
-  "packages/go/model/author.go::AuthorModel.ReadCountGtSeq": {
-    "exported": true,
-    "signature": "receiver=*AuthorModel func[T0 hasSeq](v0 T0) *AuthorModel"
   },
   "packages/go/model/author.go::AuthorModel.ReadCountLtSeq": {
     "exported": true,
@@ -16839,10 +16827,6 @@
     "exported": true,
     "signature": "receiver=*UserModel func() *UserModel"
   },
-  "packages/go/model/user.go::UserModel.AliasOwner": {
-    "exported": true,
-    "signature": "receiver=*UserModel func() *UserModel"
-  },
   "packages/go/model/user.go::UserModel.AliasWriter": {
     "exported": true,
     "signature": "receiver=*UserModel func() *UserModel"
@@ -17004,10 +16988,6 @@
     "signature": "receiver=*UserModel func(n int64) *UserModel"
   },
   "packages/go/model/user.go::UserModel.Name": {
-    "exported": true,
-    "signature": "receiver=*UserModel func[T0 argStringEq](v0 T0) *UserModel"
-  },
-  "packages/go/model/user.go::UserModel.NeName": {
     "exported": true,
     "signature": "receiver=*UserModel func[T0 argStringEq](v0 T0) *UserModel"
   },
@@ -17737,7 +17717,7 @@
   },
   "packages/go/orm/catalog.go::CatalogConnection": {
     "exported": true,
-    "signature": "type CatalogConnection struct { db *DB dialect string closed atomic.Bool }"
+    "signature": "type CatalogConnection struct { db *DB dialect string closed atomic.Bool reopenUntil atomic.Int64 }"
   },
   "packages/go/orm/catalog.go::CatalogConnection#field.closed": {
     "exported": false,
@@ -17750,6 +17730,10 @@
   "packages/go/orm/catalog.go::CatalogConnection#field.dialect": {
     "exported": false,
     "signature": "string"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection#field.reopenUntil": {
+    "exported": false,
+    "signature": "atomic.Int64"
   },
   "packages/go/orm/catalog.go::CatalogConnection.Close": {
     "exported": true,
@@ -17786,6 +17770,10 @@
   "packages/go/orm/catalog.go::catalogCheckName": {
     "exported": false,
     "signature": "func(name string) error"
+  },
+  "packages/go/orm/catalog.go::catalogConnectionsFull": {
+    "exported": false,
+    "signature": "func(err error) bool"
   },
   "packages/go/orm/catalog.go::catalogConvert": {
     "exported": false,
@@ -17837,7 +17825,11 @@
   },
   "packages/go/orm/catalog.go::catalogSession": {
     "exported": false,
-    "signature": "type catalogSession struct { ctx context.Context conn *sql.Conn dialect string rollbacks *rollbackWatch }"
+    "signature": "type catalogSession struct { catalog *CatalogConnection stopped bool ctx context.Context conn *sql.Conn dialect string rollbacks *rollbackWatch }"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.catalog": {
+    "exported": false,
+    "signature": "*CatalogConnection"
   },
   "packages/go/orm/catalog.go::catalogSession#field.conn": {
     "exported": false,
@@ -17854,6 +17846,10 @@
   "packages/go/orm/catalog.go::catalogSession#field.rollbacks": {
     "exported": false,
     "signature": "*rollbackWatch"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.stopped": {
+    "exported": false,
+    "signature": "bool"
   },
   "packages/go/orm/catalog.go::catalogSession.discard": {
     "exported": false,

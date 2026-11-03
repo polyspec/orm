@@ -25,8 +25,10 @@ caseTest('every lane without a whole run runs every recipe unit with a database 
   assert.ok(recipes.every(unit => /-(mysql|postgres)$/.test(unit.id)), 'a unit without a database server is not listed');
   for (const lane of ['php', 'php-extension', 'typescript', 'python'] as const) {
     const commands = poolerRecipeCommands(lane, units, '/extension.so');
-    assert.equal(commands.length, recipes.length, `${lane} has one command per unit`);
-    recipes.forEach((unit, index) => {
+    // A suite that names its runtimes in its owner parts leaves the others out.
+    const owned = recipes.filter(unit => unit.owner?.parts === undefined || unit.owner.parts.includes(`owner/${lane}`));
+    assert.equal(commands.length, owned.length, `${lane} has one command per unit`);
+    owned.forEach((unit, index) => {
       const test = unit.bindings?.find(binding => binding.implementation === lane)?.test ?? '';
       const named = lane === 'python' ? test.replace(/\.py$/, '').replaceAll('/', '.') : test;
       assert.ok(commands[index]?.args.includes(named), `${lane} runs ${unit.id} with ${named}`);
