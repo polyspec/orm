@@ -8765,6 +8765,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
+                "type": "string",
+                "minLength": 1
               }
             }
           }
