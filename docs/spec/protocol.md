@@ -59,7 +59,7 @@ Columns = {
 }
 ```
 
-- **PRT-9** `mode` `""` selects the default select set, every column except those of `select explicit` ([runtime model](dbspec.md#runtime-model)); `all` selects every column, and `none` keeps primary and foreign keys.
+- **PRT-9** `mode` `""` selects the default select set, every column except those of `select explicit` ([runtime model](dbspec.md#runtime-model)); `all` selects every column, and `none` keeps primary and foreign keys. A select lists them in the column order of the table, each as `<alias>.<column> AS <alias>__<column>`, and the root table of a statement has the alias `a`.
 - **PRT-10** `fn` and `sub` add named outputs. An output name must not be a column of the entity.
 - **PRT-11** The primary key and the keys that relations bind are always selected.
 
@@ -177,7 +177,7 @@ PostgreSQL identity does not advance past an explicit key, so without the restar
 
 ### 2.1 Relation steps
 
-- **PRT-38** Each relation has one `relation` step after its parent step; nested relations follow the same rule, and `paginate` orders the steps as main, relations, count.
+- **PRT-38** Each relation has one `relation` step after its parent step; nested relations follow the same rule, and `paginate` orders the steps as main, count, relations: the count step follows the main step and holds its conditions and joins, without its order and its page limit.
 - **PRT-39** The client reads the parent keys of every parent row in order, removes rows with a null key, removes duplicates, and skips the statement when no key remains. With `if_parent`, only parents whose column equals the parameter are used.
 - **PRT-40** The `parent` slot is one placeholder that the client expands to the key list. The list is padded to a power of two by repeating the last key, so one prepared statement serves each size class. A list longer than the driver bind limit is split into chunks.
 - **PRT-40a** PHP-extension package `polyspec/orm-php-ext` expands the `parent` slot of a composite relation in its native classes, binding both key components of each row (PRT-40).

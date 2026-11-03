@@ -131,7 +131,11 @@
   "PRT-22",
   "INT-60",
   "INT-75",
-  "DSL-87"
+  "DSL-87",
+  "INT-99",
+  "COD-20",
+  "DIA-25",
+  "COD-2"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -74444,6 +74448,788 @@
         "reason": "the bind is the clock of the client at the write"
        }
       ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_value_types",
+   "requirements": [
+    "INT-99"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "-1234"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      },
+      "address": {
+       "text": "192.0.2.7"
+      },
+      "packed": {
+       "styled": {
+        "text": "compressed text"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "small",
+      "wide",
+      "ratio",
+      "active",
+      "ref",
+      "label",
+      "address",
+      "packed",
+      "note"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "small": -1234,
+        "wide": 7,
+        "ratio": 1.25,
+        "active": true,
+        "ref": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e",
+        "label": "none",
+        "address": "192.0.2.7",
+        "packed": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "note": "plain text"
+       }
+      },
+      "postgres": {
+       "json": {
+        "small": -1234,
+        "wide": 7,
+        "ratio": 1.25,
+        "active": true,
+        "ref": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e",
+        "label": "none",
+        "address": "192.0.2.7",
+        "packed": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "note": "plain text"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "small": -1234,
+        "wide": 7,
+        "ratio": 1.25,
+        "active": true,
+        "ref": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e",
+        "label": "none",
+        "address": "192.0.2.7",
+        "packed": {
+         "kind": "value",
+         "value": "compressed text"
+        },
+        "note": "plain text"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "TypedValue",
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "clock",
+      "day"
+     ],
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "10:20:30.500000"
+         },
+         {
+          "text": "2026-02-03"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "10:20:30.500000"
+         },
+         {
+          "text": "2026-02-03"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "10:20:30.500000"
+         },
+         {
+          "text": "2026-02-03"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "-32768"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "small"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "small": -32768
+       }
+      },
+      "postgres": {
+       "json": {
+        "small": -32768
+       }
+      },
+      "sqlite": {
+       "json": {
+        "small": -32768
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "32767"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "3"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "small"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "small": 32767
+       }
+      },
+      "postgres": {
+       "json": {
+        "small": 32767
+       }
+      },
+      "sqlite": {
+       "json": {
+        "small": 32767
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "32768"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "-32769"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "IR_INVALID"
+      },
+      "postgres": {
+       "error": "IR_INVALID"
+      },
+      "sqlite": {
+       "error": "IR_INVALID"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_styled_null",
+   "requirements": [
+    "COD-20"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "payload"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "payload": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "payload": {
+         "kind": "sql-null"
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "payload": {
+         "kind": "sql-null"
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 1",
+        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "null": "text"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      },
+      "payload": {
+       "styled": {
+        "null": "text"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "payload"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "payload": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "postgres": {
+       "json": {
+        "payload": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      },
+      "sqlite": {
+       "json": {
+        "payload": {
+         "kind": "value",
+         "value": null
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "typed_value"
+       ],
+       "sql": {
+        "mysql": "SELECT `payload` FROM `typed_value` WHERE `seq` = 2",
+        "postgres": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2",
+        "sqlite": "SELECT \"payload\" FROM \"typed_value\" WHERE \"seq\" = 2"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "null"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "core_decimal_values",
+   "requirements": [
+    "DIA-25",
+    "COD-2"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "48.0450"
+      },
+      "large": {
+       "text": "9007199254740993"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DecimalValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "amount",
+      "large"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "amount": "48.0450",
+        "large": "9007199254740993"
+       }
+      },
+      "postgres": {
+       "json": {
+        "amount": "48.0450",
+        "large": "9007199254740993"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "amount": "48.0450",
+        "large": "9007199254740993"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "DecimalValue",
+     "values": {
+      "amount": {
+       "text": "-0.0012"
+      },
+      "large": {
+       "text": "0"
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "DecimalValue",
+     "key": {
+      "seq": {
+       "int": "2"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "amount",
+      "large"
+     ],
+     "expect": {
+      "mysql": {
+       "json": {
+        "amount": "-0.0012",
+        "large": "0"
+       }
+      },
+      "postgres": {
+       "json": {
+        "amount": "-0.0012",
+        "large": "0"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "amount": "-0.0012",
+        "large": "0"
+       }
+      }
      }
     }
    ]

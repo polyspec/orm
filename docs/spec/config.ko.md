@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 3c6a4f358332df2c426966b3d86fc44869fd410768dd00c935278bce11f12fd7 -->
+<!-- source-sha256: f5c2876ec00adf2a4458741ed24ed0578b903111dc7a8298d692f5d47734bf6a -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -38,6 +38,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 관리자가 세션을 끝낼 때(`pg_terminate_backend`, `KILL`), 서버가 다시 시작할 때, 연결이 한도보다 오래 유휴일 때(PostgreSQL `idle_session_timeout`, MySQL `wait_timeout`) 서버는 연결을 끝내고, 네트워크 장애는 연결을 끊는다. 그 연결의 다음 문은 실패하며, 모든 클라이언트는 드라이버와 그 메시지와 상관없이 그 실패를 `CONNECTION_LOST` 코드로 보고한다. MySQL 오류 2006, 2013, 4031, PostgreSQL SQLSTATE class 08과 57P01, 57P02, 57P05, 그리고 더 이상 열려 있지 않은 연결에 대한 드라이버의 오류다(PHP pdo_pgsql은 backend process id가 0인 연결에서 서버 SQLSTATE 없이 보고한다. go-sql-driver `ErrInvalidConn`, `driver.ErrBadConn`, Rust의 끊긴 socket, mysql2의 fatal 오류, 연결 오류를 알린 node-postgres 연결, 닫힌 연결의 PyMySQL `InterfaceError`, psycopg가 닫힌 것으로 표시한 연결에서 서버 SQLSTATE 없이 온 psycopg 오류). SQLite에는 서버 연결이 없다.
 
 - **CFG-15** 모든 클라이언트는 그렇게 실패한 문에 `CONNECTION_LOST`를 반환하고 그 문을 다시 전송하지 않는다. 연결의 트랜잭션이나 세션 상태가 사라졌기 때문이다.
+- **CFG-38** PHP와 PHP extension은 connection에 session 하나를 둔다. 따라서 첫 statement 전에 server가 그 session을 끝내면 그 statement는 `CONNECTION_LOST`로 실패하고, 한 번만 전송된다.
 
 ## DSN 매개변수와 MySQL TLS
 

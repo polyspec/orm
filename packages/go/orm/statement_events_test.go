@@ -13,7 +13,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Runs the cases of tests/events/vectors.json with this client and compares the statement events.
+// Runs the server_transactions entries of tests/events/vectors.json with this client; the statement events of its cases are the
+// recipe statement_events.
 // Requirements: INT-77, INT-96, PLN-44.
 
 const eventsVector = "../../../tests/events/vectors.json"

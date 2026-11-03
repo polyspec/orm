@@ -710,6 +710,11 @@
               "type": "string",
               "minLength": 1
             },
+            "rollback": {
+              "description": "The code of the error of the failed rollback that a ROLLBACK error keeps; its message holds the text of that error (CFG-15).",
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true
@@ -802,6 +807,7 @@
             "codec.blind_index",
             "collection.key",
             "sql.exec",
+            "session.end",
             "query.search",
             "query.search_chain",
             "ir.validate",
@@ -953,6 +959,9 @@
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
+        },
+        {
+          "$ref": "#/$defs/ops/session.end"
         },
         {
           "$ref": "#/$defs/ops/query.search"
@@ -3245,6 +3254,23 @@
                 "minLength": 1
               }
             }
+          }
+        }
+      },
+      "session.end": {
+        "description": "Ends, through the native driver on the server DSN of the database, the server session that holds a lock on the table (CFG-15).",
+        "type": "object",
+        "required": [
+          "op",
+          "table"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "session.end"
+          },
+          "table": {
+            "$ref": "#/$defs/name"
           }
         }
       },
@@ -5643,8 +5669,12 @@
                       }
                     }
                   },
-                  "rule": {
-                    "type": "string"
+                  "diagnostics": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "manifest_hash": {
                     "type": "string"

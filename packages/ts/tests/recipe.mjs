@@ -21,7 +21,7 @@ import { modelOfDocuments, parseDocumentSet } from '../dist/engine/model.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
-import { withCaseDatabase } from './case-database.mjs';
+import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
 import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
@@ -748,6 +748,22 @@ const OPS = {
   async 'catalog.delete_row'(s, context) {
     return { value: { int: String(await context.catalog.deleteRow(stepArgument(s.snapshot, context))) } };
   },
+  // Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
+  // handle KILL on its own.
+  async 'session.end'(s, context) {
+    const variable = `ORM_TEST_${context.database.toUpperCase()}_SERVER_DSN`;
+    const server = process.env[variable];
+    if (!server) throw new Error(`${variable} is required; database tests never skip`);
+    const session = relatedDsn(server, new URL(context.dsn).pathname.slice(1));
+    const postgres = context.database === 'postgres';
+    const [rows] = await nativeQuery(context.database, session, [postgres
+      ? `SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '${s.table}' AND l.pid <> pg_backend_pid() LIMIT 1`
+      : `SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '${s.table}' LIMIT 1`]);
+    if (rows.length !== 1) throw new Error(`the transaction session holds a lock on ${s.table}: ${rows.length} rows`);
+    const id = Number(Object.values(rows[0])[0]);
+    await nativeQuery(context.database, session, [postgres ? `SELECT pg_terminate_backend(${id}, 5000)` : `KILL ${id}`]);
+    return {};
+  },
   // dbspec.ddl_behavior (FCV-4, DIA-113): on one native connection of the case database, the connection rules, the
   // statements of the case for the database, then its behavior steps. A step with dialects runs only on those; a step with
   // fails must fail; a query compares its first value, as text, with want, and a NULL or absent value fails it.
@@ -843,6 +859,10 @@ async function runStep(s, context) {
     if (expected.message !== undefined) assert.equal(error.message, expected.message, 'the error message');
     if (expected.cause !== undefined) assert.equal(error.cause?.message, expected.cause, 'the error cause');
     if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    if (expected.rollback !== undefined) {
+      assert.equal(error.rollback?.code, expected.rollback, `the rollback error of ${JSON.stringify(error.message)}`);
+      assert.ok(error.message.includes(error.rollback.message), `the error message ${JSON.stringify(error.message)} holds the rollback error`);
+    }
     if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
@@ -2307,7 +2327,13 @@ async function checkDbspecFiles(step, dir, database) {
         documents = loadSet(text(step.owned), text(step.external));
       } catch (error) {
         if (error.code !== expect.error) throw error;
-        if (expect.rule !== undefined) assert.ok(error.message.includes(expect.rule), error.message);
+        // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+        if (expect.diagnostics !== undefined) {
+          assert.ok(error.message.startsWith(`${expect.error}: `), error.message);
+          const problems = error.message.slice(expect.error.length + 2).split('; ');
+          assert.equal(problems.length, expect.diagnostics.length, error.message);
+          problems.forEach((problem, i) => assert.ok(problem.startsWith(`${expect.diagnostics[i]}: `), error.message));
+        }
         break;
       }
       assert.equal(expect.error, undefined, 'the set loaded');

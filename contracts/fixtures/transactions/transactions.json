@@ -1,18 +1,21 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "CFG-15",
     "CFG-24",
     "DSL-118",
     "DSL-119",
     "DSL-123",
     "DSL-125",
     "DSL-126",
+    "INT-155",
     "INT-40",
     "INT-41",
     "INT-42",
     "INT-43",
     "INT-45",
     "INT-46",
+    "INT-47",
     "INT-48",
     "INT-49",
     "PLN-13",
@@ -2390,6 +2393,342 @@
               "attempts": 3,
               "deadlocks": 1,
               "same_flow": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "rollback_failed_reports_both_errors",
+      "requirements": [
+        "CFG-15"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "kept"
+                }
+              }
+            },
+            {
+              "op": "session.end",
+              "table": "composite_account"
+            },
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "end"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROLLBACK",
+              "message_holds": "transaction failed (CONNECTION_LOST",
+              "rollback": "CONNECTION_LOST"
+            },
+            "postgres": {
+              "error": "ROLLBACK",
+              "message_holds": "transaction failed (CONNECTION_LOST",
+              "rollback": "CONNECTION_LOST"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "savepoint_rollback_failed_reports_both_errors",
+      "requirements": [
+        "CFG-15"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "kept"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990010"
+                    },
+                    "account_id": {
+                      "int": "2"
+                    },
+                    "name": {
+                      "text": "nested"
+                    }
+                  }
+                },
+                {
+                  "op": "session.end",
+                  "table": "composite_account"
+                },
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990010"
+                    },
+                    "account_id": {
+                      "int": "3"
+                    },
+                    "name": {
+                      "text": "end"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROLLBACK",
+              "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
+              "rollback": "CONNECTION_LOST"
+            },
+            "postgres": {
+              "error": "ROLLBACK",
+              "message_holds": "transaction failed (ROLLBACK: transaction failed (CONNECTION_LOST",
+              "rollback": "CONNECTION_LOST"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_rolled_back_transaction_reports_the_trigger",
+      "requirements": [
+        "INT-155"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TRIGGER composite_account_end BEFORE INSERT ON composite_account WHEN NEW.name = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END",
+          "reason": "A .dbs declares no trigger, and this one ends the transaction on the server side of SQLite."
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "kept"
+                }
+              }
+            },
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "2"
+                },
+                "name": {
+                  "text": "end"
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "rollback probe ended the transaction",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990010"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_rolled_back_savepoint_reports_the_trigger",
+      "requirements": [
+        "INT-155"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TRIGGER composite_account_end BEFORE INSERT ON composite_account WHEN NEW.name = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END",
+          "reason": "A .dbs declares no trigger, and this one ends the transaction on the server side of SQLite."
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "connection"
+        },
+        {
+          "op": "transaction",
+          "connection": "connection",
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "connection",
+              "model": "CompositeAccount",
+              "values": {
+                "tenant_id": {
+                  "int": "990010"
+                },
+                "account_id": {
+                  "int": "1"
+                },
+                "name": {
+                  "text": "kept"
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "connection",
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "connection",
+                  "model": "CompositeAccount",
+                  "values": {
+                    "tenant_id": {
+                      "int": "990010"
+                    },
+                    "account_id": {
+                      "int": "2"
+                    },
+                    "name": {
+                      "text": "end"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "DRIVER",
+              "message_holds": "rollback probe ended the transaction",
+              "message_suffix": " (SQLITE_CONSTRAINT_TRIGGER)"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "connection",
+          "model": "CompositeAccount",
+          "where": {
+            "tenant_id": {
+              "int": "990010"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "value": {
+                "int": "0"
+              }
             }
           }
         }
