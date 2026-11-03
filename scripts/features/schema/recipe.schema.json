@@ -873,6 +873,7 @@
             "catalog.row_cells",
             "model.read_bind_cell",
             "generator.generate",
+            "generator.check",
             "dbspec.export_mermaid",
             "dbspec.import_mermaid",
             "hook.install",
@@ -1156,6 +1157,9 @@
         },
         {
           "$ref": "#/$defs/ops/generator.generate"
+        },
+        {
+          "$ref": "#/$defs/ops/generator.check"
         },
         {
           "$ref": "#/$defs/ops/dbspec.export_mermaid"
@@ -4298,7 +4302,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model",
               "expect"
             ],
@@ -4331,7 +4334,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model"
             ],
             "additionalProperties": false,
@@ -4857,6 +4859,33 @@
               },
               "plan": {
                 "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
+                "const": true
+              },
+              "plan_page": {
+                "description": "The page and size that plan passes as they are, refused values included, in place of those of limit; limit then belongs to the chain unless page is set.",
+                "type": "object",
+                "required": [
+                  "page",
+                  "per_page"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "page": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "per_page": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "plan_sql": {
+                "description": "Each step of plan also holds sql, the text of its statement.",
+                "const": true
+              },
+              "unconnected": {
+                "description": "The chain is built without connecting its model: connection then names nothing that runs.",
                 "const": true
               },
               "plan_count": {
@@ -6270,6 +6299,39 @@
             "minProperties": 1,
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/value"
+            }
+          }
+        }
+      },
+      "generator.check": {
+        "type": "object",
+        "required": [
+          "op",
+          "document_set",
+          "unchanged",
+          "changed"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.check"
+          },
+          "document_set": {
+            "type": "string",
+            "description": "The dbspec-set.json of the generation, relative to the recipe file."
+          },
+          "unchanged": {
+            "description": "The lines of the check of the files as generated.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "changed": {
+            "description": "The lines of the check after one byte of one generated file changed; <file> is that file as the runtime names it.",
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         }

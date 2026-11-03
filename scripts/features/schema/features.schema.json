@@ -114,7 +114,9 @@
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["runner", "test", "cases"],
+          "required": ["runner", "test"],
+          "if": { "properties": { "recipe": true }, "required": ["recipe"] },
+          "else": { "properties": { "cases": true }, "required": ["cases"] },
           "properties": {
             "runner": { "enum": ["go", "php", "cargo", "node", "python"] },
             "test": { "$ref": "#/$defs/text" },
@@ -132,7 +134,7 @@
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "cases", "owners", "dependents"],
+      "required": ["kind", "owners", "dependents"],
       "properties": {
         "kind": { "enum": ["database", "independent"] },
         "execution": { "enum": ["parallel", "exclusive"] },

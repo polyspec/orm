@@ -154,6 +154,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.check') {
+                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;
@@ -3680,7 +3684,9 @@ final class Recipe
             return self::boundValue($s['from'], $context);
         }
         $db = self::connectionOf($s, $context);
-        $model = self::tableModel($s['model'], $db, $context);
+        $model = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], $db, $context);
         $build = self::chainState();
         $paged = ($s['page'] ?? false) === true;
         self::chainQuery($model, $s, $build, $context, !$paged && !isset($s['offset']));
@@ -3959,13 +3965,16 @@ final class Recipe
             return ['json' => $model->getQuery()];
         }
         if (($s['plan'] ?? false) === true) {
-            $steps = $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
+            $steps = isset($s['plan_page'])
+                ? $model->getPagePlanSteps($s['plan_page']['page'], $s['plan_page']['per_page'])
+                : $model->getPagePlanSteps(intdiv($s['limit']['offset'], $s['limit']['count']) + 1, $s['limit']['count']);
             return ['json' => array_map(static function (array $step) use ($s): array {
                 $count = [];
                 foreach ($s['plan_count'] as $text) {
                     $count[$text] = substr_count(strtoupper($step['sql']), $text);
                 }
-                return ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+                $shown = ['role' => $step['role'], 'tables' => $step['tables'], 'count' => $count];
+                return ($s['plan_sql'] ?? false) === true ? $shown + ['sql' => $step['sql']] : $shown;
             }, $steps)];
         }
         $aggregate = $s['aggregate'] ?? null;

@@ -5,8 +5,8 @@
 //! The suites of tests/conformance run one trial `conformance_<dialect>::<vector>` per vector of that dialect's file:
 //! the runner runs every vector once, in the order of the file as the expectations were recorded, on the seeded bench
 //! database of BENCH_<DIALECT>_DSN, and the output of each vector equals its recorded expectation. A vector run alone
-//! differs, since an earlier vector of the full run makes the first-use statements of each connection. The feature-check case `coverage_conformance_vector` is an ignored trial, which feature-check
-//! runs with --include-ignored.
+//! differs, since an earlier vector of the full run makes the first-use statements of each connection. The cases
+//! `coverage_conformance_vector_<dialect>` run the selected vectors alone on the same bench database, after the full runs.
 //! Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
 use polyspec_orm_testcase::OrPanic;
 
@@ -39,15 +39,8 @@ fn runner(dsn: &str, vectors: &[&str]) -> Command {
 }
 
 // Requirements: DIA-37, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14.
-fn coverage_conformance_vector() {
-    let driver = common::required("ORM_FEATURE_DATABASE");
-    let dsn = common::required("ORM_FEATURE_DSN");
-    let file = match driver.as_str() {
-        "mysql" => "vectors.json",
-        "postgres" => "vectors.postgres.json",
-        "sqlite" => "vectors.sqlite.json",
-        other => panic!("ORM_FEATURE_DATABASE {other:?} is not mysql, postgres or sqlite"),
-    };
+fn coverage_conformance_vector(driver: &str, file: &str, dsn_variable: &str) {
+    let dsn = common::required(dsn_variable);
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
     let recorded: Value =
         serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).or_panic(|e| format!("{}: {e}", path.display()));
@@ -287,7 +280,12 @@ fn main() {
     trials.extend(dialect_trials("mysql", "vectors.json", "BENCH_MYSQL_DSN"));
     trials.extend(dialect_trials("postgres", "vectors.postgres.json", "BENCH_POSTGRES_DSN"));
     trials.extend(dialect_trials("sqlite", "vectors.sqlite.json", "BENCH_SQLITE_DSN"));
-    trials
-        .push(polyspec_orm_testcase::trial("coverage_conformance_vector", polyspec_orm_testcase::PROCESS, coverage_conformance_vector).with_ignored_flag(true));
+    for (dialect, file, dsn_variable) in
+        [("mysql", "vectors.json", "BENCH_MYSQL_DSN"), ("postgres", "vectors.postgres.json", "BENCH_POSTGRES_DSN"), ("sqlite", "vectors.sqlite.json", "BENCH_SQLITE_DSN")]
+    {
+        trials.push(polyspec_orm_testcase::trial(format!("coverage_conformance_vector_{dialect}"), polyspec_orm_testcase::PROCESS, move || {
+            coverage_conformance_vector(dialect, file, dsn_variable)
+        }));
+    }
     polyspec_orm_testcase::run_in_order(trials);
 }

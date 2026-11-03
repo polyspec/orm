@@ -4972,6 +4972,7 @@
       ],
       "expect": {
         "result": {
+          "at6_fixed": true,
           "p0_truncated": true,
           "p3_truncated": true
         },

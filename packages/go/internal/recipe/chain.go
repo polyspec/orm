@@ -123,6 +123,9 @@ type chainStep struct {
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Plan            bool                       `json:"plan"`
+	PlanPage        *chainPlanPage             `json:"plan_page"`
+	PlanSQL         bool                       `json:"plan_sql"`
+	Unconnected     bool                       `json:"unconnected"`
 	PlanCount       []string                   `json:"plan_count"`
 	Items           bool                       `json:"items"`
 	Values          json.RawMessage            `json:"values"`
@@ -957,7 +960,9 @@ func chainBuilt(s chainStep, db *orm.DB, c *databaseContext) (*orm.Core, error) 
 		return chainByKey(core, s, c)
 	}
 	core := chainCore(s.Model, c)
-	core.Connect(db)
+	if !s.Unconnected {
+		core.Connect(db)
+	}
 	q := s.chainQuery
 	if q.Limit != nil && s.Offset > 0 {
 		q.Limit = &chainLimit{Offset: s.Offset, Count: q.Limit.Count}
@@ -1046,18 +1051,24 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 		}
 		return jsonOutcome(groups.ToArray()), nil
 	case s.Plan:
-		var limit chainLimit
-		if s.Limit != nil {
-			limit = *s.Limit
+		var page chainPlanPage
+		if s.PlanPage != nil {
+			page = *s.PlanPage
+		} else {
+			var limit chainLimit
+			if s.Limit != nil {
+				limit = *s.Limit
+			}
+			if limit.Count <= 0 {
+				return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
+			}
+			page = chainPlanPage{Page: limit.Offset/limit.Count + 1, PerPage: limit.Count}
 		}
-		if limit.Count <= 0 {
-			return outcome{}, fmt.Errorf("a plan needs a limit count above 0")
-		}
-		steps, err := core.GetPagePlanSteps(limit.Offset/limit.Count+1, limit.Count)
+		steps, err := core.GetPagePlanSteps(page.Page, page.PerPage)
 		if err != nil {
 			return outcome{}, err
 		}
-		return jsonOutcome(chainPlanSteps(steps, s.PlanCount)), nil
+		return jsonOutcome(chainPlanSteps(steps, s.PlanCount, s.PlanSQL)), nil
 	case s.Page:
 		var limit chainLimit
 		if s.Limit != nil {
@@ -1191,9 +1202,15 @@ func relatedTableRows(p *tableRow, rel *tableRelation) ([]*tableRow, error) {
 	return []*tableRow{child}, nil
 }
 
+// chainPlanPage is the page and the size that a plan step passes to GetPagePlanSteps as they are, refused values included.
+type chainPlanPage struct {
+	Page    int `json:"page"`
+	PerPage int `json:"per_page"`
+}
+
 // chainPlanSteps is the role and the tables of each step, with how many times its upper-cased statement holds each text of
-// plan_count.
-func chainPlanSteps(steps []orm.QueryPlanStep, texts []string) []any {
+// plan_count, and its statement when withSQL is set.
+func chainPlanSteps(steps []orm.QueryPlanStep, texts []string, withSQL bool) []any {
 	out := make([]any, len(steps))
 	for i, step := range steps {
 		sql := strings.ToUpper(step.SQL)
@@ -1201,7 +1218,11 @@ func chainPlanSteps(steps []orm.QueryPlanStep, texts []string) []any {
 		for _, text := range texts {
 			count[text] = strings.Count(sql, text)
 		}
-		out[i] = map[string]any{"role": step.Role, "tables": step.Tables, "count": count}
+		shown := map[string]any{"role": step.Role, "tables": step.Tables, "count": count}
+		if withSQL {
+			shown["sql"] = step.SQL
+		}
+		out[i] = shown
 	}
 	return out
 }
