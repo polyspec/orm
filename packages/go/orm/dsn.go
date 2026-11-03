@@ -3,10 +3,18 @@ package orm
 import (
 	"net"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+)
+
+// sqlitePragma and sqliteBusyTimeout are the forms of a _pragma parameter: name(value), and a whole number of
+// milliseconds for busy_timeout (docs/spec/config.md, CFG-12).
+var (
+	sqlitePragma      = regexp.MustCompile(`^[a-z_]+\([A-Za-z0-9_]+\)$`)
+	sqliteBusyTimeout = regexp.MustCompile(`^busy_timeout\([0-9]+\)$`)
 )
 
 // sqliteBusyTimeoutMs is the time in milliseconds a SQLite connection waits
@@ -99,7 +107,7 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	case "sqlite":
 		// url.Parse percent-decodes the path and rejects an invalid escape.
 		path := u.Path
-		if !strings.HasPrefix(path, "/") {
+		if !strings.HasPrefix(path, "/") || path == "/" {
 			return parsedDSN{}, configErr("sqlite DSN must include an absolute database path")
 		}
 		if strings.ContainsRune(path, 0) {
@@ -114,6 +122,11 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		// does not accept _txlock.
 		if q.Has("_txlock") {
 			return parsedDSN{}, configErr("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE")
+		}
+		for _, pragma := range q["_pragma"] {
+			if !sqlitePragma.MatchString(pragma) || (strings.HasPrefix(pragma, "busy_timeout(") && !sqliteBusyTimeout.MatchString(pragma)) {
+				return parsedDSN{}, configErr("sqlite DSN _pragma %s is invalid", pragma)
+			}
 		}
 		pragmas := strings.Join(q["_pragma"], ",")
 		if !strings.Contains(pragmas, "busy_timeout") {

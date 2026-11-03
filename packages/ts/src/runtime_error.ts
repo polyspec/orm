@@ -15,6 +15,11 @@ export class OrmError extends Error {
   }
 }
 
+/** The retryable DEADLOCK error (INT-48): a transaction whose callback fails with it runs again. */
+export function transactionConflict(message: string): OrmError {
+  return new OrmError(codes.DEADLOCK, message);
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

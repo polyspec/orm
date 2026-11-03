@@ -23,13 +23,13 @@ final class Listen
                 'a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000',
             );
         }
-        $st = $db->pdo()->prepare('SELECT pg_notify(?, ?)');
-        try {
-            $st->execute([$channel, $payload]);
-        } catch (\PDOException $e) {
-            throw $db->driverError($e);
-        }
-        $st->closeCursor();
+        $db->fetch(
+            StatementEvent::UTILITY,
+            [],
+            $db->transactionNumber(),
+            'SELECT pg_notify($1, $2)',
+            [$channel, $payload],
+        );
     }
 
     /** Opens a LISTEN subscription on channel on a connection of its own, outside the connection's PDO (DIA-194). */

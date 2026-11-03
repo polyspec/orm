@@ -1,0 +1,43 @@
+dbspec 1 shop
+
+table service_member {
+  id i64 identity
+  rank i16 default 3
+  key uuid
+  opens time(3) null
+  audit_seq i64
+  deleted_at datetime(6) null
+  primary key (id)
+  index ix_service_member_audit (audit_seq)
+  foreign key fk_service_member_audit (audit_seq) references member_audit (seq) on delete restrict on update restrict
+  settings {
+    entity member
+    soft_delete deleted_at
+    audit into member_history column audit_seq references member_audit action change previous previous_audit_seq
+  }
+}
+
+table member_history {
+  history_id i64 identity
+  change varchar(8)
+  previous_audit_seq i64 null
+  id i64
+  rank i16
+  key uuid
+  opens time(3) null
+  audit_seq i64
+  deleted_at datetime(6) null
+  primary key (history_id)
+  settings {
+    immutable
+  }
+}
+
+table member_audit {
+  seq i64 identity
+  actor varchar(64)
+  primary key (seq)
+  settings {
+    entity member_record
+  }
+}
