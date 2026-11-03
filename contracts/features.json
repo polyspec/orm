@@ -98,10 +98,8 @@
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-        "packages/python/tests/connection_utc.py",
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/dsn_features.mjs",
-        "packages/ts/tests/connection_utc.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/statement_timeout.mjs",
         "packages/ts/tests/pool_bounds.mjs",
@@ -141,7 +139,6 @@
         "packages/python/tests/test_driver_cells.py",
         "packages/python/tests/connection_config.py",
         "packages/python/tests/replica.py",
-        "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -590,15 +587,6 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/replica.py",
-            "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "connection-utc-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.connection_utc",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/connection_utc.py",
             "packages/python/src/polyspec/orm/database.py"
           ]
         },

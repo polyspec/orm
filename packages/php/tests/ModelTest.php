@@ -938,75 +938,6 @@ class ModelTest extends TestCase
     }
 
     /**
-     * Writes the values of another zone as UTC wall clock and reads them as UTC, and the clock default and
-     * the text equality filter use the same UTC rule.
-     */
-    private static function connectionUtc(Db $db): void
-    {
-        $f = self::seed($db);
-        $midnight = new DateTimeImmutable('2026-01-02 00:00:00', new DateTimeZone('+09:00'));
-        $utcStart = $midnight->setTimezone(new DateTimeZone('UTC'));
-        $before = new DateTimeImmutable('now');
-        $created = (new Author())($db)
-            ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
-            ->setServiceRegionSeq($f['module']->getSeq())->setServiceMemberSeq($f['member']->getSeq())
-            ->setStartDt($midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
-                ->setEndDt($midnight->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'))
-                ->create();
-        $row = (new Author())($db)->getBySeq($created->getSeq());
-        self::check($row !== null, 'row');
-        $start = $row->getStartDt();
-        self::check(
-            $start == $midnight
-                && $start->getOffset() === 0
-                && $start->format(DATE_ATOM) === $midnight->setTimezone(new DateTimeZone('UTC'))->format(DATE_ATOM),
-            'start_dt ' . $start->format(DATE_ATOM)
-        );
-        $ts = $row->getCreatedTs();
-        self::check(
-            abs($ts->getTimestamp() - $before->getTimestamp()) < 60,
-            'created_ts ' . $ts->format(DATE_ATOM) . ' at ' . $before->format(DATE_ATOM)
-        );
-        self::check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
-        self::check(
-            (new Author())($db)->startDt(
-                $utcStart->format('Y-m-d H:i:s')
-            )->getCount() === 1,
-            'equality filter'
-        );
-        self::check(
-            (new Author())($db)->startDt($utcStart->format('Y-m-d H:i:s'))->getCount() === 1,
-            'equality filter by text'
-        );
-        self::check(
-            (new Author())($db)->startDt($utcStart->format('Y-m-d\\TH:i:s') . '.0')->getCount() === 1,
-            'equality filter by text with fraction'
-        );
-        self::check(
-            (new Author())($db)->startDt([
-                $utcStart->format('Y-m-d H:i:s'),
-                $utcStart->modify('+1 day')->format('Y-m-d H:i:s')
-            ])->getCount() === 1,
-            'in filter by text'
-        );
-        self::check(
-            (new Author())($db)->betweenStartDt([
-                $utcStart->format('Y-m-d H:i:s'),
-                $utcStart->format('Y-m-d H:i:s') . '.5'
-            ])->getCount() === 1,
-            'between filter by text'
-        );
-        if ($db->driver() === 'sqlite') {
-            try {
-                (new Author())($db)->startDt('2026-01-02')->getCount();
-                self::check(false, 'date-only datetime text');
-            } catch (OrmException $e) {
-                self::check($e->code_ === Code::CODEC_ENCODE, 'date-only datetime text: ' . $e->getMessage());
-            }
-        }
-    }
-
-    /**
      * Updates every row of the table in an open transaction of another connection, taking the lock on that row (MySQL,
      * PostgreSQL). Rollback releases the lock.
      */
@@ -1143,18 +1074,6 @@ class ModelTest extends TestCase
     {
         foreach (['mysql', 'postgres'] as $driver) {
             yield $driver => [$driver];
-        }
-    }
-
-    /**
-     * @return iterable<string, array{string, string}> the connection time zones on each driver, named <zone>/<driver>
-     */
-    public static function zones(): iterable
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            foreach (['', '+00:00', 'UTC', '+09:00', 'Asia/Seoul'] as $zoneName) {
-                yield "$zoneName/$driver" => [$zoneName, $driver];
-            }
         }
     }
 
@@ -1318,29 +1237,6 @@ class ModelTest extends TestCase
             }
         });
         self::check($inside !== null && $inside->code_ === Code::CONFIG, 'install inside a transaction returns CONFIG');
-    }
-
-    #[DataProvider('zones')]
-    // Requirements: CFG-2, CFG-7.
-    public function testConnectionTimeZone(string $zoneName, string $driver): void
-    {
-        // The test of DSL-141, DIA-57 (docs/spec).
-        $base = self::$targets[$driver];
-        $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
-        // The UTC connection installs a schema, so it uses its own case database; the refused connection uses the
-        // shared database.
-        $plain = preg_replace('/[?&]timezone=[^&]*/', '', $utc ? self::caseDsn($driver) : $base);
-        $dsn = $zoneName === '' ? $plain : $plain . (
-            str_contains($plain, '?') ? '&' : '?'
-        ) . 'timezone=' . rawurlencode($zoneName);
-        if ($utc) {
-            self::connectionUtc(self::database($driver, $dsn));
-        } else {
-            self::check(
-                self::code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG,
-                'a time zone other than UTC'
-            );
-        }
     }
 
     // A connection to the primary and one to its replica work side by side. A

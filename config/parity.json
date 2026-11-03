@@ -4797,73 +4797,243 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestConnectionsUseUTC"
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/connection_is_utc_by_default"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/connection_timezone_utc"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionMysql/connection_timezone_offset"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/connection_is_utc_by_default"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/connection_timezone_utc"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionPostgres/connection_timezone_offset"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/connection_is_utc_by_default"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/connection_timezone_utc"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/connection_timezone_offset"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_connection_test.go",
+          "id": "TestRecipeDsnConnectionSqlite/sqlite_refuses_a_date_only_datetime"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConnectionTimeZone"
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testMysql with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testPostgres with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnConnectionRecipeTest.php",
+          "id": "DsnConnectionRecipeTest::testSqlite with data set \"sqlite_refuses_a_date_only_datetime\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-          "id": "ConnectionUtcNativeTest::testNativeConnectionsUseUtc"
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testMysql with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testPostgres with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"connection_is_utc_by_default\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"connection_timezone_utc\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"connection_timezone_offset\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
+          "id": "DsnConnectionRecipeTestExtensionTest::testSqlite with data set \"sqlite_refuses_a_date_only_datetime\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/sqlite/default"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "connection_is_utc_by_default"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/sqlite/utc"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "connection_timezone_utc"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/sqlite/offset"
+          "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
+          "id": "connection_timezone_offset"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/mysql/default"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/mysql/utc"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/mysql/offset"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/postgres/default"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/postgres/utc"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/connection_utc.mjs",
-          "id": "connection/utc-runtime/postgres/offset"
+          "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+          "id": "sqlite_refuses_a_date_only_datetime"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_connections_use_utc"
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "connection_is_utc_by_default"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "connection_timezone_utc"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_mysql.py",
+          "id": "connection_timezone_offset"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_connection_sqlite.py",
+          "id": "sqlite_refuses_a_date_only_datetime"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "connections_use_utc"
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::connection_is_utc_by_default"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::connection_timezone_utc"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
+          "id": "dsn_connection_mysql::connection_timezone_offset"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::connection_is_utc_by_default"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::connection_timezone_utc"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
+          "id": "dsn_connection_postgres::connection_timezone_offset"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::connection_is_utc_by_default"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::connection_timezone_utc"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::connection_timezone_offset"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+          "id": "dsn_connection_sqlite::sqlite_refuses_a_date_only_datetime"
         }
       ]
     },

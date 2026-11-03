@@ -258,6 +258,12 @@ var mysqlCaseDSN = regexp.MustCompile(`^mysql://([^@/]+)@[^/]+/([^?]+)`)
 // the MySQL case database through the socket ORM_TEST_MYSQL_SOCKET (CFG-10, a MySQL-only parameter, CFG-19), and other text
 // is the DSN it names.
 func connectDSN(dsn, database, caseDSN string) (string, error) {
+	if query, ok := strings.CutPrefix(dsn, "case?"); ok {
+		if strings.Contains(caseDSN, "?") {
+			return caseDSN + "&" + query, nil
+		}
+		return caseDSN + "?" + query, nil
+	}
 	switch dsn {
 	case "", "case":
 		return caseDSN, nil
@@ -1595,7 +1601,9 @@ var declaredPrecision = regexp.MustCompile(`\(([0-9]+)\)`)
 // cannot be decided fails the step.
 func plainTime(v time.Time, nativeType, database string) (any, error) {
 	kind := temporalKind(nativeType)
-	v = v.UTC()
+	if v.Location() != time.UTC {
+		return nil, fmt.Errorf("the time value %s reads in %s, not in UTC (CFG-2)", v, v.Location())
+	}
 	if kind == "date" {
 		return map[string]any{"date": v.Format("2006-01-02")}, nil
 	}

@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e3fee2618acfa68a366f1dd12577ae435d3ad682118182b09093017dc0fc520c -->
+<!-- source-sha256: 8f2abd1c75c85a6d58ad5a65c869f1da8845ad29cbf976bb750d79cd3578f762 -->
 # 변경 이력
 
 ## Unreleased
@@ -399,6 +399,7 @@
 - repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
+- UTC 연결 동작(CFG-2, DIA-57, DSL-141)을 모든 client에서 `dsn_connection` recipe의 사례로 실행하고, `model.connect`가 `case?<query>`를 받는다. TLS handshake가 인증서를 거부한 TypeScript MySQL 연결은 이제 CFG-16대로 `DRIVER`가 아니라 `CONFIG`를 돌려준다.
 
 ## 0.0.21
 
