@@ -5749,9 +5749,10 @@
         },
         {
           "id": "param-uses-typescript",
-          "command": "node packages/ts/tests/param-uses.mjs",
+          "command": "node packages/ts/tests/coverage_planner.mjs",
           "shard": "other",
           "inputs": [
+            "packages/ts/tests/coverage_planner.mjs",
             "packages/ts/src/engine/params.ts"
           ]
         },
