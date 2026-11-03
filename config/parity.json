@@ -26268,23 +26268,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_generation_test.go",
-          "id": "TestCoverageModelGenerationCheck"
+          "test": "packages/go/orm/recipe_generator_test.go",
+          "id": "TestRecipeGeneratorNone/check_reports_differences_without_writing"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelGenerationTest.php",
-          "id": "CoverageModelGenerationTest::testModelGenerationCheck"
+          "test": "packages/php/tests/GeneratorTest.php",
+          "id": "GeneratorTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+          "id": "GeneratorTestExtensionTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_generation.mjs",
-          "id": "model_generation_check"
+          "test": "packages/ts/tests/generator-none.test.mjs",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "python",
@@ -26293,8 +26293,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/generator_none.rs",
+          "id": "generator_none::check_reports_differences_without_writing"
         }
       ]
     },
