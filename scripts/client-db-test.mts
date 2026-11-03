@@ -8,7 +8,8 @@
 // With ORM_CLIENT_DB_LANES=parallel the clients run together, one lane each. Each case creates and uses its own database,
 // so lanes that overlap use no database together. A line of a lane carries the prefix [<client>], and the script ends with
 // 1 after every lane when one failed. The run through the poolers (client-pooler-check) runs the clients in turn, since the
-// poolers limit their server connections (ProxySQL 4, PgBouncer 4 per database).
+// poolers limit their server connections (ProxySQL 4, PgBouncer 4 per database); with ORM_CLIENT_DB_POOLER=1 every lane also runs the
+// recipe units with a database.
 //
 // Rust builds and runs the workspace tests once with ORM_RUST_TEST_FEATURES (Makefile: test-faults and live-db); the
 // rollback fault cases and the live-db cases of orm-build are in that run.
@@ -84,6 +85,39 @@ const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool', 'aes_rotation'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
+// The recipe units with a database run through the poolers in every lane, since a statement a client sends through a pooler is user
+// behaviour in every client (T343-12). Go and Rust run them in their whole runs; the other lanes list them here, one command per unit
+// of config/parity.json, so a new unit is in the pooler lanes when it is declared. No unit is excluded: every one passed alone through
+// both poolers, and a unit that needs a direct server gets a declared exclusion here with its reason.
+type ParityUnit = ReturnType<typeof readParityConfig>['units'][number];
+const NAMED_PHP_TEST = /::(\w+)$/;
+export function poolerRecipeUnits(units: readonly ParityUnit[]): ParityUnit[] {
+  return units.filter(unit => unit.kind === 'suite' && unit.file?.startsWith('contracts/fixtures/') && /-(mysql|postgres)$/.test(unit.id));
+}
+const phpUnitFilter = (symbol: string | undefined, id: string): string => {
+  const method = symbol === undefined ? undefined : NAMED_PHP_TEST.exec(symbol)?.[1];
+  if (method === undefined) throw new Error(`client-db-test: the PHP binding of ${id} names no test method`);
+  return method;
+};
+export function poolerRecipeCommands(lane: 'php' | 'php-extension' | 'typescript' | 'python', units: readonly ParityUnit[], extensionLibrary = PHP_EXTENSION_LIBRARY): Command[] {
+  return poolerRecipeUnits(units).map(unit => {
+    const binding = unit.bindings?.find(item => item.implementation === lane);
+    if (binding?.test === undefined) throw new Error(`client-db-test: the unit ${unit.id} has no ${lane} test`);
+    const test = binding.test;
+    switch (lane) {
+      case 'php':
+        return { program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--filter', phpUnitFilter(binding.symbol, unit.id), test], cwd: root, env: { ORM_PHP_MODE: 'library' } };
+      case 'php-extension':
+        return { program: 'node', args: [KIT_RUN_TESTS, 'phpunit', '--php-extension', extensionLibrary, '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter', phpUnitFilter(binding.symbol, unit.id), test], cwd: root, env: { ORM_PHP_MODE: 'extension' } };
+      case 'typescript':
+        return { program: 'node', args: ['--test', test], cwd: root };
+      case 'python':
+        return { program: variable('ORM_PYTHON'), args: ['-m', test.replace(/\.py$/, '').replaceAll('/', '.')], cwd: root };
+    }
+  });
+}
+const parityUnits = (): ParityUnit[] => readParityConfig(join(root, 'config/parity.json')).units;
+const poolerRecipes = (lane: 'php' | 'php-extension' | 'typescript' | 'python'): Command[] => process.env['ORM_CLIENT_DB_POOLER'] === '1' ? poolerRecipeCommands(lane, parityUnits()) : [];
 /** The value of TARGET_POOL_SIZE, the connection pool of each Rust integration test, read from its declaration (T343-1). */
 export function rustTargetPoolSize(repository: string): number {
   const source = readFileSync(resolve(repository, 'packages/rust/tests/tests/integration_program/main.rs'), 'utf8');
@@ -177,23 +211,24 @@ const RUST_TESTS: Command = {
   env: { ORM_BUILD_TEST_ROOT: resolve(root, 'packages/rust/build') },
 };
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, ...(['php', 'php-extension', 'typescript', 'python'] as const).flatMap(lane => poolerRecipeCommands(lane, parityUnits()))].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
-  php: write => keepAll(PHP, write),
+  php: write => keepAll([...PHP, ...poolerRecipes('php')], write),
   'php-extension': async write => {
     try {
       // The tests run only when the build passes; a failed build is a failure of the lane.
       const built = await run(PHP_EXTENSION_BUILD, write);
       if (built !== 0) return [`the build of the PHP extension (exit ${built}), so its tests did not run`];
-      return await keepAll(PHP_EXTENSION, write);
+      return await keepAll([...PHP_EXTENSION, ...poolerRecipes('php-extension')], write);
     } finally {
       rmSync(PHP_EXTENSION_RUN, { recursive: true, force: true });
     }
   },
-  typescript: write => sqliteTest(write),
-  python: write => keepAll(PYTHON, write),
+  // sqliteTest builds, so the recipes read that build, and a failed test of either list does not stop the other.
+  typescript: async write => [...await sqliteTest(write), ...await keepAll(poolerRecipes('typescript'), write)],
+  python: write => keepAll([...PYTHON, ...poolerRecipes('python')], write),
   rust: write => keepAll([RUST_TESTS], write),
 };
 

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every lane of `client-pooler-check` runs the recipe units with a database through the poolers: the PHP, PHP extension, TypeScript and Python lanes take them from `config/parity.json`, one command per unit.
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - A budget stop of a read of the Rust catalog returns `CATALOG_LIMIT` at once, through ProxySQL too: on MySQL and PostgreSQL the read returns without a `ROLLBACK` and its connection closes.
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
