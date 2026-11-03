@@ -22,6 +22,8 @@ final class Registry
     private static array $models = [];
     /** @var array<string, RuntimeModel> manifest hash => runtime model */
     private static array $runtime = [];
+    /** @var array<string, array<string, array>> manifest hash => the parsed entities that generated code holds */
+    private static array $parsed = [];
 
     /**
      * generated bootstrap.php registers the manifest hash and manifest text before the model
@@ -43,6 +45,21 @@ final class Registry
         self::$models[$hash] ??= [];
         // This set's runtime model is now made from the generated class's meta().
         unset(self::$runtime[$hash]);
+    }
+
+    /**
+     * generated bootstrap.php hands over the parsed runtime model of its set, so that the process does not parse
+     * the manifest. It is kept only for a manifest text registered under the same hash and in the runtime model
+     * format of this library; otherwise it is ignored and the process parses the manifest.
+     *
+     * @param array<string, array> $entities
+     */
+    public static function parsed(string $hash, int $format, array $entities): void
+    {
+        if ($format === RuntimeModel::FORMAT && isset(self::$texts[$hash])) {
+            self::$parsed[$hash] = $entities;
+            unset(self::$runtime[$hash]);
+        }
     }
 
     /**
@@ -101,7 +118,8 @@ final class Registry
                 $hash,
                 self::$texts[$hash],
                 array_values(self::$models[$hash]),
-                self::$externals[$hash] ?? ''
+                self::$externals[$hash] ?? '',
+                self::$parsed[$hash] ?? null
             );
         }
         $text = self::$texts[$hash] ?? throw self::unloaded($hash);

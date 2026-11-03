@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- orm-gen이 생성하는 PHP 코드는 집합의 parse된 runtime model을 가지므로, 새 PHP process의 요청은 manifest를 parse하지 않는다. bench 집합의 model을 읽는 php-fpm 요청은 opcode cache에서 5.04 ms 대신 0.53 ms가 걸린다. 다른 manifest hash나 다른 runtime model 형식의 데이터는 무시하고 전처럼 parse하며, `meta()` 검사는 유지한다(DBS-177, DBS-178, T357).
 - `CONTRIBUTING.md`가 새 checkout의 부트스트랩을 실제로 동작하는 순서로 적는다. Makefile이 kit을 include하므로 `devEngines`의 npm으로 `npm ci`를 먼저 실행한다.
 - PHP와 PHP extension의 MySQL catalog는 연결 하나, PDO만 쥐고 mysqli를 쓰지 않는다 (INT-157): `ext-mysqli`와 `OrmException::fromMysqli`가 사라졌다. grid query는 모든 결과 열의 UNSIGNED flag와 charset을 그 연결의 임시 표로 서버에서 읽으므로 식과 별칭도 다른 runtime과 같은 타입을 받는다.
 - catalog의 described read는 모든 runtime에서 MySQL TIMESTAMP, PostgreSQL timestamptz, timetz 열의 NULL이 아닌 값을 `CATALOG_VALUE`로 거부하고, CHECK가 없는 SQLite TIME을 CHECK가 없는 DATETIME처럼 precision 0으로 읽으며, SQLite TIMESTAMP의 저장된 텍스트를 돌려준다 (INT-103).

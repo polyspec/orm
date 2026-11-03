@@ -599,34 +599,37 @@ static str difference_path(zval *got, zval *want, str path) {
 }
 PHP_METHOD(Polyspec_Orm_RuntimeModel, fromModels) {
     zend_string *hash, *text, *external = NULL;
-    zval *classes;
-    ZEND_PARSE_PARAMETERS_START(3, 4)
-    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(classes) Z_PARAM_OPTIONAL Z_PARAM_STR(external) ZEND_PARSE_PARAMETERS_END();
+    zval *classes, *parsed = NULL;
+    ZEND_PARSE_PARAMETERS_START(3, 5)
+    Z_PARAM_STR(hash) Z_PARAM_STR(text) Z_PARAM_ARRAY(classes) Z_PARAM_OPTIONAL Z_PARAM_STR(external) Z_PARAM_ARRAY_OR_NULL(parsed) ZEND_PARSE_PARAMETERS_END();
     ENTER();
-    zval docs, args[2], built;
-    ZVAL_UNDEF(&docs);
+    zval built;
     ZVAL_UNDEF(&built);
-    ZVAL_STR_COPY(&args[0], text);
-    if (external)
-        ZVAL_STR_COPY(&args[1], external);
-    else
-        ZVAL_EMPTY_STRING(&args[1]);
-    zend_call_method_with_2_params(NULL, polyspec_runtime_model_ce, NULL, "loadset", &docs, &args[0], &args[1]);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    if (EG(exception)) {
-        LEAVE();
-        RETURN_THROWS();
+    if (parsed == NULL) {
+        zval docs, args[2];
+        ZVAL_UNDEF(&docs);
+        ZVAL_STR_COPY(&args[0], text);
+        if (external)
+            ZVAL_STR_COPY(&args[1], external);
+        else
+            ZVAL_EMPTY_STRING(&args[1]);
+        zend_call_method_with_2_params(NULL, polyspec_runtime_model_ce, NULL, "loadset", &docs, &args[0], &args[1]);
+        zval_ptr_dtor(&args[0]);
+        zval_ptr_dtor(&args[1]);
+        if (EG(exception)) {
+            LEAVE();
+            RETURN_THROWS();
+        }
+        documentv dv = {0};
+        if (in_documents(&docs, &dv, "RuntimeModel::fromModels"))
+            build_docs(&dv, &built);
+        zval_ptr_dtor(&docs);
+        if (EG(exception)) {
+            LEAVE();
+            RETURN_THROWS();
+        }
     }
-    documentv dv = {0};
-    if (in_documents(&docs, &dv, "RuntimeModel::fromModels"))
-        build_docs(&dv, &built);
-    zval_ptr_dtor(&docs);
-    if (EG(exception)) {
-        LEAVE();
-        RETURN_THROWS();
-    }
-    zval *manifest = prop(&built, "entities");
+    zval *manifest = parsed != NULL ? parsed : prop(&built, "entities");
     zval entities;
     array_init(&entities);
     zval *cl;

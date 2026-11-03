@@ -145,6 +145,12 @@ final class Generator
                 ? "// The tables that the set uses from external documents, which other sets own.\n"
                     . "const EXTERNAL_TEXT = " . self::text($m->externalText) . ";\n\n"
                 : '')
+            . "// The runtime model format of the parsed data below.\n"
+            . "const PARSED_FORMAT = " . RuntimeModel::FORMAT . ";\n\n"
+            . "// The manifestHash of the document set that the parsed data below describes.\n"
+            . "const PARSED_HASH = " . self::str($m->manifestHash) . ";\n\n"
+            . "// The parsed runtime model of the set, per entity: a new process reads it in place of a parse.\n"
+            . "const PARSED_ENTITIES = " . self::export($m->entities, 0) . ";\n\n"
             . "/** The generated schema value: install takes it to create the tables and register the set. */\n"
             . "function schema(): Schema\n{\n    return new Schema(MANIFEST_TEXT, MANIFEST_HASH"
             . ($external ? ', EXTERNAL_TEXT' : '') . ");\n}\n\n"
@@ -155,7 +161,8 @@ final class Generator
         $boot = $header
             . "use Polyspec\\Orm\\Registry;\n\n"
             . "require_once __DIR__ . '/schema_declarations.php';\n\n"
-            . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n";
+            . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n"
+            . "Registry::parsed(PARSED_HASH, PARSED_FORMAT, PARSED_ENTITIES);\n";
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
             if (isset($files["$class.php"])) {

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP code that orm-gen generates holds the parsed runtime model of its set, so a request of a new PHP process does not parse the manifest: a php-fpm request that reads the model of the bench set takes 0.53 ms instead of 5.04 ms with the opcode cache. Data of another manifest hash or another runtime model format is ignored and the process parses as before; the check of `meta()` holds (DBS-177, DBS-178, T357).
 - `CONTRIBUTING.md` states the bootstrap of a fresh checkout in an order that works: `npm ci` with the npm of `devEngines` first, since the Makefile includes kit.
 - The MySQL catalog of PHP and the PHP extension holds one connection, PDO, and uses no mysqli (INT-157): `ext-mysqli` and `OrmException::fromMysqli` are gone. A grid query reads the UNSIGNED flag and the charset of every result column from the server, through a temporary table of the query on that connection, so expressions and aliases are typed as in the other runtimes.
 - A described catalog read refuses a non-NULL value of a MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column with `CATALOG_VALUE` in every runtime, reads a CHECK-less SQLite TIME at precision 0 as a CHECK-less DATETIME reads, and returns the stored text of a SQLite TIMESTAMP (INT-103).

@@ -2764,6 +2764,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     static const char *const host_stages[] = {"aes", "hex", "ip"};
     array_constant(runtime_model_ce, "STYLED_STAGES", styled_stages, NULL, COUNT(styled_stages));
     array_constant(runtime_model_ce, "HOST_STAGES", host_stages, NULL, COUNT(host_stages));
+    zend_declare_class_constant_long(runtime_model_ce, "FORMAT", sizeof("FORMAT") - 1, POLYSPEC_RUNTIME_MODEL_FORMAT);
     polyspec_runtime_model_register(runtime_model_ce);
     zend_class_entry *registry_ce = register_class_Polyspec_Orm_Registry();
     zend_class_entry *schema_ce = register_class_Polyspec_Orm_Schema();

@@ -541,6 +541,7 @@
         "packages/php/src/Generator.php",
         "packages/php/src/ScanVisitor.php",
         "packages/php/tests/OrmGenCliTest.php",
+        "packages/php/tests/OrmGenParsedModelTest.php",
         "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenScanParityTest.php",
         "packages/php/tests/OrmGenPackageTest.php",

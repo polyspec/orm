@@ -43490,6 +43490,94 @@
           "symbol": "generator_scan_none"
         }
       ]
+    },
+    {
+      "id": "php-generated-model-reads-without-parsing",
+      "kind": "feature",
+      "requirements": [
+        "DBS-177"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testAGeneratedSetIsReadWithoutParsingItsManifest"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testAManifestThatDoesNotParseIsNotParsedThroughItsOwnData"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testDataOfAnotherManifestMakesTheProcessParse"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testDataOfAnotherFormatMakesTheProcessParse"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenParsedModelTest.php",
+          "id": "OrmGenParsedModelTest::testTheFormatNamesWhatBuildMakes"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "php-extension-generated-model-reads-without-parsing",
+      "kind": "feature",
+      "requirements": [
+        "DBS-178"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testAGeneratedSetIsReadWithoutParsingItsManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testAManifestThatDoesNotParseIsNotParsedThroughItsOwnData"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testDataOfAnotherManifestMakesTheProcessParse"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testDataOfAnotherFormatMakesTheProcessParse"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
+          "id": "OrmGenParsedModelTestExtensionTest::testTheFormatNamesWhatBuildMakes"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     }
   ],
   "errors": {

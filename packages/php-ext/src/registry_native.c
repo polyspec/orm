@@ -1,4 +1,5 @@
 #include "registry_native.h"
+#include "runtime_model.h"
 
 zend_class_entry *polyspec_registry_ce;
 zend_class_entry *polyspec_schema_ce;
@@ -199,6 +200,27 @@ ZEND_METHOD(Polyspec_Orm_Registry, generated)
     RETURN_NULL();
 }
 
+ZEND_METHOD(Polyspec_Orm_Registry, parsed)
+{
+    zend_string *hash;
+    zend_long format;
+    zval *entities;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STR(hash)
+        Z_PARAM_LONG(format)
+        Z_PARAM_ARRAY(entities)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *texts = static_array(polyspec_registry_ce, "texts");
+    if (format != POLYSPEC_RUNTIME_MODEL_FORMAT || texts == NULL || zend_hash_find(Z_ARRVAL_P(texts), hash) == NULL) RETURN_NULL();
+    zval zv;
+    ZVAL_COPY(&zv, entities);
+    if (!write_map(polyspec_registry_ce, "parsed", hash, &zv)) { zval_ptr_dtor(&zv); RETURN_THROWS(); }
+    zval_ptr_dtor(&zv);
+    zval *runtime = static_array(polyspec_registry_ce, "runtime");
+    if (runtime != NULL && !delete_map_key(polyspec_registry_ce, "runtime", hash)) RETURN_THROWS();
+    RETURN_NULL();
+}
+
 ZEND_METHOD(Polyspec_Orm_Registry, schema)
 {
     zval *schema;
@@ -317,17 +339,20 @@ ZEND_METHOD(Polyspec_Orm_Registry, model)
     if (external == NULL) external = NULL;
     zval *models = static_array(polyspec_registry_ce, "models");
     zval *set = models == NULL ? NULL : zend_hash_find(Z_ARRVAL_P(models), hash);
-    zval args[4], result;
+    zval args[5], result;
     ZVAL_STR_COPY(&args[0], hash); ZVAL_COPY(&args[1], text);
-    // args[2], the model classes, is written only when classes are registered; every path releases all four.
+    // args[2], the model classes, is written only when classes are registered; every path releases all five.
     ZVAL_UNDEF(&args[2]);
     if (external != NULL) ZVAL_COPY(&args[3], external); else ZVAL_EMPTY_STRING(&args[3]);
+    zval *parsed_map = static_array(polyspec_registry_ce, "parsed");
+    zval *parsed = parsed_map == NULL ? NULL : zend_hash_find(Z_ARRVAL_P(parsed_map), hash);
+    if (parsed != NULL) ZVAL_COPY(&args[4], parsed); else ZVAL_NULL(&args[4]);
     bool ok;
     if (set != NULL && zend_hash_num_elements(Z_ARRVAL_P(set)) > 0) {
         array_init(&args[2]);
         zval *cls;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(set), cls) { zval copy; ZVAL_COPY(&copy, cls); add_next_index_zval(&args[2], &copy); } ZEND_HASH_FOREACH_END();
-        ok = call_runtime("fromModels", &result, 4, args);
+        ok = call_runtime("fromModels", &result, 5, args);
     } else {
         zval load_args[2], docs;
         ZVAL_COPY(&load_args[0], &args[1]); ZVAL_COPY(&load_args[1], &args[3]);
@@ -335,7 +360,7 @@ ZEND_METHOD(Polyspec_Orm_Registry, model)
         zval_ptr_dtor(&load_args[0]); zval_ptr_dtor(&load_args[1]);
         if (ok) { zval build_args[1]; ZVAL_COPY(&build_args[0], &docs); ok = call_runtime("build", &result, 1, build_args); zval_ptr_dtor(&build_args[0]); zval_ptr_dtor(&docs); }
     }
-    for (int i = 0; i < 4; i++) zval_ptr_dtor(&args[i]);
+    for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
     if (!ok) RETURN_THROWS();
     zval cache_value; ZVAL_COPY(&cache_value, &result);
     if (!write_map(polyspec_registry_ce, "runtime", hash, &cache_value)) { zval_ptr_dtor(&cache_value); zval_ptr_dtor(&result); RETURN_THROWS(); }

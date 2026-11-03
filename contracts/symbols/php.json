@@ -13103,6 +13103,10 @@
     "exported": false,
     "signature": "private static array"
   },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::$parsed": {
+    "exported": false,
+    "signature": "private static array"
+  },
   "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::$runtime": {
     "exported": false,
     "signature": "private static array"
@@ -13130,6 +13134,10 @@
   "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::models": {
     "exported": true,
     "signature": "public static function models(string $hash): array"
+  },
+  "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::parsed": {
+    "exported": true,
+    "signature": "public static function parsed(string $hash, int $format, array $entities): void"
   },
   "packages/php/src/Registry.php::Polyspec\\Orm\\Registry::register": {
     "exported": true,
@@ -13241,7 +13249,7 @@
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::fromModels": {
     "exported": true,
-    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\"): Polyspec\\Orm\\RuntimeModel"
+    "signature": "public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText=\"\", ?array $parsed=null): Polyspec\\Orm\\RuntimeModel"
   },
   "packages/php/src/RuntimeModel.php::Polyspec\\Orm\\RuntimeModel::loadSet": {
     "exported": true,
