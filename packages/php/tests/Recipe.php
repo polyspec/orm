@@ -3643,6 +3643,10 @@ final class Recipe
             self::chainPredicate($model, '', $q['where'], $build, $context);
         }
         foreach ($q['order'] ?? [] as $entry) {
+            if (is_array($entry) && ($entry['random'] ?? false) === true) {
+                $model->orderByRandom();
+                continue;
+            }
             if (is_string($entry)) {
                 $descending = str_starts_with($entry, '-');
                 $model->{'orderBy' . self::pascal(ltrim($entry, '-')) . ($descending ? 'Desc' : 'Asc')}();

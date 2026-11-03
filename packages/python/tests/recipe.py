@@ -2875,7 +2875,9 @@ class _ChainBuild:
         if "where" in q:
             self.predicate(model, "", q["where"])
         for entry in q.get("order", []):
-            if isinstance(entry, str):
+            if isinstance(entry, dict) and entry.get("random") is True:
+                model.order_by_random()
+            elif isinstance(entry, str):
                 model.core.order_by(entry.removeprefix("-"), entry.startswith("-"), [])
             elif "fn" in entry:
                 model.core.order_by(

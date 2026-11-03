@@ -113,7 +113,10 @@
   "CPX-4",
   "PRT-2",
   "PRT-34",
-  "PRT-77"
+  "PRT-77",
+  "DSL-137",
+  "DIA-11",
+  "DIA-14"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -20962,7 +20965,8 @@
     "DSL-140",
     "DSL-144",
     "DSL-145",
-    "DSL-146"
+    "DSL-146",
+    "DIA-14"
    ],
    "steps": [
     {
@@ -25145,7 +25149,8 @@
    "id": "creates_and_save",
    "requirements": [
     "DSL-104",
-    "DSL-109"
+    "DSL-109",
+    "DIA-11"
    ],
    "steps": [
     {
@@ -48423,6 +48428,106 @@
          }
         ]
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "query_now_and_random_order",
+   "requirements": [
+    "DSL-99",
+    "DSL-137"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "start_dt": {
+          "le": {
+           "fn": "now"
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "",
+        {
+         "seq": {
+          "int": "6"
+         }
+        }
+       ]
+      ]
+     },
+     "order": [
+      {
+       "random": true
+      }
+     ],
+     "pick": [
+      "seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6
+        }
+       ]
       }
      }
     }

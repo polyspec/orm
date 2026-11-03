@@ -9524,6 +9524,9 @@
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9663,6 +9666,9 @@
       "id": "conformance_verification-postgres",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -9802,6 +9808,9 @@
       "id": "conformance_verification-sqlite",
       "kind": "suite",
       "requirements": [
+        "DSL-137",
+        "DIA-11",
+        "DIA-14",
         "FCV-2",
         "FCV-3",
         "FCV-4",
@@ -12884,43 +12893,93 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/functions_physical_test.go",
-          "id": "TestPhysicalQueryForms"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/query_now_and_random_order"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"query_now_and_random_order\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"query_now_and_random_order\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector"
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "query_now_and_random_order"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "query_now_and_random_order"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "coverage_conformance_vector_sqlite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test coverage_conformance_verification",
-            "FEATURE_TEST=coverage_conformance_vector_sqlite"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::query_now_and_random_order"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/functions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"functions\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "functions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "functions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::functions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/creates_and_save"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"creates_and_save\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"creates_and_save\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::creates_and_save"
         }
       ]
     },
