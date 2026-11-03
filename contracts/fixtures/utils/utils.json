@@ -1,12 +1,14 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "CFG-30",
+    "INT-134",
+    "INT-50",
     "INT-51",
     "INT-52",
     "INT-53",
     "INT-61",
-    "INT-73",
-    "INT-134"
+    "INT-73"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -528,6 +530,133 @@
               }
             }
           }
+        }
+      ]
+    },
+    {
+      "id": "session_state_ends_with_the_transaction",
+      "requirements": [
+        "CFG-30",
+        "INT-50",
+        "INT-51"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "model.connect",
+          "as": "other",
+          "pool_size": 2
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm_test.session_state"
+            },
+            {
+              "op": "utils.set_local",
+              "connection": "conn",
+              "name": "ormtest.session",
+              "value": {
+                "text": "kept"
+              }
+            },
+            {
+              "op": "utils.local",
+              "connection": "conn",
+              "name": "ormtest.session",
+              "expect": {
+                "mysql": {
+                  "json": "kept"
+                },
+                "postgres": {
+                  "json": "kept"
+                },
+                "sqlite": {
+                  "json": "kept"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "utils.run",
+          "connection": "conn",
+          "statements": [
+            {
+              "kind": "utility",
+              "tables": [],
+              "sql": {
+                "mysql": "SELECT COALESCE(@`orm.ormtest.session`, '')",
+                "postgres": "SELECT COALESCE(current_setting('ormtest.session', true), '')",
+                "sqlite": "SELECT ''"
+              }
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": ""
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "other",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "other",
+              "name": "orm_test.session_state"
+            }
+          ]
         }
       ]
     }
