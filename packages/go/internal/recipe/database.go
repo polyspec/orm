@@ -426,7 +426,7 @@ func runDatabaseStep(s databaseStep, c *databaseContext) error {
 
 // runStepWith runs a step through op and compares the fields that its expect names.
 func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *databaseContext) (outcome, error)) error {
-	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/schema/recipe.schema.json).
+	// A step with only runs on the databases it names, and its expect names exactly those (scripts/features/recipes.test.mts).
 	if len(s.Only) > 0 && !slices.Contains(s.Only, c.database) {
 		return nil
 	}

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A recipe's expect names exactly the databases that run its step, so a case with `only` no longer states outcomes on databases that never run it (FCV-4, FCV-10).
 - The uses of each parameter, the output columns of a plan, blind index sources, a composite upsert key, the operators of each column type and a request of another manifest are recipe cases of all six runtimes, through the new ops `ir.param_uses` and `planner.columns`; TypeScript and Python now refuse an order comparison on `uuid`, as the others did.
 - The AES envelope, its tampering, a wrong key and the blind index vector are cases of the codec recipe in all six runtimes, with the form of an envelope as an expect, and the hostcodec tests of Go, PHP and the PHP extension are gone.
 - The refusal of two unaliased relations with one result name (CPX-5) is the case `duplicate_relation_name` of the recipe `complex_query` in every runtime; the Python test of it is removed, and the Python interface_contract coverage stays native without reading the feature environment.
