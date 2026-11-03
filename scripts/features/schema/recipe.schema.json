@@ -3455,7 +3455,8 @@
             "const": "catalog.describe_table"
           },
           "table": {
-            "$ref": "#/$defs/name"
+            "description": "The text of the call, which a case of a refused reference holds as it is.",
+            "type": "string"
           },
           "namespace": {
             "$ref": "#/$defs/name"
@@ -3490,7 +3491,8 @@
             "const": "catalog.table_page"
           },
           "table": {
-            "$ref": "#/$defs/name"
+            "description": "The text of the call, which a case of a quoted name holds as it is.",
+            "type": "string"
           },
           "limit": {
             "type": "integer"
@@ -8071,7 +8073,7 @@
               "columns": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/name"
+                  "type": "string"
                 }
               },
               "order_by": {
