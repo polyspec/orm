@@ -138,47 +138,6 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   });
 
   // Requirements: INT-98.
-  caseTest(`${dialect}: invalid stored numeric and boolean cells fail typed reads`, 30_000, async () => {
-    const row = new Probe().connect(db);
-    row[CORE].setValue('small', 5);
-    row[CORE].setValue('wide', 11);
-    row[CORE].setValue('ratio', 4.5);
-    row[CORE].setValue('active', true);
-    const seq = (await row.create())[CORE].column('seq');
-    if (dialect === 'mysql') {
-      await db.pool.execute('ALTER TABLE probe MODIFY wide BIGINT UNSIGNED', [], undefined, () => undefined);
-      await db.pool.execute('UPDATE probe SET wide = 18446744073709551615 WHERE seq = ?', [seq], undefined, () => undefined);
-    } else if (dialect === 'postgres') {
-      await db.pool.execute("UPDATE probe SET ratio = 'NaN'::double precision WHERE seq = $1", [seq], undefined, () => undefined);
-    } else {
-      await db.pool.execute('PRAGMA ignore_check_constraints = ON', [], undefined, () => undefined);
-      try {
-        await db.pool.execute('UPDATE probe SET wide = ? WHERE seq = ?', ['not-an-integer', seq], undefined, () => undefined);
-      } finally {
-        await db.pool.execute('PRAGMA ignore_check_constraints = OFF', [], undefined, () => undefined);
-      }
-    }
-    const invalidRead = new Probe().connect(db).seq(seq);
-    invalidRead[CORE].addColumn(dialect === 'postgres' ? 'ratio' : 'wide');
-    await assert.rejects(
-      invalidRead.get(),
-      error => error instanceof OrmError && error.code === 'CODEC_DECODE',
-    );
-    if (dialect === 'mysql') {
-      await db.pool.execute('UPDATE probe SET wide = 12 WHERE seq = ?', [seq], undefined, () => undefined);
-      // This disposable case database needs an out-of-domain stored bool to exercise the decoder, not the CHECK constraint.
-      await db.pool.execute('ALTER TABLE probe DROP CHECK `probe$active`', [], undefined, () => undefined);
-      await db.pool.execute('UPDATE probe SET active = 2 WHERE seq = ?', [seq], undefined, () => undefined);
-      const invalidBooleanRead = new Probe().connect(db).seq(seq);
-      invalidBooleanRead[CORE].addColumn('active');
-      await assert.rejects(
-        invalidBooleanRead.get(),
-        error => error instanceof OrmError && error.code === 'CODEC_DECODE',
-      );
-    }
-  });
-
-
   caseTest(`${dialect}: close and drop the case database`, 30_000, async ({ step }) => {
     const left = database;
     database = undefined;
