@@ -78,6 +78,11 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "sql.exec": [
       "only",
       "op",
@@ -340,6 +345,7 @@
       "columns",
       "compile",
       "connection",
+      "derived_integers",
       "expect",
       "from",
       "joins",
@@ -558,6 +564,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

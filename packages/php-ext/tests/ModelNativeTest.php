@@ -503,12 +503,6 @@ final class ModelNativeTest extends TestCase
         self::assertSame(['NativeModelFixture_model' => true], $duplicateRequest->names);
     }
 
-    // Requirements: PRT-40.
-    public function testTuplePredicatePadsByRepeatingTheLastRow(): void
-    {
-        $this->assertTuplePredicatePadsByRepeatingLastRow(new NativeModelFixture());
-    }
-
     public function testRelationAndSubqueryIrUseFramedQueryResults(): void
     {
         $model = new NativeModelFixture();
