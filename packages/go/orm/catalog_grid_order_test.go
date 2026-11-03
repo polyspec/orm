@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"database/sql"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -11,10 +10,12 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: SCH-6a.
+// Runtime-unique (FCV-14): only the Go grid read wraps a query in a CTE, and no public call reads its plan; the rows it returns
+// are the recipe case grid_column_and_row_order.
+// Requirements: SCH-6b.
 // TestCoverageCatalogGridOrder guards the row order of the SQLite grid read (catalogSQLiteRawQuery). The order of the rows of
 // the wrapper rests on the query flattener of SQLite, so the test asserts the plan: the CTE g must not be materialized or run
-// as a co-routine, and the rows of an ORDER BY DESC query must come back in descending order.
+// as a co-routine.
 func TestCoverageCatalogGridOrder(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := testdb.New(t, "sqlite")
@@ -73,16 +74,4 @@ func TestCoverageCatalogGridOrder(t *testing.T) {
 		t.Fatalf("the grid wrapper plan does not read grid_order:\n%s", joined)
 	}
 
-	result, err := c.ReadOnlyGridQuery(context.Background(), query, nil, CatalogQueryLimits{})
-	if err != nil {
-		t.Fatalf("grid query: %v", err)
-	}
-	var seqs []any
-	for _, row := range result.Rows {
-		seqs = append(seqs, row[0].Value)
-	}
-	want := []any{int64(4), int64(3), int64(2), int64(1)}
-	if !reflect.DeepEqual(seqs, want) {
-		t.Fatalf("ORDER BY DESC rows %v, want %v", seqs, want)
-	}
 }

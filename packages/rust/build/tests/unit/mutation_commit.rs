@@ -1,7 +1,9 @@
 use super::*;
 
 #[tokio::test]
-// Requirements: INT-118.
+// Runtime-unique (FCV-14): explicitly_rejected is the private classifier of the Rust driver errors, and a broken transport during
+// COMMIT comes only from a fault no public call produces; the outcomes any runtime answers are the case row_commit_outcomes.
+// Requirements: INT-118a.
 async fn broken_commit_acknowledgement_is_not_explicit_rejection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
