@@ -2807,7 +2807,6 @@
         "packages/python/tests/test_sqlite.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
-        "packages/python/tests/coverage_transactions.py",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
         "packages/go/orm/transaction_api_test.go",
         "packages/ts/tests/chain-types.mjs",
@@ -3325,8 +3324,7 @@
             "tests": [
               "packages/python/tests/test_transactions_mysql.py",
               "packages/python/tests/test_transactions_postgres.py",
-              "packages/python/tests/test_transactions_sqlite.py",
-              "packages/python/tests/coverage_transactions.py"
+              "packages/python/tests/test_transactions_sqlite.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
@@ -3337,14 +3335,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -3352,14 +3342,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -3367,14 +3349,6 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "recipe": "contracts/fixtures/transactions/transactions.json"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_transactions.py",
-                  "cases": [
-                    "handle_abandoned_query"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }

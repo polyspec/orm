@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python test of a Future abandoning a query in a transaction (CFG-9) stays native in `test_query_cancel.py`, on its own empty database per dialect, and the Python feature runner `feature_items`, `each_item` and `run_cases` is removed, so Python reads neither `ORM_FEATURE_DATABASE` nor `ORM_FEATURE_DSN`.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.
 - Go reports a statement on a connection that database/sql already closed as `CONNECTION_LOST`, as CFG-15 states, where it reported `DRIVER`; the outer rollback of a lost savepoint hit this.

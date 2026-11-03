@@ -18,6 +18,8 @@ from polyspec.orm.database import (
 from polyspec.orm.errors import OrmError
 
 from . import testcase
+from .case_database import case_database
+from .coverage_case import native_query
 
 
 class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
@@ -252,6 +254,133 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(OrmError) as still_cancelled:
                 await asyncio.to_thread(handle.execute, step, [])
             self.assertEqual(still_cancelled.exception.code, "CANCELED")
+
+
+PROBE_ROW = "UPDATE cancel_probe SET name = 'temporary' WHERE id = 1"
+
+
+class AbandonedQueryTest(unittest.IsolatedAsyncioTestCase):
+    """A Future is the cancellation primitive of Python (CFG-9), and the probes reach each native driver, so this
+    stays native (FCV-2): a Future cancelled while a statement runs in a transaction of its handle ends the
+    statement with CANCELED, and the transaction rolls back."""
+
+    deadline = testcase.DATABASE
+
+    async def abandon(self, dialect):
+        with tempfile.TemporaryDirectory(prefix="orm-abandoned-query-") as directory:
+            with case_database(dialect, directory, "orm_abandoned") as dsn:
+                native_query(
+                    dialect,
+                    dsn,
+                    [
+                        "CREATE TABLE cancel_probe (id INTEGER PRIMARY KEY, name VARCHAR(40))",
+                        "INSERT INTO cancel_probe (id, name) VALUES (1, 'original')",
+                    ],
+                )
+                db = Db.connect(dsn)
+                try:
+                    await self.cancel_in_transaction(db, dialect)
+                finally:
+                    db.close()
+                rows = native_query(
+                    dialect, dsn, ["SELECT name FROM cancel_probe WHERE id = 1"]
+                )
+                self.assertEqual(rows, [[{"name": "original"}]])
+
+    async def cancel_in_transaction(self, db, dialect):
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        handle = db.with_future(future)
+        entered = threading.Event()
+        resume = threading.Event()
+        callback_ran = asyncio.Event()
+        future.add_done_callback(lambda _: callback_ran.set())
+
+        def statement(sql, tables):
+            return {"sql": sql, "bind_slots": [], "tables": tables, "assemble": None}
+
+        def transaction():
+            handle.execute(statement(PROBE_ROW, ["cancel_probe"]), [])
+            raw = db.active_frame().connection.connection
+            if dialect == "sqlite":
+
+                def progress():
+                    entered.set()
+                    resume.wait()
+                    return 0
+
+                raw.set_progress_handler(progress, 100)
+                sql = (
+                    "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL "
+                    "SELECT x + 1 FROM n WHERE x < 1000000) SELECT sum(x) FROM n"
+                )
+            elif dialect == "mysql":
+                original_write = raw._write_bytes
+
+                def write(packet):
+                    original_write(packet)
+                    if (
+                        len(packet) > 4
+                        and packet[4] == 3
+                        and b"orm-cancel-probe" in packet[5:]
+                    ):
+                        entered.set()
+
+                raw._write_bytes = write
+                # SLEEP as the whole of an interrupted query returns 1 and no error; as a part of it the query fails.
+                sql = (
+                    "SELECT p.x FROM (SELECT 1 AS x UNION ALL SELECT 2) AS p "
+                    "WHERE SLEEP(60) = 0 /* orm-cancel-probe */"
+                )
+            else:
+
+                def notice(diagnostic):
+                    if diagnostic.message_primary == "orm-cancel-probe":
+                        entered.set()
+
+                raw.add_notice_handler(notice)
+                sql = (
+                    "DO $$ BEGIN RAISE NOTICE 'orm-cancel-probe'; "
+                    "PERFORM pg_sleep(60); END $$"
+                )
+            try:
+                handle.execute(statement(sql, []), [])
+            finally:
+                if dialect == "sqlite":
+                    raw.set_progress_handler(None, 0)
+                elif dialect == "mysql":
+                    del raw._write_bytes
+                else:
+                    raw.remove_notice_handler(notice)
+
+        task = asyncio.create_task(
+            asyncio.to_thread(lambda: handle.transaction(transaction, {"retry": 0}))
+        )
+        try:
+            self.assertTrue(
+                await asyncio.to_thread(entered.wait, 20),
+                f"{dialect} statement reached its driver boundary",
+            )
+            future.cancel()
+            await callback_ran.wait()
+        finally:
+            resume.set()
+        with self.assertRaises(OrmError) as caught:
+            await task
+        self.assertEqual(caught.exception.code, "CANCELED")
+        self.assertIsNotNone(caught.exception.cause)
+
+    # Requirements: CFG-9.
+    async def test_abandoned_query_is_canceled_and_rolled_back_sqlite(self):
+        await self.abandon("sqlite")
+
+    # Requirements: CFG-9.
+    async def test_abandoned_query_is_canceled_and_rolled_back_mysql(self):
+        await self.abandon("mysql")
+
+    # Requirements: CFG-9.
+    async def test_abandoned_query_is_canceled_and_rolled_back_postgres(self):
+        await self.abandon("postgres")
 
 
 if __name__ == "__main__":

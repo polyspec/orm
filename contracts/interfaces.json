@@ -133,8 +133,16 @@
           "surface": "Db.withFuture",
           "cases": [
             {
-              "test": "packages/python/tests/coverage_transactions.py",
-              "id": "test_handle_abandoned_query"
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
+            },
+            {
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+            },
+            {
+              "test": "packages/python/tests/test_query_cancel.py",
+              "id": "test_abandoned_query_is_canceled_and_rolled_back_postgres"
             },
             {
               "test": "packages/python/tests/test_query_cancel.py",

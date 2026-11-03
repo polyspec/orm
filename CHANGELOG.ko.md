@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aec73e57e547d5cfa12fff174861a2e2416e55214a646a85610b5a7e5c8a6eee -->
+<!-- source-sha256: 6a339dcee4e5be9f8e015ef71bee6cbbf5e8a67b35b090b78d890ac76128823a -->
 # 변경 이력
 
 ## Unreleased
 
+- transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.

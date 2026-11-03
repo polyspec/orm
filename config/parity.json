@@ -6283,19 +6283,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_handle_abandoned_query",
-          "command": [
-            "env",
-            "BENCH_SQLITE_DSN=${BENCH_SQLITE_DSN}",
-            "BENCH_MYSQL_DSN=${BENCH_MYSQL_DSN}",
-            "BENCH_POSTGRES_DSN=${BENCH_POSTGRES_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_handle_abandoned_query"
-          ]
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_postgres"
         },
         {
           "implementation": "typescript",
