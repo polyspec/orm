@@ -27,7 +27,6 @@
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
@@ -42,7 +41,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown,featurecoverage"
+        "physical,ormtest,markdown"
       ],
       "symbols": {
         "extractor": "go",
@@ -10783,8 +10782,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationMysql"
         },
         {
           "implementation": "php",
@@ -10995,8 +10994,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationPostgres"
         },
         {
           "implementation": "php",
@@ -11208,8 +11207,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationSqlite"
         },
         {
           "implementation": "php",
@@ -14449,8 +14448,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14518,8 +14527,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14587,8 +14606,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -26795,19 +26824,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceVector",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageConformanceVector",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/conditions_values"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/relations"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/functions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/creates_and_save"
         },
         {
           "implementation": "php-extension",

@@ -1130,7 +1130,6 @@
         "tests/conformance/vectors.json",
         "packages/php/tests/autoload.php",
         "contracts/fixtures/aggregate_numeric.json",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -2024,7 +2023,6 @@
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
         "contracts/fixtures/time_precision.dbs",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -2723,7 +2721,6 @@
         "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -3818,7 +3815,6 @@
         "chain-null-on-a-non-null-column"
       ],
       "fixtures": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -4978,7 +4974,6 @@
         "schema-register-reuses-engine-per-hash"
       ],
       "fixtures": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -6584,7 +6579,6 @@
       ],
       "fixtures": [
         "contracts/fixtures/parameter_chunking/parameter_chunking.dbs",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -6959,7 +6953,6 @@
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/refusal.dbs",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -8663,7 +8656,6 @@
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
         "tests/conformance/vectors.sqlite.json",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/common/mod.rs",
         "packages/ts/tests/coverage_case.mjs",
@@ -8693,7 +8685,7 @@
         "packages/php/testing/conformance/runner.php",
         "packages/ts/testing/conformance/runner_typescript.mts",
         "packages/rust/tests/src/conformance.rs",
-        "packages/go/model/coverage_conformance_verification_test.go",
+        "packages/go/orm/recipe_conformance_verification_test.go",
         "packages/php/tests/CoverageConformanceVerificationTest.php",
         "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/rust/tests/tests/coverage_conformance_verification.rs",
@@ -8845,9 +8837,9 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_conformance_verification_test.go"
+              "packages/go/orm/recipe_conformance_verification_test.go"
             ],
             "inputs": [
               "tests/conformance/vectors.json",
@@ -8858,40 +8850,25 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_conformance_verification_test.go",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "symbols": {
-                    "conformance_vector": "TestCoverageConformanceVector"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/go/orm/recipe_conformance_verification_test.go",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json",
+                  "symbol": "TestRecipeConformanceVerificationSqlite"
                 }
               ]
             }
@@ -11118,13 +11095,12 @@
     {
       "id": "go-test-helpers",
       "paths": [
-        "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/test_helpers_test.go"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-vet/test-helpers -- go vet -tags featurecoverage,ormtest ./packages/go/orm ./packages/go/model"
+      "command": "node tests/run-long.mts go-vet/test-helpers -- go vet -tags ormtest ./packages/go/orm ./packages/go/model"
     },
     {
       "id": "rust-test-helpers",

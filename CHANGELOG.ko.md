@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8f4d2c6ca4578e197f234e8b6999a6235329c5fae3858bd45b49d11a43ce5626 -->
+<!-- source-sha256: 5fa1ad55dfa13de4628b223fef34ccb3debdceece75918d6c5439eca7a2fb3c6 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go는 conformance vector를 recipe conformance_verification과 fixed-clock 본문으로만 돌린다. tag가 붙은 시험 `coverage_conformance_verification_test.go`와 그 helper, `testdb.FeatureDatabase`, runner `packages/go/testing/feature-json.mts`, target `feature-go-unit`, build tag `featurecoverage`를 없앴다 (#T334-3-12-2)
 - `errors` vector의 거부 아홉 가지(연결자 누락·끊긴 연결자, 빈 목록, 연결 없음, transaction 밖 lock, 연결된 join child, limit 있는 page, limit 있는 relation, join하지 않은 model 배치)가 recipe conformance_verification의 `errors` case로 여섯 runtime 모두에서 돌며, 빈 event 목록이 요청이 나가지 않았다는 증거다. recipe는 join의 `connect`, relation의 `limit`, `{"placed": {"model": <name>}}`, `plan` 없는 `plan_page`(`getsPage`)를 받는다 (#T334-3-12-2)
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
 - catalog temporal text와 grid 순서의 parity unit은 Go 시험을 bench database 없이 일반 실행에서 읽는다 (#T334-3-6-2)

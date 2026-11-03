@@ -1520,13 +1520,6 @@ endef
 $(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
 $(eval $(call RECIPE_VECTORS_TARGETS,fixed-clock,fixed-clock))
 
-# feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
-# FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
-# the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
-.PHONY: feature-go-unit
-feature-go-unit:
-	$(NODE) packages/go/testing/feature-json.mts --database $(FEATURE_DATABASE) --dsn-env $(FEATURE_DSN_ENV) --test $(FEATURE_TEST) $(FEATURE_PACKAGE)
-
 # feature-rust-unit runs one Rust test of a feature, as a parity binding names it: the make variables FEATURE_CRATE
 # (the directory of the crate's Cargo.toml, from the checkout root), FEATURE_CARGO_TARGET (the cargo target option, such as
 # `--test client_bench_dsn` or `--bin conformance`) and FEATURE_TEST (the exact name of the test) are passed by
