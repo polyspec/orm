@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The limit and stress units of dbspec are the cases of the recipe `tests/dbspec/limits.json`, whose documents are written by the `repeat` and `fill` line forms of `dbspec.format`; the native limit tests and the round-trip-only stress tests are gone, and the parse time measurements of `make dbspec-stress-bench` stay.
 - The chain values of DSL-49 and DSL-50 are the cases of the recipes `dsl` and `dsl-dynamic`; `markdown.send` takes the chain methods of Eq, Ne and Gt and a list parameter, and the PHP extension and Python native tests are gone. The uses that a compiler refuses stay native in Go, TypeScript and Rust.
 
 - The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.

@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- dbspec의 한계와 stress unit은 recipe `tests/dbspec/limits.json`의 case이며, 그 문서는 `dbspec.format`의 줄 형태 `repeat`와 `fill`로 쓴다. native 한계 시험과 round trip만 하던 stress 시험은 사라졌고 `make dbspec-stress-bench`의 parse 시간 측정은 남는다.
 - DSL-49와 DSL-50의 chain 값은 recipe `dsl`과 `dsl-dynamic`의 case가 되었다. `markdown.send`는 Eq, Ne, Gt의 chain method와 list parameter를 받고, PHP extension과 Python의 native 시험을 지웠다. 컴파일러가 거부하는 사용은 Go, TypeScript, Rust에서 native로 남는다.
 
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.

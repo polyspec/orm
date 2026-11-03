@@ -32,7 +32,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 // The library tests that the extension tests extend or call, and the helper classes of the extension tests, one
 // class per file (PSR-1).
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/Recipe.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RecipeKeysTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CodecRecipeTest.php';
@@ -69,6 +68,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipe
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DbspecLimitsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DslRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DslDynamicRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/RequestHookMysqlRecipeTest.php';

@@ -748,7 +748,7 @@ final class Recipe
                     self::checkRefusal($text, $set, $expect['diagnostics']);
                     return;
                 }
-                $expected = implode("\n", $expect['text'] ?? []) . "\n";
+                $expected = implode("\n", self::expandLines($expect['text'] ?? [])) . "\n";
                 $emitted = self::emitStable($text, $set);
                 if ($emitted !== $expected) {
                     Assert::fail("emission {$emitted}, want $expected");
@@ -852,7 +852,35 @@ final class Recipe
         foreach ($step['set'] ?? [] as $name => $lines) {
             $set[$name] = self::joinText($lines, $crlf, $mixed);
         }
-        return [self::joinText($step['text'] ?? [], $crlf, $mixed), $set];
+        return [self::joinText(self::expandLines($step['text'] ?? []), $crlf, $mixed), $set];
+    }
+
+    /**
+     * The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text.
+     *
+     * @param list<mixed> $items
+     * @return list<string>
+     */
+    private static function expandLines(array $items): array
+    {
+        $out = [];
+        foreach ($items as $item) {
+            if (is_string($item)) {
+                $out[] = $item;
+            } elseif (isset($item['fill'])) {
+                $out[] = str_repeat($item['fill']['text'], $item['fill']['count']);
+            } else {
+                $repeat = $item['repeat'];
+                $inner = self::expandLines($repeat['lines']);
+                $mark = '{' . $repeat['var'] . '}';
+                for ($i = $repeat['from']; $i < $repeat['from'] + $repeat['count']; $i++) {
+                    foreach ($inner as $line) {
+                        $out[] = str_replace($mark, (string) $i, $line);
+                    }
+                }
+            }
+        }
+        return $out;
     }
 
     /** @param list<string> $lines */

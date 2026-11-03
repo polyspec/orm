@@ -283,6 +283,10 @@
         {
           "glob": "packages/go/orm/shape_internal_test.go",
           "reason": "test: reflects over the Go request struct to check that the private plan cache key shapeKey reads every field"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/stress_test.go",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         }
       ]
     },
@@ -553,6 +557,10 @@
         {
           "glob": "packages/php/tests/RecipeSubscription.php",
           "reason": "harness: a helper class of the statement events recipe (RecipeRecording and RecipeSubscription) that the bootstrap requires; it holds no test, and the recipe cases are bound by the statement_events suite units"
+        },
+        {
+          "glob": "packages/php/tests/DbspecStressTest.php",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         }
       ]
     },
@@ -845,6 +853,10 @@
         {
           "glob": "packages/ts/tests/markdown-read-db.test.mjs",
           "reason": "harness: checks the shape of an injected fake Markdown database adapter; it does not execute a public Markdown read"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-stress.mjs",
+          "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
         }
       ]
     },
@@ -1208,6 +1220,10 @@
         {
           "glob": "packages/rust/orm/tests/unit/bind_message.rs",
           "reason": "test: an internal test of the rust crate that tests a helper of the owner (answer_value's base64 cause), not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/schema/tests/dbspec_model.rs",
+          "reason": "test: edits the public Rust structs of a parsed document, a surface the other runtimes do not type this way; parse and emit are covered by dbspec-canonical"
         }
       ]
     }
@@ -3664,11 +3680,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/recipe_set_parse.mjs",
           "id": "byte-order-mark"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid byte order mark"
         },
         {
           "implementation": "python",
@@ -29400,28 +29411,28 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeLimitHasNoTokens"
+          "test": "packages/go/orm/recipe_invalid_test.go",
+          "id": "TestRecipeInvalidNone/analyze-limit-no-tokens"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
-          "id": "CoverageSchemaDefinitionTest::testDbspecLimitStopHasNoTokens"
+          "test": "packages/php/tests/DbspecInvalidRecipeTest.php",
+          "id": "DbspecInvalidRecipeTest::testNone with data set \"analyze-limit-no-tokens\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
-          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecLimitStopHasNoTokens"
+          "test": "packages/php-ext/tests/DbspecInvalidRecipeTestExtensionTest.php",
+          "id": "DbspecInvalidRecipeTestExtensionTest::testNone with data set \"analyze-limit-no-tokens\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 4097 tables"
+          "test": "packages/ts/tests/recipe_invalid.mjs",
+          "id": "analyze-limit-no-tokens"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_limit_stop_gives_no_tokens"
+          "test": "packages/python/tests/recipe_invalid.py",
+          "id": "analyze-limit-no-tokens"
         },
         {
           "implementation": "rust",
@@ -29441,43 +29452,213 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/rules_test.go",
-          "id": "TestEncodingAndLimitDiagnostics"
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/document-size"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::testDocumentAndTableLimits"
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"document-size\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
-          "id": "DbspecRulesNativeTest::testNativeDocumentAndTableLimits"
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"document-size\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 32 MiB document"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 4097 tables"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 1001 columns"
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "document-size"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_document_and_table_limits"
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "document-size"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_limits"
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::document-size"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/document-size-counts-bytes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"document-size-counts-bytes\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"document-size-counts-bytes\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "document-size-counts-bytes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "document-size-counts-bytes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::document-size-counts-bytes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/document-size-at-the-limit"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"document-size-at-the-limit\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"document-size-at-the-limit\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "document-size-at-the-limit"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "document-size-at-the-limit"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::document-size-at-the-limit"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/table-count"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"table-count\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"table-count\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "table-count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "table-count"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::table-count"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/table-count-at-the-limit"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"table-count-at-the-limit\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"table-count-at-the-limit\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "table-count-at-the-limit"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "table-count-at-the-limit"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::table-count-at-the-limit"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/table-column-count"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"table-column-count\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"table-column-count\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "table-column-count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "table-column-count"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::table-column-count"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/limit-after-earlier-errors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"limit-after-earlier-errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"limit-after-earlier-errors\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "limit-after-earlier-errors"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "limit-after-earlier-errors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::limit-after-earlier-errors"
         }
       ]
     },
@@ -29490,33 +29671,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/rules_test.go",
-          "id": "TestGlobalColumnLimit"
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/total-column-count"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::testLimit"
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"total-column-count\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
-          "id": "DbspecRulesNativeTest::testNativeGlobalColumnLimit"
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"total-column-count\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 120001 total columns"
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "total-column-count"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_global_column_limit"
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "total-column-count"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_global_column_limit"
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::total-column-count"
         }
       ]
     },
@@ -29530,33 +29711,72 @@
       "bindings": [
         {
           "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/foreign-key-count"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"foreign-key-count\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"foreign-key-count\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "foreign-key-count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "foreign-key-count"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::foreign-key-count"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-encoding-and-limit-natives",
+      "kind": "feature",
+      "requirements": [
+        "DBS-144"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
           "test": "packages/go/engine/dbspec/rules_test.go",
-          "id": "TestForeignKeyCountLimit"
+          "id": "TestEncodingDiagnostics"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::testLimit"
+          "id": "DbspecRulesTest::testLimitColumnsPeak"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
-          "id": "DbspecRulesNativeTest::testNativeForeignKeyCountLimit"
+          "id": "DbspecRulesNativeTest::testNativeRuleDiagnosticsMatchGoCoordinatesAndOrdering"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-rules.mjs",
-          "id": "invalid 20001 foreign keys"
+          "id": "invalid bare CR"
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_foreign_key_count_limit"
+          "id": "test_encoding_stop_keeps_earlier_lines_and_lexes_the_rest"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_rules.rs",
-          "id": "dbspec_foreign_key_count_limit"
+          "id": "dbspec_rules"
         }
       ]
     },
@@ -30685,55 +30905,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/stress_test.go",
-          "id": "TestStressDocument",
-          "command": [
-            "go",
-            "test",
-            "-json",
-            "-tags",
-            "bench",
-            "-count=1",
-            "-run",
-            "^TestStressDocument$",
-            "./dbspec"
-          ]
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "id": "TestRecipeDbspecLimitsNone/stress-canonical-roundtrip"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecStressTest.php",
-          "id": "DbspecStressTest::testStress"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-stress.mjs",
-          "id": "dbspec stress document parses and emits canonically"
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "id": "DbspecLimitsRecipeTest::testNone with data set \"stress-canonical-roundtrip\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
-          "id": "DbspecStressCanonicalNativeTest::testStressDocumentRoundTripsCanonically"
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "id": "DbspecLimitsRecipeTestExtensionTest::testNone with data set \"stress-canonical-roundtrip\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs",
+          "id": "stress-canonical-roundtrip"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_stress.py",
-          "id": "test_stress_document_round_trips",
-          "command": [
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "tests.test_dbspec_stress",
-            "StressCanonicalTest.test_stress_document_round_trips"
-          ]
+          "test": "packages/python/tests/test_dbspec_limits_none.py",
+          "id": "stress-canonical-roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_stress.rs",
-          "id": "stress_document_round_trips_canonically"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_model.rs",
-          "id": "model_is_read_changed_and_emitted"
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "id": "dbspec_limits_none::stress-canonical-roundtrip"
         }
       ]
     },
@@ -43774,6 +43972,48 @@
           "owner/python"
         ]
       }
+    },
+    {
+      "id": "dbspec-limits",
+      "kind": "suite",
+      "requirements": [
+        "DBS-123",
+        "DBS-144",
+        "DBS-151",
+        "DBS-170"
+      ],
+      "file": "tests/dbspec/limits.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_limits_test.go",
+          "symbol": "TestRecipeDbspecLimitsNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecLimitsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecLimitsRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecLimitsRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_limits-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_limits_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_limits_none.rs",
+          "symbol": "dbspec_limits_none"
+        }
+      ]
     }
   ],
   "errors": {

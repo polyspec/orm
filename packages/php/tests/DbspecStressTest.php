@@ -30,7 +30,6 @@ function dbspec_stress_reference_scan(string $text): int
 #[Group('bench')]
 final class DbspecStressTest extends TestCase
 {
-    // Requirements: DBS-123.
     public function testStress(): void
     {
         if (ini_set('memory_limit', '512M') === false) {

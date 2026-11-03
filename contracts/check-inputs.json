@@ -2878,8 +2878,6 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
         "packages/php-ext/tests/DbspecRulesNativeTest.php",
-        "packages/php/tests/CoverageSchemaDefinitionTest.php",
-        "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/**",
         "tests/dbspec/hashes.json",
@@ -2890,9 +2888,8 @@
         "tests/dbspec/positions.json",
         "tests/dbspec/files.json",
         "tests/dbspec/schema-definition.json",
-        "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
-        "packages/php/tests/DbspecStressTestSupport.php",
-        "tests/dbspec/stress.mts"
+        "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
+        "tests/dbspec/limits.json"
       ]
     },
     "model-types-php-extension-check": {
@@ -3962,7 +3959,6 @@
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/StatementEventsCoverageCases.php",
-        "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
@@ -4263,16 +4259,6 @@
         "packages/php/tests/RecipeKeysTest.php",
         "packages/php-ext/tests/RecipeKeysExtensionTest.php",
         "packages/rust/tests/src/recipe_keys.rs"
-      ]
-    },
-    "dbspec-stress-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust"
-      ],
-      "inputs": [
-        "packages/rust/schema/tests/dbspec_stress.rs",
-        "tests/dbspec/stress.mts"
       ]
     },
     "pgsql-pdo-adapter-php-check": {

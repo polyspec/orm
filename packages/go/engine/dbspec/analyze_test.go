@@ -3,7 +3,6 @@ package dbspec
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -206,24 +205,6 @@ func TestAnalyzeClasses(t *testing.T) {
 				t.Fatalf("tokens:\n got %q\nwant %q", got, c.want)
 			}
 		})
-	}
-}
-
-// TestAnalyzeLimitHasNoTokens checks that a limit stop yields no tokens at all.
-// Requirements: DBS-136, DBS-144.
-func TestAnalyzeLimitHasNoTokens(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	var b strings.Builder
-	b.WriteString("dbspec 1 shop\n")
-	for i := 0; i <= maxTables; i++ {
-		fmt.Fprintf(&b, "table t%d {\n}\n", i)
-	}
-	analysis := Analyze(b.String(), nil)
-	if len(analysis.Tokens) != 0 {
-		t.Fatalf("limit stop gave %d tokens", len(analysis.Tokens))
-	}
-	if len(analysis.Diagnostics) == 0 || analysis.Diagnostics[len(analysis.Diagnostics)-1].Rule != RuleLimit {
-		t.Fatalf("diagnostics = %v, want a limit error", analysis.Diagnostics)
 	}
 }
 
