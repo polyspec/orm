@@ -1,11 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c791f64ecf9e768f913fd6244db031435796db3244d0000699d916c13b9d5b56 -->
+<!-- source-sha256: 8d9394fa68a9b056f42641ebe42829c1ea98845e14cc422f42dd792eb9df8ea2 -->
 # 변경 이력
 
 ## Unreleased
 
-- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
-- 생성기의 컬럼 이름·체인 이름 거부는 여섯 runtime 모두에서 `generator` recipe의 사례이며, 코드는 모두 `CONFIG`다. TypeScript scan은 어떤 컬럼·체인·연산자에도 맞지 않는 이름과 값 개수가 틀린 호출을 이제 거부하고(이전에는 선언만 하지 않고 type checker에 맡겼다), Go는 그 개수를 생성 단계에서 거부하며, Python은 컬럼이 받지 않는 연산자와 그 개수를 거부하고, TypeScript와 PHP는 컬럼 이름의 `fulltext`를 예약한다 (DSL-37, DSL-130).
 - recipe `performance_gate`는 기본 키 읽기와 내림차순 100행 읽기의 계획된 statement(순서대로 27개 column의 projection, database별 limit bind)를 `pk_statement`와 `list_statement`로, AES key 버전과 복호화된 cell을 `aes_cells`로 검증하므로, TypeScript 시간 측정 파일은 정확성을 검증하지 않는다. 이 파일은 seed된 database를 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` 또는 `BENCH_SQLITE_DSN`에서 읽으며, 더는 feature 환경에서 읽지 않는다.
 - `getPagePlanSteps(page, perPage)`는 여섯 런타임 모두의 공개 종단 작업이다(DSL-159). `getsPage`가 실행하는 plan의 각 step의 role, tables, 문장을 실행 없이 돌려준다. request와 plan 호출을 `getsPage`와 공유한다.
 - 컬렉션의 group row 단위는 recipe `tests/collection/collection.json`의 case이며 여섯 runtime 모두 `ir.answer`로 실행한다. chain `group_count_views`는 group 결과의 길이, 순서, 값과 `COLUMN_UNSELECTED`를 읽는다. driver cell만 담는 count 형태는 `group-row-driver-cell-forms`로 native에 남는다.
@@ -15,6 +13,7 @@
 - recipe op `dsn.connect`는 여섯 runtime 모두에서 자기가 연 연결에 `utils().run`으로 `SELECT 1`을 실행하므로, DSN이 답하는 database에 연결함을 확인한다. PHP `CoverageDsnTest`는 native로 남는 SQLite 최소 버전 검사(DSL-150)만 두고 feature 환경을 읽지 않는다.
 - vector 17(`errors`)의 거부마다 각 runtime에 요청 전 시험이 생겼다. `make conformance-refusal-check`: 여섯 runtime 모두 표가 없는 SQLite 파일과 statement subscriber로 실행하고, Go, TypeScript, Rust는 각 chain을 오류와 함께 받아들이고 오류를 버리는 사용을 거부하는 형 검사를 한다. Go에서 prepare가 실패한 statement는 INT-91과 다른 runtime대로 오류를 담은 statement event를 발행한다. 전에는 발행하지 않았다.
 - 여섯 runtime에 남은 catalog_connection coverage 테스트를 없앴다: recipe case temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice, deferred_foreign_key_at_commit이 그 검증을 세 database에서 맡는다. 잘못된 열 이름을 가진 descriptor는 이제 Python과 PHP 확장에서도 ROW_SNAPSHOT_INVALID로 실패하고 메시지에 원인을 담으며, TypeScript catalog의 두 번째 close는 아무것도 하지 않는다.
+- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - 생성기의 컬럼 이름·체인 이름 거부는 여섯 runtime 모두에서 `generator` recipe의 사례이며, 코드는 모두 `CONFIG`다. TypeScript scan은 어떤 컬럼·체인·연산자에도 맞지 않는 이름과 값 개수가 틀린 호출을 이제 거부하고(이전에는 선언만 하지 않고 type checker에 맡겼다), Go는 그 개수를 생성 단계에서 거부하며, Python은 컬럼이 받지 않는 연산자와 그 개수를 거부하고, TypeScript와 PHP는 컬럼 이름의 `fulltext`를 예약한다 (DSL-37, DSL-130).
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
 - audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
