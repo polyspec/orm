@@ -814,6 +814,7 @@
             "codec.host_decode",
             "codec.blind_index",
             "collection.key",
+            "collection.connect",
             "sql.exec",
             "session.end",
             "fault.next_rollback",
@@ -900,6 +901,7 @@
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "clock.read",
             "transaction.attempts",
             "transaction.deadlock",
             "utils.aes_rotate",
@@ -986,6 +988,9 @@
         },
         {
           "$ref": "#/$defs/ops/collection.key"
+        },
+        {
+          "$ref": "#/$defs/ops/collection.connect"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -1238,6 +1243,9 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/clock.read"
         },
         {
           "$ref": "#/$defs/ops/transaction.attempts"
@@ -2528,6 +2536,31 @@
           },
           "key": {
             "type": "string"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "collection.connect": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "row",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "collection.connect"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "row": {
+            "description": "The bound collection that connect rebinds (INT-85).",
+            "$ref": "#/$defs/name"
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -7346,6 +7379,31 @@
           }
         }
       },
+      "clock.read": {
+        "type": "object",
+        "required": [
+          "op",
+          "edge",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "clock.read"
+          },
+          "edge": {
+            "description": "Which side of a write this read bounds: lower gives the reading of the wall clock, upper the latest value the client can write from that reading.",
+            "enum": [
+              "lower",
+              "upper"
+            ]
+          },
+          "as": {
+            "description": "The name that binds the UTC text of six fraction digits, for a bind of a later step.",
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
       "hook.records": {
         "type": "object",
         "required": [
@@ -8753,6 +8811,11 @@
               },
               "message_suffix": {
                 "description": "The text that the message of the error ends with.",
+                "type": "string",
+                "minLength": 1
+              },
+              "message_holds": {
+                "description": "The text that the message of the error holds.",
                 "type": "string",
                 "minLength": 1
               }

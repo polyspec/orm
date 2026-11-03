@@ -11,7 +11,7 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 
 /// Runs one generator.generate step and checks it against the expect of `database`.
 pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
-    let want = step["expect"].get(database).ok_or_else(|| format!("generator.generate has no expect for {database}"))?;
+    let want = crate::recipe_reads::read(step, "expect")["expect"].get(database).ok_or_else(|| format!("generator.generate has no expect for {database}"))?;
     let n = NEXT.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!("orm-recipe-generator-{}-{n}", std::process::id()));
     let result = generate(step, dir, &root);
@@ -23,7 +23,7 @@ pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
 /// Runs one generator.check step (FCV-4, DBS-175) through `Builder::check`, the check of the generated files of Rust,
 /// which returns its lines and names a file by its name in the output directory.
 pub fn check_files(step: &Value, dir: &Path) -> Result<(), String> {
-    let set = dir.join(step["document_set"].as_str().unwrap_or_default());
+    let set = dir.join(crate::recipe_reads::read(step, "document_set")["document_set"].as_str().unwrap_or_default());
     let n = NEXT.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!("orm-recipe-generator-check-{}-{n}", std::process::id()));
     let out = root.join("model");
@@ -34,7 +34,7 @@ pub fn check_files(step: &Value, dir: &Path) -> Result<(), String> {
 
 fn check_files_in(step: &Value, set: &Path, out: &Path) -> Result<(), String> {
     let lines = |key: &str, file: &str| -> Vec<String> {
-        step[key].as_array().into_iter().flatten().map(|line| line.as_str().unwrap_or_default().replace("<file>", file)).collect()
+        crate::recipe_reads::read(step, key)[key].as_array().into_iter().flatten().map(|line| line.as_str().unwrap_or_default().replace("<file>", file)).collect()
     };
     let check = || polyspec_orm_build::Builder::set(set).out_dir(out).check();
     polyspec_orm_build::Builder::set(set).out_dir(out).try_generate()?;
@@ -87,7 +87,7 @@ pub fn check_refused(step: &Value, dir: &Path) -> Result<(), String> {
 }
 
 fn check_refused_in(step: &Value, dir: &Path, root: &Path) -> Result<(), String> {
-    for (name, entry) in step["files"].as_object().into_iter().flatten() {
+    for (name, entry) in crate::recipe_reads::read(step, "files")["files"].as_object().into_iter().flatten() {
         let body = match entry.as_str() {
             Some(text) => text.as_bytes().to_vec(),
             None => {
@@ -99,7 +99,7 @@ fn check_refused_in(step: &Value, dir: &Path, root: &Path) -> Result<(), String>
     }
     let out = root.join("model");
     let builder = polyspec_orm_build::Builder::set(root.join("dbspec-set.json")).out_dir(&out);
-    let refused = if step["check"].as_bool().unwrap_or(false) {
+    let refused = if crate::recipe_reads::read(step, "check")["check"].as_bool().unwrap_or(false) {
         builder.check().map(|_| ())
     } else {
         builder.try_generate().map(|_| ())
@@ -109,7 +109,7 @@ fn check_refused_in(step: &Value, dir: &Path, root: &Path) -> Result<(), String>
         Err(message) => message,
     };
     let mut rest = output.as_str();
-    for part in step["parts"].as_array().into_iter().flatten() {
+    for part in crate::recipe_reads::read(step, "parts")["parts"].as_array().into_iter().flatten() {
         let part = part.as_str().unwrap_or_default();
         let at = rest.find(part).ok_or_else(|| format!("generator.refused: the output lacks {part} in order: {output}"))?;
         rest = &rest[at + part.len()..];
@@ -181,7 +181,7 @@ fn compare_text(want: &Value, root: &Path) -> Result<(), String> {
 
 /// Writes the sources of the step, generates its sets under `root` and returns the method names of the generated models.
 fn generate(step: &Value, dir: &Path, root: &Path) -> Result<BTreeSet<String>, String> {
-    let options = &step["options"];
+    let options = &crate::recipe_reads::read(step, "options")["options"];
     for (path, text) in options["sources"]["rust"].as_object().into_iter().flatten() {
         let file = root.join(path);
         let parent = file.parent().ok_or_else(|| format!("no parent of {path}"))?;
@@ -195,7 +195,7 @@ fn generate(step: &Value, dir: &Path, root: &Path) -> Result<BTreeSet<String>, S
         let scan = root.join(before["scan"].as_str().unwrap_or_default());
         polyspec_orm_build::Builder::set(set).scan(&scan).out_dir(output).try_generate()?;
     }
-    let schema = step["schema"].as_str().ok_or("generator.generate needs a schema")?;
+    let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().ok_or("generator.generate needs a schema")?;
     let used: Vec<&str> = options["used"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
     let set = set_file(&root.join(".set"), dir, &[schema], &used)?;
     if let Some(from) = options["schema_replace"]["from"].as_str() {

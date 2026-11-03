@@ -1,13 +1,13 @@
 //! The ops of the dbspec apply API (docs/spec/feature-coverage.md FCV-4): each command is one call of the public API on a named
 //! connection, and steps nested in its on field run inside the event handler. The handler is a synchronous function and the
 //! command borrows its connection, so the ops run on a multi-thread runtime of their own, where the handler waits for a nested
-//! step with block_in_place, and a statement nested on the connection of the command runs before the next statement of the
-//! command.
+//! step with block_in_place, and a step nested on the connection of the command takes that connection between two statements of
+//! the command.
 
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
@@ -18,6 +18,7 @@ use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 use sqlx::{Connection as _, MySqlConnection, PgConnection, SqliteConnection};
 use tokio::runtime::{Handle, Runtime};
+use tokio::sync::Mutex;
 
 /// The ops that [`ApplyOps::run`] takes.
 pub const OPS: [&str; 9] = [
@@ -103,43 +104,33 @@ impl ApplyConnection for Conn {
     }
 }
 
-/// The connection of a running command: the statements that the event handler queued run before its next statement.
-struct Flushing<'c> {
-    inner: &'c mut Conn,
-    queue: Arc<Mutex<Vec<String>>>,
+/// The connection of a running command, shared with its event handler. The command holds the lock only while a statement runs,
+/// and it calls the handler between statements, so a step nested on this connection reads what the command has done so far.
+struct Shared {
+    inner: Arc<Mutex<Conn>>,
 }
 
-impl Flushing<'_> {
-    async fn flush(&mut self) -> Result<(), sqlx::Error> {
-        let queued = std::mem::take(&mut *self.queue.lock().expect("the queue of the command"));
-        for statement in queued {
-            ApplyConnection::execute(&mut *self.inner, &statement).await?;
-        }
-        Ok(())
-    }
-}
-
-impl CatalogQuerier for Flushing<'_> {
+impl CatalogQuerier for Shared {
     async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.flush().await?;
-        CatalogQuerier::rows(&mut *self.inner, query).await
+        let mut session = self.inner.lock().await;
+        CatalogQuerier::rows(&mut *session, query).await
     }
 }
 
-impl ApplyConnection for Flushing<'_> {
+impl ApplyConnection for Shared {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::execute(&mut *self.inner, statement).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::execute(&mut *session, statement).await
     }
 
     async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::execute_bound(&mut *self.inner, statement, args).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::execute_bound(&mut *session, statement, args).await
     }
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.flush().await?;
-        ApplyConnection::query_bound(&mut *self.inner, query, args).await
+        let mut session = self.inner.lock().await;
+        ApplyConnection::query_bound(&mut *session, query, args).await
     }
 }
 
@@ -271,7 +262,7 @@ async fn through_pooler(dsn: &str) -> Result<Conn, String> {
 
 /// The text of a step field that holds SQL: the string itself, or the entry of the database.
 fn sql_of(step: &Value, database: &str, event_step: usize) -> Result<String, String> {
-    let field = &step["sql"];
+    let field = &crate::recipe_reads::read(step, "sql")["sql"];
     let text = field.as_str().or_else(|| field[database].as_str()).ok_or_else(|| format!("no statement for {database}: {step}"))?;
     Ok(text.replace("{step}", &event_step.to_string()))
 }
@@ -286,17 +277,28 @@ fn cell(value: &CatalogValue) -> Value {
 }
 
 fn skipped(step: &Value, database: &str) -> bool {
-    step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database)))
+    crate::recipe_reads::read(step, "only")["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(database)))
 }
 
 /// Compares the value of a nested step with its expect; the steps of a case are compared by the helper.
 fn checked(step: &Value, database: &str, got: &Value) -> Result<(), String> {
-    match step.get("expect") {
+    match crate::recipe_reads::read(step, "expect").get("expect") {
         Some(expect) if expect[database]["value"] != got["value"] => {
             Err(format!("got {}, want {}", got["value"], expect[database]["value"]))
         }
         _ => Ok(()),
     }
+}
+
+/// Runs the statement of dbspec.exec on its connection; its value is the rows, when the step expects them.
+async fn exec_on(session: &mut Conn, step: &Value, text: &str) -> Result<Value, String> {
+    if crate::recipe_reads::read(step, "expect").get("expect").is_none() {
+        ApplyConnection::execute(session, text).await.map_err(|e| format!("{text}: {e}"))?;
+        return Ok(json!({}));
+    }
+    let rows = ApplyConnection::query_bound(session, text, &[]).await.map_err(|e| format!("{text}: {e}"))?;
+    let array: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(cell).collect::<Vec<_>>() })).collect();
+    Ok(json!({ "value": { "array": array } }))
 }
 
 type OpFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
@@ -306,33 +308,27 @@ fn run_op<'a>(state: &'a mut State, step: &'a Value, database: &'a str, dsn: &'a
 }
 
 async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
-    let name = step["as"].as_str().unwrap_or_default();
-    match step["op"].as_str().unwrap_or_default() {
+    let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
+    match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
         "dbspec.plan" => {
-            let lines: Vec<&str> = step["lines"].as_array().ok_or("lines")?.iter().filter_map(Value::as_str).collect();
+            let lines: Vec<&str> = crate::recipe_reads::read(step, "lines")["lines"].as_array().ok_or("lines")?.iter().filter_map(Value::as_str).collect();
             let plan = dbspec::parse_plan(&format!("{}\n", lines.join("\n"))).map_err(|d| format!("dbspec.plan {name}: {d:?}"))?;
             state.plans.insert(name.to_owned(), plan);
             Ok(json!({}))
         }
         "dbspec.connect" => {
-            let session = if step["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
+            let session = if crate::recipe_reads::read(step, "through")["through"] == "pooler" { through_pooler(dsn).await? } else { direct(database, dsn).await? };
             state.sessions.insert(name.to_owned(), session);
             Ok(json!({}))
         }
         "dbspec.exec" => {
             let text = sql_of(step, database, state.step)?;
-            let connection = step["connection"].as_str().unwrap_or_default();
+            let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
-            if step.get("expect").is_none() {
-                ApplyConnection::execute(session, &text).await.map_err(|e| format!("{text}: {e}"))?;
-                return Ok(json!({}));
-            }
-            let rows = ApplyConnection::query_bound(session, &text, &[]).await.map_err(|e| format!("{text}: {e}"))?;
-            let array: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(cell).collect::<Vec<_>>() })).collect();
-            Ok(json!({ "value": { "array": array } }))
+            exec_on(session, step, &text).await
         }
         "dbspec.schema" => {
-            let connection = step["connection"].as_str().unwrap_or_default();
+            let connection = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default();
             let session = state.sessions.get_mut(connection).ok_or_else(|| format!("connection {connection} is not bound"))?;
             let introspection = dbspec::introspect(session, dialect_of(database)?, "x").await.map_err(|e| format!("introspect: {e}"))?;
             if !introspection.unsupported.is_empty() {
@@ -357,10 +353,10 @@ async fn op_body(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
 
 /// The nested steps of dbspec.other_database, on a new connection to the other database that ends with them.
 async fn other_steps(state: &mut State, step: &Value, database: &str, other: &str) -> Result<(), String> {
-    let name = step["as"].as_str().unwrap_or_default();
+    let name = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or_default();
     state.sessions.insert(name.to_owned(), direct(database, other).await?);
     let mut result = Ok(());
-    for nested in step["steps"].as_array().into_iter().flatten() {
+    for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
         if skipped(nested, database) {
             continue;
         }
@@ -392,21 +388,21 @@ fn first_failure(error: &ApplyError) -> &ApplyError {
 /// Makes one call of the command; its value is the code of its failure, or ok, and the events that count names.
 async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> Result<Value, String> {
     let dialect = dialect_of(database)?;
-    let target = step["connection"].as_str().unwrap_or_default().to_owned();
+    let target = crate::recipe_reads::read(step, "connection")["connection"].as_str().unwrap_or_default().to_owned();
     let mut plans: Vec<Plan> = Vec::new();
-    for name in step["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
+    for name in crate::recipe_reads::read(step, "plans")["plans"].as_array().ok_or("plans")?.iter().filter_map(Value::as_str) {
         plans.push(state.plans.get(name).cloned().ok_or_else(|| format!("plan {name} is not bound"))?);
     }
     // The command borrows its connection, so it is out of the map while the nested steps reach the others.
-    let mut session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
-    let queue: Arc<Mutex<Vec<String>>> = Arc::default();
-    let on = step.get("on");
+    let session = state.sessions.remove(&target).ok_or_else(|| format!("connection {target} is not bound"))?;
+    let shared = Arc::new(Mutex::new(session));
+    let on = crate::recipe_reads::read(step, "on").get("on");
     let mut kinds: HashMap<String, u64> = HashMap::new();
     let mut events = 0_u64;
     let mut ran = false;
     let started = Instant::now();
     let result = {
-        let queued = Arc::clone(&queue);
+        let nested_session = Arc::clone(&shared);
         let mut handler = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
             events += 1;
             *kinds.entry(event.kind.as_str().to_owned()).or_default() += 1;
@@ -426,10 +422,14 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                     continue;
                 }
                 if nested["op"] == "dbspec.exec" && nested["connection"].as_str() == Some(target.as_str()) {
-                    if nested.get("expect").is_some() {
-                        return Err(format!("a nested step on the connection of the command expects no value: {nested}").into());
-                    }
-                    queued.lock().expect("the queue of the command").push(sql_of(nested, database, state.step)?);
+                    let text = sql_of(nested, database, state.step)?;
+                    let got = tokio::task::block_in_place(|| {
+                        Handle::current().block_on(async {
+                            let mut session = nested_session.lock().await;
+                            exec_on(&mut *session, nested, &text).await
+                        })
+                    })?;
+                    checked(nested, database, &got)?;
                     continue;
                 }
                 let got = tokio::task::block_in_place(|| Handle::current().block_on(run_op(&mut *state, nested, database, dsn)))?;
@@ -440,8 +440,8 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             }
             Ok(())
         };
-        let mut connection = Flushing { inner: &mut session, queue: Arc::clone(&queue) };
-        match step["op"].as_str().unwrap_or_default() {
+        let mut connection = Shared { inner: Arc::clone(&shared) };
+        match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
             "dbspec.apply" => dbspec::apply(&mut connection, dialect, &plans, &now, &mut handler).await,
             "dbspec.recover" => dbspec::recover(&mut connection, dialect, &plans, &now, &mut handler).await,
             "dbspec.rollback" => dbspec::rollback(&mut connection, dialect, &plans, &now, &mut handler).await,
@@ -450,6 +450,7 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
         }
     };
     let elapsed = started.elapsed().as_millis();
+    let session = Arc::into_inner(shared).ok_or("the connection of the command is still held")?.into_inner();
     state.sessions.insert(target, session);
     let code = match &result {
         Ok(()) => "ok".to_owned(),
@@ -460,11 +461,11 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
                 ApplyError::Event(stop) if stop.is::<Stop>() => "stopped".to_owned(),
                 other => match other.code() {
                     Some(code) => code.to_owned(),
-                    None if step["message"].as_str() == Some(message.as_str()) => "message".to_owned(),
-                    None => return Err(format!("{}: {message}", step["op"])),
+                    None if crate::recipe_reads::read(step, "message")["message"].as_str() == Some(message.as_str()) => "message".to_owned(),
+                    None => return Err(format!("{}: {message}", crate::recipe_reads::read(step, "op")["op"])),
                 },
             };
-            if let Some(detail) = step["detail"].as_str() {
+            if let Some(detail) = crate::recipe_reads::read(step, "detail")["detail"].as_str() {
                 if !message.to_lowercase().contains(&detail.to_lowercase()) {
                     return Err(format!("the message {message:?} does not hold {detail:?}"));
                 }
@@ -472,14 +473,14 @@ async fn command(state: &mut State, step: &Value, database: &str, dsn: &str) -> 
             code
         }
     };
-    if let Some(bounds) = step.get("elapsed") {
+    if let Some(bounds) = crate::recipe_reads::read(step, "elapsed").get("elapsed") {
         let (least, below) = (bounds["at_least_ms"].as_u64().unwrap_or(0), bounds["below_ms"].as_u64().unwrap_or(0));
         if elapsed < u128::from(least) || elapsed >= u128::from(below) {
             return Err(format!("the command took {elapsed} ms, want at least {least} and below {below}"));
         }
     }
     let mut members = vec![json!(["code", { "text": code }])];
-    match step["count"].as_array() {
+    match crate::recipe_reads::read(step, "count")["count"].as_array() {
         None => members.push(json!(["events", { "int": events.to_string() }])),
         Some(counted) => {
             for kind in counted.iter().filter_map(Value::as_str) {

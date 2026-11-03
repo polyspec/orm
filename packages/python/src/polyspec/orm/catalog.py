@@ -44,7 +44,6 @@ PAGE_BYTES = 8 << 20
 SNAPSHOT_BYTES = 8 << 20
 DEFAULT_ROWS = 100000
 DEFAULT_BYTES = 64 << 20
-SQL_BYTES = 256 << 10
 
 # Error codes that the Rust reference names; QUERY_READ_ONLY is the code that the owner tests check.
 
@@ -635,11 +634,11 @@ def _skip_quoted(query: str, start: int, quote: str, backslash: bool):
 
 
 def _validate_read_only(query, dialect: str) -> None:
-    """Accepts one read query of at most SQL_BYTES that starts with SELECT, WITH or VALUES and holds no write keyword."""
+    """Accepts one read query that starts with SELECT, WITH or VALUES and holds no write keyword."""
     refused = _error(
         codes.QUERY_READ_ONLY, "expected one supported non-locking read query"
     )
-    if not isinstance(query, str) or query == "" or len(query.encode()) > SQL_BYTES:
+    if not isinstance(query, str) or query == "":
         raise refused
     words, ok = _words(query, dialect)
     if not ok or not words:
@@ -1168,6 +1167,14 @@ def _grid_cell(value, dialect: str, code, unsigned: bool) -> GridCell:
     raise _refuse(f"native type {type(value).__name__} of column type {code}")
 
 
+def _sqlite_text(value: bytes):
+    """A stored text, and its bytes when they are not valid UTF-8 (INT-153)."""
+    try:
+        return value.decode()
+    except UnicodeDecodeError:
+        return value
+
+
 class _Session:
     """One driver connection inside one transaction. The connection ends with the session."""
 
@@ -1175,6 +1182,8 @@ class _Session:
         self.dialect = dialect
         self.wrapper = wrapper
         self.raw = wrapper.connection
+        if dialect == "sqlite":
+            self.raw.text_factory = _sqlite_text
         self.abandoned = False
 
     def run(
