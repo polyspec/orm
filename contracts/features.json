@@ -2791,8 +2791,7 @@
           "command": "node packages/ts/tests/coverage_transactions.mjs",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/coverage_transactions.mjs",
-            "packages/ts/tests/coverage_case.mjs"
+            "packages/ts/tests/coverage_transactions.mjs"
           ]
         }
       ],
