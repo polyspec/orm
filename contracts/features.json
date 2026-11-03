@@ -13009,8 +13009,7 @@
             "inputs": [
               "contracts/fixtures/request_hook/request_hook.json",
               "packages/php/tests/case_database.php",
-              "contracts/fixtures/request_hook/request_hook.dbs",
-              "packages/php/tests/CoverageRequestHookTest.php"
+              "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [

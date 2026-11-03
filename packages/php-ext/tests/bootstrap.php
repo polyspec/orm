@@ -100,7 +100,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/DbspecIntrospectTest.php';
 require_once __DIR__ . '/CatalogPageMutationPdo.php';
 require_once __DIR__ . '/CatalogPageMutationStatement.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelDbTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageRequestHookTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/RequestHookTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AggregateNumericTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/IdentityLoadTest.php';

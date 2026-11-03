@@ -51,7 +51,7 @@ final class PerfGateTest extends TestCase
                     . 'none)'
             );
         }
-        // PERF-1: the case of a database names it in ORM_PERF_DATABASE, and reads the bench database of that name.
+        // The case of a database names it in ORM_PERF_DATABASE, and reads the bench database of that name.
         $database = getenv('ORM_PERF_DATABASE');
         self::$featureCase = is_string($database) && $database !== '';
         if (self::$featureCase) {
