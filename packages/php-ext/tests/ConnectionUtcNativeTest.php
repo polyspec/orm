@@ -82,16 +82,6 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    // Requirements: INT-98. Each native model read must reject a database cell outside its declared i32 range.
-    #[DataProvider('drivers')]
-    public function testNativeOutOfRangeDatabaseCellFailsTypedRead(string $driver): void
-    {
-        self::withNativeDatabase($driver, static function (Db $db) use ($driver): void {
-            $created = self::createNativeAuthor($db, '2026-01-01 15:00:00');
-            self::assertNativeTypedCellFailure($driver, $db, $created->getSeq());
-        });
-    }
-
     private static function withNativeDatabase(string $driver, Closure $case): void
     {
         with_case_database(
@@ -126,31 +116,4 @@ final class ConnectionUtcNativeTest extends TestCase
         return $author->create();
     }
 
-    private static function assertNativeTypedCellFailure(string $driver, Db $db, int $seq): void
-    {
-        $pdo = $db->pdo();
-        if ($driver === 'mysql') {
-            $pdo->exec('ALTER TABLE author MODIFY target_club_reader_count BIGINT UNSIGNED');
-            $sql = 'UPDATE author SET target_club_reader_count = 18446744073709551615 WHERE seq = ?';
-        } elseif ($driver === 'postgres') {
-            $pdo->exec('ALTER TABLE author ALTER COLUMN target_club_reader_count TYPE BIGINT');
-            $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
-        } else {
-            $pdo->exec('PRAGMA ignore_check_constraints = ON');
-            $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
-        }
-        try {
-            $pdo->prepare($sql)->execute([$seq]);
-            try {
-                (new Author())($db)->removeAllColumns()->addColumnTargetClubReaderCount()->getBySeq($seq);
-                self::fail("$driver accepted an out-of-range i32 cell");
-            } catch (OrmException $error) {
-                self::assertSame(Code::CODEC_DECODE, $error->code_, "$driver i32 cell read error");
-            }
-        } finally {
-            if ($driver === 'sqlite') {
-                $pdo->exec('PRAGMA ignore_check_constraints = OFF');
-            }
-        }
-    }
 }

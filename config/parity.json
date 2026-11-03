@@ -9359,6 +9359,7 @@
       "id": "conformance_verification-mysql",
       "kind": "suite",
       "requirements": [
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -9534,6 +9535,7 @@
       "id": "conformance_verification-postgres",
       "kind": "suite",
       "requirements": [
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -9709,6 +9711,7 @@
       "id": "conformance_verification-sqlite",
       "kind": "suite",
       "requirements": [
+        "INT-98",
         "DSL-137",
         "DIA-11",
         "DIA-14",
@@ -16346,22 +16349,12 @@
       ]
     },
     {
-      "id": "runtime-invalid-database-cells-return-decode-errors",
+      "id": "go-database-value-scalars",
       "kind": "feature",
       "requirements": [
-        "INT-98"
+        "INT-98a"
       ],
       "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/value_decode.rs",
-          "id": "invalid_database_cells_return_decode_errors"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeInvalidCellsFailTypedReads"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/exec_decode_test.go",
@@ -16371,38 +16364,13 @@
           "implementation": "go",
           "test": "packages/go/orm/conversion_error_test.go",
           "id": "TestDatabaseValueConversionRejectsInvalidValues"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testInvalidStoredCellsFailTypedReads"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
-          "id": "ConnectionUtcNativeTest::testNativeOutOfRangeDatabaseCellFailsTypedRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: invalid stored numeric and boolean cells fail typed reads"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_invalid_database_cells_fail_typed_reads"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "rust-postgres-float-round-trip",

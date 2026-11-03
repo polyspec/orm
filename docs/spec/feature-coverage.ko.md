@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: fffd1d5387fad6c27f5c9d984c352db07b08923d6193d6c96eb63cd065b30fd4 -->
+<!-- source-sha256: cb3f09e2bbb6f5ae4a9f1ce237c5e94824915da0a025afa6d78bd388c183e433 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -27,6 +27,7 @@
   - `statement-runner-non-text-statement`와 `statement-runner-frame-after-its-transaction-ended`(INT-150a, INT-150b)는 compiler가 거부하는 사용이므로 FCV-2에 따라 native로 남는다. 타입이 있는 Go와 Rust의 `run`은 텍스트가 아닌 statement를 받지 않고, Rust frame은 그것을 빌린 callback보다 오래 살 수 없다. 실행되는 동작은 recipe `statement_runner`에 있다.
   - `php-extension-failed-statement-closes-cursor`(CFG-6a)는 PHP extension에서 FCV-2 driver 항목으로 native로 남는다: 실패한 문장 뒤의 닫힌 cursor와 다시 쓰는 연결은 대역 PDO에서 세며, 이를 알리는 공개 호출이 없다.
   - `rust-postgres-bind-parse-cause`(PRT-79a)는 Rust에서, `php-extension-pgsql-adapter-statement-sqlstate`(PRT-79b)는 PHP extension에서 FCV-2 driver 항목으로 native로 남는다: 앞의 것은 비공개 bind 단계를 호출하고, 뒤의 것은 대역 adapter를 읽는다. `sqlite-locked-is-driver`(PLN-24)는 FCV-2 driver 항목으로 native로 남는다: SQLITE_LOCKED에는 recipe 연결이 잡지 않는 shared-cache lock이 필요하다.
+  - `go-database-value-scalars`(INT-98a)는 Go에서 한 언어의 FCV-2 표면으로 native로 남는다: 공개 호출이 이 값으로 닿지 않는 비공개 decode 단계를 호출한다.
   - `statement-runner-python-active-frame`(INT-161)은 Python에서 FCV-2의 한 언어 표면으로 native로 남는다. `active_frame()`은 Python에서만 public이고, 다른 런타임에는 recipe op가 이름 붙일 호출이 없다.
   - `transaction-concurrent-use-and-flow-isolation`, `transaction-execution-flow-context`, `transaction-flow-overlap-rejected`, `handle-disposal-abort-or-unwind-rolls-back`, `handle-disposal-abandoned-query-cancels-and-releases`(PLN-18, DSL-121, DSL-122, INT-47, INT-67, CFG-9)는 모든 런타임에서 FCV-2의 언어 형태로 native로 남는다. 주제가 각 런타임의 flow나 disposal 형태(goroutine, fiber, thread, task; drop된 handle, 취소된 context, signal, close)이고, recipe의 step은 한 flow에서 실행되어 그중 어느 것도 적지 못한다. `utils-backend-waiting-for-lock`(INT-53)도 두 번째 flow이므로 native로 남는다. 기다리는 backend는 첫 flow가 쥔 행에서 막힌 문장을 필요로 하고, 그동안 첫 flow가 보고를 읽는다. recipe `utils`는 waiter가 없는 사례를 가진다.
   - `collection-parent-expansion-preserves-bare-dollar`(DSL-153)는 모든 runtime에서 FCV-2 driver 항목으로 native로 남는다: parent slot의 placeholder 번호 매기기는 generator가 쓰지 않는 statement를 받으므로 어떤 public op도 bare `$`를 줄 수 없다.

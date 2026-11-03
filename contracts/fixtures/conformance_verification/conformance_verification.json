@@ -1,6 +1,7 @@
 {
  "$schema": "../../../scripts/features/schema/recipe.schema.json",
  "requirements": [
+  "INT-98",
   "DSL-137",
   "DIA-37",
   "DIA-14",
@@ -77946,6 +77947,243 @@
        "value": {
         "int": "3"
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "invalid_stored_cells_mysql",
+   "only": [
+    "mysql"
+   ],
+   "requirements": [
+    "INT-98"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      },
+      "address": {
+       "text": "192.0.2.7"
+      },
+      "packed": {
+       "styled": {
+        "text": "compressed text"
+       }
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a value beyond the i64 of the schema needs an unsigned column",
+     "sql": "ALTER TABLE typed_value MODIFY wide BIGINT UNSIGNED"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the cell the client cannot hold in an i64",
+     "sql": "UPDATE typed_value SET wide = 18446744073709551615 WHERE seq = 1"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "wide"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the row again valid in that column",
+     "sql": "UPDATE typed_value SET wide = 7 WHERE seq = 1"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "the check would refuse a boolean cell of 2",
+     "sql": "ALTER TABLE typed_value DROP CHECK `typed_value$active`"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a boolean cell neither 0 nor 1",
+     "sql": "UPDATE typed_value SET active = 2 WHERE seq = 1"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "active"
+     ],
+     "expect": {
+      "mysql": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "invalid_stored_cells_postgres",
+   "only": [
+    "postgres"
+   ],
+   "requirements": [
+    "INT-98"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TypedValue",
+     "values": {
+      "small": {
+       "int": "1"
+      },
+      "wide": {
+       "int": "7"
+      },
+      "active": {
+       "bool": true
+      },
+      "ref": {
+       "text": "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e"
+      },
+      "clock": {
+       "text": "10:20:30.500"
+      },
+      "day": {
+       "text": "2026-02-03"
+      },
+      "note": {
+       "text": "plain text"
+      },
+      "address": {
+       "text": "192.0.2.7"
+      },
+      "packed": {
+       "styled": {
+        "text": "compressed text"
+       }
+      }
+     }
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a float cell that the client refuses",
+     "sql": "UPDATE typed_value SET ratio = 'NaN'::double precision WHERE seq = 1"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "ratio"
+     ],
+     "expect": {
+      "postgres": {
+       "error": "CODEC_DECODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "invalid_stored_cells_sqlite",
+   "only": [
+    "sqlite"
+   ],
+   "requirements": [
+    "INT-98"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "SQLite checks a type only through the declared check, so the table is made again without one",
+     "sql": "DROP TABLE typed_value"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "a column with no type affinity",
+     "sql": "CREATE TABLE typed_value (seq INTEGER PRIMARY KEY, wide)"
+    },
+    {
+     "op": "sql.exec",
+     "reason": "text in the integer column of the schema",
+     "sql": "INSERT INTO typed_value (seq, wide) VALUES (1, 'not-an-integer')"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "TypedValue",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": [
+      "wide"
+     ],
+     "expect": {
+      "sqlite": {
+       "error": "CODEC_DECODE"
       }
      }
     }

@@ -1187,7 +1187,7 @@ connection-utc-php-extension-check: php-vendor-check php-models orm-install-php-
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults|testNativeOutOfRangeDatabaseCellFailsTypedRead' packages/php-ext/tests/ConnectionUtcNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeStyledSqlNullIsPreservedOnDatabaseRead|testNativeI16ValuesAndDefaults' packages/php-ext/tests/ConnectionUtcNativeTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
 # loaded: StatementFaultTest (statement-fault) and DsnTest::testSqlitePath (sqlite-paths). It first checks that the extension registers Polyspec\Orm\Db: its class is

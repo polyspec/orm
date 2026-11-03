@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 07ded08f84572b4b5f65ffff5bb5d6cbf0fb48ccfe2c7167667be0cdeececdae -->
+<!-- source-sha256: 11779ca75d68e18cacc182c8a9c931d66da918cc022777a848fb3df6084abf07 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -538,6 +538,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 
 - **INT-97** 유한한 그리드 decimal 셀은 데이터베이스가 선언한 결과 scale의 정확한 평문 decimal 문자열이며, 끝의 0을 포함한다. 이진 부동소수나 고정 정밀도 모델 코덱 값이 되지 않는다.
 - **INT-98** 타입이 정해진 읽기가 선언된 타입으로 나타낼 수 없는 데이터베이스 셀은 `CODEC_DECODE`로 실패한다. 예: 부호 있는 64비트 범위를 넘는 MySQL `UNSIGNED` 값을 부호 있는 정수로 읽는 경우, 정수 2를 불리언으로 읽는 경우, PostgreSQL `NaN`을 유한한 float으로 읽는 경우, SQLite 텍스트를 정수로 읽는 경우.
+- **INT-98a** `github.com/polyspec/orm/packages/go`는 INT-98의 읽기 아래 단계인, 선택된 행의 비공개 decode와 database 값 변환에서 잘못된 scalar를 거부한다.
 - **INT-99** 타입이 정해진 읽기는 모든 데이터베이스에서 같은 표현으로 각 열을 선언된 타입으로 돌려준다. 16비트 정수는 정수로, uuid는 텍스트로, `time(3)`은 소수 3자리의 텍스트로, date는 날짜로 돌려준다. 삽입이 생략한 열은 모든 데이터베이스에서 데이터베이스 기본값을 가진다.
 - **INT-100** Rust 네이티브 모델 생성: 같은 문서 집합의 모델을 두 번 생성하면 같은 모델, manifest, 외부 텍스트가 나온다. 같은 문서로 crate가 빌드한 모델은, 빌드의 경로를 생성의 경로로 바꾸면 생성된 모델과 같다.
 - **INT-101** precision 없이 선언된 `time`·`datetime` 열은 방언의 기본 정밀도를 가진다: MySQL은 0, PostgreSQL은 6. MySQL은 6을 넘는 정밀도를 거부하며(DIA-54), PostgreSQL은 선언된 정밀도를 선언대로 읽는다. 선언된 정밀도보다 많은 소수 자릿수를 가진 `time`·`datetime` 값을 쓰는 typed 카탈로그 쓰기는 문을 실행하기 전에 `CODEC_ENCODE`로 실패한다.

@@ -96,7 +96,7 @@ func mustInt64(v any) int64 {
 	return n
 }
 
-// Requirements: INT-98.
+// Requirements: INT-98a.
 func TestDatabaseValueConversionRejectsInvalidValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, v := range []any{nil, "bad", "1.5", uint64(math.MaxUint64), math.Inf(1)} {

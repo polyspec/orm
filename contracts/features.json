@@ -1053,7 +1053,6 @@
         "packages/go/engine/engine_test.go",
         "packages/go/engine/compile_bench_test.go",
         "packages/rust/orm/tests/model_output.rs",
-        "packages/rust/orm/tests/value_decode.rs",
         "packages/go/internal/conformance/main_test.go",
         "packages/go/decimalmodel/decimal_physical_test.go",
         "packages/php/tests/DecimalModelTest.php",
@@ -1064,7 +1063,6 @@
         "packages/ts/tests/decimal_model_db.mjs",
         "packages/go/orm/group_rows_test.go",
         "packages/go/orm/related_test.go",
-        "packages/go/orm/value_types_test.go",
         "packages/php/tests/UnselectedColumnTest.php",
         "packages/php/tests/UnselectedColumnDbTest.php",
         "packages/rust/orm/tests/value_types.rs",
@@ -1468,7 +1466,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeInvalidCellsFailTypedReads|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestExpandInKeepsBareDollar|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",
@@ -1477,7 +1475,6 @@
             "packages/go/orm/related_test.go",
             "packages/go/orm/shape_test.go",
             "packages/go/orm/shape_internal_test.go",
-            "packages/go/orm/value_types_test.go",
             "packages/go/orm/styled_state_test.go",
             "packages/go/orm/styled_state_physical_test.go",
             "packages/go/orm/decimal_model_test.go",
@@ -1523,10 +1520,9 @@
         },
         {
           "id": "values-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test value_decode --test value_types",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts values-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test value_types",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/tests/value_decode.rs",
             "packages/rust/orm/tests/value_types.rs"
           ]
         },
