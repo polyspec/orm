@@ -440,8 +440,8 @@ temp-sqlite-fixture-rust-helper-check/cpx5: lease-tool
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL. Its php-extension lane builds the
-# extension, so it installs the PHP extension tools (T272).
-client-pooler-check: lease-tool python-venv-check orm-install-php-extension-tools orm-codes-typescript orm-codes flowmark-check
+# extension, so it installs the PHP extension tools (T272), and its lanes run the recipe units with a database (T343-12).
+client-pooler-check: lease-tool python-venv-check php-vendor-check php-models orm-install-php-extension-tools orm-codes-typescript orm-codes flowmark-check
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_POOLER=1 ORM_PYTHON=$(PYTHON_VENV)/bin/python FLOWMARK=$(FLOWMARK) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" node scripts/client-db-test.mts
 

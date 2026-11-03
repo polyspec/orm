@@ -2784,7 +2784,8 @@
         "COD-57",
         "COD-58",
         "COD-59",
-        "COD-60"
+        "COD-60",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -2834,7 +2835,8 @@
         "COD-57",
         "COD-58",
         "COD-59",
-        "COD-60"
+        "COD-60",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -2884,7 +2886,8 @@
         "COD-57",
         "COD-58",
         "COD-59",
-        "COD-60"
+        "COD-60",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/aes_rotation/aes_rotation.json",
       "cases": "$.cases[*].id",
@@ -8601,7 +8604,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -8663,7 +8668,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -8725,7 +8732,9 @@
         "INT-153",
         "INT-154",
         "INT-155",
-        "SCH-6a"
+        "SCH-6a",
+        "CFG-34",
+        "CFG-35"
       ],
       "file": "contracts/fixtures/catalog_connection/catalog_connection.json",
       "cases": "$.cases[*].id",
@@ -26018,7 +26027,8 @@
       "requirements": [
         "PLN-44",
         "PRT-35",
-        "PRT-76"
+        "PRT-76",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
       "cases": "$.cases[*].id",
@@ -26059,7 +26069,8 @@
       "requirements": [
         "PLN-44",
         "PRT-35",
-        "PRT-76"
+        "PRT-76",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
       "cases": "$.cases[*].id",
@@ -26100,7 +26111,8 @@
       "requirements": [
         "PLN-44",
         "PRT-35",
-        "PRT-76"
+        "PRT-76",
+        "CFG-28"
       ],
       "file": "contracts/fixtures/parameter_chunking/parameter_chunking.json",
       "cases": "$.cases[*].id",

@@ -1959,6 +1959,10 @@ final class Recipe
      */
     private static function databaseStep(array $step, array &$context): void
     {
+        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
+        if (isset($step['expect_unnamed'])) {
+            $step['expect'] = $step['expect_unnamed'];
+        }
         $expected = isset($step['expect'][$context['database']])
             ? self::resolveRefs($step['expect'][$context['database']], $context)
             : null;

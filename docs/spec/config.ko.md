@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 42da33edb717077618c6807767ab577a740d74c0a7c9d628ffe9f1ff4565d5b5 -->
+<!-- source-sha256: fc5cebdbb95a80cf718f6e474df8adb8e7134c9fe9deacc21d759070f080a40a -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -81,14 +81,18 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 PgBouncer 설정:
 
 - **CFG-27** `pool_mode`: `transaction`. 서버 연결 하나가 한 번에 클라이언트 트랜잭션 하나 또는 트랜잭션 밖의 문 하나를 처리한다.
-- **CFG-28** `max_prepared_statements`: 0보다 큰 값(PgBouncer 기본값 200). Go 클라이언트, Rust 클라이언트, TypeScript 클라이언트, Python 클라이언트(`prepare_threshold=0`인 psycopg)는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. PgBouncer는 이름 있는 문을 그 text로 서버 연결에 유지하며, 서버 연결이 이미 가진 text의 Parse는 서버에 닿지 않는다. 그래서 설계상 schema 변경 뒤에 실행되는 catalog session(SCH-6a)은 문에 이름을 붙이는 모든 클라이언트에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행한다. transaction이 session 동안 서버 연결을 잡고, session의 모든 문은 그 시점 뒤에 서버가 parse하며, PgBouncer는 다른 클라이언트가 아직 쓰는 문을 그 서버 연결에 다시 준비한다. PgBouncer를 거치는 `DEALLOCATE ALL`은 1.22 이상이 필요하다.
+- **CFG-28** `max_prepared_statements`: 0보다 큰 값(PgBouncer 기본값 200). Go 클라이언트, Rust 클라이언트, TypeScript 클라이언트, Python 클라이언트(`prepare_threshold=0`인 psycopg)는 문을 프로토콜 수준의 이름 있는 prepared statement로 실행하고, PHP 클라이언트는 PostgreSQL 문을 bind와 함께 unnamed statement로 실행한다. 0이면 한 서버 연결에서 준비한 문이 다음 서버 연결에 없어서 PgBouncer가 `prepared statement … already exists` 또는 `does not exist`를 반환한다. PgBouncer는 이름 있는 문을 그 text로 서버 연결에 유지하며, 서버 연결이 이미 가진 text의 Parse는 서버에 닿지 않는다. 그래서 설계상 schema 변경 뒤에 실행되는 catalog session(SCH-6a)은 문에 이름을 붙이는 모든 클라이언트에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행한다. transaction이 session 동안 서버 연결을 잡고, session의 모든 문은 그 시점 뒤에 서버가 parse하며, PgBouncer는 다른 클라이언트가 아직 쓰는 문을 그 서버 연결에 다시 준비한다. PgBouncer를 거치는 `DEALLOCATE ALL`은 1.22 이상이 필요하다. 클라이언트 연결이나 그 text를 가진 서버 연결에 있는 schema 변경 이전의 문은 직접 연결에서도 PgBouncer를 거쳐도 똑같이 실패한다. 결과 타입이 바뀌었거나(`0A000`, `cached plan must not change result type`), parameter가 새 컬럼에 대해 옛 타입을 유지하거나(`42883`, `42804`), 값을 그 옛 타입으로 읽는다(`22P02`, `22003`, `22007`, `22008`). 트랜잭션 밖에서 실패한 문은 아무것도 바꾸지 않았으므로, 이 중 하나로 실패한 문은 `DEALLOCATE ALL`로 시작하는 트랜잭션 하나 안에서 서버 연결 하나로 한 번 더 실행된다. 다른 이유로 실패한 문은 같은 방식으로 다시 실패하고 그 오류가 호출자에게 전달된다. 호출자의 트랜잭션 안에서는 서버가 트랜잭션을 중단했으므로 오류는 `DRIVER`로 호출자에게 전달된다. PHP 클라이언트는 문에 이름을 붙이지 않으므로 이 경우가 없다.
 - **CFG-29** `track_extra_parameters`: `statement_timeout`. 연결이 `statementTimeoutMs`를 설정할 때 필요하다. 클라이언트는 `statement_timeout`을 startup 매개변수로 전달한다. PgBouncer는 추적하지 않는 startup 매개변수를 거부하고, 추적하는 매개변수는 그 클라이언트 연결에 배정하는 모든 서버 연결에만 설정한다.
 
 - **CFG-30** 클라이언트가 트랜잭션 밖에서 정하는 PostgreSQL 세션 상태는 시간대뿐이다. 모든 클라이언트는 시간대를 startup 매개변수 `TimeZone=UTC`로 보내며, PgBouncer는 `TimeZone`을 기본으로 추적한다. 트랜잭션 옵션(`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal`(`set_config(…, true)`), `utils().lock`(`pg_advisory_xact_lock`)은 트랜잭션과 함께 끝난다.
 - **CFG-31** 문 취소는 PgBouncer를 거치면 best effort이며 보장되지 않는다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달하지만, 이 경로는 신뢰할 수 없다. PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있으며, 다중 프로세스 구성에서는 peering이 1.19에서 들어오기 전까지 취소 요청이 유실되었다. SQLx 0.9에는 CancelRequest API가 없어 Rust 클라이언트에는 PgBouncer를 거치는 지원되는 취소 경로가 없다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다. 유실된 취소는 문을 계속 실행 상태로 두므로, 호출자는 취소가 서버에 닿는다고 의존해서는 안 된다.
 - **CFG-32** `polyspec-orm` crate, 곧 Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
 - **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
+ProxySQL 설정:
 
-ProxySQL은 기본 multiplexing으로 실행하며 ORM 전용 설정이 필요 없다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
+- **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
+- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다.
+
+ProxySQL은 기본 multiplexing으로 실행한다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 
 migration plan 적용은 pooler를 거치지 않고 primary에 직접 연결한다. 적용이 세션 범위의 MySQL `GET_LOCK`이나 PostgreSQL advisory lock을 잡기 때문이다([plans](plans.md#apply)).
