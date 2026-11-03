@@ -20,6 +20,9 @@
 - The MySQL introspection of the checks of SHOW CREATE TABLE is the recipe `tests/dbspec/show-create-introspect.json` in all six runtimes, through the op `dbspec.introspect_shown`, which holds what each case of `tests/dbspec/show-create.json` expects
 - The SQLite unsupported column reason of DIA-191 is the recipe `tests/dbspec/introspect-messages.json` in all six runtimes, through the op `dbspec.introspect_sqlite`, and each compares the whole list of unsupported objects; a test of it in a single runtime is gone
 - A recipe's expect names exactly the databases that run its step, so a case with `only` no longer states outcomes on databases that never run it (FCV-4, FCV-10).
+- The PHP, TypeScript and Go natives of the runtime model are compared value by value and gone: the recipes add the bench set with its external document, the manifest text without a comment or diagram, the select-explicit flag, an i16 condition, the clock per inserted row, an assigned `default now` column, and a repeated document or an empty text refused by rule. PRT-81 states the `default now` exception of PRT-33.
+- The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
+- The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
 - CR32 gives the times that rule out a harness stop of the tool call.
 - The owners of parameter_chunking declare model_parameter_after_schema_change.
 - catalog_read_budgets names its wait for all three databases, as a recipe's sql must.
