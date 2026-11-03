@@ -1446,15 +1446,27 @@ function plainJson(value) {
   return value;
 }
 
-/** The toArray of a row, narrowed to pick when it is named; a missing row is null. */
+/** The JSON output of a row (COD-26), narrowed to pick when it is named; a missing row is null. An integer past the safe range is its text. */
 function rowJson(row, pick) {
   if (row === null || row === undefined) return null;
-  const values = plainJson(row.toJSON());
+  const text = row.toJSONText();
+  assert.equal(JSON.stringify(row), text);
+  const values = JSON.parse(text, (_, value, { source }) => typeof value === 'number' && !Number.isSafeInteger(value) && Number.isInteger(value) ? source : value);
   if (pick === undefined || pick.length === 0) return values;
   return Object.fromEntries(pick.map(name => {
     if (!(name in values)) throw new Error(`the row has no field ${name}`);
     return [name, values[name]];
   }));
+}
+
+/** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
+function derivedIntegers(row, names = []) {
+  for (const name of names) {
+    if (typeof row[name] !== 'string') continue;
+    assert.match(row[name], /^-?(?:0|[1-9][0-9]*)$/, `${name} is an invalid derived integer`);
+    row[name] = Number(row[name]);
+  }
+  return row;
 }
 
 /** The expect of the database of the case compares rows of wrappers. */
@@ -1546,7 +1558,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
-    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
+    const fields = { bind: rows, json: rows.values().map(row => derivedIntegers(rowJson(row, s.pick), s.derived_integers)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
   },
