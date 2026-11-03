@@ -3403,8 +3403,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/AuditLazyFakePdoTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/dbspec-set.json"
