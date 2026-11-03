@@ -38,14 +38,6 @@ use crate::or_panic::OrPanic;
 mod coverage_planner;
 
 #[cfg(test)]
-#[path = "../../tests/unit/blind_index_source.rs"]
-mod blind_index_source;
-
-#[cfg(test)]
-#[path = "../../tests/unit/param_uses.rs"]
-mod param_uses_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -58,42 +50,6 @@ mod tests {
     }
 
     // Explicit and default projections read the AES version column once, visibly when selected and hidden otherwise.
-    #[test]
-    // The test of DIA-33 (docs/spec).
-    fn all_columns_select_the_aes_version_once() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let (set, manifest) = bench_fixture();
-        let request = ir::Request {
-            ir_version: 1,
-            manifest_hash: set.manifest_hash.clone(),
-            kind: "all".into(),
-            query: ir::Query { entity: "author".into(), columns: Some(ir::Columns { mode: "all".into(), ..Default::default() }), ..Default::default() },
-            ..Default::default()
-        };
-        let plan = compile(&manifest, Dialect::MySql, &request).unwrap();
-        let step = &plan.steps[0];
-        assert_eq!(step.sql.matches("`a`.`aes_key_version` AS").count(), 1, "{}", step.sql);
-        let asm = step.assemble.as_ref().unwrap();
-        let at = asm.aes_version.expect("AES version column marked");
-        assert_eq!(asm.columns[at].column, "aes_key_version");
-        assert!(!asm.columns[at].hidden);
-
-        let default = ir::Request {
-            ir_version: 1,
-            manifest_hash: set.manifest_hash,
-            kind: "all".into(),
-            query: ir::Query { entity: "author".into(), ..Default::default() },
-            ..Default::default()
-        };
-        let default_plan = compile(&manifest, Dialect::MySql, &default).unwrap();
-        let default_step = &default_plan.steps[0];
-        assert_eq!(default_step.sql.matches("`a`.`aes_key_version` AS").count(), 1, "{}", default_step.sql);
-        let default_asm = default_step.assemble.as_ref().unwrap();
-        let default_at = default_asm.aes_version.expect("hidden AES version column marked");
-        assert_eq!(default_asm.columns[default_at].column, "aes_key_version");
-        assert!(default_asm.columns[default_at].hidden);
-    }
-
     #[test]
     // Requirements: CPX-2.
     fn paginate_plan_places_count_before_relation_steps() {

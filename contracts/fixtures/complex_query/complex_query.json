@@ -3,6 +3,8 @@
  "requirements": [
   "CPX-1",
   "CPX-2",
+  "CPX-5",
+  "DSL-128",
   "FCV-2",
   "FCV-3",
   "FCV-4"
@@ -2115,6 +2117,60 @@
        "value": {
         "array": []
        }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "duplicate_relation_name",
+   "requirements": [
+    "CPX-5",
+    "DSL-128"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Product",
+     "relations": [
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ]
+      },
+      {
+       "model": "ProductLang",
+       "match": [
+        [
+         "seq",
+         "product_seq"
+        ]
+       ]
+      }
+     ],
+     "compile": true,
+     "expect": {
+      "mysql": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
+      },
+      "postgres": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
+      },
+      "sqlite": {
+       "error": "CONFIG",
+       "message_holds": "product_lang_model is used twice; call alias<Name>()"
       }
      }
     }
