@@ -529,13 +529,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "column user.coverage_missing does not exist"
             },
             "postgres": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "column user.coverage_missing does not exist"
             },
             "sqlite": {
-              "error": "CONFIG"
+              "error": "CONFIG",
+              "message_suffix": "column user.coverage_missing does not exist"
             }
           }
         },

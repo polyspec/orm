@@ -1,0 +1,71 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "version": 1,
+  "note": "The refusal of a dialect that is none of mysql, postgres and sqlite (DBS-174). Rust takes a dialect by an enum type, so it has no such call: its compile fixtures dbs174-plan-unknown-dialect-e0308 and dbs174-render-unknown-dialect-e0308 hold the rule, and this recipe binds the other five runtimes.",
+  "requirements": [
+    "DBS-174"
+  ],
+  "cases": [
+    {
+      "id": "plan-steps-unknown-dialect",
+      "requirements": [
+        "DBS-174"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.parse_plan",
+          "lines": [
+            "dbplan 1 dialect",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table item {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "plan",
+          "expect": {
+            "none": {
+              "diagnostics": []
+            }
+          }
+        },
+        {
+          "op": "dbspec.plan_steps",
+          "source": null,
+          "plan": {
+            "ref": "plan"
+          },
+          "dialect": "oracle",
+          "expect": {
+            "none": {
+              "refused": "oracle"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "render-unknown-dialect",
+      "requirements": [
+        "DBS-174"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.render",
+          "documents": [
+            "../../contracts/fixtures/audit.dbs"
+          ],
+          "dialect": "oracle",
+          "expect": {
+            "none": {
+              "refused": "oracle"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

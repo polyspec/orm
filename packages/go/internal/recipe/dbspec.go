@@ -92,6 +92,7 @@ func checkDBSpec(s step, dir, database string) error {
 			MySQL    []string `json:"mysql"`
 			Postgres []string `json:"postgres"`
 			SQLite   []string `json:"sqlite"`
+			Refused  string   `json:"refused"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
@@ -99,6 +100,16 @@ func checkDBSpec(s step, dir, database string) error {
 		_, documents, err := readDocuments(dir, s.Documents)
 		if err != nil {
 			return err
+		}
+		if s.Dialect != "" {
+			got, err := dialectRefusal(s.Dialect, func() { dbspec.Render(documents, dbspec.Dialect(s.Dialect)) })
+			if err != nil {
+				return err
+			}
+			if want.Refused != s.Dialect {
+				return fmt.Errorf("refused %v, want %q", got, want.Refused)
+			}
+			return nil
 		}
 		for dialect, wantStatements := range map[string][]string{"mysql": want.MySQL, "postgres": want.Postgres, "sqlite": want.SQLite} {
 			got, diagnostics := dbspec.Render(documents, dbspec.Dialect(dialect))

@@ -39,7 +39,8 @@
         "packages/go/bench/gate_helpers_test.go",
         "packages/go/internal/dialects/runner_environment_physical_test.go",
         "packages/go/engine/dbspec/vectors_test.go",
-        "packages/go/internal/dialects/servers_test.go"
+        "packages/go/internal/dialects/servers_test.go",
+        "packages/go/engine/dbspec/plan_test.go"
       ],
       "args": [
         "-tags",
@@ -317,7 +318,6 @@
         "packages/php/tests/CoverageModelWritesCase.php",
         "packages/php/tests/Cpx5DuplicateRelationCases.php",
         "packages/php/tests/DatabaseTestAssertions.php",
-        "packages/php/tests/DbspecDialectRejectionCases.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
         "packages/php/tests/DbspecSqliteLockCases.php",
         "packages/php/tests/DbspecStressTestSupport.php",
@@ -555,6 +555,10 @@
         {
           "glob": "packages/php/tests/DbspecStressTest.php",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/php/tests/DbspecPlanTest.php",
+          "reason": "harness: tests the PHP compare harness and the connection, value and cleanup helpers of the dbspec database tests; it holds no shared client behaviour"
         }
       ]
     },
@@ -3560,6 +3564,51 @@
       ]
     },
     {
+      "id": "dbspec-dialect-refusal",
+      "kind": "suite",
+      "requirements": [
+        "DBS-174"
+      ],
+      "file": "tests/dbspec/dialect-refusal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+          "symbol": "TestRecipeDbspecDialectRefusalNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecDialectRefusalRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecDialectRefusalRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_dialect_refusal_none.py"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "schema_definition",
+        "parts": [
+          "owner/go",
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
+    },
+    {
       "id": "ts-dbspec-plan",
       "kind": "feature",
       "requirements": [
@@ -3568,28 +3617,28 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/plan_test.go",
-          "id": "TestPlanStepsRejectsUnknownDialect"
+          "test": "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+          "id": "TestRecipeDbspecDialectRefusalNone/plan-steps-unknown-dialect"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecPlanTest.php",
-          "id": "DbspecPlanTest::testUnknownDialect"
+          "test": "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+          "id": "DbspecDialectRefusalRecipeTest::testNone with data set \"plan-steps-unknown-dialect\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
-          "id": "DbspecRulesNativeTest::testNativePlanStepsRejectUnknownDialect"
+          "test": "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
+          "id": "DbspecDialectRefusalRecipeTestExtensionTest::testNone with data set \"plan-steps-unknown-dialect\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-plan.mjs",
-          "id": "plan steps reject an unknown dialect"
+          "test": "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
+          "id": "plan-steps-unknown-dialect"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_render_dialect.py",
-          "id": "test_plan_steps_reject_unknown_dialect_before_writing_statements"
+          "test": "packages/python/tests/test_dbspec_dialect_refusal_none.py",
+          "id": "plan-steps-unknown-dialect"
         },
         {
           "implementation": "rust",
@@ -3607,28 +3656,28 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/render_test.go",
-          "id": "TestRenderRejectsUnknownDialect"
+          "test": "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+          "id": "TestRecipeDbspecDialectRefusalNone/render-unknown-dialect"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "id": "DbspecRenderTest::testUnknownDialect"
+          "test": "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+          "id": "DbspecDialectRefusalRecipeTest::testNone with data set \"render-unknown-dialect\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRulesNativeTest.php",
-          "id": "DbspecRulesNativeTest::testNativeRenderRejectsUnknownDialect"
+          "test": "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
+          "id": "DbspecDialectRefusalRecipeTestExtensionTest::testNone with data set \"render-unknown-dialect\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render-dialect.mjs",
-          "id": "render rejects an unknown dialect"
+          "test": "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
+          "id": "render-unknown-dialect"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_render_dialect.py",
-          "id": "test_unknown_dialect_is_a_type_error"
+          "test": "packages/python/tests/test_dbspec_dialect_refusal_none.py",
+          "id": "render-unknown-dialect"
         },
         {
           "implementation": "rust",
@@ -17254,11 +17303,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testSchemaEmpty"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExisting"
         },
         {
           "implementation": "php-extension",
