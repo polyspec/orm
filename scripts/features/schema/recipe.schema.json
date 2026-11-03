@@ -3747,8 +3747,7 @@
         "required": [
           "op",
           "metadata",
-          "values",
-          "expect"
+          "values"
         ],
         "additionalProperties": false,
         "properties": {
@@ -8237,6 +8236,18 @@
             ],
             "additionalProperties": false,
             "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "table",
+                  "partitioned",
+                  "view",
+                  "materialized_view",
+                  "foreign",
+                  "virtual",
+                  "shadow"
+                ]
+              },
               "columns": {
                 "type": "array",
                 "items": {
