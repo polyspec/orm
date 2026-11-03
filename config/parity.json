@@ -15238,7 +15238,8 @@
       "id": "rust-native-updates-lock-compare-verify-and-rollback",
       "kind": "feature",
       "requirements": [
-        "INT-106"
+        "INT-106",
+        "INT-123"
       ],
       "bindings": [
         {
@@ -15250,11 +15251,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
           "id": "row_mutation"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_mutation.rs",
-          "id": "native_updates_lock_compare_verify_and_rollback"
         },
         {
           "implementation": "go",
@@ -15270,8 +15266,47 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_mutation_lifecycle"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_mutation_lifecycle"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_mutation_lifecycle"
         }
       ]
+    },
+    {
+      "id": "rust-row-mutation-phases",
+      "kind": "feature",
+      "requirements": [
+        "INT-106a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_mutation.rs",
+          "id": "mutation_phases_follow_the_transaction"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "catalog-row-baseline-compares-exact-values",
@@ -16903,7 +16938,7 @@
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_mutation.rs",
-          "id": "native_updates_lock_compare_verify_and_rollback"
+          "id": "mutation_phases_follow_the_transaction"
         }
       ]
     },
