@@ -78,6 +78,11 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "sql.exec": [
       "only",
       "op",
@@ -455,6 +460,7 @@
       "op"
     ],
     "dbspec.render": [
+      "dialect",
       "documents",
       "expect",
       "op"

@@ -15,6 +15,7 @@ import threading
 import time
 import types
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -140,6 +141,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "ir.answer":
                     _answer(step, database)
+                    continue
+                if step["op"] == "collection.key":
+                    _collection_key(step, database)
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
@@ -318,6 +322,45 @@ def _answer(step: dict, database: str) -> None:
         got = _request_params(sent)
     if not same(got, want):
         raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
+
+
+def _collection_key(step: dict, database: str) -> None:
+    """Runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each key, the
+    index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63,
+    PRT-35)."""
+
+    def native(entry):
+        kind = entry["type"]
+        if kind == "null":
+            return None
+        if kind == "bytes":
+            return bytes.fromhex(entry["hex"])
+        if kind == "datetime":
+            return datetime.fromisoformat(entry["value"])
+        return entry["value"]
+
+    names = {str: "text", bool: "bool", int: "int", bytes: "bytes", datetime: "datetime"}
+    collection = Collection()
+    try:
+        groups = []
+        for index, entry in enumerate(step["keys"]):
+            key = native(entry)
+            first = collection.get(key)
+            groups.append(index if first is None else first["group"])
+            if first is None:
+                collection.put(key, {"group": index})
+        got = {
+            "groups": groups,
+            "types": [names[type(native(entry))] for entry in step["keys"]],
+        }
+        stored = collection.keys()
+        distinct = [native(step["keys"][group]) for group in dict.fromkeys(groups)]
+        if stored != distinct or [type(key) for key in stored] != [type(key) for key in distinct]:
+            raise AssertionError(f"the keys changed their native values or order: {stored}")
+    except OrmError as error:
+        got = {"error": error.code, "message": str(error)}
+    if got != step["expect"][database]:
+        raise AssertionError(f"got {got}, want {step['expect'][database]}")
 
 
 def _request_params(sent: list) -> list:
@@ -567,6 +610,17 @@ _DBSPEC_FILE_OPS = (
 _MERMAID_OPS = ("dbspec.export_mermaid", "dbspec.import_mermaid")
 
 
+def _dialect_refusal(name: str, call) -> dict:
+    """Runs a call that takes the dialect name and returns {refused: name} when it raises a TypeError that names it (DBS-174)."""
+    try:
+        call()
+    except TypeError as refusal:
+        if name not in str(refusal):
+            raise AssertionError(f"the refusal {refusal!r} does not name {name}") from refusal
+        return {"refused": name}
+    raise AssertionError(f"the call accepted the dialect {name}")
+
+
 def _dbspec_files(step: dict, directory: Path, database: str) -> None:
     """Runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database
     (FCV-4). directory is the directory of the recipe: the paths of a step are relative to it."""
@@ -590,6 +644,10 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         _expect_equal(manifest.manifest_hash, expect["manifest_hash"], "manifest hash")
     elif op == "dbspec.render":
         _texts, documents = _read_documents(directory, step["documents"])
+        if "dialect" in step:
+            got = _dialect_refusal(step["dialect"], lambda: render_dbspec(documents, step["dialect"]))
+            _expect_equal(got, expect, "refused dialect")
+            return
         for dialect in ("mysql", "postgres", "sqlite"):
             rendered = render_dbspec(documents, dialect)
             if list(rendered["diagnostics"]):
@@ -1195,6 +1253,15 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
+        got = _dialect_refusal(
+            step["dialect"],
+            lambda: plan_steps(
+                _dbspec_document(step["source"], bound),
+                _dbspec_value(step["plan"], bound, "plan"),
+                step["dialect"],
+            ),
+        )
     elif op == "dbspec.plan_steps":
         result = plan_steps(
             _dbspec_document(step["source"], bound),
@@ -2954,6 +3021,15 @@ def _run_database_step(step: dict, context: dict) -> None:
         if suffix is not None and not str(error).endswith(suffix):
             raise AssertionError(
                 f"error message {str(error)!r} does not end with {suffix!r}"
+            ) from error
+        holds = expected.get("message_holds")
+        if holds is not None and holds not in str(error):
+            raise AssertionError(
+                f"error message {str(error)!r} does not hold {holds!r}"
+            ) from error
+        if expected.get("driver_cause") is True and error.__cause__ is None:
+            raise AssertionError(
+                f"error {str(error)!r} has no driver cause"
             ) from error
         return
     except CallbackError:

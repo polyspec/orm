@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Assert;
+use InvalidArgumentException;
 use Polyspec\OrderedJson\Kind;
 use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
@@ -121,6 +122,10 @@ final class Recipe
                 }
                 if ($step['op'] === 'ir.answer') {
                     self::answerStep($step);
+                    continue;
+                }
+                if ($step['op'] === 'collection.key') {
+                    self::collectionKeyStep($step, $database);
                     continue;
                 }
                 if ($step['op'] === 'planner.compile') {
@@ -341,6 +346,15 @@ final class Recipe
             $got = ['text' => Dbspec::emitPlan(self::dbspecBound($step['plan'], $bound))];
         } elseif ($op === 'dbspec.plan_steps') {
             $source = ($step['source'] ?? null) === null ? null : self::dbspecBound($step['source'], $bound);
+            if (!in_array($step['dialect'], ['mysql', 'postgres', 'sqlite'], true)) {
+                $plan = self::dbspecBound($step['plan'], $bound);
+                $got = self::dialectRefusal(
+                    $step['dialect'],
+                    static fn() => Dbspec::planSteps($source, $plan, $step['dialect']),
+                );
+                Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+                return;
+            }
             $result = Dbspec::planSteps($source, self::dbspecBound($step['plan'], $bound), $step['dialect']);
             $steps = $result->steps ?? Assert::fail('plan steps: ' . self::diagnostics($result->diagnostics));
             $got = ['steps' => array_map(static fn(PlanStep $s): array => self::planStepFields($s), $steps)];
@@ -348,6 +362,21 @@ final class Recipe
             Assert::fail("OP_UNKNOWN $op");
         }
         Assert::assertSame(self::sortedKeys($expect), self::sortedKeys($got), "$op: result differs from the expect");
+    }
+
+    /**
+     * Runs a call that takes the dialect name and returns {refused: name} when it throws an InvalidArgumentException that
+     * names it (DBS-174).
+     */
+    private static function dialectRefusal(string $name, callable $call): array
+    {
+        try {
+            $call();
+        } catch (InvalidArgumentException $refusal) {
+            Assert::assertStringContainsString($name, $refusal->getMessage());
+            return ['refused' => $name];
+        }
+        Assert::fail("the call accepted the dialect $name");
     }
 
     /** The object of one step as docs/spec/plans.md "Steps" writes it, keys in name order. */
@@ -480,6 +509,42 @@ final class Recipe
             $actual,
             'got ' . MarkdownConformanceTest::jsonText($actual) . ', want ' . MarkdownConformanceTest::jsonText($expect)
         );
+    }
+
+    /**
+     * Runs a collection.key step: each value through the public Collection::keyOf and Collection::identityOf. Its groups are,
+     * for each key, the index of the first key equal to it, and its types the native type that keyOf keeps (INT-11, INT-63,
+     * PRT-35).
+     */
+    private static function collectionKeyStep(array $step, string $database): void
+    {
+        $got = ['groups' => [], 'types' => []];
+        $seen = [];
+        try {
+            foreach ($step['keys'] as $index => $entry) {
+                $value = match ($entry['type']) {
+                    'null' => null,
+                    'bytes' => new \Polyspec\Orm\Bytes(hex2bin($entry['hex'])),
+                    'datetime' => new \DateTime($entry['value']),
+                    default => $entry['value'],
+                };
+                $key = \Polyspec\Orm\Collection::keyOf($value);
+                Assert::assertSame($value, $key, 'a key changed its native value');
+                $identity = \Polyspec\Orm\Collection::identityOf($value);
+                $seen[$identity] ??= $index;
+                $got['groups'][] = $seen[$identity];
+                $got['types'][] = match (true) {
+                    is_string($key) => 'text',
+                    is_bool($key) => 'bool',
+                    is_int($key) => 'int',
+                    $key instanceof \Polyspec\Orm\Bytes => 'bytes',
+                    $key instanceof \DateTimeInterface => 'datetime',
+                };
+            }
+        } catch (OrmException $error) {
+            $got = ['error' => $error->code_, 'message' => $error->getMessage()];
+        }
+        Assert::assertSame($step['expect'][$database], $got);
     }
 
     /** The params of the request message that a server received, in the JSON form of PRT-67 (PRT-66). */
@@ -706,6 +771,11 @@ final class Recipe
                 return;
             case 'dbspec.render':
                 [, $documents] = self::dbspecDocuments($dir, $step['documents']);
+                if (array_key_exists('dialect', $step)) {
+                    $got = self::dialectRefusal($step['dialect'], static fn() => Dbspec::render($documents, $step['dialect']));
+                    Assert::assertSame($expect, $got, 'refused dialect');
+                    return;
+                }
                 foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
                     $result = Dbspec::render($documents, $dialect);
                     if ($result->diagnostics !== []) {
@@ -1889,6 +1959,12 @@ final class Recipe
             Assert::assertSame($expected['error'], $error->code_, "the error code ({$error->getMessage()})");
             if (isset($expected['message_suffix'])) {
                 Assert::assertStringEndsWith($expected['message_suffix'], $error->getMessage(), 'the error message');
+            }
+            if (isset($expected['message_holds'])) {
+                Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
+            }
+            if (($expected['driver_cause'] ?? false) === true) {
+                Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
             return;
         } catch (CallbackFailed $failure) {

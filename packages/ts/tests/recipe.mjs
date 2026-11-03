@@ -58,6 +58,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
+          else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
@@ -697,6 +698,8 @@ async function runStep(s, context) {
     if (expected?.error === undefined || typeof code !== 'string') throw error;
     assert.equal(code, expected.error, `the error code (${error.message})`);
     if (expected.message_suffix !== undefined) assert.ok(error.message.endsWith(expected.message_suffix), `the error message ${JSON.stringify(error.message)} ends with ${JSON.stringify(expected.message_suffix)}`);
+    if (expected.message_holds !== undefined) assert.ok(error.message.includes(expected.message_holds), `the error message ${JSON.stringify(error.message)} holds ${expected.message_holds}`);
+    if (expected.driver_cause === true) assert.ok(error.cause !== undefined, `the error ${JSON.stringify(error.message)} keeps its driver cause`);
     return;
   }
   if (s.as !== undefined) {
@@ -858,6 +861,39 @@ function validationModel(schemaPath) {
 }
 
 // requestText is the request of the step as its ordered-json text, so a number keeps its literal (0.0 is not 0).
+// checkCollectionKey runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each
+// key, the index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63, PRT-35).
+function checkCollectionKey(step, database) {
+  const native = entry => {
+    switch (entry.type) {
+      case 'null': return null;
+      case 'bytes': return Uint8Array.from(Buffer.from(entry.hex, 'hex'));
+      case 'datetime': return new Date(entry.value);
+      default: return entry.value;
+    }
+  };
+  const typeName = key => key instanceof Date ? 'datetime' : key instanceof Uint8Array ? 'bytes' : { string: 'text', boolean: 'bool', number: 'int' }[typeof key];
+  const collection = new Collection();
+  let got;
+  try {
+    const groups = [];
+    for (const [index, entry] of step.keys.entries()) {
+      const key = native(entry);
+      const first = collection.get(key);
+      groups.push(first === undefined ? index : first.group);
+      if (first === undefined) collection.put(key, { group: index });
+    }
+    got = { groups, types: step.keys.map(entry => typeName(native(entry))) };
+    const distinct = [...new Set(groups)].map(group => native(step.keys[group]));
+    if (!isDeepStrictEqual(collection.keys(), distinct)) throw new Error('the keys changed their native values or their order');
+  } catch (error) {
+    if (!(error instanceof OrmError)) throw error;
+    got = { error: error.code, message: error.message };
+  }
+  const want = step.expect[database];
+  if (!isDeepStrictEqual(got, want)) throw new Error(`got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+}
+
 // answerText is the answer of an ir.answer step as its recipe writes it, so that a number keeps its form on the wire: JSON.parse
 // would make 3.0 the 3 of an integer. A step of answers has none.
 function answerText(literal, caseIndex, stepIndex) {
@@ -978,9 +1014,18 @@ function dbspecParse(step, bound) {
 
 // dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plan-cases.json objects of its steps, or fails on diagnostics.
 function dbspecPlanSteps(step, bound) {
+  if (!['mysql', 'postgres', 'sqlite'].includes(step.dialect)) {
+    return dialectRefusal(step.dialect, () => planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect));
+  }
   const result = planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect);
   if (result.diagnostics.length > 0) throw new Error(`plan steps: ${result.diagnostics.map(d => d.message).join('; ')}`);
   return { steps: result.steps.map(stepFields) };
+}
+
+// dialectRefusal runs a call that takes the dialect name and returns {refused: name} when it throws a TypeError that names it (DBS-174).
+function dialectRefusal(name, call) {
+  assert.throws(call, { name: 'TypeError', message: new RegExp(name) });
+  return { refused: name };
 }
 
 // stepFields is the object of one step as docs/spec/plans.md "Steps" writes it.
@@ -1897,6 +1942,10 @@ async function checkDbspecFiles(step, dir, database) {
     }
     case 'dbspec.render': {
       const { documents } = await readDocuments(dir, step.documents);
+      if (step.dialect !== undefined) {
+        assert.deepEqual(dialectRefusal(step.dialect, () => renderDbspec(documents, step.dialect)), expect, 'refused dialect');
+        break;
+      }
       for (const dialect of ['mysql', 'postgres', 'sqlite']) {
         const rendered = renderDbspec(documents, dialect);
         assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);

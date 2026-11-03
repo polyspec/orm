@@ -251,6 +251,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     if step["op"] == "markdown.send" {
         return markdown_send(step);
     }
+    if step["op"] == "collection.key" {
+        return collection_key(step, database);
+    }
     if step["op"] == "model.assign" {
         return model_assign(step);
     }
@@ -1159,6 +1162,55 @@ fn markdown_send(step: &Value) -> Result<(), String> {
 
 /// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
 /// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn collection_key(step: &Value, database: &str) -> Result<(), String> {
+    let mut keys: Vec<polyspec_orm::Key> = Vec::new();
+    let mut groups: Vec<usize> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
+    let mut failure = None;
+    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+        let value = match entry["type"].as_str().unwrap_or_default() {
+            "null" => Val::Null,
+            "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
+            "bool" => Val::Bool(entry["value"].as_bool().ok_or("a bool key holds no bool")?),
+            "int" => Val::I64(entry["value"].as_i64().ok_or("an int key holds no integer")?),
+            "bytes" => {
+                let text = entry["hex"].as_str().ok_or("a bytes key holds no hex")?;
+                let digits = (0..text.len()).step_by(2).map(|index| u8::from_str_radix(&text[index..index + 2], 16));
+                Val::Bytes(digits.collect::<Result<Vec<u8>, _>>().map_err(|error| error.to_string())?)
+            }
+            "datetime" => {
+                let text = entry["value"].as_str().ok_or("a datetime key holds no text")?;
+                Val::DateTime(polyspec_orm::chrono::DateTime::parse_from_rfc3339(text).map_err(|error| error.to_string())?.naive_utc())
+            }
+            other => return Err(format!("collection.key has no type {other}")),
+        };
+        let key = match polyspec_orm::Key::of(&value) {
+            Ok(key) => key,
+            Err(error) => {
+                failure = Some(json!({ "error": error.code(), "message": error.to_string() }));
+                break;
+            }
+        };
+        groups.push(keys.iter().position(|other| other == &key).map_or(keys.len(), |index| groups[index]));
+        types.push(match (&key, &value) {
+            (polyspec_orm::Key::I(left), Val::I64(right)) if left == right => "int",
+            (polyspec_orm::Key::S(left), Val::Str(right)) if left == right => "text",
+            (polyspec_orm::Key::B(left), Val::Bool(right)) if left == right => "bool",
+            (polyspec_orm::Key::X(left), Val::Bytes(right)) if left == right => "bytes",
+            (polyspec_orm::Key::T(left), Val::DateTime(right)) if left == right => "datetime",
+            _ => return Err(format!("key {key:?} changed its native value")),
+        });
+        keys.push(key);
+    }
+    let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
+    let want = &step["expect"][database];
+    if &got == want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
+    }
+}
+
 fn model_assign(step: &Value) -> Result<(), String> {
     let model = step["model"].as_str().unwrap_or_default();
     let column = step["column"].as_str().unwrap_or_default();
@@ -1745,6 +1797,10 @@ pub use database::{database_trials, database_trials_with_models, database_trials
 /// its objects and a column list is written in the order of the recipe (FCV-4).
 const WRITTEN_ORDER: &str = "__written_order";
 
+/// The mark that the text of a failed model op ends with when its error keeps the error of the driver as its source;
+/// the text of an op is a string, and an expect of driver_cause reads this mark (FCV-4).
+const DRIVER_CAUSE: &str = "\u{1f}driver_cause";
+
 mod database {
     use std::collections::HashMap;
     use std::future::Future;
@@ -2326,12 +2382,22 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
+                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                    Some(text) => (text.to_owned(), true),
+                    None => (message, false),
+                };
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
+                let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
-                        _ => Ok(()),
+                        _ => match holds {
+                            Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
+                            _ if wants_cause && !cause => Err(format!("error {message:?} has no driver cause")),
+                            _ => Ok(()),
+                        },
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
                     None => Err(format!("error without a code ({message}), want {want}")),
@@ -3317,7 +3383,8 @@ mod tables {
 
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
     fn orm(error: OrmError) -> String {
-        format!("{}: {error}", error.code())
+        let cause = if std::error::Error::source(&error).is_some() { super::DRIVER_CAUSE } else { "" };
+        format!("{}: {error}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
