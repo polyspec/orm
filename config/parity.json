@@ -2304,7 +2304,7 @@
           ],
           "bindings": [
             {
-              "test": "tests/conformance/check/main.test.mts",
+              "test": "tests/conformance/check/recipe_vectors.test.mts",
               "id": "TestPHPExtensionCommandLine"
             }
           ]

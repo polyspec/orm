@@ -17,7 +17,7 @@
       "entries": {
         "tests/*.mjs": "the TypeScript client tests, each run by node from a make target (ts-check/test, client-unit-check, client-db-check and the feature checks of contracts/features.json)",
         "tests/*.ts": "the type tests of the TypeScript client, which tsc checks through packages/ts/tsconfig.json and orm-gen scans for the models",
-        "testing/conformance/runner_typescript.mts": "the TypeScript conformance runner, which tests/conformance/check/main.mts spawns",
+        "testing/conformance/runner_typescript.mts": "the TypeScript conformance runner, which tests/conformance/check/recipe_vectors.mts spawns",
         "testing/interfaces/typescript.mts": "the TypeScript declaration extractor, which tests/interfaces/check spawns with its own TypeScript",
         "testing/dbspec/apply/typescript.mts": "the TypeScript apply runner, which the Go physical apply tests spawn",
         "testing/dbspec/compare/typescript.mts": "the TypeScript compare runner, which tests/dbspec/compare/runners.mts spawns",

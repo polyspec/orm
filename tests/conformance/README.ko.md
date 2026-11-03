@@ -1,83 +1,28 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 1b48ba9a214b65b098aa97742dc519967410a2a1cf138dec401d7ba6a4e6f8a6 -->
-# 적합성 벡터
+<!-- source-sha256: 64bcb05122cb8a66aeb528a4c8d81fa00c9baea87011f52337e5dde54c6d8a23 -->
+# Conformance
 
-한 문서와 여섯 선언 구현을 사용한다. 공통 벡터 contract는 Go, PHP, PHP-extension, Rust, TypeScript, Python에 적용된다. conformance 완료에는 각 구현이 데이터베이스에서 체인을 실행하고 JSON을 출력해야 한다.
+conformance vector의 동작은 recipe
+[`conformance_verification`](../../contracts/fixtures/conformance_verification/conformance_verification.json)이며, 여섯
+구현 각각이 자기 recipe helper로 MySQL, PostgreSQL, SQLite에서 실행한다
+([feature coverage](../../docs/spec/feature-coverage.ko.md) FCV-3). 새 동작은 그 recipe의 새 case다.
 
-```json
-{"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
-```
+recipe step이 될 수 없는 것은 여기 남으며, 각 구현의 runner에 native body로 있다.
 
-각 statement는 연결의 statement event다([사용법](../../docs/operations/usage.md#statement-events)): 실행기의 연결이 실행하는 모든 statement를 kind, table, 오류 code와 함께 기록한다. `transaction`은 벡터 안에서 처음 나온 순서로 1부터 다시 센 번호이고 transaction 밖에서는 null이다.
+- generated method를 호출하는 body: recipe step이 닿지 못한다. 각 출력은 같은 이름의 recipe case expect와 비교한다.
+- 고정 clock body: `FixClock`은 각 client의 test 진입점이다([protocol](../../docs/spec/protocol.ko.md)
+  3.3). 각 출력은 `check/fixed_clock.json`과 비교한다.
 
-`check`는 JSON 숫자를 정확한 유리수 값으로 비교하고 기록할 때 원래 십진 표현을 보존한다. 객체 키는 출력에서 정렬한다. SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 2^53을 넘는 서로 다른 정수도 구분하며 동등한 십진 표현은 같은 값으로 처리한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
-어느 깊이의 객체든 중복 키가 있거나 데이터베이스 기대값 파일이 없으면 실패한다.
-기본 파일과 데이터베이스 기대값 파일에는 비어 있지 않은 고유 벡터 이름과 정확히 같은 벡터 집합이 필요하다. 기대값 이름이 누락되거나 추가되면 비교와 기록이 실패한다.
-벡터 `clock_truncate_write`와 `clock_compare_six_digits`는 각 클라이언트의 test entry point로 executor clock을 고정한다([protocol](../../docs/spec/protocol.ko.md) 3.3). `check run`은 Go 실행기를 tag `ormtest`로 build하며 그 파일 `packages/go/internal/conformance/clock_ormtest.go`가 두 벡터를 선언하고, Rust 실행기의 crate는 feature `test-faults`를 켠다. TypeScript 실행기는 `dist/testing.js`를 import하고, PHP 실행기는 `testing/Faults.php`를 require하며, Python 실행기는 `polyspec.orm.testing`을 import한다.
-`write_cycle` 기대값은 생성한 행과 갱신한 행의 `json_setting`, `serialize_data`에 값 스타일 컬럼의 태그 값을 사용한다.
+`make conformance-check`는 자기 실행의 bench database(`make orm-check` 또는 `make run-databases`)에서 둘을 실행하고,
+runner의 결과 helper도 실행한다.
 
 | 파일 | 역할 |
 |---|---|
-| `vectors.json` | 벡터 이름, 체인, MySQL 기대값 |
-| `vectors.postgres.json`, `vectors.sqlite.json` | PostgreSQL과 SQLite 기대값 |
-| `packages/go/internal/conformance/main.go` | Go 실행기(`packages/go/model`의 생성 모델) |
-| `packages/php/testing/conformance/runner.php` | PHP 실행기(PDO); `php-extension` 실행에서는 native extension을 load해 같은 runner 사용 |
-| `packages/rust/tests/src/conformance.rs` | Rust 실행기(`polyspec-orm-build` 생성 모델, sqlx) |
-| `runner_typescript.mts` | TypeScript 실행기(네이티브 데이터베이스 드라이버) |
-| `runner_python.py` | Python 실행기(실행의 Python model directory에 `orm-gen`이 생성한 모델) |
-| `check/main.mts` | 실행 제어와 결과 비교(TypeScript, 그 module과 test는 `check/`에 있다) |
-
-## 실행
-
-```sh
-make orm-test-servers
-make conformance-check
-```
-
-`make conformance-check`는 자기 실행(`make orm-check`나 `make run-databases`)의 bench database인 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
-
-```sh
-node tests/conformance/check/main.mts run --out "$RUN_DIR/out" --driver mysql --dsn "$BENCH_MYSQL_DSN" --driver postgres --dsn "$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$BENCH_SQLITE_DSN"
-node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
-```
-
-`$RUN_DIR`은 그 실행 하나의 directory(`.runtime/run/conformance-check-<make pid>`)이고 target이 끝에 지운다: 모든 실행은 새 directory에 출력을 쓰고(`check run --out`은 이미 있는 directory를 거부한다), `contracts/interfaces.json`의 공통 state contract는 같은 실행의 출력과 비교하므로, 결과는 tree에만 달렸고 이전 실행이 남긴 출력에 달리지 않는다.
-
-`check run`은 `--dsn`이 필요하며 여섯 선언 구현에 같은 DSN URI를 전달한다. 각 DSN은 시간대 `+00:00`을 선택한다. 각 실행기를 두 번 실행하며, 두 JSON 결과가 같고 선언된 sequence 정리 후 데이터베이스 상태가 같아야 한다. 검사는 모든 테이블 행과 MySQL auto-increment 값, PostgreSQL sequence 값, 존재할 때 SQLite `sqlite_sequence` 테이블을 읽는다. `AUTOINCREMENT` 테이블이 없는 SQLite 데이터베이스에는 sequence counter가 없으며 검사기는 모든 행을 계속 읽고 다른 질의 오류를 보고한다. 쓰기 벡터가 삽입하는 테이블(`check/counters.mts`의 `conformanceWriteTables`)의 counter만 복원할 수 있으며 각 복원을 보고한다. 테이블 누락, 읽을 수 없는 sequence, 선언되지 않은 counter 변경, 정리 실패, 남은 상태 변경은 실패다. 실행 중 bench 데이터베이스에 외부 쓰기가 없어야 한다.
-비어 있는 SQLite `AUTOINCREMENT` 테이블에는 아직 `sqlite_sequence` 항목이 없을 수 있다. counter 테스트는 테이블 정의를 확인하고 첫 삽입으로 생긴 counter를 관찰한 뒤 원래의 항목 부재 상태로 복원한다.
-
-
-각 실행기는 반복할 수 있는 vector 선택을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `--vector NAME`을 받는다: `run`은 그것을 여섯 선언 구현에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다.
-
-그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make orm-test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.mts)에서 실행한다.
-
-```sh
-make orm-test-servers
-make run-databases TARGETS=conformance-check VECTOR="creates_and_save write_cycle"
-make run-databases TARGETS=conformance-check RECORD=1
-make orm-test-servers-stop
-```
-`conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 여섯 선언 구현와 그 비교에도 넘어간다). `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 실행이 만든 vector에 대해 검사한다. `VECTOR`가 있는 실행은 이름 붙은 vector의 contract만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 이름 붙은 vector만 기록한다. 각 실행기는 statement event를 구독하기 전에 연결에서 빈 트랜잭션 하나를 열고 커밋한다. 이 준비 단계에서 SQLite의 지연 생성 `orm__row_lock` table처럼 연결의 첫 사용에 필요한 작업을 마친 뒤 벡터 기록을 시작한다. 준비 실패는 실행 실패다. 따라서 벡터를 단독 실행하거나 다른 벡터와 함께 실행해도 statement 출력이 같아야 하며, 준비 statement를 숨기려고 기대값을 수동 수정하지 않는다. 기대값 파일의 diff는 커밋 전에 검토한다.
-
-각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
-
-`check compare`는 저장된 파일을 비교하며 실행기가 현재 실행됐다는 증거가 아니다. 여섯 선언 구현의 출력이 정확히 하나씩 필요하다. `check run`은 반복 실행, 상태 검사, 기대값 비교가 모두 통과한 뒤에만 여섯 출력 파일을 게시한다. 실패하면 현재 진단 파일을 `.run-*` 디렉터리에 남기되 검증된 출력으로 다루지 않는다. `check record --driver <db> <out>/<db>/{go,php,php-extension,rust,typescript,python}.json`은 여섯 출력에 선언된 벡터만 있고 결과가 모두 같을 때만 기대값을 갱신한다. 거부된 출력은 기대값 파일을 변경하지 않는다.
-
-각 클라이언트는 자기 프로세스에서 SQL을 조립한다. `check run`은 실행기가 bench 데이터베이스를 쓰는 동안 데이터베이스마다 holder lock(`@polyspec/kit/holder-lock`), 곧 임시 디렉터리의 `orm-conformance-<DSN hash>.lock`을 잡는다. 같은 데이터베이스의 두 번째 실행은 기다리지 않고 holder의 pid를 적으며 실패하고, 다른 데이터베이스의 실행끼리는 겹치지 않는다. 잠금을 놓지 않고 끝난(kill된) 실행의 잠금은 막지 않는다: 다음 실행이 그것을 지우고 잠금을 잡는다.
-
-`check state --driver <db> --dsn <DSN>`은 데이터베이스의 테이블, 행, counter의 digest인 `<db> state <sha256>`을 출력한다. physical 검사와 feature coverage가 test 앞뒤로 그것을 읽는다.
-
-## 벡터 추가
-
-1. `vectors.json`에 `{"name", "chain", "expect": null}`을 추가한다.
-2. 여섯 선언 구현에 같은 체인을 추가하고 statement 순서를 유지한다.
-3. 데이터베이스마다 여섯 출력 파일을 `check record --driver <db>`에 전달하고 SQL, bind, 결과를 검토해 커밋한다. 이전 기대값 때문에 `check run`이 실패했다면, 여섯 선언 구현의 완료와 데이터베이스 상태 복원을 확인한 뒤 `.run-*`의 진단 파일을 사용한다.
-
-쓰기 벡터는 생성한 행을 제거한다. 검사기는 선언된 sequence counter를 복원하고 매번 원래 상태를 확인한다. 출력에서 생성한 행의 키와 갱신 시각은 `$SEQ`, `$TS`로, 무작위 nonce를 갖는 AES 암호문은 `$AES`로 정규화한다. 정규화는 데이터베이스 상태 변경을 허용하지 않는다.
-
-PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. TypeScript 결과 사례는 값 스타일 값에 정의되지 않은 멤버가 있을 때 `CODEC_ENCODE` 코드를 검사하며 진단 문구는 계약에 포함하지 않는다. `make conformance-result-check`는 결과 사례를 실행한다. Go 실행기에도 같은 오류, 정수, 바인딩, 필드, 트랜잭션 검사를 적용한다. `make conformance-result-physical-check`는 각 데이터베이스에서 모든 선언 구현을 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.
-TypeScript 파생 정수 변환은 SQLite `bigint`가 부호 있는 64비트 범위에 있고 숫자 결과로 정확히 표현될 때만 수용한다. 다른 `bigint` 결과는 정확한 ordered JSON 숫자로 직렬화한다.
-
-Rust 실행기는 잘못된 바인딩 값과 파생 정수를 거부하고 집계 평균의 binary64 비트를 비교하며 예상 밖 벡터 오류를 프로세스 실패로 반환한다. 쓰기 벡터는 트랜잭션을 사용하므로 실패한 쓰기가 행을 남기지 않는다. 상태 검사기는 모든 데이터베이스에서 실패 뒤 행과 카운터를 확인한다.
-
-`make conformance-check`는 모든 실행기와 마찬가지로 각 데이터베이스에서 Rust 실행기를 두 번 실행하고 두 실행 전후의 행과 카운터를 검사하며 `aggregates` 벡터를 기록된 기대값과 비교한다. 선택한 불리언 그룹 컬럼은 결과에서 불리언으로 유지된다.
+| `vectors.json`, `vectors.postgres.json`, `vectors.sqlite.json` | vector 이름과 chain, database마다 파일 하나 |
+| `packages/go/internal/conformance/main.go` | Go runner(`packages/go/model`의 생성 모델) |
+| `packages/php/testing/conformance/runner.php` | PHP runner(PDO), `php-extension`에는 PHP extension을 적재해 쓴다 |
+| `packages/rust/tests/src/conformance.rs` | Rust runner(`polyspec-orm-build`의 모델, sqlx) |
+| `packages/ts/testing/conformance/runner_typescript.mts` | TypeScript runner(native database driver) |
+| `packages/python/testing/conformance/runner_python.py` | Python runner(`orm-gen`이 실행의 Python 모델 directory에 생성한 모델) |
+| `check/recipe_vectors.mts` | body를 실행해 출력을 비교한다. 그 시험은 `contracts/interfaces.json`의 각 state contract를 recipe case와도 비교한다 |
+| `check/state.mts` | database의 state digest를 출력한다. 시험이 database를 그대로 두었는지 보는 검사가 읽는다 |

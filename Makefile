@@ -1,7 +1,7 @@
 .PHONY: split-read-plan-check split-read-plan-check/go split-read-plan-check/ts split-read-plan-check/python split-read-plan-check/rust
 .PHONY: dbspec-lock-go-check dbspec-lock-php-check dbspec-lock-php-extension-check dbspec-lock-python-check dbspec-lock-rust-check dbspec-lock-ts-check
 .PHONY: paged-read-rust-check
-.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check parity-context-prepare parity-context-cleanup php-extension-context-prepare php-extension-context-cleanup orm-install-php-extension-runtime orm-install-typescript-runtime
+.PHONY: orm-check check-run databases-create ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check comment-language-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-result-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check ts-aes-auth-check ts-codec-errors-check scripts-typecheck typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-parse-check docs-site-check docs-site-parse-check docs-verify-idempotent docs-rules-check docs-implementation-count-check docs-dbs-check dbspec-codemirror-check dbspec-vscode-check dbspec-lsp-check orm-install-cli-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check orm-test-servers orm-test-servers-tls orm-test-servers-stop orm-test-servers-leases orm-test-servers-leases-clear orm-test-mysql-privilege-start sqlite-version-ts-check sqlite-version-rust-check relation-parent-bind-rust-check parity-context-prepare parity-context-cleanup php-extension-context-prepare php-extension-context-cleanup orm-install-php-extension-runtime orm-install-typescript-runtime
 .PHONY: client-db-go-check client-db-php-check client-db-php-extension-check client-db-typescript-check client-db-python-check client-db-rust-check
 .PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
@@ -307,8 +307,7 @@ CI_TARGETS_stress_mysql = feature-stress-mysql-check
 CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # run-databases runs the make target(s) in TARGETS as a single run with its own bench database and decimal database
 # (scripts/check/run.mts, the same runner as make check-run). Use it when running a target directly that uses the bench or decimal database:
-# the server environment of TEST_ENV has no such database. The runner does not pass MAKEFLAGS, so the VECTOR and RECORD of conformance-check
-# are passed as environment variables.
+# the server environment of TEST_ENV has no such database.
 # databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
 # builds the TypeScript client, creates the run-owned bench and decimal databases, and writes every DSN to the run environment before coverage reads database state.
 databases-create: typescript-build
@@ -316,7 +315,7 @@ databases-create: typescript-build
 	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
 
 run-databases:
-	( $(LEASE_READY) ) && VECTOR='$(VECTOR)' RECORD='$(RECORD)' $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
+	( $(LEASE_READY) ) && $(NODE) scripts/check/run.mts --job-summary $(abspath $(TEST_ENV)) $(TARGETS)
 
 # orm-check delegates to Kit's ci-targets guard without setting FINAL_RUN: CI accepts it on GitHub Actions, while a local
 # final verification must explicitly pass FINAL_RUN=1 after every checklist item is terminal. ci-targets records its report
@@ -1363,8 +1362,6 @@ RECIPE_VECTORS_RUN = for database in sqlite mysql postgres; do node tests/confor
 .PHONY: conformance-generated-methods-check conformance-fixed-clock-check conformance-recipe-vectors-unit
 conformance-generated-methods-check: conformance-recipe-vectors-unit $(addprefix conformance-generated-methods-check/,$(RECIPE_VECTORS_LANGUAGES))
 conformance-fixed-clock-check: conformance-recipe-vectors-unit $(addprefix conformance-fixed-clock-check/,$(RECIPE_VECTORS_LANGUAGES))
-CHECK_TARGETS += conformance-generated-methods-check conformance-fixed-clock-check
-CI_TARGETS_conformance += conformance-generated-methods-check conformance-fixed-clock-check
 conformance-recipe-vectors-unit:
 	$(NODE) --test tests/conformance/check/recipe_vectors.test.mts
 define RECIPE_VECTORS_TARGETS
@@ -1790,9 +1787,6 @@ python-schema-inspection-check: python-venv-check
 dialect-facts-check:
 	$(GO_TEST) ./packages/go/internal/dialects -run '^(TestProbeIDs|TestProbeCitations)$$' -count=1
 
-conformance-counter-check:
-	$(WITH_TEST_ENV) node --test tests/conformance/check/counters.physical.test.mts
-
 # conformance-result-check builds the TypeScript client and runs the PHP, TypeScript, and Go conformance result
 # tests. Each runner reports its cases with their deadlines.
 conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
@@ -1807,15 +1801,6 @@ conformance-result-check/go:
 	$(GO_TEST) ./packages/go/internal/conformance -count=1
 conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.conformance_result
-
-conformance-result-physical-check: RUN_DIR = $(abspath .runtime/run)/conformance-result-physical-check-$$PPID
-conformance-result-physical-check: lease-tool conformance-python-models php-vendor-check orm-codes-typescript
-	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; \
-	$(HOLD_TYPESCRIPT); \
-	rm -rf "$$run_dir"; \
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release); \
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) node --test tests/conformance/check/result.physical.test.mts
-
 
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
@@ -1847,12 +1832,9 @@ case-database-check: php-vendor-check lease-tool orm-codes-typescript
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(WITH_TEST_ENV) PATH="$(HOME)/.cargo/bin:$(PATH)" node scripts/case-database-check.mts
 
-# conformance-check runs the conformance runners of the four clients on the bench databases of MySQL, PostgreSQL, and SQLite,
-# and compares each output with the vector's expected values, and compares the output of that run with the common state contract (the
-# sequences of contracts/interfaces.json). The output is written only to this run's RUN_DIR and deleted at the end, so the result depends only on the tree and does not read
-# output that an earlier run left. The interfaces checker builds the Rust extractor under the target lease.
-# The parts of conformance-check are independent: even if the counter, result, and physical result checks fail, the conformance run still
-# executes (make -k).
+# conformance-check runs the native conformance bodies that remain, each compared with data outside the vector files
+# (tests/conformance/check/recipe_vectors.mts), and the result helpers of the runners. The vectors are the cases of the recipe
+# conformance_verification, which each runtime runs (FCV-3).
 # PYTHON_MODELS_* is the one declared entry of the Python models that orm-gen generates (P34: generated output is never tracked): the
 # document set, the output directory and the source scanned for model calls. python-models writes them, and it is the last step of
 # orm-install-python, so every reader of the venv finds them. python-model-check runs orm-gen gen --check against the same entry (no network).
@@ -1911,43 +1893,7 @@ conformance-python-models: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
-conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
-# VECTOR is a space-separated list of vector names to run; each name is given to the check run as --vector (empty means all vectors).
-# If RECORD=1, the diagnostic output (.run-*) of each database whose comparison failed is recorded with check record as that database's expected value,
-# for the vectors that VECTOR names or, without VECTOR, for every vector. Each runner commits an empty transaction before subscribing to statement events,
-# so connection first-use setup (including SQLite's orm__row_lock table creation) happens before vector recording (tests/conformance/README.md).
-# record writes only when all six outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
-# After recording, the same vector runs again and is compared with the new expected value. The state contracts of contracts/interfaces.json
-# are checked for the vectors the run made: with VECTOR, the contracts of the named vectors only.
-CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),--vector $(name))
-CONFORMANCE_RUN = node tests/conformance/check/main.mts run --out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) --driver mysql --dsn "$$BENCH_MYSQL_DSN" --driver postgres --dsn "$$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$$BENCH_SQLITE_DSN"
-.PHONY: conformance-check/run
-# With RECORD set, the run records the new vectors before the result checks, which then check the recorded dialect files.
-ifneq ($(RECORD),)
-conformance-check: conformance-counter-check conformance-check/run conformance-result-check conformance-result-physical-check
-else
-conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
-endif
-conformance-check/run: lease-tool conformance-python-models php-vendor-check orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	rm -rf $(RUN_DIR)
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	$(WITH_TEST_ENV) export ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) && if $(CONFORMANCE_RUN); then :; \
-	elif [ -n "$(RECORD)" ]; then \
-	  recorded=0; \
-	  for db in mysql postgres sqlite; do \
-	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
-	    for pending in $$dir/.run-*; do \
-	      [ -d "$$pending" ] || continue; \
-	      $(NODE) tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/php-extension.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
-	      recorded=1; \
-	    done; \
-	  done; \
-	  [ $$recorded = 1 ] || { echo "conformance-check: the run failed before any comparison, so RECORD=1 has nothing to record" >&2; exit 1; }; \
-	  rm -rf $(RUN_DIR)/out && $(CONFORMANCE_RUN); \
-	else exit 1; fi
-	ORM_PYTHON=$(PYTHON_VENV)/bin/python PATH="$(HOME)/.cargo/bin:$(PATH)" $(NODE) tests/interfaces/check/main.mts --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite $(CONFORMANCE_VECTORS)
-	rm -rf $(RUN_DIR)
+conformance-check: conformance-result-check conformance-generated-methods-check conformance-fixed-clock-check
 
 # markdown-conformance-check runs the cases of tests/markdown/cases.json for each client against the flowmark server of FLOWMARK
 # (tests/markdown/README.md). FLOWMARK is the build that tests/markdown/flowmark.version pins, and make

@@ -113,7 +113,6 @@ export const vectorFile = (database: string): string =>
 
 /** The vectors that no recipe case holds, each with where its expectation lives. */
 export const NO_RECIPE_CASE: Record<string, string> = {
-  errors: 'the refusal tests of each runtime (T334-3-5-2) read its chains',
   clock_truncate_write: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
   clock_compare_six_digits: 'fixed_clock.json: FixClock is a test entry point, so no recipe step can fix the clock (PRT-53)',
 };
@@ -124,6 +123,8 @@ export const NO_RECIPE_CASE: Record<string, string> = {
  */
 const RESULT_SHAPES: Record<string, (steps: Json[]) => Json> = {
   ...shapes,
+  // The last expect of the case is the count that shows the connection still works after the refusals.
+  errors: steps => steps.filter(step => typeof step === 'string') as Json,
   contains_null: ([count]) => ({ code: null, count }) as Json,
   audit_lazy: ([rolled, before, read, unchanged, written, after]) => ({ after, before, read, rolled_back: rolled === 'CALLBACK', unchanged, written }) as Json,
   transactions: ([first, second, count, rows, local, left]) => [first === 'CALLBACK', count, size(rows), local, second === 'CALLBACK', left] as Json,
@@ -225,18 +226,23 @@ export function vectorDifferences(vector: Vector, recipeCase: Case, database: st
       }
     }
   }
-  const expects = steps.filter(step => step.op !== 'events.captured' && step.expect?.[database] !== undefined).map(step => step.expect?.[database] as Json);
+  return [...out, ...resultValueDifferences(vector.name, vector.expect.result ?? null, recipeCase, database)];
+}
+
+/** What a stated result holds and the expects of its recipe case do not, on one database. */
+function resultValueDifferences(name: string, result: Json, recipeCase: Case, database: string): string[] {
+  const out: string[] = [];
+  const expects = stepsOf(recipeCase.steps).filter(step => step.op !== 'events.captured' && step.expect?.[database] !== undefined).map(step => step.expect?.[database] as Json);
   const values = expects.map(expect => {
     const held = unwrapped(expect) as Record<string, Json>;
     if (held !== null && typeof held === 'object' && !Array.isArray(held) && 'error' in held) return held.error as Json;
     return held as Json;
   });
-  const result = vector.expect.result ?? null;
-  const seed = SEED_SHAPES[vector.name];
-  const shape = seed ?? RESULT_SHAPES[vector.name];
+  const seed = SEED_SHAPES[name];
+  const shape = seed ?? RESULT_SHAPES[name];
   if (shape !== undefined) return [...out, ...resultDifferences(result, shape(values.map(value => {
     const held = value as { value?: Json } | null;
-    return held !== null && typeof held === 'object' && !Array.isArray(held) && 'value' in held && vector.name !== 'affected_counts' ? held.value as Json : value;
+    return held !== null && typeof held === 'object' && !Array.isArray(held) && 'value' in held && name !== 'affected_counts' ? held.value as Json : value;
   })), seed !== undefined)];
   const have = new Map<string, number>();
   for (const leaf of expects.flatMap(expect => leaves(unwrapped(expect)))) have.set(leaf, (have.get(leaf) ?? 0) + 1);
@@ -258,6 +264,18 @@ export function vectorDifferences(vector: Vector, recipeCase: Case, database: st
   return out;
 }
 
+/**
+ * What a state contract of contracts/interfaces.json states and its recipe case does not, on one database: the statement
+ * kinds in order, utility statements left out, and the result.
+ */
+export function sequenceDifferences(sequence: { id: string; expected?: Json; statements?: string[] }, recipeCase: Case, database: string): string[] {
+  const captured = stepsOf(recipeCase.steps).find(step => step.op === 'events.captured');
+  const events = captured?.expect?.[database] as { value?: Json } | undefined;
+  const kinds = (events === undefined ? [] : unwrapped(events.value ?? null) as { kind: string }[]).map(event => event.kind).filter(kind => kind !== 'utility');
+  const out = JSON.stringify(kinds) === JSON.stringify(sequence.statements ?? []) ? [] : [`statements ${JSON.stringify(sequence.statements ?? [])} in the contract, ${JSON.stringify(kinds)} in the case`];
+  return [...out, ...resultValueDifferences(sequence.id, sequence.expected ?? null, recipeCase, database)];
+}
+
 /** Each statement of a body against the fields that the statement of the expect states. */
 export function compareOutput(name: string, got: Output, want: Output): void {
   assert.deepEqual(got.result, want.result, `${name}: the result differs from its expect`);
@@ -271,9 +289,9 @@ export function compareOutput(name: string, got: Output, want: Output): void {
   }
 }
 
-function runner(language: string, dsn: string, names: string[]): Output & Record<string, unknown> {
+/** The program and arguments of the runner of a language (PAR-1). */
+export function runnerCommand(language: string, dsn: string, names: string[], env: NodeJS.ProcessEnv = process.env): [string, string[]] {
   const flags = ['--dsn', dsn, ...names.flatMap(name => ['--vector', name])];
-  const env = process.env;
   const commands: Record<string, () => [string, string[]]> = {
     go: () => ['go', ['run', '-tags', 'ormtest', './packages/go/internal/conformance', '-dsn', dsn, ...names.flatMap(name => ['-vector', name])]],
     php: () => ['php', ['packages/php/testing/conformance/runner.php', ...flags]],
@@ -284,7 +302,11 @@ function runner(language: string, dsn: string, names: string[]): Output & Record
   };
   const command = commands[language];
   if (command === undefined) throw new Error(`unsupported language ${JSON.stringify(language)}`);
-  const [name, args] = command();
+  return command();
+}
+
+function runner(language: string, dsn: string, names: string[]): Output & Record<string, unknown> {
+  const [name, args] = runnerCommand(language, dsn, names);
   if (name === '') throw new Error(`the runner of ${language} is not named in the environment`);
   const run = spawnSync(name, args, { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
   if (run.error !== undefined) throw run.error;

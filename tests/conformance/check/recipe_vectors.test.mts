@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NO_RECIPE_CASE, compareOutput, expectations, plain, sequenceStatement, vectorDifferences, vectorFile } from './recipe_vectors.mts';
+import { NO_RECIPE_CASE, compareOutput, expectations, plain, runnerCommand, sequenceDifferences, sequenceStatement, vectorDifferences, vectorFile } from './recipe_vectors.mts';
 import { COMPUTE, caseTest } from '../../testcase.mts';
 
 caseTest('a wrapper of a recipe value reads as plain JSON', COMPUTE, () => {
@@ -100,4 +100,39 @@ caseTest('a changed size, boolean or text of a folded or seed vector is a differ
   changed('terminal_by', (result: { one: object }) => ({ ...result, one: { ...result.one, name: 'changed' } }), /name: "changed"/);
   changed('column_pairs', (result: object) => ({ ...result, col_decimal_i64: 'CHANGED' }), /col_decimal_i64/);
   changed('aes_status', (result: object) => ({ ...result, versions: '2:100000' }), /versions/);
+});
+
+// Requirements: PAR-1.
+caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
+  const extension = '/run/php-extension/polyspec_orm.so';
+  assert.deepEqual(runnerCommand('php-extension', 'dsn', [], { POLYSPEC_ORM_EXTENSION: extension }), [
+    'php', ['-d', `extension=${extension}`, 'packages/php/testing/conformance/runner.php', '--dsn', 'dsn'],
+  ], 'php-extension command line');
+  assert.deepEqual(runnerCommand('php', 'dsn', ['one']), ['php', ['packages/php/testing/conformance/runner.php', '--dsn', 'dsn', '--vector', 'one']], 'php command line');
+});
+
+const contracts = (): { id: string; expected?: never; statements?: string[] }[] =>
+  (JSON.parse(readFileSync(join(import.meta.dirname, '../../../contracts/interfaces.json'), 'utf8')) as { sequences: { id: string; statements?: string[] }[] }).sequences;
+
+caseTest('every state contract of the interfaces holds in its recipe case on each database', COMPUTE, () => {
+  const cases = new Map(recipeCases().map(item => [item.id, item]));
+  const sequences = contracts();
+  assert.ok(sequences.length > 0, 'contracts/interfaces.json holds no state contract');
+  for (const sequence of sequences) {
+    const held = cases.get(sequence.id);
+    assert.ok(held, `the state contract ${sequence.id} has no recipe case`);
+    for (const database of ['mysql', 'postgres', 'sqlite']) {
+      assert.deepEqual(sequenceDifferences(sequence, held as never, database), [], `${database}: ${sequence.id}`);
+    }
+  }
+});
+
+caseTest('a changed statement kind or result of a state contract is a difference', COMPUTE, () => {
+  const cases = new Map(recipeCases().map(item => [item.id, item]));
+  const sequence = contracts().find(item => item.id === 'transactions');
+  assert.ok(sequence);
+  const held = cases.get('transactions') as never;
+  assert.deepEqual(sequenceDifferences(sequence, held, 'sqlite'), []);
+  assert.notDeepEqual(sequenceDifferences({ ...sequence, statements: (sequence.statements ?? []).slice(1) }, held, 'sqlite'), [], 'a missing statement');
+  assert.notDeepEqual(sequenceDifferences({ ...sequence, expected: [false, 1, 1, 'runner', true, 0] as never }, held, 'sqlite'), [], 'a changed result');
 });

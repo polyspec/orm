@@ -1,6 +1,6 @@
 // Case database check (T25): leave the one table this check created in the shared test database, then run client cases that
 // check an empty database or install a schema. All those cases must pass, and the shared
-// database's tables and rows (the digest of tests/conformance/check/main.mts state), the PostgreSQL schema list,
+// database's tables and rows (the digest of tests/conformance/check/state.mts), the PostgreSQL schema list,
 // stay the same, and no `orm_case_` database or `orm-case-` SQLite file made by the cases may remain.
 //
 // A leftover case database or file counts as left over only if it was not there before the run and its named process has ended.
@@ -100,10 +100,10 @@ function execute(program: string, args: string[], step: (text: string) => void):
   });
 }
 
-// The table and row digest of the shared database (tests/conformance/check/main.mts state).
+// The table and row digest of the shared database (tests/conformance/check/state.mts).
 async function digest(database: string, dsn: string): Promise<string> {
   let output = '';
-  await execute(process.execPath, [join(root, 'tests/conformance/check/main.mts'), 'state', '--driver', database, '--dsn', dsn], (text: string) => { output += `${text}\n`; });
+  await execute(process.execPath, [join(root, 'tests/conformance/check/state.mts'), '--driver', database, '--dsn', dsn], (text: string) => { output += `${text}\n`; });
   const match = new RegExp(`^${database} state ([a-f0-9]{64})$`, 'm').exec(output);
   if (!match?.[1]) throw new Error(`${database}: invalid state reader output: ${redact(output)}`);
   return match[1];

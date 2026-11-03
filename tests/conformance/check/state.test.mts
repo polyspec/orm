@@ -1,11 +1,12 @@
 // The state digest and the counters on SQLite files (state.mts, counters.mts): rows and sequences change the digest, a
-// database without sqlite_sequence has no counters, a declared sequence is restored, and the row lock table of the SQLite
+// database without sqlite_sequence has no counters, and the row lock table of the SQLite
 // client is not state.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { DATABASE, caseTest, withTemporaryDirectory } from '../../testcase.mts';
-import { readCounters, restoreCounters } from './counters.mts';
+import { readCounters } from './counters.mts';
 import { sqliteDatabase } from './database.mts';
 import { snapshotDatabase } from './state.mts';
 
@@ -42,21 +43,6 @@ caseTest('TestSQLiteStateWithoutAutoIncrement', DATABASE, () => withTemporaryDir
   await assert.rejects(readCounters(db, 'sqlite'), 'an unrelated counter query error was accepted as an absent sequence');
 }));
 
-caseTest('TestRestoreDeclaredSequenceAfterWrite', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
-  const { sqlite, db } = open(temp, 'restore.sqlite');
-  try {
-    sqlite.exec('CREATE TABLE author (seq INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)');
-    const before = await snapshotDatabase(db, 'sqlite');
-    const counters = await readCounters(db, 'sqlite');
-    sqlite.exec("INSERT INTO author (name) VALUES ('temp')");
-    sqlite.exec('DELETE FROM author');
-    await restoreCounters(db, 'sqlite', counters);
-    assert.equal(await snapshotDatabase(db, 'sqlite'), before, 'database state changed after declared sequence cleanup');
-  } finally {
-    await db.close();
-  }
-}));
-
 // TestSnapshotIgnoresTheRowLockTable checks that orm__row_lock, which the SQLite client creates before the first transaction, and its rows do not
 // change the state. Even when that table exists, the test leaves nothing in the database.
 caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
@@ -67,6 +53,22 @@ caseTest('TestSnapshotIgnoresTheRowLockTable', DATABASE, () => withTemporaryDire
     sqlite.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
     sqlite.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1)');
     assert.equal(await snapshotDatabase(db, 'sqlite'), before, 'the row lock table of the client changed the snapshot');
+  } finally {
+    await db.close();
+  }
+}));
+
+// TestStateCommandPrintsTheDigest checks the command the database state checks read (scripts/physical.mts).
+caseTest('TestStateCommandPrintsTheDigest', DATABASE, () => withTemporaryDirectory('orm-state-test-', async temp => {
+  const { sqlite, db } = open(temp, 'command.sqlite');
+  try {
+    sqlite.exec('CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT)');
+    const digest = await snapshotDatabase(db, 'sqlite');
+    const reader = join(import.meta.dirname, 'state.mts');
+    const printed = spawnSync(process.execPath, [reader, '--driver', 'sqlite', '--dsn', `sqlite:///${join(temp, 'command.sqlite')}`], { encoding: 'utf8' });
+    assert.equal(printed.status, 0, printed.stderr);
+    assert.equal(printed.stdout, `sqlite state ${digest}\n`);
+    assert.notEqual(spawnSync(process.execPath, [reader, '--driver', 'sqlite'], { encoding: 'utf8' }).status, 0, 'a missing DSN was accepted');
   } finally {
     await db.close();
   }

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 407f0f8f019326c1da5bb82461d254f1031ef03cfb673ae9335f901e19a55d7a -->
+<!-- source-sha256: 72c6acc802115e059ce533d7bfb66be4e5731092bcd1a6ebb358446be329bc4a -->
 # 변경 이력
 
 ## Unreleased
 
+- 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
 - `performance_gate`는 각 class가 가리키는 database의 BENCH_<DATABASE>_DSN을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
