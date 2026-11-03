@@ -1049,8 +1049,15 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
-                    if (array_key_exists('rule', $expect)) {
-                        Assert::assertStringContainsString($expect['rule'], $error->getMessage());
+                    // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+                    if (array_key_exists('diagnostics', $expect)) {
+                        $prefix = "{$expect['error']}: ";
+                        Assert::assertStringStartsWith($prefix, $error->getMessage());
+                        $problems = explode('; ', substr($error->getMessage(), strlen($prefix)));
+                        Assert::assertCount(count($expect['diagnostics']), $problems, $error->getMessage());
+                        foreach ($problems as $i => $problem) {
+                            Assert::assertStringStartsWith("{$expect['diagnostics'][$i]}: ", $problem);
+                        }
                     }
                     return;
                 }
