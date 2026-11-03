@@ -106,13 +106,6 @@ final class DbspecRulesTest extends TestCase
         }
     }
 
-    public static function limitCases(): iterable
-    {
-        foreach (['size', 'tables', 'table-columns', 'columns', 'foreign-keys'] as $id) {
-            yield "limit/$id" => [$id];
-        }
-    }
-
     // Limits: generated documents, each with its own CPU reference.
     // Requirements: DBS-144, DBS-151, DBS-170.
     // The limit/columns document must parse within the memory that PHPUnit allows a process: its peak over the memory
@@ -154,44 +147,5 @@ final class DbspecRulesTest extends TestCase
         $held = str_repeat('x', 88 * 1024 * 1024);
         $this->testLimitColumnsPeak();
         $this->assertSame(88 * 1024 * 1024, strlen($held));
-    }
-
-    #[DataProvider('limitCases')]
-    public function testLimit(string $id): void
-    {
-        $this->assertLimitDiagnostics($id);
-    }
-
-    private function assertLimitDiagnostics(string $id): void
-    {
-        [$text, $want] = rules_limit($id);
-        $clock = cpuCaseBegin(20.0);
-        $previousMemoryLimit = ini_get('memory_limit');
-        // This case checks the foreign-key count bound, not the memory used by 20,000 PHP object values.
-        if ($id === 'foreign-keys' && ini_set('memory_limit', '512M') === false) {
-            throw new RuntimeException('the foreign-key limit case cannot set its declared 512M memory limit');
-        }
-        try {
-            $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
-        } finally {
-            if ($id === 'foreign-keys' && ini_set('memory_limit', $previousMemoryLimit) === false) {
-                throw new RuntimeException('the foreign-key limit case cannot restore its prior memory limit');
-            }
-        }
-        $got = array_map(
-            static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
-            $result->diagnostics
-        );
-        $this->assertNull($result->document, "limit/$id: a document was returned");
-        $this->assertSame([$want], $got, "limit/$id");
-        cpuCaseEnd("limit/$id", $clock);
-    }
-
-    // Requirements: DBS-144, DBS-151, DBS-170.
-    public function testDocumentAndTableLimits(): void
-    {
-        foreach (['size', 'tables', 'table-columns'] as $id) {
-            $this->assertLimitDiagnostics($id);
-        }
     }
 }

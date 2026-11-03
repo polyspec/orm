@@ -4907,9 +4907,7 @@
         "packages/php/tests/DbspecShowCreateTest.php",
         "packages/ts/tests/dbspec-show-create.mjs",
         "packages/ts/tests/dbspec-show-create-introspect.mjs",
-        "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/DbspecBehaviourTest.php",
-        "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
         "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
         "packages/ts/tests/package-declarations.mjs",
         "packages/go/engine/dbspec/stress_test.go",
@@ -5367,8 +5365,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/SchemaDefinitionRecipeTest.php",
-              "packages/php/tests/CoverageSchemaDefinitionTest.php"
+              "packages/php/tests/SchemaDefinitionRecipeTest.php"
             ],
             "inputs": [
               "tests/dbspec/schema-definition.json",
@@ -5404,12 +5401,10 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php",
-              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
+              "packages/php-ext/tests/SchemaDefinitionRecipeTestExtensionTest.php"
             ],
             "inputs": [
               "tests/dbspec/schema-definition.json",
-              "packages/php/tests/CoverageSchemaDefinitionTest.php",
               "packages/php/tests/DbspecApplyCleanupTest.php"
             ],
             "commands": {
@@ -14899,10 +14894,7 @@
         "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/php/tests/DbspecStressTestSupport.php",
         "packages/ts/tests/dbspec-stress.mjs",
-        "packages/go/engine/dbspec/stress_test.go",
-        "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
-        "packages/python/tests/test_dbspec_stress.py",
-        "packages/rust/schema/tests/dbspec_stress.rs"
+        "packages/go/engine/dbspec/stress_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"

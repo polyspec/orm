@@ -1110,7 +1110,7 @@ const CASES: &[Case] = &[
     },
 ];
 
-// Requirements: DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
+// Requirements: DBS-144, DBS-156, DBS-157, DBS-158, DBS-159, DBS-161, DBS-162, DBS-163, DBS-164, DBS-165, DBS-166, DBS-167, DBS-168, DBS-169, DBS-171.
 #[test]
 fn dbspec_rules() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
@@ -1195,78 +1195,4 @@ fn dbspec_comment_attachment() {
         polyspec_orm_testcase::warning(format_args!("dbspec comment attachment: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
     }
     polyspec_orm_testcase::step(format_args!("dbspec comment attachment cpu={cpu:?} wall={wall:?}"));
-}
-
-// Requirements: DBS-144, DBS-151, DBS-170.
-#[test]
-fn dbspec_limits() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let clock = CaseClock::start();
-    let none = BTreeMap::new();
-    let rules = |text: &str| -> Vec<(String, usize, usize)> {
-        match dbspec::parse(text, &none).map(|parsed| parsed.document) {
-            Ok(_) => panic!("parsed a document beyond a limit"),
-            Err(errors) => errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect(),
-        }
-    };
-    let mut tables = String::from("dbspec 1 shop\n");
-    for i in 0..4097 {
-        tables.push_str(&format!("table t{i} {{\n  id i64 identity\n  primary key (id)\n}}\n"));
-    }
-    assert_eq!(rules(&tables), vec![("limit".to_owned(), 2 + 4096 * 4, 1)]);
-    let mut columns = String::from("dbspec 1 shop\ntable t {\n");
-    for i in 0..1001 {
-        columns.push_str(&format!("  c{i} i32\n"));
-    }
-    assert_eq!(rules(&columns), vec![("limit".to_owned(), 3 + 1000, 3)]);
-    let mut size = String::from("dbspec 1 shop\n");
-    size.push_str(&"#".repeat(32 * 1024 * 1024));
-    assert_eq!(rules(&size), vec![("limit".to_owned(), 1, 1)]);
-    let (cpu, wall) = (clock.cpu(), clock.wall());
-    if cpu >= SUITE_DEADLINE {
-        polyspec_orm_testcase::warning(format_args!("dbspec limits: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
-    }
-    polyspec_orm_testcase::step(format_args!("dbspec limits cpu={cpu:?} wall={wall:?}"));
-}
-
-// Requirements: DBS-144, DBS-170.
-#[test]
-fn dbspec_global_column_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let none = BTreeMap::new();
-    let mut document = String::from("dbspec 1 shop\n");
-    for table in 0..121 {
-        document.push_str(&format!("\ntable t{table} {{\n"));
-        for column in 0..1000 {
-            document.push_str(&format!("  c{column} i32\n"));
-        }
-        document.push_str("  primary key (c0)\n}\n");
-    }
-    let errors = match dbspec::parse(&document, &none) {
-        Err(errors) => errors,
-        Ok(_) => panic!("a document over the global column limit parsed"),
-    };
-    let got: Vec<(String, usize, usize)> = errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect();
-    assert_eq!(got, vec![("limit".to_owned(), 120484, 3)]);
-}
-
-// Requirements: DBS-144, DBS-170.
-#[test]
-fn dbspec_foreign_key_count_limit() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
-    let none = BTreeMap::new();
-    let mut document = String::from("dbspec 1 shop\n");
-    for table in 0..21 {
-        document.push_str(&format!("\ntable t{table} {{\n  id i64 identity\n  primary key (id)\n"));
-        for foreign_key in 0..1000 {
-            document.push_str(&format!("  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)\n"));
-        }
-        document.push_str("}\n");
-    }
-    let errors = match dbspec::parse(&document, &none) {
-        Err(errors) => errors,
-        Ok(_) => panic!("a document over the foreign key limit parsed"),
-    };
-    let got: Vec<(String, usize, usize)> = errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect();
-    assert_eq!(got, vec![("limit".to_owned(), 20106, 3)]);
 }

@@ -367,7 +367,24 @@ def _inline_document(step: dict) -> tuple:
         name: _join_text(lines, crlf, mixed)
         for name, lines in step.get("set", {}).items()
     }
-    return _join_text(step["text"], crlf, mixed), header_set
+    return _join_text(_expand_lines(step["text"]), crlf, mixed), header_set
+
+
+def _expand_lines(items: list) -> list:
+    """The lines of a text (FCV-4): a repeat gives its lines count times with {var} replaced, a fill one line of its text."""
+    out = []
+    for item in items:
+        if isinstance(item, str):
+            out.append(item)
+        elif "fill" in item:
+            out.append(item["fill"]["text"] * item["fill"]["count"])
+        else:
+            repeat = item["repeat"]
+            inner = _expand_lines(repeat["lines"])
+            mark = "{" + repeat["var"] + "}"
+            for i in range(repeat["from"], repeat["from"] + repeat["count"]):
+                out.extend(line.replace(mark, str(i)) for line in inner)
+    return out
 
 
 def _emit_stable(text: str, header_set: dict) -> str:
@@ -619,7 +636,7 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 raise AssertionError("the expect names no diagnostics")
             _check_refusal(text, header_set, expect["diagnostics"])
             return
-        expected = "\n".join(expect["text"]) + "\n"
+        expected = "\n".join(_expand_lines(expect["text"])) + "\n"
         _expect_equal(_emit_stable(text, header_set), expected, "emission")
         formatted, diagnostics = format_dbspec(text, header_set)
         if list(diagnostics):
