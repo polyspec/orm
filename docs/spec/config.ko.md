@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 27d5278c8ccd0dd442417bea00306f7b02120cc34d481e7b7b99a6499cafaf53 -->
+<!-- source-sha256: 44850c719b563e6d7509db42a71b059613a1e466ae00843885f0685cdc0bd7b7 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -88,8 +88,8 @@ PgBouncer 설정:
 - **CFG-31** 문 취소는 PgBouncer를 거치면 best effort이며 보장되지 않는다. PgBouncer는 클라이언트 연결의 프로토콜 취소 요청을 그 문을 실행하는 서버 연결로 전달하지만, 이 경로는 신뢰할 수 없다. PgBouncer의 취소 경쟁(BUG #14891)은 1.18에서만 고쳐졌고 그 수정에는 hang 부작용이 있으며, 다중 프로세스 구성에서는 peering이 1.19에서 들어오기 전까지 취소 요청이 유실되었다. SQLx 0.9에는 CancelRequest API가 없어 Rust 클라이언트에는 PgBouncer를 거치는 지원되는 취소 경로가 없다. TypeScript는 연결의 process id와 secret key로 그 요청을 전송하고, PHP는 PostgreSQL 연결에서 `ext-pgsql`로 protocol cancel request를 전송한다. 유실된 취소는 문을 계속 실행 상태로 두므로, 호출자는 취소가 서버에 닿는다고 의존해서는 안 된다.
 - **CFG-32** `polyspec-orm` crate, 곧 Rust 클라이언트는 startup 매개변수 `extra_float_digits`를 보내지 않는다. PostgreSQL 12 이상은 서버 기본값으로 float8 값을 정확히 출력한다.
 - **CFG-33** 위반된 foreign key, check 또는 unique key는 `FOREIGN_KEY`, `CONSTRAINT` 또는 `DUPLICATE_KEY`로 보고되며, 각 database의 native code는 [errors.yaml](errors.yaml)이 나열한 것이고, statement는 어떤 row도 바꾸지 않는다. 이는 CFG-6의 `1205` 규칙 옆의 대응이다.
-- **CFG-34** Go, PHP, PHP extension, TypeScript, Python은 CFG-18이 나열한 각 형식과 음수 `poolSize`, `poolIdleSize`, `poolLifetimeMs`, `statementTimeoutMs`에 대해 연결을 열기 전에 `CONFIG`를 반환한다. Rust의 설정은 이 값을 부호 없는 타입으로 담는다.
-- **CFG-35** PHP, PHP extension, TypeScript, Python은 CFG-19가 이름 짓지 않은 매개변수에 `CONFIG`를 반환한다. Go와 Rust는 그 매개변수를 드라이버로 넘긴다(CFG-20).
+- **CFG-36** Go, PHP, PHP extension, TypeScript, Python은 CFG-18이 나열한 각 형식과 음수 `poolSize`, `poolIdleSize`, `poolLifetimeMs`, `statementTimeoutMs`에 대해 연결을 열기 전에 `CONFIG`를 반환한다. Rust의 설정은 이 값을 부호 없는 타입으로 담는다.
+- **CFG-37** PHP, PHP extension, TypeScript, Python은 CFG-19가 이름 짓지 않은 매개변수에 `CONFIG`를 반환한다. Go와 Rust는 그 매개변수를 드라이버로 넘긴다(CFG-20).
 
 ProxySQL은 기본 multiplexing으로 실행하며 ORM 전용 설정이 필요 없다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 

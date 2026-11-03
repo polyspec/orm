@@ -122,7 +122,7 @@ async fn connections_use_utc() {
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
 #[test]
-// Requirements: CFG-19, CFG-20, CFG-35.
+// Requirements: CFG-19, CFG-20, CFG-37.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
@@ -434,7 +434,7 @@ async fn statement_timeout() {
 
 #[test]
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
-// Requirements: CFG-6, CFG-34.
+// Requirements: CFG-6, CFG-36.
 fn statement_timeout_negative_is_unrepresentable() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;

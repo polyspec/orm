@@ -1,13 +1,13 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
-    "CFG-35"
+    "CFG-37"
   ],
   "cases": [
     {
       "id": "mysql_charset",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {
@@ -25,7 +25,7 @@
     {
       "id": "mysql_sslmode",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {
@@ -43,7 +43,7 @@
     {
       "id": "postgres_application_name",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {
@@ -61,7 +61,7 @@
     {
       "id": "postgres_ssl_mode",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {
@@ -79,7 +79,7 @@
     {
       "id": "sqlite_cache",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {
@@ -97,7 +97,7 @@
     {
       "id": "mysql_bracket_parameter",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "steps": [
         {

@@ -3867,7 +3867,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-18",
-        "CFG-34"
+        "CFG-36"
       ],
       "bindings": [
         {
@@ -4519,7 +4519,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-20",
-        "CFG-35"
+        "CFG-37"
       ],
       "bindings": [
         {
@@ -13479,7 +13479,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-6",
-        "CFG-34"
+        "CFG-36"
       ],
       "bindings": [
         {
@@ -42334,7 +42334,7 @@
       "id": "dsn-reject-checked",
       "kind": "suite",
       "requirements": [
-        "CFG-34"
+        "CFG-36"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject_checked.json",
       "cases": "$.cases[*].id",
@@ -42379,7 +42379,7 @@
       "id": "dsn-reject-parameters",
       "kind": "suite",
       "requirements": [
-        "CFG-35"
+        "CFG-37"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject_parameters.json",
       "cases": "$.cases[*].id",
