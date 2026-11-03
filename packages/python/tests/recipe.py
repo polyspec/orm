@@ -1861,6 +1861,14 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
     if "page_with" in step:
         bound = _bound(step["page_with"]["page"]["ref"], context)
         page = dataclasses.replace(bound, order_by=step["page_with"]["order_by"])
+        if "column_name" in step["page_with"]:
+            first = dataclasses.replace(
+                page.metadata.columns[0], name=step["page_with"]["column_name"]
+            )
+            columns = [first, *page.metadata.columns[1:]]
+            page = dataclasses.replace(
+                page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
     else:
         page = _step_argument(step["page"], context)
     snapshot = context["catalog"].row_snapshot_from_page(page, step["index"])
@@ -1904,7 +1912,12 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
         return {}
     try:
         native_query(context["database"], context["dsn"], [statement])
-    except Exception:  # noqa: BLE001 - any driver error of the refused statement
+    except Exception as error:  # noqa: BLE001 - any driver error of the refused statement
+        text = step.get("refused_message", "")
+        if text not in str(error).lower():
+            raise AssertionError(
+                f"the database refused the statement for another reason: {error}"
+            ) from error
         return {}
     raise AssertionError(
         f"the database accepted the statement that the step expects it to refuse: {statement}"

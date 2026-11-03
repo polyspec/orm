@@ -461,10 +461,6 @@
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
-          "reason": "harness: checks the PHP library Catalog class ownership and names of shared coverage helper methods; it does not execute or assert catalog query behavior"
-        },
-        {
           "glob": "packages/php/tests/ClientGenericsTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
@@ -636,10 +632,6 @@
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
           "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
-        },
-        {
-          "glob": "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
-          "reason": "harness: checks that the native Catalog class is internal and that the shared recipe entry methods of catalog_connection exist; it does not execute catalog query behavior, which the recipe entries run on each database"
         },
         {
           "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
@@ -16450,6 +16442,11 @@
           ]
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
@@ -16483,31 +16480,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/catalog/temporal.rs",
           "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCatalogTemporalPrecisionLimit"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::testMysqlTemporalPrecisionLimit"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "mysql rejects temporal precision above 6"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "test_mysql_temporal_precision_refused"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_mysql_temporal_precision_limit"
         }
       ]
     },

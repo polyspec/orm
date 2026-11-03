@@ -796,7 +796,10 @@ def _descriptor(metadata: CatalogTableMetadata) -> list:
         raise invalid("no reliable row identity")
     names = set()
     for column in metadata.columns:
-        _check_name(column.name)
+        try:
+            _check_name(column.name)
+        except OrmError as error:
+            raise invalid(str(error)) from error
         if column.name in names or "\0" in column.native_type:
             raise invalid("duplicate column or invalid native type")
         names.add(column.name)

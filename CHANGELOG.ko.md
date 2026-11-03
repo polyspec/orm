@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c9c9cb2290c3727ac38996bef476a94c381a68e00946e239f49488193c737016 -->
+<!-- source-sha256: c162f3d3e96e7b1d7be22246c89a84111df715f1309986b3df8d43a82463a422 -->
 # 변경 이력
 
 ## Unreleased
 
+- 여섯 runtime에 남은 catalog_connection coverage 테스트를 없앴다: recipe case temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice, deferred_foreign_key_at_commit이 그 검증을 세 database에서 맡는다. 잘못된 열 이름을 가진 descriptor는 이제 Python과 PHP 확장에서도 ROW_SNAPSHOT_INVALID로 실패하고 메시지에 원인을 담으며, TypeScript catalog의 두 번째 close는 아무것도 하지 않는다.
 - audit foreign key를 양방향으로 검증한다. 레시피 `audit_triggers`는 부모가 없는 raw insert와 참조된 부모의 삭제를 모두 거부하는지 확인한다. 케이스 `soft_delete_statements`는 soft delete의 guard가 있는 update와 각 read의 filter를 확인한다. `sql.exec` step은 `refused`를, `events.captured`는 비교 mode `statements`를 받는다. (#T334-3-4-12)
 - PostgreSQL의 catalog session은 Go, Rust, TypeScript, Python에서 `BEGIN` 직후 `DEALLOCATE ALL`을 실행하므로, PgBouncer를 거쳐도 schema 변경이 문의 타입을 바꾼 뒤에 표를 읽고 쓴다(CFG-28).
 - 생성기의 컬럼 이름·체인 이름 거부는 여섯 runtime 모두에서 `generator` recipe의 사례이며, 코드는 모두 `CONFIG`다. TypeScript scan은 어떤 컬럼·체인·연산자에도 맞지 않는 이름과 값 개수가 틀린 호출을 이제 거부하고(이전에는 선언만 하지 않고 type checker에 맡겼다), Go는 그 개수를 생성 단계에서 거부하며, Python은 컬럼이 받지 않는 연산자와 그 개수를 거부하고, TypeScript와 PHP는 컬럼 이름의 `fulltext`를 예약한다 (DSL-37, DSL-130).

@@ -54,25 +54,26 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
-	Op       string          `json:"op"`
-	DSN      json.RawMessage `json:"dsn"`
-	Table    string          `json:"table"`
-	Limit    int             `json:"limit"`
-	Offset   int64           `json:"offset"`
-	Columns  []string        `json:"columns"`
-	Text     string          `json:"text"`
-	Mode     string          `json:"mode"`
-	SQL      json.RawMessage `json:"sql"`
-	Refused  bool            `json:"refused"`
-	MaxRows  int             `json:"max_rows"`
-	MaxBytes int             `json:"max_bytes"`
-	Page     json.RawMessage `json:"page"`
-	Index    int             `json:"index"`
-	Metadata json.RawMessage `json:"metadata"`
-	Values   json.RawMessage `json:"values"`
-	Snapshot json.RawMessage `json:"snapshot"`
-	Set      json.RawMessage `json:"set"`
-	As       string          `json:"as"`
+	Op             string          `json:"op"`
+	DSN            json.RawMessage `json:"dsn"`
+	Table          string          `json:"table"`
+	Limit          int             `json:"limit"`
+	Offset         int64           `json:"offset"`
+	Columns        []string        `json:"columns"`
+	Text           string          `json:"text"`
+	Mode           string          `json:"mode"`
+	SQL            json.RawMessage `json:"sql"`
+	Refused        bool            `json:"refused"`
+	RefusedMessage string          `json:"refused_message"`
+	MaxRows        int             `json:"max_rows"`
+	MaxBytes       int             `json:"max_bytes"`
+	Page           json.RawMessage `json:"page"`
+	Index          int             `json:"index"`
+	Metadata       json.RawMessage `json:"metadata"`
+	Values         json.RawMessage `json:"values"`
+	Snapshot       json.RawMessage `json:"snapshot"`
+	Set            json.RawMessage `json:"set"`
+	As             string          `json:"as"`
 	// The catalog fields: the databases that run the step, the namespace of a table, the binds and page of a query, and
 	// the seq of a row.
 	Only      []string                   `json:"only"`
@@ -633,12 +634,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if len(s.PageWith) > 0 {
 			var with struct {
-				OrderBy []string `json:"order_by"`
+				OrderBy    []string `json:"order_by"`
+				ColumnName *string  `json:"column_name"`
 			}
 			if err := json.Unmarshal(s.PageWith, &with); err != nil {
 				return outcome{}, err
 			}
 			page.OrderBy = with.OrderBy
+			if with.ColumnName != nil {
+				page.Metadata.Columns = slices.Clone(page.Metadata.Columns)
+				page.Metadata.Columns[0].Name = *with.ColumnName
+			}
 		}
 		snapshot, err := orm.CatalogSnapshotFromPage(page, s.Index)
 		if err != nil {
@@ -884,6 +890,9 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if s.Refused {
 			if err == nil {
 				return outcome{}, fmt.Errorf("the database accepted the statement that the step expects it to refuse: %s", statement)
+			}
+			if !strings.Contains(strings.ToLower(err.Error()), s.RefusedMessage) {
+				return outcome{}, fmt.Errorf("the database refused the statement for another reason: %w", err)
 			}
 			return outcome{fields: map[string]any{}}, nil
 		}
