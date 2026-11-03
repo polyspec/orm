@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db081b6bc21d95c1dbd347f595f70c9413a2fde5f1c9e827a965ff90b2c03ac0 -->
+<!-- source-sha256: d12c7714f0a532151be034c78e3a1c99f68a56162b05acf757331de4ccea2569 -->
 # 변경 이력
 
 ## Unreleased
 
+- page의 plan 단계는 recipe page_plan_steps가 지키고, SQLite의 full-text 거부도 그 안에 있으며, native와 target은 사라졌다.
 - group_rows_db native와 physical check를 없앤다. recipe가 값과 읽기 전용 statement를 그대로 담는다 (#T334-3-4-25)
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
 - Rust의 catalog 연결, read-only 거부, describe, table page 시험을 여섯 runtime의 catalog_connection recipe 사례로 옮겼고, TypeScript가 SQLite view를 TABLE_METADATA_INVALID 없이 describe한다.

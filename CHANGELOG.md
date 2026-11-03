@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The plan steps of a page are held by the recipe page_plan_steps, which also states the full-text refusal on SQLite; the natives and their targets are gone.
 - The group_rows_db natives and the physical check are gone; the recipe holds the values and the exact read-only statements (#T334-3-4-25)
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.

@@ -12568,7 +12568,6 @@
           "command": "make complex-query-typescript-request-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/complex-query-request.mjs",
             "packages/ts/tests/complex-query-request-types.mjs"
           ]
         },
@@ -13907,16 +13906,6 @@
         "packages/php/tests/DbspecPlanTest.php"
       ],
       "command": "make dbspec-php-interface-program-helper-check"
-    },
-    {
-      "id": "go-coverage-event-recorder",
-      "paths": [
-        "packages/go/testcase/event_recorder.go"
-      ],
-      "tests": [
-        "packages/go/complexquery/page_plan_steps_test.go"
-      ],
-      "command": "make get-page-plan-steps-check/go"
     },
     {
       "id": "rust-clock-integration-test-support",

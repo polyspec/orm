@@ -383,29 +383,6 @@ go-test-check/cross-runtime: lease-tool python-venv-check php-vendor-check orm-c
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 
-# DSL-159: the plan steps of a page, through the generated terminal of each runtime, on a SQLite case database.
-.PHONY: get-page-plan-steps-check get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
-get-page-plan-steps-check: get-page-plan-steps-check/go get-page-plan-steps-check/php get-page-plan-steps-check/php-extension get-page-plan-steps-check/typescript get-page-plan-steps-check/python get-page-plan-steps-check/rust
-get-page-plan-steps-check/go:
-	$(GO_TEST) ./packages/go/complexquery -run '^TestGetPagePlanSteps$$' -count=1
-get-page-plan-steps-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php/tests/ComplexQueryDbTest.php
-get-page-plan-steps-check/php-extension: php-vendor-check php-models
-	@set -eu; \
-	run_dir="$(abspath .runtime/run)/get-page-plan-steps-php-extension-$$$$"; \
-	trap 'rm -rf "$$run_dir"' EXIT; \
-	mkdir -p "$$run_dir/php-extension"; \
-	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage' packages/php-ext/tests/ComplexQueryNativeTest.php
-get-page-plan-steps-check/typescript: lease-tool orm-codes-typescript
-	$(HOLD_TYPESCRIPT)
-	$(TSC_BUILD)
-	$(NODE) --test --test-name-pattern='getPagePlanSteps' packages/ts/tests/complex-query-request.mjs
-get-page-plan-steps-check/python: python-venv-check
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_complex_query.ComplexQueryTest.test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page
-get-page-plan-steps-check/rust: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) get-page-plan-steps-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test complex_query_sqlite -- --exact complex_query_sqlite::page_plan_steps
-
 # testcase-check checks that each language's shared case report prints, in this order, the start of each case (RUN, deadline), its steps (STEP),
 # its results (PASS, FAIL and reason), and the elapsed time, and that it reports a case past its deadline as FAIL,
 # using the output of the child processes.
@@ -3786,7 +3763,6 @@ complex-query-typescript-unit-check: lease-tool orm-codes-typescript
 complex-query-typescript-request-check: lease-tool orm-codes-typescript
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(NODE) packages/ts/tests/complex-query-request.mjs
 	$(NODE) packages/ts/tests/complex-query-request-types.mjs
 
 python-package-entry-check: python-venv-check
