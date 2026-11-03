@@ -117,23 +117,6 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
   }
 });
 
-// The CONFIG the server answers to connect is the error of connect.
-// Requirements: PRT-64.
-caseTest('markdown/connect-refused', COMPUTE, async () => {
-  const s = await startMarkdownTestServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
-  try {
-    let failure;
-    try { await (await Db.connect(s.dsn)).close(); } catch (error) { failure = error; }
-    if (!(failure instanceof OrmError) || failure.code !== 'CONFIG' || failure.message !== "CONFIG: connect: the token is not the corpus's token") {
-      throw new Error(`connect error = ${failure}; want the server's CONFIG`);
-    }
-    const got = await s.receivedMessages;
-    if (!isDeepStrictEqual(got, [connectLine])) throw new Error(`messages = ${JSON.stringify(got)}`);
-  } finally {
-    await s.close();
-  }
-});
-
 // A markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED.
 // Requirements: DIA-183, DIA-184, DIA-185, DIA-188, DIA-189.
 caseTest('markdown/rejected-surfaces', COMPUTE, async () => {

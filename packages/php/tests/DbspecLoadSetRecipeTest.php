@@ -9,7 +9,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 // The load of a document set, tests/dbspec/load-set.json, without a database
-// (docs/spec/feature-coverage.md FCV-3, FCV-4). Requirements: SCH-12, DBS-156.
+// (docs/spec/feature-coverage.md FCV-3, FCV-4). Requirements: SCH-12, DBS-156, DBS-100, DBS-103.
 #[Medium]
 class DbspecLoadSetRecipeTest extends TestCase
 {

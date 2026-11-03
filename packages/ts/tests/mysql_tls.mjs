@@ -1,105 +1,10 @@
-// The DSN parameters of the TypeScript client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the scheme's
-// parameters, and `ssl-mode=VERIFY_IDENTITY` with an absolute path `ssl-ca` is the only MySQL TLS
-// mode; any other parameter or mode is CONFIG. The connection cases use the DSNs of `make orm-test-servers`:
-// ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN
-// are required, and the test fails if any of them is missing.
+// The session sql_mode of the TypeScript client. The MySQL TLS connection and its refusals are cases of
+// contracts/fixtures/dsn_connection and contracts/fixtures/dsn_reject.
 // Usage: node packages/ts/tests/mysql_tls.mjs
 import { readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Db } from '../dist/index.js';
-import { parseDsn } from '../dist/driver.js';
-import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 
-// Each case collects its failures and reports them as one error at the end of the case.
-function check(failures) {
-  if (failures.length > 0) throw new Error(failures.join('; '));
-}
-
-function refuseDsn(failures, dsn, wanted) {
-  try {
-    parseDsn(dsn);
-    failures.push(`accepted ${dsn}`);
-  } catch (error) {
-    if (error?.code !== 'CONFIG' || !String(error.message).includes(wanted)) failures.push(`${dsn}: ${error?.code} ${error?.message}, expected CONFIG with ${wanted}`);
-  }
-}
-
-// A parameter case is a parse in memory.
-// Requirements: CFG-19, CFG-20.
-caseTest('mysql_tls/parameters', COMPUTE, () => {
-  const failures = [];
-  refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?charset=latin1', 'unknown parameter charset');
-  refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?sslmode=disable', 'unknown parameter sslmode');
-  refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?application_name=orm', 'unknown parameter application_name');
-  refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
-  refuseDsn(failures, 'sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-  const parsed = parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
-  if (parsed.driver !== 'mysql' || parsed.sslCa !== '/tmp/ca.pem') failures.push(`parsed ${JSON.stringify(parsed)}`);
-  for (const dsn of ['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
-    'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC']) {
-    try { parseDsn(dsn); } catch (error) { failures.push(`refused ${dsn}: ${error?.message}`); }
-  }
-  check(failures);
-});
-
-// CFG-18: incomplete, unsupported and relative TLS options are rejected without opening a connection.
-caseTest('mysql_tls/unsupported-parameters', COMPUTE, async () => {
-  const failures = [];
-  for (const mode of ['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', '']) {
-    refuseDsn(failures, `mysql://root@db.local/orm_example?ssl-mode=${mode}&ssl-ca=/tmp/ca.pem`, 'ssl-mode');
-  }
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
-  const ca = join(tmpdir(), `orm-missing-ca-${randomUUID()}.pem`);
-  let db;
-  try {
-    db = await Db.connect(`mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=${encodeURIComponent(ca)}`);
-    failures.push('a missing TLS CA file was accepted');
-  } catch (error) {
-    if (error?.code !== 'CONFIG' || !String(error.message).includes('cannot be read')) {
-      failures.push(`an unreadable TLS CA: ${error?.code} ${error?.message}, expected CONFIG before connecting`);
-    }
-  } finally {
-    if (db) await db.close();
-  }
-  check(failures);
-});
-
-async function sslVersion(dsn) {
-  const db = await Db.connect(dsn);
-  try {
-    const [rows] = await db.pool.pool.query("SHOW SESSION STATUS LIKE 'Ssl_version'");
-    return rows[0]?.Value ?? '';
-  } finally {
-    await db.close();
-  }
-}
-
-// A connection case connects to the TLS server three times.
-// Requirements: CFG-16.
-caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
-  const failures = [];
-  const dsns = ['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'].map(name => {
-    const value = process.env[name];
-    if (!value) throw new Error(`${name} is not set; run make orm-test-servers`);
-    return value;
-  });
-  const version = await sslVersion(dsns[0]);
-  step(`the VERIFY_IDENTITY connection has Ssl_version ${version}`);
-  if (!/^TLSv1\.[23]$/.test(version)) failures.push(`the VERIFY_IDENTITY connection has Ssl_version ${JSON.stringify(version)}`);
-  for (const [name, dsn] of [['another CA', dsns[1]], ['a certificate of another host', dsns[2]]]) {
-    try {
-      await sslVersion(dsn);
-      failures.push(`the connection with ${name} was accepted`);
-    } catch (error) {
-      if (!/certificate|altnames|self-signed|verify/i.test(String(error?.message))) failures.push(`the connection with ${name} failed for another cause: ${error?.message}`);
-    }
-  }
-  check(failures);
-});
 // The session sql_mode that the client sets on every MySQL connection equals sql_mode.session of
 // tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
 // Requirements: CFG-3.

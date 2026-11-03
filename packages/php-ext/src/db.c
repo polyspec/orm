@@ -4328,37 +4328,22 @@ ZEND_METHOD(Polyspec_Orm_Db, notify)
         db_throw_orm("DRIVER", "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000");
         RETURN_THROWS();
     }
-    zval pdo;
-    if (!handle_pdo(ZEND_THIS, &pdo)) {
+    zval args[5], rows;
+    str_zv(&args[0], "utility");
+    array_init(&args[1]);
+    if (!mcall(ZEND_THIS, "transactionNumber", &args[2], 0, NULL)) {
+        zval_ptr_dtor(&args[0]);
+        zval_ptr_dtor(&args[1]);
         RETURN_THROWS();
     }
-    zval sql, statement;
-    ZVAL_STRING(&sql, "SELECT pg_notify(?, ?)");
-    if (!mcall(&pdo, "prepare", &statement, 1, &sql)) {
-        zval_ptr_dtor(&sql);
-        zval_ptr_dtor(&pdo);
-        map_pending_listen_pdo_exception(ZEND_THIS);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&sql);
-    zval params, executed;
-    array_init_size(&params, 2);
-    add_next_index_str(&params, zend_string_copy(channel));
-    add_next_index_str(&params, zend_string_copy(payload));
-    bool ok = mcall(&statement, "execute", &executed, 1, &params);
-    zval_ptr_dtor(&params);
-    if (ok) {
-        zval_ptr_dtor(&executed);
-        zval closed;
-        ok = mcall(&statement, "closeCursor", &closed, 0, NULL);
-        if (ok) zval_ptr_dtor(&closed);
-    }
-    zval_ptr_dtor(&statement);
-    zval_ptr_dtor(&pdo);
-    if (!ok) {
-        map_pending_listen_pdo_exception(ZEND_THIS);
-        RETURN_THROWS();
-    }
+    str_zv(&args[3], "SELECT pg_notify($1, $2)");
+    array_init_size(&args[4], 2);
+    add_next_index_str(&args[4], zend_string_copy(channel));
+    add_next_index_str(&args[4], zend_string_copy(payload));
+    bool ok = mcall(ZEND_THIS, "fetch", &rows, 5, args);
+    for (int i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
+    if (!ok) RETURN_THROWS();
+    zval_ptr_dtor(&rows);
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, listen)

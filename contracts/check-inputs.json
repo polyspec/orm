@@ -910,8 +910,7 @@
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
-        "databases"
+        "rust"
       ],
       "inputs": [
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
@@ -2749,12 +2748,18 @@
         "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
         "tests/dbspec/load-set.json",
         "tests/planner/default-select-set.json",
-        "tests/planner/default-select-set.dbs"
+        "tests/planner/default-select-set.dbs",
+        "tests/planner/runtime-model.json",
+        "tests/planner/runtime-model.dbs",
+        "tests/dbspec/runtime-model.json",
+        "tests/dbspec/runtime-model-shop.dbs"
       ]
     },
     "model-types-php-extension-check": {
@@ -2866,7 +2871,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]
@@ -3764,7 +3769,6 @@
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
@@ -3835,13 +3839,10 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-        "packages/php-ext/tests/CoverageStatementEventsTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/php/models.txt"
       ]
     },
@@ -3894,9 +3895,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
         "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",
@@ -4148,54 +4147,6 @@
         "packages/go/orm/sqlite_version_test.go",
         "packages/go/orm/db.go",
         "packages/go/orm/sqlite/sqlite.go"
-      ]
-    },
-    "schema-exists-sqlite-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/orm/utils.go",
-        "packages/go/orm/schema_exists_underscore_test.go"
-      ]
-    },
-    "schema-exists-sqlite-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php/src/SchemaUtils.php",
-        "packages/php/tests/SchemaExistsSqliteTest.php"
-      ]
-    },
-    "schema-exists-sqlite-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/src/utils.ts",
-        "packages/ts/tests/model.mjs"
-      ]
-    },
-    "schema-exists-sqlite-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/src/utils.rs",
-        "packages/rust/orm/tests/schema_exists_underscore.rs"
       ]
     },
     "aes-json-php-extension-check": {
@@ -4527,9 +4478,12 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/go/orm/recipe_model_queries_test.go",
         "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go"
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/recipe_model_queries_chain_test.go"
       ]
     },
     "model-queries-check/rust": {
@@ -4540,11 +4494,16 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/rust/tests/tests/model_queries_mysql.rs",
         "packages/rust/tests/tests/model_queries_postgres.rs",
         "packages/rust/tests/tests/model_queries_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/rust/tests/Cargo.toml"
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/tests/tests/model_queries_chain_mysql.rs",
+        "packages/rust/tests/tests/model_queries_chain_postgres.rs",
+        "packages/rust/tests/tests/model_queries_chain_sqlite.rs"
       ]
     },
     "model-queries-check/typescript": {
@@ -4555,10 +4514,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/ts/tests/model_queries-mysql.test.mjs",
         "packages/ts/tests/model_queries-postgres.test.mjs",
         "packages/ts/tests/model_queries-sqlite.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/model_queries_chain-mysql.test.mjs",
+        "packages/ts/tests/model_queries_chain-postgres.test.mjs",
+        "packages/ts/tests/model_queries_chain-sqlite.test.mjs"
       ]
     },
     "model-queries-check/python": {
@@ -4569,10 +4533,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/python/tests/test_model_queries_mysql.py",
         "packages/python/tests/test_model_queries_postgres.py",
         "packages/python/tests/test_model_queries_sqlite.py",
-        "packages/python/tests/recipe.py"
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/test_model_queries_chain_mysql.py",
+        "packages/python/tests/test_model_queries_chain_postgres.py",
+        "packages/python/tests/test_model_queries_chain_sqlite.py"
       ]
     },
     "model-queries-check/php": {
@@ -4584,10 +4553,13 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php"
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "model-queries-check/php-extension": {
@@ -4600,11 +4572,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "constraints-and-relations-check/go": {

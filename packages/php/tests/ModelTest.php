@@ -126,28 +126,6 @@ class ModelTest extends TestCase
     }
 
     /**
-     * Checks schema()->empty() on a new case database, with an empty PostgreSQL
-     * schema other than public, and with the installed tables.
-     */
-    private static function schemaEmpty(string $driver, string $dsn): void
-    {
-        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
-        self::check($db->utils()->schema()->empty() === true, 'a database without tables');
-        if ($driver === 'postgres') {
-            $db->pdo()->exec('CREATE SCHEMA unowned_empty');
-            try {
-                self::check($db->utils()->schema()->empty() === false, 'an empty schema other than public');
-            } finally {
-                $db->pdo()->exec('DROP SCHEMA unowned_empty');
-            }
-            self::check($db->utils()->schema()->empty() === true, 'the empty schema dropped');
-        }
-        \Polyspec\Orm\Tests\installBench($db);
-        self::check($db->utils()->schema()->empty() === false, 'installed tables');
-        $db->close();
-    }
-
-    /**
      * @return array{service: Service, member: ServiceMember, module: ServiceRegion, users: list<User>, authors:
      *   list<Author>}
      */
@@ -1178,13 +1156,6 @@ class ModelTest extends TestCase
                 yield "$zoneName/$driver" => [$zoneName, $driver];
             }
         }
-    }
-
-    // Requirements: INT-58.
-    #[DataProvider('drivers')]
-    public function testSchemaEmpty(string $driver): void
-    {
-        self::schemaEmpty($driver, self::caseDsn($driver));
     }
 
     #[DataProvider('drivers')]

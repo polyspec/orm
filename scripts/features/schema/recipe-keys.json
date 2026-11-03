@@ -20,9 +20,26 @@
   ],
   "step": {
     "dsn.connect": [
+      "config",
       "dsn",
       "expect",
-      "op"
+      "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
     ],
     "keyring.versions": [
       "expect",
@@ -225,6 +242,21 @@
       "op",
       "schema"
     ],
+    "schema.empty": [
+      "expect",
+      "op"
+    ],
+    "schema.exists": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.installed": [
+      "expect",
+      "op",
+      "schema",
+      "table"
+    ],
     "schema.connect": [
       "expect",
       "op",
@@ -348,6 +380,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
@@ -361,10 +394,13 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
+      "group_value",
       "items",
       "joins",
       "key",
+      "key_by",
       "limit",
       "lock",
       "model",
@@ -401,6 +437,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",
@@ -414,6 +451,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -535,6 +573,11 @@
       "op",
       "owned"
     ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -651,6 +694,12 @@
       "expect",
       "name",
       "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
     ],
     "utils.was_inserted": [
       "connection",

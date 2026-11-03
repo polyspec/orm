@@ -1,28 +1,21 @@
 <!-- doc-id: tests-bind-readme -->
-<!-- source-sha256: a1cf3c509bd9af2be6c7c01a4c5e778a67ae7f7d36c84c2cac449e4fcc3521f9 -->
+<!-- source-sha256: e44017f2fc910674e73bdabb147b5599be482579114c1b2f33d3b2d5dd6af0b2 -->
 # Bind vector
 
-`vectors.json`은 클라이언트 bind 경로의 공유 case다. 각 구현이 자기 package의 test에서 실행하며, 모든 case는
-모든 구현에서 같은 답을 내야 한다. `make bind-check`는 다섯 bind runner를 실행한다. PHP extension은 PHP runner를 공유한다.
+bind 경로의 case는 recipe다: `messages.json`은 모든 runtime에서, `messages-dynamic.json`은 compile 시점 type이 없는 runtime에서,
+`messages-untyped-null.json`과 `messages-python-null.json`은 그 파일이 이름한 runtime에서 실행한다
+(docs/spec/feature-coverage.md FCV-2와 FCV-4, `markdown.send`와 `model.assign`).
 
-`bind` case는 parameter 하나를 어떤 statement보다 먼저 그 slot의 논리 type으로 검사한다(docs/spec/protocol.md §5
-"Parameters"): `type`과, 그 type에 있으면 `precision`, `scale`, `length`를 가진 `slot`, 클라이언트 `value`,
-그리고 bind되는 `bound` 값이나 error `code`다. 값은 보통의 JSON이고, JSON이 담지 못하는 host 값은 tag가 붙은
-object다: `{"int": text}`는 JSON 수의 정확한 범위를 넘는 정수, `{"f64": "NaN" | "Infinity" | "-Infinity"}`는
-유한하지 않은 float, `{"bytes": base64}`는 bytes다. 규칙마다 받는 case와 거부하는 case가 하나씩 있다.
-
-`message` case는 parameter 하나를 IR executor message 값으로 쓴다(docs/spec/protocol.md §5 "Parameters"): slot의
-`type`과 `precision`, 클라이언트 `value`, 그리고 message가 싣는 `json` 값이나 error `code`다. `zone`은 case가
-가정하는 연결 시간대다.
-
-`control` case는 transaction의 `begin` control message를 쓴다(docs/spec/protocol.md §5 "Session"): transaction의
-`read_only` option과 message의 `json` 객체이며, 읽기 전용 transaction은 `{"op": "begin", "read_only": true}`, 그 밖의
-transaction은 member가 없는 `{"op": "begin"}`이다. 표의 message runner가 이 case를 실행한다.
+`vectors.json`은 recipe가 담지 못하는 것을 담으며, 각 package의 test가 parameter의 내부 검사에 대해 실행한다
+(docs/spec/protocol.md §5 "Parameters"): `bind`는 date 객체 같은 runtime의 native host 값의 case로, JSON recipe가 쓸 수 없고,
+`compile_refused`는 typed API가 compile 시점에 거부하는 case로, 그 거부가 없는 runtime은 `messages-dynamic.json`으로 실행하고
+여기서 읽지 않는다. case는 `type`과, 그 type에 있으면 `precision`, `scale`, `length`를 가진 `slot`, 클라이언트 `value`,
+그리고 bind되는 `bound` 값이나 error `code`를 가진다. 값은 보통의 JSON이고, JSON이 담지 못하는 host 값은 tag가 붙은 object다.
 
 | runner | command |
 |---|---|
-| Go | `go test ./packages/go/orm -run '^(TestBindVectors\|TestBindMessageVectors)$'` |
-| TypeScript | `node packages/ts/tests/markdown.mjs` (case `bind/*`와 `markdown/bind-message/*`) |
-| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php` |
-| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors packages.python.tests.test_markdown.BindMessageVectors` |
+| Go | `go test ./packages/go/orm -run '^TestBindVectors$'` |
+| TypeScript | `node packages/ts/tests/markdown.mjs` (case `bind/vectors`) |
+| PHP | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php` |
+| Python | `python -m unittest packages.python.tests.test_markdown.BindVectors` |
 | Rust | `cargo test -p polyspec-orm --lib bind_` (`packages/rust`에서) |

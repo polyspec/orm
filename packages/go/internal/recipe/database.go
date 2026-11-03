@@ -56,6 +56,8 @@ type databaseCase struct {
 type databaseStep struct {
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
+	Config         dsnConfig       `json:"config"`
+	Query          string          `json:"query"`
 	Table          string          `json:"table"`
 	Limit          int             `json:"limit"`
 	Offset         int64           `json:"offset"`
@@ -88,6 +90,8 @@ type databaseStep struct {
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`
 	Statements      []frameStatement `json:"statements"`
+	// Conflict is the message of the retryable error that the function of utils.run returns after its statements (INT-48).
+	Conflict string `json:"conflict"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`
@@ -129,6 +133,9 @@ type databaseStep struct {
 	Name  string                 `json:"name"`
 	Value json.RawMessage        `json:"value"`
 	Masks map[string][]eventMask `json:"masks"`
+	// The channel and payload of a db.notify (FCV-4).
+	Channel string `json:"channel"`
+	Payload string `json:"payload"`
 }
 
 // eventMask replaces one bind of one captured event with a name, for a value that no recipe can fix (FCV-4).
@@ -807,6 +814,32 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "schema.empty":
+		empty, err := c.db.Utils().Schema().Empty()
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": empty}}}, nil
+	case "schema.exists":
+		name, err := inspectedSchema(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		exists, err := c.db.Utils().Schema().Exists(name)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": exists}}}, nil
+	case "schema.installed":
+		name, err := inspectedSchema(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		installed, err := c.db.Utils().Schema().Installed(name, s.Table)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": installed}}}, nil
 	case "schema.connect":
 		schema, err := schemaArgument(s.Schema, c)
 		if err != nil {
@@ -928,12 +961,31 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if dsn == "case" {
 			dsn = c.dsn
+			if s.Query != "" {
+				separator := "?"
+				if strings.Contains(dsn, "?") {
+					separator = "&"
+				}
+				dsn += separator + s.Query
+			}
 		}
-		driver, err := connectDriver(dsn)
+		if name, isEnv := strings.CutPrefix(dsn, "env:"); isEnv {
+			dsn = os.Getenv(name)
+			if dsn == "" {
+				return outcome{}, fmt.Errorf("dsn.connect: %s is unset; run make orm-test-servers", name)
+			}
+		}
+		driver, err := connectDriver(dsn, s.Config)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
+	case "dsn.sqlite_file":
+		names, err := sqliteFileName(s.Name, s.Query)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"text": names}}}, nil
 	}
 	switch s.Op {
 	// The ops of the model connections (FCV-4), by their full names.
@@ -1505,4 +1557,22 @@ func normalized(value any) any {
 		return out
 	}
 	return value
+}
+
+// inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where
+// $database is the name of the case database.
+func inspectedSchema(raw json.RawMessage, c *databaseContext) (string, error) {
+	var name string
+	if err := json.Unmarshal(raw, &name); err != nil {
+		var names map[string]string
+		if err := json.Unmarshal(raw, &names); err != nil {
+			return "", err
+		}
+		name = names[c.database]
+	}
+	if name != "$database" {
+		return name, nil
+	}
+	path, _, _ := strings.Cut(c.dsn, "?")
+	return path[strings.LastIndex(path, "/")+1:], nil
 }

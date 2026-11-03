@@ -739,9 +739,7 @@ where
     let present: Vec<&str> = target.tables.iter().map(|t| t.name.text.as_str()).filter(|t| found.contains(t)).collect();
     if !present.is_empty() && present.len() < target.tables.len() {
         return Err(Error::Config(format!(
-            "schema install creates every table of the document set or none; {} of {} tables exist: {}",
-            present.len(),
-            target.tables.len(),
+            "install found only some tables of the document set: {}",
             present.join(", ")
         )));
     }
