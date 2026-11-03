@@ -1834,6 +1834,9 @@
               "pool_idle_size": { "type": "integer" },
               "pool_lifetime_ms": { "type": "integer" },
               "statement_timeout_ms": { "type": "integer" },
+              "aes_key": { "type": "string" },
+              "aes_version": { "type": "integer" },
+              "aes_keys": { "type": "object", "additionalProperties": { "type": "string" } },
               "session_read": {
                 "description": "The connection also runs this statement, whose only row must read as these texts, cell by cell (CFG-3).",
                 "type": "object",

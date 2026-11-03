@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A connection with an AES key that differs from the key of its current version is the case `an_aes_key_that_differs_from_the_current_version_is_refused` of the recipe `aes_rotation` in all six runtimes, through `aes_key`, `aes_version` and `aes_keys` in the `config` of `dsn.connect`, and the Go test `TestAESKeyMustMatchKeyOfCurrentVersion` is gone (#T334-3-12-2)
 - CR15-F: the TypeScript and Python tests of the MySQL insert statements return from c55a726cf as owner units (INT-123b, INT-123c), which hold only the statements a fake driver observes.
 - CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
 - The expected fields of the conformance vector files are gone with their chains and calls: `tests/conformance/vectors.json` keeps the vector names and requirements, and `vectors.postgres.json` and `vectors.sqlite.json` fold into the expects of the recipe `conformance_verification`.
@@ -18,6 +19,8 @@
 - CR15-F: generated keys are held by the recipe cases `generated_keys` and `generated_key_lifecycle`; the TypeScript and Python natives that repeated them over fake drivers are removed, and the Rust test keeps the phases, cancellation and joined inserts of INT-123a.
 - CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
 - CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
+- Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
+- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
@@ -66,6 +69,7 @@
 
 Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 
+- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - The native refusal tests of vector 17 give way to the case `errors` of the recipe conformance_verification; Go, TypeScript and Rust keep only their compile fixtures for a use that drops a refusal, and the private SQLite fixture helper of Rust goes with its one test (#T334-3-12-2)
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
