@@ -9,11 +9,14 @@ namespace Polyspec\Orm\Tests;
 
 final class RecipeKeys
 {
+    /** @var array<string, array<string, mixed>> the key tables that have been read, by file */
+    private static array $tables = [];
+
     /** The key table beside the schema that the $schema of the recipe at path names, relative to the recipe's directory. */
     public static function table(string $path, string $schema): array
     {
         $file = dirname(__DIR__, 3) . '/' . dirname($path) . '/' . dirname($schema) . '/recipe-keys.json';
-        return json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+        return self::$tables[$file] ??= json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /** The first key of $object, in sorted order, that $keys does not hold, or null. */
@@ -31,6 +34,12 @@ final class RecipeKeys
 
     /** Refuses the recipe text at path (relative to the repository root) on its first key or op that its table does not hold. */
     public static function check(string $path, string $text): void
+    {
+        self::decoded($path, $text);
+    }
+
+    /** The recipe of the text at path, decoded once: the same refusals as check. */
+    public static function decoded(string $path, string $text): array
     {
         $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
         $schema = $recipe['$schema'] ?? null;
@@ -65,5 +74,6 @@ final class RecipeKeys
                 }
             }
         }
+        return $recipe;
     }
 }

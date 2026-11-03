@@ -10,17 +10,23 @@ trait RecipeCases
     /** The path of the recipe, relative to the root of the checkout. */
     abstract protected static function recipe(): string;
 
-    /** @return iterable<string, array{array<string, mixed>}> */
-    public static function cases(): iterable
+    /**
+     * The data set of each case holds its id, not the case: PHPUnit keeps a data set for each test it builds, whatever the
+     * filter of the run.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function cases(): array
     {
         return Recipe::cases(static::recipe());
     }
 
-    /** @param array<string, mixed> $case */
-    private function runCase(array $case, string $database): void
+    private function runCase(string $id, string $database): void
     {
         $this->addToAssertionCount(1);
-        Recipe::run(static::recipe(), $case, $database);
+        $recipe = static::recipe();
+        $case = Recipe::caseOf($recipe, $id);
+        Recipe::run($recipe, $case, $database);
         Recipe::report($case, $database);
     }
 }
