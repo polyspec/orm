@@ -1,4 +1,4 @@
-//go:build featurecoverage && windows
+//go:build windows
 
 package bench
 

@@ -1,4 +1,4 @@
-//go:build featurecoverage && unix
+//go:build unix
 
 package bench
 

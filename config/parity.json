@@ -32,9 +32,8 @@
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
         "packages/go/orm/test_helpers_test.go",
-        "packages/go/bench/coverage_performance_gate_shared_test.go",
-        "packages/go/bench/coverage_process_cpu_unix_test.go",
-        "packages/go/bench/coverage_process_cpu_windows_test.go",
+        "packages/go/bench/process_cpu_unix_test.go",
+        "packages/go/bench/process_cpu_windows_test.go",
         "packages/go/bench/gate_helpers_test.go",
         "packages/go/internal/dialects/runner_environment_physical_test.go",
         "packages/go/engine/dbspec/vectors_test.go",
@@ -668,10 +667,6 @@
         {
           "glob": "packages/php-ext/tests/CodecErrorCauseTestExtensionTest.php",
           "reason": "test: the PHP cause test run in the extension; see packages/php/tests/CodecErrorCauseTest.php."
-        },
-        {
-          "glob": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
       ],
       "shares": "php"
@@ -5268,11 +5263,6 @@
       ],
       "bindings": [
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_subqueries.py",
-          "id": "test_read_total_is_the_sum_of_the_correlated_rows"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",
           "id": "TestRecipeModelQueriesChainSqlite/joined_child_keeps_its_scalar_subquery_order_and_index"
@@ -5312,16 +5302,6 @@
       ],
       "bindings": [
         {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_alias_columns.py",
-          "id": "test_alias_column_is_keyed_by_its_snake_case_name"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",
           "id": "TestRecipeModelQueriesChainSqlite/function_column_is_keyed_by_its_alias"
@@ -5352,6 +5332,25 @@
           "id": "model_queries_chain_sqlite::function_column_is_keyed_by_its_alias"
         }
       ]
+    },
+    {
+      "id": "column-function-factories-native",
+      "kind": "feature",
+      "requirements": [
+        "DSL-73a"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
+          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "planner",
+        "part": "owner/php-extension"
+      }
     },
     {
       "id": "coverage-model-create-parts",
@@ -5559,71 +5558,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
           "id": "model_writes_chain_sqlite::ip_with_embedded_whitespace_is_refused"
-        }
-      ]
-    },
-    {
-      "id": "ordered-json-storage-round-trip",
-      "kind": "feature",
-      "requirements": [
-        "DIA-26",
-        "COD-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/jsontext_order_test.go",
-          "id": "TestJsonTextOrderPreservation"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_model_writes_chain_test.go",
-          "id": "TestRecipeModelWritesChainSqlite/ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelWritesChainRecipeTest.php",
-          "id": "Polyspec\\Orm\\Tests\\ModelWritesChainRecipeTest::testSqlite"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelWritesChainRecipeTestExtensionTest.php",
-          "id": "Polyspec\\Orm\\Extension\\Tests\\ModelWritesChainRecipeTestExtensionTest::testSqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
-          "id": "ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_writes_chain_sqlite.py",
-          "id": "ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
-          "id": "model_writes_chain_sqlite::ordered_json_keeps_its_member_order_and_number_text"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_model_writes_chain_test.go",
-          "id": "TestRecipeModelWritesChainSqlite/ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model_writes_chain-sqlite.test.mjs",
-          "id": "ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_model_writes_chain_sqlite.py",
-          "id": "ordered_json_keeps_a_repeated_member_name"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/model_writes_chain_sqlite.rs",
-          "id": "model_writes_chain_sqlite::ordered_json_keeps_a_repeated_member_name"
         }
       ]
     },
@@ -6892,6 +6826,33 @@
       ]
     },
     {
+      "id": "connection-first-statement-lost",
+      "kind": "feature",
+      "requirements": [
+        "CFG-38"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
+          "id": "RollbackTestExtensionTest::testFirstStatementLost"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "transactions",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
+    },
+    {
       "id": "connection-rollback-failed-reports-both-errors",
       "kind": "feature",
       "requirements": [
@@ -6901,83 +6862,83 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSQLiteRolledBackTransaction"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsMysql/rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedMySQL"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsPostgres/rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedPostgres"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsSqlite/sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFailed"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testMysql with data set \"rollback_failed_reports_both_errors\""
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testFirstStatementLost"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testPostgres with data set \"rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_rolled_back_transaction_reports_the_trigger\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testRollbackFailed"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testMysql with data set \"rollback_failed_reports_both_errors\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testFirstStatementLost"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testPostgres with data set \"rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_rolled_back_transaction_reports_the_trigger\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/sqlite"
+          "test": "packages/ts/tests/transactions-mysql.test.mjs",
+          "id": "rollback_failed_reports_both_errors"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_failed/postgres"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_sqlite"
+          "test": "packages/python/tests/test_transactions_mysql.py",
+          "id": "rollback_failed_reports_both_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_rollback_failed_postgres"
+          "test": "packages/python/tests/test_transactions_sqlite.py",
+          "id": "sqlite_rolled_back_transaction_reports_the_trigger"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_sqlite"
+          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "id": "transactions_mysql::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_mysql"
+          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "id": "transactions_postgres::rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_postgres"
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "id": "transactions_sqlite::sqlite_rolled_back_transaction_reports_the_trigger"
         }
       ]
     },
@@ -6991,73 +6952,83 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSQLiteRolledBackSavepoint"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsMysql/savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSavepointRollbackFailedMySQL"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsPostgres/savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestSavepointRollbackFailedPostgres"
+          "test": "packages/go/orm/recipe_transactions_test.go",
+          "id": "TestRecipeTransactionsSqlite/sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testSavepointRollbackFailed"
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testMysql with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testPostgres with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionsRecipeTest.php",
+          "id": "TransactionsRecipeTest::testSqlite with data set \"sqlite_rolled_back_savepoint_reports_the_trigger\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RollbackTestExtensionTest.php",
-          "id": "RollbackTestExtensionTest::testSavepointRollbackFailed"
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testMysql with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testPostgres with data set \"savepoint_rollback_failed_reports_both_errors\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+          "id": "TransactionsRecipeTestExtensionTest::testSqlite with data set \"sqlite_rolled_back_savepoint_reports_the_trigger\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/sqlite"
+          "test": "packages/ts/tests/transactions-mysql.test.mjs",
+          "id": "savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/savepoint_rollback_failed/postgres"
+          "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+          "id": "sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_sqlite"
+          "test": "packages/python/tests/test_transactions_mysql.py",
+          "id": "savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/rollback.py",
-          "id": "test_savepoint_rollback_failed_postgres"
+          "test": "packages/python/tests/test_transactions_sqlite.py",
+          "id": "sqlite_rolled_back_savepoint_reports_the_trigger"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_sqlite"
+          "test": "packages/rust/tests/tests/transactions_mysql.rs",
+          "id": "transactions_mysql::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_mysql"
+          "test": "packages/rust/tests/tests/transactions_postgres.rs",
+          "id": "transactions_postgres::savepoint_rollback_failed_reports_both_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_postgres"
+          "test": "packages/rust/tests/tests/transactions_sqlite.rs",
+          "id": "transactions_sqlite::sqlite_rolled_back_savepoint_reports_the_trigger"
         }
       ]
     },
@@ -9527,7 +9498,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9684,7 +9659,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9841,7 +9820,11 @@
         "PRT-22",
         "INT-60",
         "INT-75",
-        "DSL-87"
+        "DSL-87",
+        "INT-99",
+        "COD-20",
+        "DIA-25",
+        "COD-2"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -14631,11 +14614,6 @@
           "id": "catalog_lifecycle"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/catalog.rs",
-          "id": "catalog_connection_does_not_create_a_missing_sqlite_database"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -14644,6 +14622,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::catalog_lifecycle"
         }
       ]
     },
@@ -14670,11 +14653,6 @@
           "id": "catalog_read"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/catalog.rs",
-          "id": "catalog_connection_rejects_invalid_dsn_without_driver_argument"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -14683,6 +14661,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::catalog_read"
         }
       ]
     },
@@ -15162,11 +15145,6 @@
           "id": "catalog_read_binds"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/read_only_query.rs",
-          "id": "actual_catalog_queries_enforce_read_only_scopes_on_three_databases"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15175,6 +15153,31 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::read_statements"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::catalog_read_binds"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::read_only_query_refusals"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "read_only_query_refusals"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "read_only_query_refusals"
         }
       ]
     },
@@ -15514,11 +15517,6 @@
           "id": "catalog_read"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/table_metadata.rs",
-          "id": "mysql_system_views_are_described_without_row_identity"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15527,6 +15525,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::catalog_read"
         }
       ]
     },
@@ -15553,11 +15556,6 @@
           "id": "catalog_read"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/table_metadata.rs",
-          "id": "qualified_table_metadata_preserves_identity_and_generated_columns"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15566,6 +15564,26 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::catalog_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::describe_native_forms"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "describe_native_forms"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "describe_native_forms"
         }
       ]
     },
@@ -15592,11 +15610,6 @@
           "id": "catalog_read"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/table_page.rs",
-          "id": "qualified_table_pages_preserve_columns_key_order_and_bounds"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15605,6 +15618,26 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::catalog_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::quoted_composite_table_page"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "quoted_composite_table_page"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "quoted_composite_table_page"
         }
       ]
     },
@@ -15780,11 +15813,6 @@
           "id": "catalog_describe_metadata"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_insert_identity.rs",
-          "id": "typed_catalog_writes_return_declared_temporal_fraction_digits"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15793,6 +15821,16 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::temporal_default_precision"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::catalog_describe_metadata"
         }
       ]
     },
@@ -26294,19 +26332,43 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_statement_events_test.go",
-          "id": "TestCoverageStatementEvents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageStatementEvents",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/model_statements"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/transaction_savepoint"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/transaction_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/savepoint_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/failed_statement"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/unsubscribe"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/install"
         },
         {
           "implementation": "php",
@@ -28240,19 +28302,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_test.go",
-          "id": "TestCoveragePerformanceGate",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoveragePerformanceGate",
-            "FEATURE_PACKAGE=./bench"
-          ]
+          "test": "packages/go/bench/performance_measurement_test.go",
+          "id": "TestPerformanceMeasurementMysql"
         },
         {
           "implementation": "php",
@@ -28342,19 +28393,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
-          "id": "TestCoveragePerformanceGatePostgres",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoveragePerformanceGatePostgres",
-            "FEATURE_PACKAGE=./bench"
-          ]
+          "test": "packages/go/bench/performance_measurement_test.go",
+          "id": "TestPerformanceMeasurementPostgres"
         },
         {
           "implementation": "php",
@@ -28444,19 +28484,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
-          "id": "TestCoveragePerformanceGateSQLite",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoveragePerformanceGateSQLite",
-            "FEATURE_PACKAGE=./bench"
-          ]
+          "test": "packages/go/bench/performance_measurement_test.go",
+          "id": "TestPerformanceMeasurementSQLite"
         },
         {
           "implementation": "php",
@@ -29492,11 +29521,6 @@
         "DSL-76"
       ],
       "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_remove_columns.py",
-          "id": "test_keys_and_the_added_column_only"
-        },
         {
           "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",

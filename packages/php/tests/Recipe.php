@@ -1049,8 +1049,15 @@ final class Recipe
                     $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
                 } catch (OrmException $error) {
                     Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
-                    if (array_key_exists('rule', $expect)) {
-                        Assert::assertStringContainsString($expect['rule'], $error->getMessage());
+                    // Each diagnostic is "<line>:<column> <rule>: <message>", in order (SCH-12).
+                    if (array_key_exists('diagnostics', $expect)) {
+                        $prefix = "{$expect['error']}: ";
+                        Assert::assertStringStartsWith($prefix, $error->getMessage());
+                        $problems = explode('; ', substr($error->getMessage(), strlen($prefix)));
+                        Assert::assertCount(count($expect['diagnostics']), $problems, $error->getMessage());
+                        foreach ($problems as $i => $problem) {
+                            Assert::assertStringStartsWith("{$expect['diagnostics'][$i]}: ", $problem);
+                        }
                     }
                     return;
                 }
@@ -2366,6 +2373,10 @@ final class Recipe
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
+            if (isset($expected['rollback'])) {
+                Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
+                Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
+            }
             if (($expected['driver_cause'] ?? false) === true) {
                 Assert::assertNotNull($error->getPrevious(), 'the driver cause of the error');
             }
@@ -2815,6 +2826,21 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'session.end':
+                // Through the server DSN, not a pooler, which may handle KILL on its own (CFG-15).
+                $variable = 'ORM_TEST_' . strtoupper($context['database']) . '_SERVER_DSN';
+                $server = (string) getenv($variable);
+                Assert::assertNotSame('', $server, "$variable is required; database tests never skip");
+                $pdo = case_admin(
+                    case_dsn_with_database($server, ltrim((string) parse_url($context['dsn'], PHP_URL_PATH), '/'))
+                );
+                $postgres = $context['database'] === 'postgres';
+                $id = $pdo->query($postgres
+                    ? "SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '{$s['table']}' AND l.pid <> pg_backend_pid() LIMIT 1"
+                    : "SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '{$s['table']}' LIMIT 1")->fetchColumn();
+                Assert::assertNotFalse($id, "the transaction session holds a lock on {$s['table']}");
+                $pdo->exec($postgres ? 'SELECT pg_terminate_backend(' . (int) $id . ', 5000)' : 'KILL ' . (int) $id);
+                return [];
             case 'dbspec.ddl_behavior':
                 // On one native connection of the case database, the connection rules, the statements of the case for the
                 // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
