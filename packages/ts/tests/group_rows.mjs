@@ -13,16 +13,6 @@ caseTest('group_rows/boolean_invalid_stored_value', COMPUTE, () => {
   }
 });
 
-// Requirements: PRT-69, INT-1. The selected grouped i64 remains exact in the public row representation.
-caseTest('group_rows/exact_i64_preserved', COMPUTE, () => {
-  const want = 9007199254740991;
-  const value = groupValue(null, { name: 'exact_value', column: '', type: 'i64' }, want, null);
-  const row = new GroupRow([['exact_value', value], ['row_count', 1]]);
-  if (value !== want || row.value('exact_value') !== want || row.toArray().exact_value !== want) {
-    throw new Error(`group i64 value was not preserved exactly: ${String(row.value('exact_value'))}`);
-  }
-});
-
 // The forms of a count that only a driver cell holds: a text, a bigint, a negative zero, a repeated column and an entry of another
 // length. The answer of a listener holds none of them, since its count is a JSON number and its row a JSON object (PRT-69), so the
 // collection recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.

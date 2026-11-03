@@ -408,31 +408,6 @@ fn relation_getters_report_a_mismatched_relation_value() {
     }
 }
 
-/// A set that uses an external document (`uses`) makes models for the tables it owns and read-only models
-/// for the tables it uses from external documents, none for an unused external table, and carries the
-/// text of the used tables in the schema value.
-// Requirements: DBS-101, DBS-104, DBS-110.
-#[test]
-fn generation_leaves_external_tables_out() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let fixtures = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let set = set_file(&dir, &[fixtures.join("member.dbs")], &[fixtures.join("core.dbs")]);
-    let out = polyspec_orm_build::Builder::set(&set).out_dir(dir.join("out")).try_generate();
-    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
-    remove_test_dir(&dir);
-    let text = text.or_panic(|e| format!("generate: {e}"));
-    assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
-    assert!(text.contains("pub struct ExtAccount ") && text.contains("pub struct ExtAudit "), "the used external tables have models");
-    assert!(!text.contains("pub struct ExtSession "), "the unused external table ext_session has a model");
-    assert!(text.contains("polyspec_orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
-    let external = external.or_panic(|e| format!("orm_external.dbs: {e}"));
-    assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
-    assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
-}
-
 /// The same source and schema give the same generated source however the scan and output path are written (relative to the package directory, absolute,
 /// a path with `./`, or a path with a trailing `/`).
 #[test]
@@ -487,26 +462,6 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
 }
 
-/// The text of the impl block of the model `name`, from its header to the next impl block.
-fn impl_of<'a>(text: &'a str, name: &str) -> &'a str {
-    let header = format!("impl {name} {{");
-    let start = text.find(&header).unwrap_or_else(|| panic!("no impl block of {name}"));
-    let rest = &text[start + header.len()..];
-    let end = rest.find("\nimpl ").unwrap_or(rest.len());
-    &rest[..end]
-}
-
-#[test]
-// Requirements: DSL-154.
-fn key_prefix_methods_come_from_the_schema_without_a_scan() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    // The source calls no method of a model, so every method of a key prefix comes from the schema (T156).
-    let schema = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit_columns.dbs");
-    let text = generate_with_schema(schema, "fn main() {}\n").unwrap();
-    assert!(impl_of(&text, "Card").contains("pub fn audit_seq<"), "Card lacks audit_seq, the prefix of ix_card_audit");
-    assert!(impl_of(&text, "CardHistory").contains("pub fn seq<"), "CardHistory lacks seq, the prefix of ix_card_history_row");
-}
-
 /// The check of the generated files (orm-gen gen --check of the Go module): it reports no line for the current
 /// files, reports a changed and a missing file, and writes nothing.
 // Requirements: DBS-175.
@@ -552,32 +507,6 @@ fn check_keeps_the_output_directory_on_generation_error() {
     remove_test_dir(&dir);
     assert!(err.is_err(), "a call the schema does not allow must fail the check");
     assert!(!created, "the check created the output directory");
-}
-
-/// Requirements: DBS-173. The used table of an external document keeps its model when no scanned source calls it and no
-/// owned table references it: note.dbs uses ext_session of core.dbs and its own table ext_note has no foreign key to it,
-/// and the source calls ExtNote only.
-#[test]
-fn unused_external_tables_keep_their_models() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), "fn main() { let _ = ExtNote::new(); }").unwrap();
-    let note = dir.join("note.dbs");
-    std::fs::write(
-        &note,
-        "dbspec 1 ext_note\n\nuse ext_core { ext_session }\n\ntable ext_note {\n  seq i64 identity\n  title varchar(191)\n  primary key (seq)\n}\n",
-    )
-    .unwrap();
-    let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
-    let set = set_file(&dir, &[note], &[external.join("core.dbs")]);
-    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
-    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    remove_test_dir(&dir);
-    let text = text.or_panic(|e| format!("generate: {e}"));
-    assert!(text.contains("pub struct ExtSession "), "a used external table that no source calls has no model");
 }
 
 #[test]

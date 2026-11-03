@@ -13,21 +13,21 @@ import (
 const parameterChunkingRecipe = "../../../contracts/fixtures/parameter_chunking/parameter_chunking.json"
 
 // TestRecipeParameterChunkingMysql runs the parameter_chunking recipe on MySQL, each case on a case database (FCV-3).
-// Requirements: PLN-44, PRT-76.
+// Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "mysql")
 }
 
 // TestRecipeParameterChunkingPostgres runs the parameter_chunking recipe on PostgreSQL, each case on a case database (FCV-3).
-// Requirements: PLN-44, PRT-76.
+// Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingPostgres(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "postgres")
 }
 
 // TestRecipeParameterChunkingSqlite runs the parameter_chunking recipe on SQLite, each case on a case database (FCV-3).
-// Requirements: PLN-44, PRT-76.
+// Requirements: PLN-44, PRT-35, PRT-76.
 func TestRecipeParameterChunkingSqlite(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, parameterChunkingRecipe, "sqlite")

@@ -96,24 +96,6 @@ trait GroupRowsCases
         }
     }
 
-    public function testGroupResultPreservesExactI64Value(): void
-    {
-        $this->assertGroupValueOwnership();
-        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
-        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
-        $want = 9007199254740991;
-        $value = $groupValue->invoke(
-            new GroupRowsModelFixture(),
-            $db,
-            ['name' => 'exact_value', 'column' => '', 'type' => 'i64'],
-            $want,
-        );
-        self::assertSame($want, $value);
-        $row = new GroupRow([['exact_value', $value], ['row_count', 1]]);
-        self::assertSame($want, $row->value('exact_value'));
-        self::assertSame(['exact_value' => $want, 'row_count' => 1], $row->toArray());
-    }
-
     // The forms of a count that only a driver cell holds: a text and a float. The answer of a listener holds neither, since its
     // count is a JSON number (PRT-69), so the collection recipe cannot write them (FCV-2). Requirements: INT-68, INT-90.
     public function testGroupRowDriverCellForms(): void

@@ -1303,7 +1303,6 @@
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
-        "packages/python/tests/test_collection.py",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
         "packages/python/tests/test_alias_columns.py",
@@ -1341,9 +1340,7 @@
         "packages/ts/tests/model_json_output.test.mts",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
-        "packages/ts/tests/split-null.test.mjs",
         "packages/python/tests/test_group_rows_db.py",
-        "packages/python/tests/test_split_null.py",
         "packages/php-ext/tests/ChainNativeSurfaceTest.php",
         "packages/go/model/group_rows_db_test.go",
         "packages/rust/orm/src/collection.rs",
@@ -1351,7 +1348,6 @@
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
         "packages/rust/orm/tests/compiler_fixtures.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs",
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
@@ -1775,10 +1771,9 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_collection.py",
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
             "packages/python/tests/test_alias_columns.py",
@@ -1817,7 +1812,7 @@
         },
         {
           "id": "collection-identity-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionKeyIdentityFromFixture|TestCollectionKeyNullIsCodecDecodeFromFixture)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_identity_test.go",
@@ -4112,7 +4107,9 @@
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
-        "packages/python/tests/coverage_statement_events.py",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
         "packages/php-ext/tests/StatementEventSurfaceTest.php",
         "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
         "packages/ts/tests/statement_events-mysql.test.mjs",
@@ -4488,19 +4485,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_events.py"
+              "packages/python/tests/test_statement_events_mysql.py",
+              "packages/python/tests/test_statement_events_postgres.py",
+              "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/case_database.py",
-              "packages/python/tests/statement_events.py",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/statement_events.json",
+              "contracts/fixtures/statement_events/statement_events.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_mysql.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4510,7 +4507,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_postgres.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4520,7 +4517,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_sqlite.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4574,6 +4571,7 @@
       ],
       "parity": [
         "generator",
+        "php-generator-scan-vector-in-both-php-modes",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -4581,7 +4579,6 @@
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods",
-        "mechanically-derived-chain-method-names",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",
@@ -4596,6 +4593,7 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/ts/tests/model-new-output-name.mjs",
@@ -4604,7 +4602,6 @@
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
-        "packages/go/generator/gen_go_key_prefix_test.go",
         "packages/go/generator/gen_go_output_test.go",
         "packages/go/generator/gen_go_output_internal_test.go",
         "packages/go/generator/gen_go_packages_test.go",
@@ -4815,6 +4812,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
               "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
@@ -4958,7 +4956,8 @@
         "dbspec-apply-cleanup-rust",
         "dbspec-apply-cleanup-python",
         "dbspec-apply-cleanup-php",
-        "dbspec-apply-cleanup-errors"
+        "dbspec-apply-cleanup-errors",
+        "dbspec-dialect-refusal"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -5017,7 +5016,6 @@
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/dbspec-plan-physical.mjs",
-        "packages/ts/tests/dbspec-plan.mjs",
         "packages/ts/tests/dbspec-plan-cases.mjs",
         "packages/ts/tests/dbspec-plan-invalid.mjs",
         "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -5025,7 +5023,7 @@
         "packages/ts/tests/dbspec-plan-comparisons.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/ts/tests/dbspec-render-physical.mjs",
         "packages/python/tests/dbspec_render_physical.py",
         "packages/rust/orm/tests/dbspec_render_physical.rs",
@@ -5070,7 +5068,7 @@
         "packages/ts/tests/browser-entry.mjs",
         "packages/python/tests/dbspec_ddl.py",
         "packages/python/tests/dbspec_plans.py",
-        "packages/python/tests/test_dbspec_render_dialect.py",
+        "packages/python/tests/test_dbspec_dialect_refusal_none.py",
         "packages/python/tests/test_dbspec_plan_cases.py",
         "packages/python/tests/test_dbspec_plan_invalid.py",
         "packages/python/tests/test_dbspec_plan_chains.py",
@@ -5148,7 +5146,10 @@
         "packages/ts/tests/dbspec-mermaid-none.test.mjs",
         "packages/go/engine/dbspec/recipe_mermaid_test.go",
         "packages/python/tests/test_dbspec_mermaid_none.py",
-        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php"
+        "packages/php-ext/tests/DbspecMermaidRecipeExtensionTest.php",
+        "packages/go/orm/recipe_dbspec_dialect_refusal_test.go",
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php",
+        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -5281,8 +5282,7 @@
             "packages/ts/tests/dbspec-analyze.mjs",
             "packages/ts/tests/dbspec-rules.mjs",
             "packages/ts/tests/dbspec-render.mjs",
-            "packages/ts/tests/dbspec-render-dialect.mjs",
-            "packages/ts/tests/dbspec-plan.mjs",
+            "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
             "packages/ts/tests/dbspec-plan-cases.mjs",
             "packages/ts/tests/dbspec-plan-invalid.mjs",
             "packages/ts/tests/dbspec-plan-chains.mjs",
@@ -5327,7 +5327,7 @@
           "inputs": [
             "packages/python/tests/dbspec_ddl.py",
             "packages/python/tests/dbspec_plans.py",
-            "packages/python/tests/test_dbspec_render_dialect.py",
+            "packages/python/tests/test_dbspec_dialect_refusal_none.py",
             "packages/python/tests/test_dbspec_plan_cases.py",
             "packages/python/tests/test_dbspec_plan_invalid.py",
             "packages/python/tests/test_dbspec_plan_chains.py",
@@ -8927,7 +8927,6 @@
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/tests/tests/integration/result_chains.rs",
@@ -8991,11 +8990,10 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php packages/php/tests/ParentSlotPaddingTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/RelationKeysTest.php",
-            "packages/php/tests/ParentSlotPaddingTest.php"
+            "packages/php/tests/RelationKeysTest.php"
           ]
         },
         {
@@ -9404,7 +9402,10 @@
         "coverage-constraints-and-relations-constraint-errors",
         "constraints_and_relations-mysql",
         "constraints_and_relations-postgres",
-        "constraints_and_relations-sqlite"
+        "constraints_and_relations-sqlite",
+        "immutable_write-mysql",
+        "immutable_write-postgres",
+        "immutable_write-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -9414,7 +9415,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+        "contracts/fixtures/immutable_write/immutable_write.json"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",
@@ -9425,7 +9427,7 @@
         "packages/go/engine/dbspec/render_test.go",
         "packages/php/tests/DbspecRenderTest.php",
         "packages/ts/tests/dbspec-render.mjs",
-        "packages/ts/tests/dbspec-render-dialect.mjs",
+        "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
         "packages/php/tests/DriverErrorTest.php",
@@ -12747,7 +12749,9 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
-        "packages/python/tests/coverage_request_hook.py",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
         "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
       ],
       "docs": [
@@ -13296,18 +13300,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_request_hook.py"
+              "packages/python/tests/test_request_hook_mysql.py",
+              "packages/python/tests/test_request_hook_postgres.py",
+              "packages/python/tests/test_request_hook_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/test_request_hook.py",
-              "packages/python/tests/case_database.py",
+              "contracts/fixtures/request_hook/request_hook.json",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_mysql.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13330,7 +13335,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_postgres.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13353,7 +13358,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_sqlite.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -14172,8 +14177,7 @@
         "packages/ts/tests/statement-runner-run.mjs",
         "packages/php/tests/CoverageStatementRunnerTest.php",
         "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
-        "packages/ts/tests/coverage_statement_runner.mjs",
-        "packages/python/tests/coverage_statement_runner.py"
+        "packages/ts/tests/coverage_statement_runner.mjs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -14475,13 +14479,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_runner.py"
+              "packages/python/tests/test_statement_runner_mysql.py",
+              "packages/python/tests/test_statement_runner_postgres.py",
+              "packages/python/tests/test_statement_runner_sqlite.py"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_sqlite.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14491,7 +14497,7 @@
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_mysql.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14501,7 +14507,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_postgres.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14518,7 +14524,7 @@
     {
       "id": "php-dbspec-dialect-rejection-cases",
       "paths": [
-        "packages/php/tests/DbspecDialectRejectionCases.php"
+        "packages/php/tests/DbspecDialectRefusalRecipeTest.php"
       ],
       "tests": [
         "packages/php/tests/DbspecRenderTest.php",

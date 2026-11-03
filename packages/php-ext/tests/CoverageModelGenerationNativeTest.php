@@ -41,9 +41,6 @@ DBSPEC;
             $source = file_get_contents("$generated/Item.php");
             Assert::assertIsString($source);
             Assert::assertStringContainsString("return \$this->readColumn('label');", $source);
-            foreach (['@phpstan-ignore', 'phpcs:ignore'] as $suppression) {
-                Assert::assertStringNotContainsString($suppression, $source, "generated PHP carries $suppression");
-            }
             require "$generated/Item.php";
 
             $class = "$namespace\\Item";

@@ -673,6 +673,20 @@
             "error": {
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "message_suffix": {
+              "description": "The text that the message of the error ends with.",
+              "type": "string",
+              "minLength": 1
+            },
+            "message_holds": {
+              "description": "The text that the message of the error holds, for a message that the driver wraps.",
+              "type": "string",
+              "minLength": 1
+            },
+            "driver_cause": {
+              "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
+              "const": true
             }
           }
         },
@@ -758,6 +772,7 @@
             "codec.host_encode",
             "codec.host_decode",
             "codec.blind_index",
+            "collection.key",
             "sql.exec",
             "query.search",
             "query.search_chain",
@@ -871,6 +886,9 @@
         },
         {
           "$ref": "#/$defs/ops/codec.blind_index"
+        },
+        {
+          "$ref": "#/$defs/ops/collection.key"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -1679,6 +1697,86 @@
           }
         }
       },
+      "collection.key": {
+        "type": "object",
+        "required": [
+          "op",
+          "keys",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "collection.key"
+          },
+          "keys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "enum": [
+                    "text",
+                    "bool",
+                    "int",
+                    "bytes",
+                    "datetime",
+                    "null"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "boolean",
+                    "integer"
+                  ]
+                },
+                "hex": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "planner.compile": {
         "type": "object",
         "required": [
@@ -1983,11 +2081,8 @@
             "$ref": "#/$defs/ref"
           },
           "dialect": {
-            "enum": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ]
+            "type": "string",
+            "description": "A dialect of DBS-174; any other name expects refused."
           },
           "expect": {
             "type": "object",
@@ -1997,20 +2092,37 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "steps"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "steps": {
-                    "type": "array",
-                    "items": {
-                      "type": "object"
-                    },
-                    "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "steps"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        },
+                        "description": "The steps of PlanSteps in order, each the object of docs/spec/plans.md (Steps)."
+                      }
+                    }
+                  },
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
+                    }
                   }
-                }
+                  }
+                ]
               }
             }
           }
@@ -3932,6 +4044,13 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "derived_integers": {
+                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
               "as": {
                 "$ref": "#/$defs/name"
               },
@@ -4122,7 +4241,7 @@
             "$ref": "#/$defs/expect"
           },
           "masks": {
-            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value.",
+            "description": "The bind values no recipe can fix, per database, by event and bind position: a random nonce or the clock, named in value, with the reason.",
             "type": "object",
             "propertyNames": {
               "enum": [
@@ -4138,7 +4257,8 @@
                 "required": [
                   "event",
                   "bind",
-                  "value"
+                  "value",
+                  "reason"
                 ],
                 "additionalProperties": false,
                 "properties": {
@@ -4156,6 +4276,11 @@
                       "$TS",
                       "$NOW"
                     ]
+                  },
+                  "reason": {
+                    "description": "Why no recipe can fix this value.",
+                    "type": "string",
+                    "minLength": 1
                   }
                 }
               }
@@ -4333,6 +4458,10 @@
               "pattern": "\\.dbs$"
             }
           },
+          "dialect": {
+            "type": "string",
+            "description": "A dialect name that the call refuses (DBS-174); absent renders all three dialects."
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -4341,36 +4470,53 @@
             "additionalProperties": false,
             "properties": {
               "none": {
-                "type": "object",
-                "required": [
-                  "mysql",
-                  "postgres",
-                  "sqlite"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "mysql": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "mysql",
+                      "postgres",
+                      "sqlite"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "mysql": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "postgres": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sqlite": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     }
                   },
-                  "postgres": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "sqlite": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                      "type": "string"
+                  {
+                  "type": "object",
+                  "required": [
+                    "refused"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "refused": {
+                      "type": "string",
+                      "description": "The call refuses this dialect before any statement (DBS-174)."
                     }
                   }
-                }
+                  }
+                ]
               }
             }
           }
@@ -5284,6 +5430,29 @@
                               "type": "string",
                               "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)?$"
                             }
+                          },
+                          "text": {
+                            "type": "object",
+                            "description": "Texts that the generated files of the set hold together, and texts that they do not hold.",
+                            "required": [
+                              "includes",
+                              "excludes"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "includes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "excludes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -5559,6 +5728,10 @@
             "const": "hook.install"
           },
           "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "as": {
+            "description": "The name of the hooked handle; the connection keeps its name, unhooked.",
             "$ref": "#/$defs/name"
           },
           "hooks": {
@@ -7354,6 +7527,94 @@
     },
     "hook": {
       "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "record_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "assign_first"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column",
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "rewrite"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            },
+            "value": {
+              "$ref": "#/$defs/argument"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "action",
+            "kinds",
+            "column"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "invalid_param"
+            },
+            "kinds": {
+              "$ref": "#/$defs/kinds"
+            },
+            "column": {
+              "$ref": "#/$defs/name"
+            }
+          }
+        },
         {
           "type": "object",
           "required": [

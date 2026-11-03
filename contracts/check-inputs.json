@@ -517,7 +517,6 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
@@ -900,35 +899,6 @@
         "packages/rust/orm/src/request.rs"
       ]
     },
-    "split-null-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "python",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/orm/exec.go",
-        "packages/go/orm/collection_key_test.go",
-        "packages/go/orm/collection_key_internal_test.go",
-        "packages/php/src/Db.php",
-        "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/CollectionIdentityTest.php",
-        "packages/python/src/polyspec/orm/database.py",
-        "packages/python/tests/test_split_null.py",
-        "packages/rust/orm/src/model.rs",
-        "packages/ts/src/database.ts",
-        "packages/ts/tests/split-null.test.mjs",
-        "packages/php-ext/src/db.c",
-        "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/tests/ModelAssemblyTest.php"
-      ]
-    },
     "collection-composite-key-check": {
       "scope": "owner",
       "needs": [
@@ -962,8 +932,7 @@
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/tests/collection_identity.rs",
-        "packages/rust/orm/src/model.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs"
+        "packages/rust/orm/src/model.rs"
       ]
     },
     "interface-typescript-extractor-check": {
@@ -2909,8 +2878,10 @@
         "tests/dbspec/schema-definition.json",
         "packages/php-ext/tests/DbspecLimitsRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecRulesRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
-        "tests/dbspec/rules.json"
+        "tests/dbspec/rules.json",
+        "tests/dbspec/dialect-refusal.json"
       ]
     },
     "model-types-php-extension-check": {
@@ -4878,7 +4849,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
+        "packages/go/orm/recipe_immutable_write_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go"
       ]
@@ -4891,9 +4864,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
         "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
         "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+        "packages/rust/tests/tests/immutable_write_mysql.rs",
+        "packages/rust/tests/tests/immutable_write_postgres.rs",
+        "packages/rust/tests/tests/immutable_write_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -4906,9 +4883,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
         "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
         "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+        "packages/ts/tests/immutable_write-mysql.test.mjs",
+        "packages/ts/tests/immutable_write-postgres.test.mjs",
+        "packages/ts/tests/immutable_write-sqlite.test.mjs",
         "packages/ts/tests/recipe.mjs"
       ]
     },
@@ -4920,9 +4901,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/python/tests/test_constraints_and_relations_mysql.py",
         "packages/python/tests/test_constraints_and_relations_postgres.py",
         "packages/python/tests/test_constraints_and_relations_sqlite.py",
+        "packages/python/tests/test_immutable_write_mysql.py",
+        "packages/python/tests/test_immutable_write_postgres.py",
+        "packages/python/tests/test_immutable_write_sqlite.py",
         "packages/python/tests/recipe.py"
       ]
     },
@@ -4935,7 +4920,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "packages/php/tests/ImmutableWriteRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/bootstrap.php"
@@ -4951,9 +4938,12 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "packages/php/tests/ImmutableWriteRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php"
       ]

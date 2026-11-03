@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/engine"
@@ -43,6 +44,7 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
 	Value   json.RawMessage            `json:"value"`
@@ -232,6 +234,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "model.assign" {
 		return checkAssign(t, s, o.modelAssign)
+	}
+	if s.Op == "collection.key" {
+		return checkCollectionKey(s, database)
 	}
 	if s.Op == "markdown.builder" {
 		return checkBuilder(t, s, database, o.markdownBuilder)
@@ -1241,9 +1246,9 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	dialect, err := dialectOf(s.Dialect)
-	if err != nil {
-		return nil, err
+	dialect := dbspec.Dialect(s.Dialect)
+	if !knownDialect(dialect) {
+		return dialectRefusal(s.Dialect, func() { dbspec.PlanSteps(source, plan, dialect) })
 	}
 	steps, diagnostics := dbspec.PlanSteps(source, plan, dialect)
 	if len(diagnostics) > 0 {
@@ -1257,13 +1262,27 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 	return map[string]any{"steps": rows}, nil
 }
 
-// dialectOf is the dialect that a name gives; PlanSteps panics on any other name, so the recipe refuses it first.
-func dialectOf(name string) (dbspec.Dialect, error) {
-	switch d := dbspec.Dialect(name); d {
-	case dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite:
-		return d, nil
-	}
-	return "", fmt.Errorf("dialect %q is not mysql, postgres or sqlite", name)
+// knownDialect reports whether d is one of the three dialects.
+func knownDialect(d dbspec.Dialect) bool {
+	return d == dbspec.DialectMySQL || d == dbspec.DialectPostgres || d == dbspec.DialectSQLite
+}
+
+// dialectRefusal runs a call that takes the dialect name and returns {refused: name} when the call panics with a message
+// that names it (DBS-174); a call that returns is an error, because it accepted the dialect.
+func dialectRefusal(name string, call func()) (got any, err error) {
+	defer func() {
+		recovered := recover()
+		switch {
+		case recovered == nil:
+			err = fmt.Errorf("the call accepted the dialect %q", name)
+		case !strings.Contains(fmt.Sprint(recovered), name):
+			err = fmt.Errorf("the refusal %v does not name %q", recovered, name)
+		default:
+			got = map[string]any{"refused": name}
+		}
+	}()
+	call()
+	return nil, nil
 }
 
 // planStepFields is the object of a plan step (docs/spec/plans.md "Steps"): its statement, its effect as text, and the
@@ -1568,6 +1587,123 @@ func checkMessage(expect map[string]json.RawMessage, message json.RawMessage, co
 	}
 	if !reflect.DeepEqual(got, want) {
 		return fmt.Errorf("message %s, want %s", message, raw)
+	}
+	return nil
+}
+
+// collectionKey is one value of a collection.key step, in the form of its type.
+type collectionKey struct {
+	Type  string          `json:"type"`
+	Value json.RawMessage `json:"value"`
+	Hex   string          `json:"hex"`
+}
+
+// nativeKey is the value that a client reads from a column of the type of k.
+func (k collectionKey) nativeKey() (any, error) {
+	switch k.Type {
+	case "null":
+		return nil, nil
+	case "bytes":
+		return hex.DecodeString(k.Hex)
+	case "int":
+		var value int64
+		return value, json.Unmarshal(k.Value, &value)
+	case "bool":
+		var value bool
+		return value, json.Unmarshal(k.Value, &value)
+	}
+	var text string
+	if err := json.Unmarshal(k.Value, &text); err != nil {
+		return nil, err
+	}
+	if k.Type == "datetime" {
+		return time.Parse(time.RFC3339Nano, text)
+	}
+	return text, nil
+}
+
+// sameKey reports that a key returned the value it took: the same instant of a time, the same value of any other type.
+func sameKey(got, want any) bool {
+	if instant, ok := got.(time.Time); ok {
+		other, isTime := want.(time.Time)
+		return isTime && instant.Equal(other)
+	}
+	return reflect.DeepEqual(got, want)
+}
+
+// keyTypeName names the native type of the value of a key.
+func keyTypeName(value any) string {
+	switch value.(type) {
+	case string:
+		return "text"
+	case bool:
+		return "bool"
+	case int64:
+		return "int"
+	case []byte:
+		return "bytes"
+	case time.Time:
+		return "datetime"
+	}
+	return fmt.Sprintf("%T", value)
+}
+
+// checkCollectionKey runs a collection.key step: each value through the public KeyOf. Its groups are, for each key, the index of the
+// first key equal to it, and its types the native type of the value that the key returns (INT-11, INT-63, PRT-35).
+func checkCollectionKey(s step, database string) error {
+	groups, types := []int{}, []string{}
+	keys := []orm.Key{}
+	var failure error
+	for _, entry := range s.Keys {
+		value, err := entry.nativeKey()
+		if err != nil {
+			return err
+		}
+		key, err := orm.KeyOf(value)
+		if err != nil {
+			failure = err
+			break
+		}
+		native, err := key.Value()
+		if err != nil {
+			return err
+		}
+		if !sameKey(native, value) {
+			return fmt.Errorf("key %v changed its native value to %v", value, native)
+		}
+		group := len(keys)
+		for index, other := range keys {
+			if other == key {
+				group = groups[index]
+				break
+			}
+		}
+		keys = append(keys, key)
+		groups = append(groups, group)
+		types = append(types, keyTypeName(native))
+	}
+	got := map[string]any{"groups": groups, "types": types}
+	if failure != nil {
+		got = map[string]any{"error": orm.ErrorCode(failure), "message": failure.Error()}
+	}
+	return sameKeyResult(got, s.Expect[database])
+}
+
+// sameKeyResult compares the result of a collection.key step with its expect, as JSON values.
+func sameKeyResult(got map[string]any, expect json.RawMessage) error {
+	gotText, err := json.Marshal(got)
+	if err != nil {
+		return err
+	}
+	var gotValue, wantValue any
+	if err := json.Unmarshal(gotText, &gotValue); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(expect, &wantValue); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(gotValue, wantValue) {
+		return fmt.Errorf("got %s, want %s", gotText, expect)
 	}
 	return nil
 }
