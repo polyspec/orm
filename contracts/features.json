@@ -9251,7 +9251,8 @@
         "packages/php/tests/DriverErrorTest.php",
         "packages/rust/orm/tests/refusal.rs",
         "packages/ts/tests/driver-error.mjs",
-        "packages/go/model/coverage_constraints_and_relations_test.go",
+        "packages/go/orm/recipe_constraints_and_relations_test.go",
+        "packages/go/orm/recipe_immutable_write_test.go",
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
         "packages/ts/tests/coverage_constraints_and_relations.mjs",
@@ -9353,23 +9354,33 @@
           "go": {
             "part": "packages/go",
             "tests": [
-              "packages/go/model/coverage_constraints_and_relations_test.go",
+              "packages/go/orm/recipe_constraints_and_relations_test.go",
+              "packages/go/orm/recipe_immutable_write_test.go",
               "packages/go/model/coverage_composite_keys_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+                  "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestRecipeConstraintsAndRelationsMysql",
+                    "external_relation": "TestRecipeConstraintsAndRelationsMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_immutable_write_test.go",
+                  "cases": [
                     "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors",
-                    "external_relation": "TestCoverageExternalRelation",
-                    "immutable_write": "TestCoverageImmutableWrite"
+                    "immutable_write": "TestRecipeImmutableWriteMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
@@ -9388,16 +9399,25 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+                  "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestRecipeConstraintsAndRelationsPostgres",
+                    "external_relation": "TestRecipeConstraintsAndRelationsPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_immutable_write_test.go",
+                  "cases": [
                     "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors",
-                    "external_relation": "TestCoverageExternalRelation",
-                    "immutable_write": "TestCoverageImmutableWrite"
+                    "immutable_write": "TestRecipeImmutableWritePostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
@@ -9416,16 +9436,25 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+                  "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "symbols": {
+                    "constraint_errors": "TestRecipeConstraintsAndRelationsSqlite",
+                    "external_relation": "TestRecipeConstraintsAndRelationsSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_immutable_write_test.go",
+                  "cases": [
                     "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors",
-                    "external_relation": "TestCoverageExternalRelation",
-                    "immutable_write": "TestCoverageImmutableWrite"
+                    "immutable_write": "TestRecipeImmutableWriteSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
