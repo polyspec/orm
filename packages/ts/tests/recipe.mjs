@@ -54,7 +54,7 @@ function registerRecipeCase(recipeCase, database, deadline, body) {
 // none runs each case on a case database of its own (databaseRecipe), and the entry awaits the registration.
 export function runRecipe(path, database) {
   if (database !== NONE) return databaseRecipe(path, database);
-  const text = readFileSync(path, 'utf8');
+  const text = readFileSync(resolve(root, path), 'utf8');
   checkKeys(path, text);
   const recipe = JSON.parse(text);
   const literal = parseJson(text);
