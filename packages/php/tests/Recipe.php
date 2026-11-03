@@ -84,7 +84,7 @@ final class Recipe
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -800,21 +800,19 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
-                if (!array_key_exists('document', $step)) {
-                    [$text, $set] = self::inlineDocument($step);
-                    self::checkTokens(Dbspec::analyze($text, $set)->tokens, $expect['tokens'] ?? []);
-                    return;
-                }
-                $text = self::dbspecFile($dir, $step['document']);
-                $analysis = Dbspec::analyze($text, []);
-                $parsed = Dbspec::parse($text, []);
-                if ($analysis->diagnostics !== []) {
+                [$text, $set] = array_key_exists('document', $step)
+                    ? [self::dbspecFile($dir, $step['document']), []]
+                    : self::inlineDocument($step);
+                $analysis = Dbspec::analyze($text, $set);
+                if (array_key_exists('document', $step) && $analysis->diagnostics !== []) {
                     Assert::fail(self::diagnostics($analysis->diagnostics));
                 }
-                $same = $analysis->document !== null && $parsed->document !== null
-                    && Dbspec::emit($analysis->document) === Dbspec::emit($parsed->document)
-                    && $analysis->positions == $parsed->positions;
-                if (!$same) {
+                $parsed = Dbspec::parse($text, $set);
+                if (
+                    $analysis->document != $parsed->document
+                    || $analysis->positions != $parsed->positions
+                    || $analysis->diagnostics != $parsed->diagnostics
+                ) {
                     Assert::fail('the analysis differs from the parse');
                 }
                 self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);
@@ -865,6 +863,20 @@ final class Recipe
                 if (Dbspec::format($result->text, $set)->text !== $result->text) {
                     Assert::fail('the format of the formatted text differs');
                 }
+                return;
+            case 'dbspec.load_set':
+                $text = static fn(array $lines): string => $lines === [] ? '' : implode("\n", $lines) . "\n";
+                try {
+                    $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
+                } catch (OrmException $error) {
+                    Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    return;
+                }
+                Assert::assertSame(
+                    $expect['documents'] ?? null,
+                    array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
+                    'documents',
+                );
                 return;
             case 'dbspec.parse_set':
                 $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));

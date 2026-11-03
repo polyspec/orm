@@ -284,6 +284,10 @@
         {
           "glob": "packages/go/engine/dbspec/stress_test.go",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/go/engine/planner/runtime_model_test.go",
+          "reason": "test: reads the internal plan of the Go planner, its assemble columns and slots, which no public call returns"
         }
       ]
     },
@@ -7525,46 +7529,41 @@
     },
     {
       "id": "schema-set-load-external-documents",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "SCH-12",
         "DBS-156"
       ],
+      "file": "tests/dbspec/load-set.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadSetReturnsExternalDocumentsMarked"
+          "test": "packages/go/orm/recipe_dbspec_load_set_test.go",
+          "symbol": "TestRecipeDbspecLoadSetNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testLoadSetReturnsExternalDocumentsMarked"
+          "test": "packages/php/tests/DbspecLoadSetRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecLoadSetRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testNativeLoadSetReturnsExternalDocumentsMarked"
+          "test": "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecLoadSetRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "load-set"
+          "test": "packages/ts/tests/dbspec_load_set-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_load_set.py",
-          "id": "test_returns_the_documents_with_the_external_ones_marked"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_load_set.py",
-          "id": "test_a_text_without_a_header_is_schema_invalid"
+          "test": "packages/python/tests/test_dbspec_load_set_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/schema.rs",
-          "id": "schema::tests::load_set_returns_external_documents_marked"
+          "test": "packages/rust/tests/tests/dbspec_load_set_none.rs",
+          "symbol": "dbspec_load_set_none"
         }
       ]
     },
@@ -26920,21 +26919,6 @@
           "id": "schema_definition_none::dbspec_analyze_tokens"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeSampleTokens"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-analyze.mjs",
-          "id": "analyze header line tokens"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_analyze.py",
-          "id": "test_header_only"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
           "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
@@ -26943,6 +26927,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
           "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeInvalidByte"
         }
       ]
     },
@@ -28184,6 +28173,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/generate.rs",
           "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "id": "runtime_model_names_entities_and_reads_settings"
         }
       ]
     },
@@ -30771,41 +30765,41 @@
     },
     {
       "id": "runtime-model-default-select-set",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PRT-9",
         "DBS-68"
       ],
+      "file": "tests/planner/default-select-set.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/planner/runtime_model_test.go",
-          "id": "TestDefaultSelectSetLeavesOutOnlySelectExplicit"
+          "test": "packages/go/orm/recipe_default_select_set_test.go",
+          "symbol": "TestRecipeDefaultSelectSetNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testDefaultSelectSetExcludesOnlySelectExplicit"
+          "test": "packages/php/tests/DefaultSelectSetRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DefaultSelectSetRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testNativeDefaultSelectSetExcludesOnlySelectExplicit"
+          "test": "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DefaultSelectSetRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/default_select_set-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_runtime_model_selected_set.py",
-          "id": "test_default_select_set_excludes_only_select_explicit"
+          "test": "packages/python/tests/test_default_select_set_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_of_bench"
+          "test": "packages/rust/tests/tests/default_select_set_none.rs",
+          "symbol": "default_select_set_none"
         }
       ]
     },
@@ -43741,6 +43735,9 @@
         "DBS-129",
         "DBS-131",
         "DBS-132",
+        "DBS-134",
+        "DBS-135",
+        "DBS-141",
         "DBS-144",
         "DBS-145",
         "DBS-146",
@@ -43763,7 +43760,10 @@
         "DBS-168",
         "DBS-169",
         "DBS-171",
-        "DBS-181"
+        "DBS-181",
+        "DBS-73",
+        "DBS-74",
+        "ORES-19"
       ],
       "file": "tests/dbspec/rules.json",
       "cases": "$.cases[*].id",

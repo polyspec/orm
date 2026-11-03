@@ -515,6 +515,12 @@
       "owned",
       "parsing"
     ],
+    "dbspec.load_set": [
+      "expect",
+      "external",
+      "op",
+      "owned"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",

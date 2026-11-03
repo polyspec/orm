@@ -71,10 +71,10 @@ type Schema struct {
 // SCHEMA_INVALID, and if the text's hash differs from Hash, SCHEMA_HASH_MISMATCH.
 func (s *Schema) Model() (*runtimemodel.Model, error) {
 	s.once.Do(func() {
-		m, diagnostics := runtimemodel.LoadSet(s.Text, s.External)
+		m, invalid := runtimemodel.LoadSet(s.Text, s.External)
 		switch {
-		case len(diagnostics) > 0:
-			s.err = &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+		case invalid != nil:
+			s.err = &ir.Error{Code: invalid.Code(), Msg: invalid.Message()}
 		case m.ManifestHash != s.Hash:
 			s.err = &ir.Error{Code: CodeSchemaHashMismatch, Msg: fmt.Sprintf("generated code declares manifest %s, its manifest text hashes to %s: generate the models again", s.Hash, m.ManifestHash)}
 		default:

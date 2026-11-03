@@ -829,6 +829,7 @@
             "dbspec.format",
             "dbspec.parse_set",
             "dbspec.set",
+            "dbspec.load_set",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -1049,6 +1050,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.set"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.load_set"
         },
         {
           "$ref": "#/$defs/ops/dbspec.read_file"
@@ -4815,6 +4819,70 @@
             }
           }
         ]
+      },
+      "dbspec.load_set": {
+        "type": "object",
+        "required": [
+          "op",
+          "owned",
+          "external",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.load_set"
+          },
+          "owned": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "external"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "external": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "dbspec.parse_set": {
         "type": "object",
