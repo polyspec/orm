@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: f971ad2cae95d6d5c1847cf2d022493d5651df438acb96845a80c05318ba58f8 -->
+<!-- source-sha256: 5c937d2fa0508513a7a3e762494e6564e915d0691c44b140d535adaba4492bfb -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -103,6 +103,8 @@
   - `catalog.insert_row {metadata, values}`는 묶인 metadata와 column 이름의 object인 `values`의 값으로 행을 넣는다(`insert_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
+  - `transaction.writers {writers, writes}`는 그 수의 writer를 동시에 실행하고, 각 writer는 public API의 `transaction`으로 `Service` count를 읽고 `Service` 하나를 넣는 transaction을 재시도 없이 `writes`번 commit하며, 값은 `Service` count이다. writer는 Go, Python, Rust에서 connection이고 thread가 하나인 TypeScript, PHP, PHP extension에서 process이다.
+  - `wait.start`는 시각을 기록하고 `wait.at_least {ms}`는 그 뒤로 `ms` 밀리초가 지나지 않았으면 step을 실패시킨다. 둘 다 harness 안에서 실행되며 public API를 호출하지 않는다.
   - `session.end {table}`은 runtime의 native driver로 case database를 연 `ORM_TEST_<DATABASE>_SERVER_DSN`에서, `table`의 lock을 잡은 server session을 `pg_terminate_backend` 또는 `KILL`로 종료한다(CFG-15). MySQL과 PostgreSQL에서 실행하고 `expect`가 없다. 실패한 rollback의 error `expect`는 `rollback`을 적을 수 있고, 이는 `ROLLBACK` error가 보존하는 rollback error의 code이며 message는 그 text를 담는다.
   - `fault.next_rollback {connection}`은 client의 test 진입점으로 `connection`에 rollback fault를 건다(protocol 3.1, INT-72). `expect`는 없다.
   - `sql.exec {sql, reason}`은 `.dbs`가 선언할 수 없는 DDL, 예를 들어 generated column(DBS-42)이나 dbspec 밖의 native type을 runtime의 native driver로 실행한다. `reason`은 fixture가 그것을 선언할 수 없는 이유를 적고, 그 step은 `expect`가 없다. `sql`은 세 database 모두에서 실행되는 text이거나, 정확히 키 `mysql`, `postgres`, `sqlite`를 가진 객체다. 일부 database만의 문장은 text에 `only`를 붙인다. `refused: true`는 database가 그 문장을 거부하기를 기대한다. model 호출로는 어길 수 없는 제약에 쓴다. 코드와 무관하게 driver error면 통과하고, 문장이 성공하면 실패하며, SQLite에서는 foreign key를 켠 연결에서 실행한다. `refused_message`는 이를 좁힌다: 소문자로 바꾼 driver 오류 메시지가 그 text를 담아야 하며, 다른 이유의 거부는 step을 실패시킨다.

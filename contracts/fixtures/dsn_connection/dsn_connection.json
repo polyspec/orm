@@ -12,7 +12,8 @@
     "CFG-6",
     "CFG-27",
     "CFG-28",
-    "CFG-29"
+    "CFG-29",
+    "CFG-13"
   ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
@@ -2126,6 +2127,302 @@
           "expect": {
             "postgres": {
               "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_lock_past_busy_timeout_is_canceled",
+      "requirements": [
+        "CFG-12"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case?_pragma=busy_timeout(200)",
+          "as": "waiter"
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "holder",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "holder"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "wait.start"
+            },
+            {
+              "op": "transaction",
+              "connection": "waiter",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.count",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "expect": {
+                    "sqlite": {
+                      "json": 0
+                    }
+                  }
+                },
+                {
+                  "op": "model.create",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "values": {
+                    "name": {
+                      "text": "waiter"
+                    },
+                    "start_dt": {
+                      "text": "2026-01-01 00:00:00"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            },
+            {
+              "op": "wait.at_least",
+              "ms": 200
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "holder",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "waiter"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "holder",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "holder"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_read_during_a_write_sees_committed_rows",
+      "requirements": [
+        "CFG-13"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "writer"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "reader"
+        },
+        {
+          "op": "transaction",
+          "connection": "writer",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "writer",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "pending"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "model.count",
+              "connection": "reader",
+              "model": "Author",
+              "expect": {
+                "sqlite": {
+                  "json": 0
+                }
+              }
+            },
+            {
+              "op": "transaction",
+              "connection": "reader",
+              "read_only": true,
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.count",
+                  "connection": "reader",
+                  "model": "Author",
+                  "expect": {
+                    "sqlite": {
+                      "json": 0
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "value": {
+                    "bool": true
+                  }
+                }
+              }
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "reader",
+          "model": "Author",
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_statement_timeout_keeps_the_busy_timeout",
+      "requirements": [
+        "CFG-6"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "holder"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "statement_timeout_ms": 1,
+          "dsn": "case?_pragma=busy_timeout(300)",
+          "as": "waiter"
+        },
+        {
+          "op": "transaction",
+          "connection": "holder",
+          "retry": 0,
+          "steps": [
+            {
+              "op": "model.create",
+              "connection": "holder",
+              "model": "Author",
+              "values": {
+                "name": {
+                  "text": "holder"
+                },
+                "start_dt": {
+                  "text": "2026-01-01 00:00:00"
+                }
+              }
+            },
+            {
+              "op": "wait.start"
+            },
+            {
+              "op": "transaction",
+              "connection": "waiter",
+              "retry": 0,
+              "steps": [
+                {
+                  "op": "model.create",
+                  "connection": "waiter",
+                  "model": "Author",
+                  "values": {
+                    "name": {
+                      "text": "waiter"
+                    },
+                    "start_dt": {
+                      "text": "2026-01-01 00:00:00"
+                    }
+                  }
+                }
+              ],
+              "expect": {
+                "sqlite": {
+                  "error": "CANCELED"
+                }
+              }
+            },
+            {
+              "op": "wait.at_least",
+              "ms": 300
+            }
+          ],
+          "expect": {
+            "sqlite": {
+              "value": {
+                "bool": true
+              }
             }
           }
         }

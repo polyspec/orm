@@ -2627,6 +2627,54 @@ def _op_delete_row(step: dict, context: dict) -> dict:
     return {"value": {"int": str(deleted)}}
 
 
+def _op_transaction_writers(step: dict, context: dict) -> dict:
+    """The writers run at the same time, each on its own connection, and the rows they committed are read (CFG-12)."""
+    from .models import models
+
+    errors: list[BaseException] = []
+
+    def write(index: int) -> None:
+        db = models.connect(context["dsn"])
+        try:
+
+            for number in range(step["writes"]):
+
+                def body(number=number) -> None:
+                    models.Service().connect(db).get_count()
+                    models.Service().connect(db).set_name(f"w{index}-{number}").create()
+
+                db.transaction(body, {"retry": 0})
+        except BaseException as error:  # noqa: BLE001 - the step reports the error of a writer after the join
+            errors.append(error)
+        finally:
+            db.close()
+
+    threads = [threading.Thread(target=write, args=(index,)) for index in range(step["writers"])]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    if errors:
+        raise errors[0]
+    db = models.connect(context["dsn"])
+    try:
+        return {"value": {"int": str(models.Service().connect(db).get_count())}}
+    finally:
+        db.close()
+
+
+def _op_wait_start(step: dict, context: dict) -> dict:
+    context["wait_start"] = time.monotonic()
+    return {}
+
+
+def _op_wait_at_least(step: dict, context: dict) -> dict:
+    waited = (time.monotonic() - context["wait_start"]) * 1000
+    if waited < step["ms"]:
+        raise AssertionError(f"wait.at_least: {waited} ms passed since wait.start, want {step['ms']}")
+    return {}
+
+
 def _op_session_end(step: dict, context: dict) -> dict:
     """Ends the server session that holds a lock on the table (CFG-15), through the server DSN, not a pooler, which may
     handle KILL on its own."""
@@ -3844,6 +3892,9 @@ _DATABASE_OPS = {
     "catalog.update_row": _op_update_row,
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
+    "wait.start": _op_wait_start,
+    "transaction.writers": _op_transaction_writers,
+    "wait.at_least": _op_wait_at_least,
     "dbspec.ddl_behavior": _op_ddl_behavior,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,

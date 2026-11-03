@@ -166,6 +166,11 @@ type databaseStep struct {
 	AuditSource *auditSourceSpec `json:"audit_source"`
 	// The statement bound of a model.connect (FCV-4, CFG-6).
 	StatementTimeoutMs int `json:"statement_timeout_ms"`
+	// The bound of a wait.at_least (FCV-4).
+	MS int `json:"ms"`
+	// The writers and the transactions of each writer of a transaction.writers (FCV-4).
+	Writers int `json:"writers"`
+	Writes  int `json:"writes"`
 	// The chain fields of a transaction, of utils.lock, utils.set_local and utils.local, and of events.captured (FCV-4):
 	// the audit values, the name and value of a utility, and the binds that an expect does not compare by value.
 	Audit json.RawMessage        `json:"audit"`
@@ -222,6 +227,8 @@ type databaseContext struct {
 	// tablePath is true for a fixture that generates no models: its model ops run on the entities of its tables (FCV-4).
 	tablePath bool
 	bound     map[string]bound
+	// waitStart is the time of the last wait.start (FCV-4).
+	waitStart time.Time
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
 	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
@@ -1092,6 +1099,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "transaction.writers":
+		return transactionWriters(s, c)
+	case "wait.start":
+		c.waitStart = time.Now()
+		return outcome{fields: map[string]any{}}, nil
+	case "wait.at_least":
+		if waited := time.Since(c.waitStart); waited < time.Duration(s.MS)*time.Millisecond {
+			return outcome{}, fmt.Errorf("wait.at_least: %v passed since wait.start, want %d ms", waited, s.MS)
+		}
+		return outcome{fields: map[string]any{}}, nil
 	case "session.end":
 		if err := endSession(s.Table, c); err != nil {
 			return outcome{}, err
@@ -1190,6 +1207,51 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		return applyOp(s, c)
 	}
 	return requestOp(s, c)
+}
+
+// transactionWriters runs the writers of a transaction.writers at the same time, each on its own connection, and reads
+// the rows they committed (CFG-12).
+func transactionWriters(s databaseStep, c *databaseContext) (outcome, error) {
+	errs := make([]error, s.Writers)
+	var running sync.WaitGroup
+	for i := range s.Writers {
+		running.Add(1)
+		go func() {
+			defer running.Done()
+			db, err := model.Connect(c.dsn, orm.Config{})
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			defer func() { errs[i] = errors.Join(errs[i], db.Close()) }()
+			for write := range s.Writes {
+				errs[i] = db.Transaction(func() error {
+					if _, err := model.Service().Connect(db).GetCount(); err != nil {
+						return err
+					}
+					_, err := model.Service().Connect(db).SetName(fmt.Sprintf("w%d-%d", i, write)).Create()
+					return err
+				}, orm.Retry(0))
+				if errs[i] != nil {
+					return
+				}
+			}
+		}()
+	}
+	running.Wait()
+	if err := errors.Join(errs...); err != nil {
+		return outcome{}, err
+	}
+	db, err := model.Connect(c.dsn, orm.Config{})
+	if err != nil {
+		return outcome{}, err
+	}
+	defer testcase.Close(c.t, db)
+	count, err := model.Service().Connect(db).GetCount()
+	if err != nil {
+		return outcome{}, err
+	}
+	return outcome{fields: map[string]any{"value": map[string]any{"int": strconv.FormatInt(count, 10)}}}, nil
 }
 
 // transactionDeadlock runs two flows that write two rows in opposite order (PLN-24): each flow holds its first row until

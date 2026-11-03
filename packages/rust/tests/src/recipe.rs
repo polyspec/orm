@@ -117,6 +117,9 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
         .collect()
 }
 
+/// The time of the last wait.start (FCV-4).
+static WAIT_START: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+
 /// The DSN that a model.connect opens (FCV-4): the case database, unless its dsn is "case-socket" or the DSN text of the step.
 pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Option<&str>) -> Result<String, String> {
     match dsn {
@@ -2515,6 +2518,40 @@ mod database {
 
     polyspec_orm::models!();
 
+    /// Runs `writers` writers at the same time, each on its own connection, each committing `writes` transactions that read
+    /// the Service count and insert one Service with no retry, and returns the Service count (CFG-12).
+    async fn transaction_writers(dsn: &str, writers: u64, writes: u64) -> Result<i64, String> {
+        let mut running = Vec::new();
+        for index in 0..writers {
+            let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+            running.push(tokio::spawn(async move {
+                let mut result = Ok(());
+                for write in 0..writes {
+                    result = db
+                        .transaction(async || {
+                            model::Service::new().connect(&db).get_count().await?;
+                            model::Service::new().connect(&db).set_name(format!("w{index}-{write}")).create().await?;
+                            Ok(())
+                        })
+                        .retry(0)
+                        .await;
+                    if result.is_err() {
+                        break;
+                    }
+                }
+                db.close().await;
+                result
+            }));
+        }
+        for writer in running {
+            writer.await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
+        }
+        let db = model::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
+        let count = model::Service::new().connect(&db).get_count().await.map_err(|e| e.to_string());
+        db.close().await;
+        count
+    }
+
     /// The databases of a recipe with a fixture (FCV-3).
     const DATABASES: [&str; 3] = ["mysql", "postgres", "sqlite"];
     /// The message of the error that a transaction callback returns when its op has fail: true.
@@ -3730,6 +3767,25 @@ mod database {
                 Output::fields(json!({}))
             }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
+            "transaction.writers" => {
+                let writers = step["writers"].as_u64().unwrap_or_default();
+                let writes = step["writes"].as_u64().unwrap_or_default();
+                let count = transaction_writers(&context.dsn, writers, writes).await.map_err(fault)?;
+                Output::fields(json!({ "value": { "int": count.to_string() } }))
+            }
+            "wait.start" => {
+                *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
+                Output::fields(json!({}))
+            }
+            "wait.at_least" => {
+                let started = (*WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+                    .ok_or_else(|| fault("wait.at_least: no wait.start ran".to_owned()))?;
+                let (waited, want) = (started.elapsed().as_millis(), u128::from(step["ms"].as_u64().unwrap_or_default()));
+                if waited < want {
+                    return Err(fault(format!("wait.at_least: {waited} ms passed since wait.start, want {want}")));
+                }
+                Output::fields(json!({}))
+            }
             "session.end" => {
                 end_session(step["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
                 Output::fields(json!({}))
