@@ -2570,7 +2570,16 @@ final class Recipe
                 $catalog->close();
                 return [];
             case 'catalog.reconnect':
-                $reconnected = Catalog::connect($context['dsn']);
+                $reconnectDsn = $context['dsn'];
+                if (isset($s['user_from_database'])) {
+                    preg_match('#/([^/?]+)(?:\?.*)?$#', $reconnectDsn, $reconnectName);
+                    $reconnectDsn = (string) preg_replace(
+                        '#^mysql://[^@]+@#',
+                        'mysql://' . $s['user_from_database'] . substr($reconnectName[1], -28) . '@',
+                        $reconnectDsn
+                    );
+                }
+                $reconnected = Catalog::connect($reconnectDsn);
                 $context['namespace'] = $reconnected->currentNamespace();
                 $context['catalog'] = $reconnected;
                 return [];
