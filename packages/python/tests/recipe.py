@@ -153,6 +153,12 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "dsn.connect":
                     _dsn_connect(step, database)
                     continue
+                if step["op"] == "keyring.versions":
+                    _keyring_versions(step, database)
+                    continue
+                if step["op"] == "markdown.builder":
+                    _markdown_builder(step, database)
+                    continue
                 if step["op"] in _DBSPEC_FILE_OPS:
                     _dbspec_files(step, ROOT / Path(path).parent, database)
                     continue
@@ -561,6 +567,17 @@ _DBSPEC_FILE_OPS = (
 _MERMAID_OPS = ("dbspec.export_mermaid", "dbspec.import_mermaid")
 
 
+def _dialect_refusal(name: str, call) -> dict:
+    """Runs a call that takes the dialect name and returns {refused: name} when it raises a TypeError that names it (DBS-174)."""
+    try:
+        call()
+    except TypeError as refusal:
+        if name not in str(refusal):
+            raise AssertionError(f"the refusal {refusal!r} does not name {name}") from refusal
+        return {"refused": name}
+    raise AssertionError(f"the call accepted the dialect {name}")
+
+
 def _dbspec_files(step: dict, directory: Path, database: str) -> None:
     """Runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database
     (FCV-4). directory is the directory of the recipe: the paths of a step are relative to it."""
@@ -584,6 +601,10 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
         _expect_equal(manifest.manifest_hash, expect["manifest_hash"], "manifest hash")
     elif op == "dbspec.render":
         _texts, documents = _read_documents(directory, step["documents"])
+        if "dialect" in step:
+            got = _dialect_refusal(step["dialect"], lambda: render_dbspec(documents, step["dialect"]))
+            _expect_equal(got, expect, "refused dialect")
+            return
         for dialect in ("mysql", "postgres", "sqlite"):
             rendered = render_dbspec(documents, dialect)
             if list(rendered["diagnostics"]):
@@ -887,6 +908,70 @@ def _send(step: dict, call=None) -> None:
         )
 
 
+def _keyring_versions(step: dict, database: str) -> None:
+    """Runs the keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions
+    (INT-74, INT-130), against the expect of database."""
+    expect = step["expect"][database]
+    try:
+        keyring = _keyring(step["keyring"])
+    except OrmError as error:
+        if error.code != expect.get("error"):
+            raise AssertionError(f"the keyring returned {error}, want {expect}") from error
+        return
+    if "error" in expect:
+        raise AssertionError(f"the keyring was built, want {expect['error']}")
+    if keyring.current_version != expect["current"] or keyring.versions() != expect["versions"]:
+        raise AssertionError(
+            f"current {keyring.current_version}, versions {keyring.versions()}, want {expect}"
+        )
+
+
+def _markdown_builder(step: dict, database: str) -> None:
+    """Runs the markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the markdown.send listener.
+    The terminal returns the first recorded error before it sends a message (INT-88, INT-89)."""
+    received: list = []
+    listener, thread = _start_send_listener(received)
+    caught = None
+    db = None
+    try:
+        models = _bind_models()
+        db = models.connect(
+            f"markdown://127.0.0.1:{listener.getsockname()[1]}/conformance?token={SEND_TOKEN}"
+        )
+        model = models.Slots().connect(db)
+        try:
+            for call in step["calls"]:
+                if call == "limit_zero_count":
+                    model = model.limit(0, 0)
+                elif call == "limit_negative_offset":
+                    model = model.limit(-1, 1)
+                elif call == "empty_i64_list":
+                    model = model.i64_value([])
+                elif call == "empty_varchar_list":
+                    model = model.varchar_value([])
+                else:
+                    raise AssertionError(
+                        f"markdown.builder call {call} has no builder call in the Python cases"
+                    )
+            model.get_count()
+        except OrmError as error:
+            caught = error
+    finally:
+        if db is not None:
+            db.close()
+        listener.close()
+        thread.join(5)
+    if received:
+        raise AssertionError(f"the terminal sent {received[0]} before its error")
+    expect = step["expect"][database]
+    if (
+        caught is None
+        or caught.code != expect["error"]
+        or expect["message_contains"] not in str(caught)
+    ):
+        raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
+
+
 # The chain method prefix of each operator of markdown.send (DSL-50).
 OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
 
@@ -1125,6 +1210,15 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
+        got = _dialect_refusal(
+            step["dialect"],
+            lambda: plan_steps(
+                _dbspec_document(step["source"], bound),
+                _dbspec_value(step["plan"], bound, "plan"),
+                step["dialect"],
+            ),
+        )
     elif op == "dbspec.plan_steps":
         result = plan_steps(
             _dbspec_document(step["source"], bound),
@@ -2555,6 +2649,32 @@ def _op_events_stop(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_utils_run(step: dict, context: dict) -> dict:
+    """utils.run (FCV-4, INT-150): one utils().run whose function runs the statements in order on its frame; the value is
+    the rows of the last."""
+
+    def run(frame):
+        last = {"rows": []}
+        for statement in step["statements"]:
+            last = frame.run(
+                _sql(statement["sql"], context),
+                [_to_value(raw) for raw in statement.get("params", [])],
+                kind=statement["kind"],
+                tables=statement["tables"],
+            )
+        return last
+
+    result = _connection_of(step, context).utils().run(run)
+    return {
+        "value": {
+            "array": [
+                {"array": [_plain(cell, None) for cell in row]}
+                for row in result["rows"]
+            ]
+        }
+    }
+
+
 def _op_events_captured(step: dict, context: dict) -> dict:
     subscription = _bound_value(step["ref"], context)
     if subscription.recording is None:
@@ -2822,6 +2942,7 @@ _DATABASE_OPS = {
     "events.fail_subscriber": _op_events_fail_subscriber,
     "events.stop_failing": _op_events_stop,
     "events.unsubscribe": _op_events_stop,
+    "utils.run": _op_utils_run,
     "events.captured": _op_events_captured,
     "hook.install": _op_hook_install,
     "hook.records": _op_hook_records,

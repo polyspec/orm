@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "INT-159"
+  ],
+  "cases": [
+    {
+      "id": "terminal_returns_the_negative_offset_error_recorded_first",
+      "requirements": [
+        "INT-159"
+      ],
+      "steps": [
+        {
+          "op": "markdown.builder",
+          "calls": [
+            "limit_negative_offset",
+            "limit_zero_count"
+          ],
+          "expect": {
+            "none": {
+              "error": "CONFIG",
+              "message_contains": "non-negative offset"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

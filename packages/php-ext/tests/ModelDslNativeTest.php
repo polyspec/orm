@@ -45,7 +45,7 @@ final class ModelDslNativeTest extends TestCase
     public function testConditionArityUsesSourceErrors(): void
     {
         try {
-            (new DslFixture())->name();
+            (new DslFixture())->name()->getCount();
             self::fail('Missing condition argument should fail.');
         } catch (OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
@@ -67,14 +67,14 @@ final class ModelDslNativeTest extends TestCase
         self::assertSame($model, $model->betweenAge([18, 30])->age(new Func('abs', [], true), 24));
 
         try {
-            (new DslFixture())->betweenAge(18, 30);
+            (new DslFixture())->betweenAge(18, 30)->getCount();
             self::fail('Between bounds are passed as one two-value list.');
         } catch (OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
             self::assertSame('CONFIG: between value for age must be a two-value array', $error->getMessage());
         }
         try {
-            (new DslFixture())->age(new Func('abs', [], true), 18, 24);
+            (new DslFixture())->age(new Func('abs', [], true), 18, 24)->getCount();
             self::fail('A column function accepts exactly one compared value.');
         } catch (OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
@@ -85,7 +85,7 @@ final class ModelDslNativeTest extends TestCase
     public function testEmptyListUsesTheDeclaredEmptyInError(): void
     {
         try {
-            (new DslFixture())->name([]);
+            (new DslFixture())->name([])->getCount();
             self::fail('An empty IN list should fail.');
         } catch (OrmException $error) {
             self::assertSame('EMPTY_IN', $error->code_);

@@ -21,6 +21,7 @@ classDiagram
         getSum()
         getAvg()
         getsPage()
+        getPagePlanSteps()
         getQuery()
         create()
         creates()

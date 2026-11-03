@@ -1,6 +1,6 @@
-// Measures TypeScript hot-path reads against the same SQL through the native driver named by the feature DSN.
-// No fixed reference is recorded for this full-row workload, so the measurement is diagnostic only.
-import assert from 'node:assert/strict';
+// Measures TypeScript hot-path reads against the same SQL through the native driver, on the seeded bench database of
+// BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN or BENCH_SQLITE_DSN, which the databases need of a run writes. The rows, binds and
+// projection of these reads are the cases of the recipe performance_gate; this file only times them.
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
@@ -19,15 +19,14 @@ const NATIVE_AUTHOR_COLUMNS = [
   'a__price', 'a__aes_key_version',
 ];
 
-function featureItem(item) {
-  const dsn = process.env.ORM_FEATURE_DSN;
-  const database = process.env.ORM_FEATURE_DATABASE;
-  if (!dsn || !database) throw new Error('ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run this case through make feature-check');
-  if (dsn !== item.dsn || database !== item.driver) throw new Error('the coverage item differs from ORM_FEATURE_DSN or ORM_FEATURE_DATABASE');
-  const schemes = { mysql: 'mysql:', postgres: 'postgres:', sqlite: 'sqlite:' };
+function benchDatabase(database) {
+  const name = { mysql: 'BENCH_MYSQL_DSN', postgres: 'BENCH_POSTGRES_DSN', sqlite: 'BENCH_SQLITE_DSN' }[database];
+  if (name === undefined) throw new Error(`no bench database for ${database}`);
+  const dsn = process.env[name];
+  if (!dsn) throw new Error(`${name} is required; run make orm-test-servers, which starts the databases and writes it`);
   const uri = new URL(dsn);
-  if (uri.protocol !== schemes[database]) throw new Error(`ORM_FEATURE_DSN scheme ${uri.protocol} does not match ${database}`);
-  return { database, dsn, uri };
+  if (uri.protocol !== `${database}:`) throw new Error(`${name} scheme ${uri.protocol} does not match ${database}`);
+  return { dsn, uri };
 }
 
 function connectionOptions(uri) {
@@ -46,16 +45,7 @@ function median(values) {
   return values[Math.floor(values.length / 2)];
 }
 
-async function measure(database, name, client, native, expectedRows) {
-  // A null expectedRows skips the native equality and the row count: the pk rows are the rows of performance_gate (pk_lookup), which
-  // the recipe checks on every database, so the native test repeats none of them.
-  if (expectedRows !== null) {
-    const clientResult = await client();
-    const nativeResult = await native();
-    assert.deepEqual(clientResult, nativeResult, `${name}: client and native rows`);
-    assert.equal(clientResult.length, expectedRows, `${name}: row count`);
-  }
-
+async function measure(database, name, client, native) {
   for (let i = 0; i < WARMUP; i++) {
     await native();
     await client();
@@ -171,9 +161,8 @@ function typedNativeRow(row) {
   return [values[0], values[1]];
 }
 
-export async function hotPathGate(item, expectedDatabase) {
-  const { database, dsn, uri } = featureItem(item);
-  if (database !== expectedDatabase) throw new Error(`coverage path expects ${expectedDatabase}, received ${database}`);
+export async function hotPathGate(database) {
+  const { dsn, uri } = benchDatabase(database);
   const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
   if (db.driver !== database) throw new Error(`client opened ${db.driver}, want ${database}`);
   const nativeConnection = await openNative(database, uri);
@@ -192,10 +181,9 @@ export async function hotPathGate(item, expectedDatabase) {
       return [...rows].map((row) => [row.getSeq(), row.getName()]);
     };
     const pkQuery = pk();
-    await measure(database, 'pk', () => clientRows(pk()), await nativeFor(pkQuery), null);
+    await measure(database, 'pk', () => clientRows(pk()), await nativeFor(pkQuery));
     const listQuery = list();
-    // list100 is a recipe case too: its rows are checked by performance_gate, so the native read has no row check here.
-    await measure(database, 'list100', () => clientRows(list()), await nativeFor(listQuery), null);
+    await measure(database, 'list100', () => clientRows(list()), await nativeFor(listQuery));
   } finally {
     await nativeConnection.close();
     await db.close();

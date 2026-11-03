@@ -57,8 +57,10 @@ export function runRecipe(path, database) {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
-          else if (step.op === 'ir.answer') await checkAnswer(step, database);
+          else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'keyring.versions') checkKeyring(step, database);
+          else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
@@ -858,6 +860,13 @@ function validationModel(schemaPath) {
 }
 
 // requestText is the request of the step as its ordered-json text, so a number keeps its literal (0.0 is not 0).
+// answerText is the answer of an ir.answer step as its recipe writes it, so that a number keeps its form on the wire: JSON.parse
+// would make 3.0 the 3 of an integer. A step of answers has none.
+function answerText(literal, caseIndex, stepIndex) {
+  const answer = literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('answer');
+  return answer === undefined ? undefined : stringifyJson(answer);
+}
+
 function requestText(literal, caseIndex, stepIndex) {
   return stringifyJson(literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('request'));
 }
@@ -971,9 +980,18 @@ function dbspecParse(step, bound) {
 
 // dbspecPlanSteps runs planSteps for one dialect and returns {steps}, the plan-cases.json objects of its steps, or fails on diagnostics.
 function dbspecPlanSteps(step, bound) {
+  if (!['mysql', 'postgres', 'sqlite'].includes(step.dialect)) {
+    return dialectRefusal(step.dialect, () => planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect));
+  }
   const result = planSteps(dbspecDocument(step.source, bound), dbspecPlan(step.plan, bound), step.dialect);
   if (result.diagnostics.length > 0) throw new Error(`plan steps: ${result.diagnostics.map(d => d.message).join('; ')}`);
   return { steps: result.steps.map(stepFields) };
+}
+
+// dialectRefusal runs a call that takes the dialect name and returns {refused: name} when it throws a TypeError that names it (DBS-174).
+function dialectRefusal(name, call) {
+  assert.throws(call, { name: 'TypeError', message: new RegExp(name) });
+  return { refused: name };
 }
 
 // stepFields is the object of one step as docs/spec/plans.md "Steps" writes it.
@@ -1096,7 +1114,7 @@ function requestParams(sent) {
 // checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
 // normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
 // An expect of {params} compares the params of the request that the listener received instead (PRT-66).
-async function checkAnswer(step, database) {
+async function checkAnswer(step, database, answer) {
   const expect = step.expect?.[database];
   if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
   if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
@@ -1104,7 +1122,7 @@ async function checkAnswer(step, database) {
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
   if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
   const sent = [];
-  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer), sent);
+  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(answer, sent);
   const db = await connect(server.dsn);
   let got;
   let failed = false;
@@ -1686,6 +1704,17 @@ Object.assign(OPS, {
     refOf(s.ref, context).stop();
     return {};
   },
+  // utils.run (FCV-4, INT-150): one Utils.run whose function runs the statements in order on its frame; the value is the rows of the last.
+  async 'utils.run'(s, context) {
+    const result = await connectionOf(s, context).utils().run(async frame => {
+      let last = { rows: [] };
+      for (const statement of s.statements) {
+        last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
+      }
+      return last;
+    });
+    return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');
@@ -1879,6 +1908,10 @@ async function checkDbspecFiles(step, dir, database) {
     }
     case 'dbspec.render': {
       const { documents } = await readDocuments(dir, step.documents);
+      if (step.dialect !== undefined) {
+        assert.deepEqual(dialectRefusal(step.dialect, () => renderDbspec(documents, step.dialect)), expect, 'refused dialect');
+        break;
+      }
       for (const dialect of ['mysql', 'postgres', 'sqlite']) {
         const rendered = renderDbspec(documents, dialect);
         assert.deepEqual(rendered.diagnostics, [], `${dialect} renders`);
@@ -2005,6 +2038,53 @@ async function checkSend(step, wrappedExpect) {
     if (step.begin !== undefined) await db.transaction(() => {}, { readOnly: step.begin.read_only === true });
     else await queryColumn(step, db);
   }, step, wrappedExpect);
+}
+
+// checkKeyring runs a keyring.versions step: the public constructor of the keyring, then its current version and its versions (INT-74,
+// INT-130).
+function checkKeyring(step, database) {
+  const expect = step.expect[database];
+  let keyring;
+  try {
+    keyring = aesKeyring(step.keyring);
+  } catch (error) {
+    if (expect.error !== undefined && error instanceof OrmError && error.code === expect.error) return;
+    throw error;
+  }
+  if (expect.error !== undefined) throw new Error(`the keyring was built, want ${expect.error}`);
+  if (keyring.currentVersion !== expect.current) throw new Error(`current version ${keyring.currentVersion}, want ${expect.current}`);
+  if (JSON.stringify(keyring.versions()) !== JSON.stringify(expect.versions)) throw new Error(`versions ${JSON.stringify(keyring.versions())}, want ${JSON.stringify(expect.versions)}`);
+}
+
+// checkBuilder runs a markdown.builder step: the builder calls on the slots model, then getCount, on the markdown.send listener. The
+// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+async function checkBuilder(step, database) {
+  const received = [];
+  const server = await startMarkdownSendListener(received);
+  let db;
+  let callError;
+  try {
+    db = await connectSlots(server.dsn);
+    let model = new Slots().connect(db);
+    for (const call of step.calls) {
+      if (call === 'limit_zero_count') model = model.limit(0, 0);
+      else if (call === 'limit_negative_offset') model = model.limit(-1, 1);
+      else if (call === 'empty_i64_list') model = model.i64Value([]);
+      else if (call === 'empty_varchar_list') model = model.varcharValue([]);
+      else throw new Error(`markdown.builder call ${call} has no builder call in the TypeScript cases`);
+    }
+    await model.getCount();
+  } catch (error) {
+    callError = error;
+  } finally {
+    if (db !== undefined) await db.close();
+    await server.close();
+  }
+  if (received.length > 0) throw new Error(`the terminal sent ${received[0]} before its error`);
+  const expect = step.expect[database];
+  if (!(callError instanceof OrmError) || callError.code !== expect.error || !callError.message.includes(expect.message_contains)) {
+    throw new Error(`the terminal returned ${callError}, want ${expect.error} with ${expect.message_contains}`, { cause: callError });
+  }
 }
 
 // checkFirst runs call on a connection to the markdown.send listener and compares the first message it records, or the OrmError code of a

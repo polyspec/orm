@@ -21,6 +21,12 @@ final class ComplexQueryDbTest extends TestCase
         ComplexQueryDbCase::assertPublicRequestCompiles(false);
     }
 
+    // Requirements: DSL-159.
+    public function testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage(): void
+    {
+        ComplexQueryDbCase::assertPagePlanSteps(false);
+    }
+
     public function testFeatureProductSearchPage(): void
     {
         ComplexQueryDbCase::runFeature(false);

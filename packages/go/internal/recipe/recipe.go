@@ -87,6 +87,9 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
+	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
+	Keyring *aesKeyringSpec `json:"keyring"`
+	Calls   []string        `json:"calls"`
 }
 
 // MarkdownSend runs one markdown.send step on a markdown connection to a listener that records the first message it receives,
@@ -102,6 +105,11 @@ type MarkdownSend func(t *testing.T, column, operator string, params []json.RawM
 // of the step is {"params": [...]}, PRT-66), the function returns the params of the request that the listener received instead.
 type IRAnswer func(t *testing.T, chain string, answer json.RawMessage, answers map[string]json.RawMessage, params bool) (any, error)
 
+// MarkdownBuilder runs one markdown.builder step: the builder calls on the generated model of the bind fixture, then its count
+// terminal, on a listener that records a message. It returns the code and the text of the error of the terminal, and fails the test
+// when a message reached the listener. It is supplied by the test package that owns the listener and the generated bind models.
+type MarkdownBuilder func(t *testing.T, calls []string) (code, message string)
+
 // Option configures Run.
 type Option func(*options)
 
@@ -113,9 +121,15 @@ type ModelAssign func(t *testing.T, model, column string, value json.RawMessage)
 type options struct {
 	irAnswer IRAnswer
 	// dir is the directory of the recipe file, which the dbspec ops resolve their documents against.
-	dir          string
-	markdownSend MarkdownSend
-	modelAssign  ModelAssign
+	dir             string
+	markdownSend    MarkdownSend
+	modelAssign     ModelAssign
+	markdownBuilder MarkdownBuilder
+}
+
+// WithMarkdownBuilder supplies the function that runs each markdown.builder step of a recipe without a database.
+func WithMarkdownBuilder(fn MarkdownBuilder) Option {
+	return func(o *options) { o.markdownBuilder = fn }
 }
 
 // WithModelAssign supplies the function that runs each model.assign step of a recipe without a database.
@@ -218,6 +232,12 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "model.assign" {
 		return checkAssign(t, s, o.modelAssign)
+	}
+	if s.Op == "markdown.builder" {
+		return checkBuilder(t, s, database, o.markdownBuilder)
+	}
+	if s.Op == "keyring.versions" {
+		return checkKeyring(s, database)
 	}
 	var r result
 	switch s.Op {
@@ -1221,9 +1241,9 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	dialect, err := dialectOf(s.Dialect)
-	if err != nil {
-		return nil, err
+	dialect := dbspec.Dialect(s.Dialect)
+	if !knownDialect(dialect) {
+		return dialectRefusal(s.Dialect, func() { dbspec.PlanSteps(source, plan, dialect) })
 	}
 	steps, diagnostics := dbspec.PlanSteps(source, plan, dialect)
 	if len(diagnostics) > 0 {
@@ -1237,13 +1257,27 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 	return map[string]any{"steps": rows}, nil
 }
 
-// dialectOf is the dialect that a name gives; PlanSteps panics on any other name, so the recipe refuses it first.
-func dialectOf(name string) (dbspec.Dialect, error) {
-	switch d := dbspec.Dialect(name); d {
-	case dbspec.DialectMySQL, dbspec.DialectPostgres, dbspec.DialectSQLite:
-		return d, nil
-	}
-	return "", fmt.Errorf("dialect %q is not mysql, postgres or sqlite", name)
+// knownDialect reports whether d is one of the three dialects.
+func knownDialect(d dbspec.Dialect) bool {
+	return d == dbspec.DialectMySQL || d == dbspec.DialectPostgres || d == dbspec.DialectSQLite
+}
+
+// dialectRefusal runs a call that takes the dialect name and returns {refused: name} when the call panics with a message
+// that names it (DBS-174); a call that returns is an error, because it accepted the dialect.
+func dialectRefusal(name string, call func()) (got any, err error) {
+	defer func() {
+		recovered := recover()
+		switch {
+		case recovered == nil:
+			err = fmt.Errorf("the call accepted the dialect %q", name)
+		case !strings.Contains(fmt.Sprint(recovered), name):
+			err = fmt.Errorf("the refusal %v does not name %q", recovered, name)
+		default:
+			got = map[string]any{"refused": name}
+		}
+	}()
+	call()
+	return nil, nil
 }
 
 // planStepFields is the object of a plan step (docs/spec/plans.md "Steps"): its statement, its effect as text, and the
@@ -1459,6 +1493,55 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 	}
 	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.ProcessZone)
 	return checkMessage(s.Expect, message, code)
+}
+
+// checkBuilder runs one markdown.builder step and compares the code and the text of its error with the expect of database (FCV-4).
+func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) error {
+	if fn == nil {
+		return fmt.Errorf("markdown.builder needs WithMarkdownBuilder")
+	}
+	var want struct {
+		Error           string `json:"error"`
+		MessageContains string `json:"message_contains"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	code, message := fn(t, s.Calls)
+	if code != want.Error || !strings.Contains(message, want.MessageContains) {
+		return fmt.Errorf("the terminal returned %q %q, want %q with %q", code, message, want.Error, want.MessageContains)
+	}
+	return nil
+}
+
+// checkKeyring runs one keyring.versions step: the public constructor of the keyring, then its current version and its versions
+// (INT-74, INT-130), against the expect of database.
+func checkKeyring(s step, database string) error {
+	var want struct {
+		Current  int32   `json:"current"`
+		Versions []int32 `json:"versions"`
+		Error    string  `json:"error"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	keyring, err := s.Keyring.keyring()
+	if want.Error != "" {
+		if code := orm.ErrorCode(err); code != want.Error {
+			return fmt.Errorf("the keyring returned %v, want %s", err, want.Error)
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if got := keyring.CurrentAESVersion(); got != want.Current {
+		return fmt.Errorf("current version %d, want %d", got, want.Current)
+	}
+	if got := keyring.AESVersions(); !slices.Equal(got, want.Versions) {
+		return fmt.Errorf("versions %v, want %v", got, want.Versions)
+	}
+	return nil
 }
 
 // checkAssign runs one model.assign step and checks its expect against the message or the error it returns.

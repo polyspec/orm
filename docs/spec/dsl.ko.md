@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 061ab436688a7943afb01efb18c801b5b196dae71b45c108f4dc3804cd7ac1b0 -->
+<!-- source-sha256: 912b2ffcc26877f3efca8a2d3709070cf1beb847f614ceddd0b8ced8af87713f -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -144,6 +144,7 @@ Key   = [Operator] Column
 - **DSL-63** `avg<Col>()`와 `getAvg()` — 결과: 컬럼 평균; 값이 없으면 null
 - **DSL-64** `getsPage(page, perPage)` — 결과: `items`, `totalCount`, `totalPages`, `page`, `perPage`를 포함한 한 페이지
 - **DSL-65** `getQuery()` — 결과: 실행하지 않은 `gets()`의 SQL 문장과 바인드 값
+- **DSL-159** `getPagePlanSteps(page, perPage)` — 결과: `getsPage(page, perPage)`가 실행하는 plan의 step을 실행 없이 돌려준다. plan의 순서대로 main step, count step, 그리고 relation마다 step 하나이며, 각 step은 `role`(`main`, `count`, `relation`), `tables`(문장이 이름 짓는 물리 table 이름을 정렬하고 중복을 없앤 목록), `sql`(문장 텍스트, relation의 `IN` 목록은 펼치지 않는다)을 가진다. step에는 바인드 값이 없다. 이 호출은 `getsPage`가 실행하는 plan 호출에서 나오며 인자와 거부도 같다(DSL-67, DSL-68): page나 perPage가 1보다 작을 때, `limit`를 지정한 모델, 연결이 없는 모델은 `CONFIG`, planner의 거부는 `OPERATOR_NOT_ALLOWED`(DIA-187) 같은 코드, markdown에서는 `CAPABILITY_UNSUPPORTED`(DIA-185)다. handle의 request hook은 `getsPage`와 같이 이 request를 받는다.
 
 - **DSL-66** `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. SQL `SUM`과 `AVG`는 null 값을 건너뛰고, 남은 값이 없으면 일치하는 행이 없든 모든 값이 null이든 null scalar를 준다. 그러면 `getSum()`은 값이 없는 합인 0을, `getAvg()`는 null을 반환한다. 값이 없는 평균은 정의되지 않으며 0은 지어낸 평균이기 때문이다. 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
 - **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
@@ -268,7 +269,7 @@ rows, err := model.Product().Connect(slave1).
 - **DSL-114** `expectRevision(column, revision)`은 모델의 다음 `update()`나 `delete()`를 기대 revision을 가진 쓰기로 만든다. revision column은 dbspec setting이 아니라 chain이 이름한다: revision column은 chain이 이미 이름하는(`plus<Col>`처럼) 평범한 정수 column이고, 기대 revision은 chain만 나를 수 있는 한 쓰기의 값이며, setting은 그것을 선언하는 모든 document set의 manifest와 그래서 manifest hash를 바꾸기 때문이다. column은 entity의 `i16`, `i32`, `i64` column이며 primary key column이 아니다. 다른 column, 같은 쓰기에서 set한 그 column의 값, 기대와 함께 쓴 `update(true)`는 어떤 statement보다 먼저 `CONFIG`로 실패한다. 쓰기는 두 번째 장치 없이 모델이 이미 보내는 request 위에 만들어진다: `update()`와 `delete()`의 key 조건에 `column = revision`이 더해지고, `update()`는 바뀐 column과 함께, 다른 column이 바뀌지 않았을 때도, bind된 증가 `column = column + 1`(`plus<Col>(1)`처럼)을 할당한다. 하나의 조건부 statement가 연결의 트랜잭션이 열려 있으면 맞는 행을 그 트랜잭션에서 lock하고, 그 사이에 틈 없이 비교하고 쓴다. `FOR UPDATE`가 없는 SQLite는 statement 동안 write lock을 쥔다. 행이 다른 revision을 갖거나 더는 없어 어떤 행과도 맞지 않는 statement는 `REVISION_CHANGED`로 실패하고 아무것도 쓰지 않는다. `delete(true)`는 그 트랜잭션에서 실행되므로 root의 `REVISION_CHANGED`가 이미 지운 관련 행을 rollback한다. soft delete도 같은 방식으로 비교한다. 모델을 다시 읽지 않는다: `update()`가 성공한 뒤 행의 revision은 `revision + 1`이다. 기대는 `update()`가 성공한 뒤 다른 변경과 함께 지워지며 그 모델에만 적용되고 collection의 행에는 적용되지 않는다. `update(true)`의 `optimistic` request slot은 executor가 쓰는 `updated_ts`를 비교한다. revision은 form을 그릴 때의 revision처럼 호출자가 쥔 값이며 `delete()`도 지킨다.
 - **DSL-115** `new<Name>`은 계산한 금액이나 화면용 표시 값처럼 행이 출력까지 전달하는 데이터를 추가한다. 이 값은 `INSERT`, `UPDATE`, `SELECT` 문장에 사용하지 않는다. 조회와 쓰기 뒤에도 `get<Name>()`, `toArray()`, JSON 출력에 포함되며 `create()`가 반환한 모델도 추가한 값을 유지한다.
 - **DSL-116** `new<Name>`에 실제 컬럼 명칭을 사용하면 거부한다. 저장 컬럼 값은 `set<Col>`을 사용한다.
-- **DSL-159** PHP client `polyspec/orm`은 `new<Name>` 호출을 실행 시점에 풀며 실제 컬럼이면 그때 거부한다. PHP-extension client `polyspec/orm-php-ext`, TypeScript client `@polyspec/orm`, Python package `polyspec-orm`도 같다.
+- **DSL-160** PHP client `polyspec/orm`은 `new<Name>` 호출을 실행 시점에 풀며 실제 컬럼이면 그때 거부한다. PHP-extension client `polyspec/orm-php-ext`, TypeScript client `@polyspec/orm`, Python package `polyspec-orm`도 같다.
 - **DSL-117** `github.com/polyspec/orm/packages/go` 생성기는 읽은 소스가 호출하는 명칭의 `New<Name>`과 `Get<Name>`을 생성한다. 값 타입은 `any`다.
 - **DSL-156** `polyspec-orm-build` crate는 읽은 소스가 호출하는 명칭의 `new_<name>`과 `get_<name>`을 생성한다. 값 타입은 공통 값 타입이다.
 
