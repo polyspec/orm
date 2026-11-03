@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 75ba6f9d3de901924a1ce30b2b4a542ef85c68cebcf4c5b26e7fb29ef6f0cb05 -->
+<!-- source-sha256: a22fc556f8006fb10c6ff46d26a8ea0ab101864dfb147b232e1489710fec9bf1 -->
 # 변경 이력
 
 ## Unreleased
 
+- CR15-F: `generated_key_lifecycle`은 PostgreSQL과 SQLite에서 더 큰 키의 행을 더하는 trigger 옆에 insert하므로, 표에서 읽은 키는 실패한다. INT-123은 생성 키의 출처를 적는다.
 - conformance vector 파일의 expected field를 chain, calls와 함께 없앴다. `tests/conformance/vectors.json`은 vector 이름과 requirement만 담고, `vectors.postgres.json`과 `vectors.sqlite.json`은 recipe `conformance_verification`의 expect로 합쳤다.
 - 전체 실행 conformance 검사기를 없앴다. `make conformance-check`는 남은 native body와 결과 helper를 실행하고, `contracts/interfaces.json`의 state contract는 시험에서 recipe case와 비교하며, database state 읽기는 `tests/conformance/check/state.mts`다.
 - Tests: MySQL lock wait timeout(CFG-6)은 모든 runtime에서 `transactions` recipe의 case `mysql_lock_wait_expiry_is_canceled`가 서버의 실제 1205로 확인하며, driver 오류를 만들어 쓰던 native는 사라졌다.

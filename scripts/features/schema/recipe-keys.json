@@ -278,6 +278,7 @@
     "catalog.insert_row": [
       "expect",
       "metadata",
+      "only",
       "op",
       "values"
     ],

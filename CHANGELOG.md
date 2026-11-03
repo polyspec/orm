@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
 - The expected fields of the conformance vector files are gone with their chains and calls: `tests/conformance/vectors.json` keeps the vector names and requirements, and `vectors.postgres.json` and `vectors.sqlite.json` fold into the expects of the recipe `conformance_verification`.
 - The whole-run conformance checker is gone: `make conformance-check` runs the native bodies that remain and the result helpers, the state contracts of `contracts/interfaces.json` compare with their recipe cases in a test, and the database state reader is `tests/conformance/check/state.mts`.
 - Tests: a MySQL lock wait timeout (CFG-6) is the case `mysql_lock_wait_expiry_is_canceled` of the `transactions` recipe, against a real 1205 from the server, in every runtime; the natives that built the driver error are gone.
