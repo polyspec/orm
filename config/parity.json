@@ -298,6 +298,7 @@
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/NativeFixtureVectors.php",
         "packages/php/tests/OrmGenScanFailureCase.php",
+        "packages/php/tests/OrmGenProcessCase.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/PageCacheBoundCases.php",
         "packages/php/tests/Served.php",
@@ -43949,6 +43950,104 @@
       ]
     },
     {
+      "id": "php-generated-model-loads-only-the-used-classes",
+      "kind": "feature",
+      "requirements": [
+        "DBS-179"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testTheBootstrapHandsOverTheClassesWithoutLoadingThem"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testTheRuntimeModelLoadsNoClass"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testAColumnOfAnyModelOfTheSetLoadsNoClass"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testAReadLoadsTheClassOfItsModelOnly"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testAnEditedClassFailsWhenAStatementUsesItAndOnlyThen"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testAnEntityGeneratedAsTwoClassesFails"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenLazyModelTest.php",
+          "id": "OrmGenLazyModelTest::testClassesOfASetThatIsNotLoadedFail"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "php-extension-generated-model-loads-only-the-used-classes",
+      "kind": "feature",
+      "requirements": [
+        "DBS-180"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testTheBootstrapHandsOverTheClassesWithoutLoadingThem"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testTheRuntimeModelLoadsNoClass"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testAColumnOfAnyModelOfTheSetLoadsNoClass"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testAReadLoadsTheClassOfItsModelOnly"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testAnEditedClassFailsWhenAStatementUsesItAndOnlyThen"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testAnEntityGeneratedAsTwoClassesFails"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenLazyModelTestExtensionTest.php",
+          "id": "OrmGenLazyModelTestExtensionTest::testClassesOfASetThatIsNotLoadedFail"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
       "id": "php-generated-model-reads-without-parsing",
       "kind": "feature",
       "requirements": [
@@ -43974,11 +44073,6 @@
           "implementation": "php",
           "test": "packages/php/tests/OrmGenParsedModelTest.php",
           "id": "OrmGenParsedModelTest::testDataOfAnotherFormatMakesTheProcessParse"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenParsedModelTest.php",
-          "id": "OrmGenParsedModelTest::testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest"
         },
         {
           "implementation": "php",
@@ -44018,11 +44112,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
           "id": "OrmGenParsedModelTestExtensionTest::testDataOfAnotherFormatMakesTheProcessParse"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenParsedModelTestExtensionTest.php",
-          "id": "OrmGenParsedModelTestExtensionTest::testAModelThatDiffersFromTheDataFailsAsItDoesFromItsManifest"
         },
         {
           "implementation": "php-extension",

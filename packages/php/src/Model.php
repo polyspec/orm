@@ -922,6 +922,8 @@ abstract class Model implements \JsonSerializable, ModelMetadata
 
     private function query(Request $r, Frame $f): array
     {
+        // A joined model reaches the statement through this call only, and its class is first compared here.
+        Registry::verify(static::class);
         if ($this->error !== null) {
             throw $this->error;
         }
@@ -1786,6 +1788,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, static::class
                 . " is not registered by the generated models of manifest $hash");
         }
+        Registry::verify(static::class);
         return $hash;
     }
 

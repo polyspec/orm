@@ -7,7 +7,7 @@ namespace Polyspec\Orm;
 /**
  * Writes one model class per entity with typed column accessors, the model
  * metadata and the query methods that the schema enumerates, plus schema_declarations.php,
- * which declares the schema and connect, and bootstrap.php, which registers the classes.
+ * which declares the schema and connect, and bootstrap.php, which names the classes without loading them.
  * The query methods are the condition method of
  * every column and the tuple method of every key prefix of two or more columns,
  * the column methods addColumn, removeColumn, groupBy, keyName, orderBy…Asc and
@@ -163,6 +163,7 @@ final class Generator
             . "require_once __DIR__ . '/schema_declarations.php';\n\n"
             . "Registry::generated(MANIFEST_HASH, MANIFEST_TEXT" . ($external ? ', EXTERNAL_TEXT' : '') . ");\n"
             . "Registry::parsed(PARSED_HASH, PARSED_FORMAT, PARSED_ENTITIES);\n";
+        $classes = '';
         foreach ($m->entities as $e) {
             $class = self::pascal($e['entity']);
             if (isset($files["$class.php"])) {
@@ -172,8 +173,9 @@ final class Generator
                 );
             }
             $files["$class.php"] = self::model($e, $class, $namespace, $m->manifestHash, $tags[$class] ?? []);
-            $boot .= "Registry::register($class::class);\n";
+            $classes .= '    ' . self::str($e['entity']) . " => $class::class,\n";
         }
+        $boot .= "Registry::classes(MANIFEST_HASH, [\n$classes]);\n";
         $files['schema_declarations.php'] = $decl;
         $files['bootstrap.php'] = $boot;
         return $files;

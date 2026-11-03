@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- PHP process는 생성된 model을 쓸 때만 그 file을 읽어 들인다. `bootstrap.php`는 class를 `Registry::classes`에 넘기고, runtime model과 chain의 column 조회는 parse된 entity를 읽으며, `Registry::verify`가 class를 처음 쓸 때 entity와 비교하므로 수정된 class는 여전히 첫 statement 전에 `CONFIG`로 실패한다. 이 변경을 받으려면 model을 다시 생성해야 한다(T358).
 - orm-gen이 생성하는 PHP 코드는 집합의 parse된 runtime model을 가지므로, 새 PHP process의 요청은 manifest를 parse하지 않는다. bench 집합의 model을 읽는 php-fpm 요청은 opcode cache에서 5.04 ms 대신 0.53 ms가 걸린다. 다른 manifest hash나 다른 runtime model 형식의 데이터는 무시하고 전처럼 parse하며, `meta()` 검사는 유지한다(DBS-177, DBS-178, T357).
 - SQLite가 `RAISE(ROLLBACK)`, I/O 오류, 가득 찬 disk 뒤에 스스로 rollback한 transaction이나 savepoint는 모든 runtime과 catalog connection에서 그것을 끝낸 오류를 보고한다. client는 SQLite가 `cannot rollback - no transaction is active`로 답하는 ROLLBACK, ROLLBACK TO SAVEPOINT, RELEASE SAVEPOINT를 더는 보내지 않으므로, limepie는 disk I/O 오류 위에 쌓인 rollback 실패를 더는 기록하지 않는다 (INT-155, T356). Rust catalog connection도 다른 runtime처럼 행 쓰기의 driver 오류를 code와 함께 보고한다.
 - SQLite driver 오류 message는 모든 runtime에서 그 extended result code의 이름으로 끝난다. 예: `no such collation sequence: nosuch (SQLITE_ERROR_MISSING_COLLSEQ)` (INT-154). 이제 disk I/O error에서 SQLITE_IOERR_SHMLOCK과 _FSYNC, _SHORT_READ를 구별할 수 있다. 전에는 message가 primary 의미만 말했다(limepie S-908). 이름은 docs/spec/sqlite-result-codes.yaml의 표이며, `orm-gen sqlite-codes`가 각 runtime에 쓴다. PHP client와 PHP extension은 pdo_sqlite의 extended result code를 켜고, Rust catalog query 오류는 error code를 가진다 (T355).

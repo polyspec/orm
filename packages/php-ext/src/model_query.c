@@ -98,6 +98,23 @@ ZEND_METHOD(Polyspec_Orm_Model, executor)
     RETURN_COPY_VALUE(&resolved);
 }
 
+/* Registry::verify of a model class: its first comparison with its entity. */
+static bool model_query_verify(zend_class_entry *ce)
+{
+    zend_class_entry *registry_ce = query_class("Polyspec\\Orm\\Registry");
+    if (registry_ce == NULL) {
+        zend_throw_error(NULL, "Polyspec\\Orm\\Registry is not loaded");
+        return false;
+    }
+    zval arg, result;
+    ZVAL_STR_COPY(&arg, ce->name);
+    ZVAL_UNDEF(&result);
+    zend_call_method_with_1_params(NULL, registry_ce, NULL, "verify", &result, &arg);
+    zval_ptr_dtor(&arg);
+    zval_ptr_dtor(&result);
+    return EG(exception) == NULL;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, manifestHash)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -142,6 +159,7 @@ ZEND_METHOD(Polyspec_Orm_Model, manifestHash)
     if (Z_TYPE(models) != IS_UNDEF) zval_ptr_dtor(&models);
     zval_ptr_dtor(&meta);
     zend_string_release(entity);
+    if (!model_query_verify(called_scope)) { zend_string_release(hash); RETURN_THROWS(); }
     RETURN_STR(hash);
 }
 
@@ -1036,6 +1054,8 @@ ZEND_METHOD(Polyspec_Orm_Model, query)
         Z_PARAM_OBJECT(request)
         Z_PARAM_OBJECT(frame)
     ZEND_PARSE_PARAMETERS_END();
+    // A joined model reaches the statement through this call only, and its class is first compared here.
+    if (!model_query_verify(Z_OBJCE_P(ZEND_THIS))) RETURN_THROWS();
     model_state *state = model_state_of(Z_OBJ_P(ZEND_THIS));
     zval *error = model_state_property(state, "error");
     if (error != NULL && Z_TYPE_P(error) == IS_OBJECT) { zval copy; ZVAL_COPY(&copy, error); zend_throw_exception_object(&copy); RETURN_THROWS(); }
