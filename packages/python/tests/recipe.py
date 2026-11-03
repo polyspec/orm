@@ -1040,7 +1040,7 @@ def _markdown_builder(step: dict, database: str) -> None:
     if (
         caught is None
         or caught.code != expect["error"]
-        or expect["message_contains"] not in str(caught)
+        or expect["message"] != str(caught)
     ):
         raise AssertionError(f"the terminal returned {caught!r}, want {expect}")
 

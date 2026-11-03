@@ -1430,7 +1430,7 @@ final class Recipe
         Assert::assertNull($message, 'the terminal sent a message before its error');
         $expect = $step['expect'][$database];
         Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
-        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
+        Assert::assertSame($expect['message'], $caught->getMessage());
     }
 
     /**

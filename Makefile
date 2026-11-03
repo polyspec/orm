@@ -3151,9 +3151,8 @@ complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext
 .PHONY: complex-query-check
 complex-query-check: complex-query-check/go complex-query-check/rust complex-query-check/typescript complex-query-check/python complex-query-check/php complex-query-check/php-extension
 
-# bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
-# cases check a parameter against the logical type of its slot, and the message cases write it as an IR executor
-# message value. Each runner compares its answers with the file, so the clients agree when every runner passes; the
+# bind-check runs the cases of tests/bind/vectors.json that no recipe holds in the five clients (tests/bind/README.md):
+# each checks a parameter against the logical type of its slot. Each runner compares its answers with the file; the
 # runners are independent parts, so one that fails leaves the others to run (make -k).
 .PHONY: bind-check bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check: bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
@@ -3168,7 +3167,7 @@ bind-check/typescript: lease-tool orm-codes-typescript
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php
 
 # ir-answers-check runs the read answer recipe, tests/ir/answers.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
 # its runtime that calls the recipe helper, without a database; the ir.answer steps run each chain on a listener that answers with

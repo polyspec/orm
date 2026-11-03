@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0dfc05427aa53d12f00009ef7d367f24d595e0c970013b7c0bc06280a107e55d -->
+<!-- source-sha256: b57d890413b02a5dd28a11daa47dcec47c2ba21c649c9f4806dc69204dddeda2 -->
 # 변경 이력
 
 ## Unreleased
 
+- builder 오류의 recipe case는 그것이 대신한 native test처럼 message 전체를 비교하고, Rust는 `limit`에 다른 runtime과 같은 문자열을 준다
+- recipe가 이미 가진 case를 tests/bind/vectors.json에서 없앴다: 그 파일은 native host 값과 Go, Rust가 compile 시점에 거부하는 case만 가지며, 제거한 `message`와 `control` 구역을 읽는 runtime은 없다(T334-3-24).
+- 둘 이상의 runtime이 바인딩하는 docs/spec/interfaces.md의 binding value unit(INT-1~INT-11, INT-87, INT-88)을 runtime별로 읽었고, database를 읽지 않으면서 여섯 runtime 모두에 공개 호출 하나가 있는 unit은 없다. group-result-exact-i64와 collection-identity-from-fixture는 내부 decode와 key를 시험하므로 FCV-2에 따라 native로 남는다. native-row-cell-bytes, model-read-null-and-empty-text, coverage-composite-keys-composite-key-rows는 database를 읽으므로 database recipe에 속한다. query-terminal-first-builder-error는 database를 읽지 않으며, T334-3-24가 recipe public-interface로 옮겼다. generated-field-types-follow-runtime-model은 T334-3-17의 generator 출력이다. 이 row에서 변환되는 recipe는 없다 (T334-3-19).
 - TypeScript, PHP, PHP extension의 immutable write coverage 파일을 없앴다. recipe immutable_write가 각 database에서 그 검증을 담고, constraints_and_relations owner는 두 recipe를 읽는다.
 - TypeScript, PHP, PHP extension의 request hook coverage 파일을 없앴다. recipe request_hook이 각 database에서 그 case를 담는다.
 - 네이티브 시험만 갖고 있던 request hook 사례는 새 hook action `rebind`, `bad_param`과 `assign`의 `first`로 여섯 runtime 모두에서 recipe `request_hook`의 사례가 된다. restore 키를 다시 쓰는 hook, 요청 범위 밖 parameter index, 거부된 restore가 문장을 보내지 않음, hook이 걸린 `getQuery`의 바인딩 값이 그것이다. TypeScript와 PHP의 네이티브 시험은 recipe로 적을 수 없는 것만 남긴다. 연결을 공유하는 핸들과 바인딩 parameter를 읽는 hook이다.
@@ -140,7 +143,6 @@
 - composite_keys는 여섯 recipe runner가 세 database에서 실행하는 recipe다: 각 runtime은 model op(CompositeMembership의 model.creates와 model.count, model.query의 tuples, connect·many·alias를 받는 relation)를 생성된 CompositeAccount와 CompositeMembership method로 실행하고, recipe는 memberships relation을 coverage 시험이 읽는 대로 alias 아래 relations(child)의 collection으로 읽는다(T334-3-5-12).
 - Rust의 recipe runner는 packages/rust/tests/src/recipe.rs 하나다. packages/rust/orm/tests 아래 두 번째 runner가 실행하던 planner.compile, ir.validate, dbspec plan op는 그 runner의 op이고, planner, 요청 검증, dbspec plan recipe는 packages/rust/tests/tests의 trial로 실행되며, 두 번째 runner는 지운다. recipe 사례가 아닌 manifest hash 검사는 native 시험 packages/rust/orm/tests/ir_manifest_hash.rs다 (T334-3-25-1).
 - make install이 Go model이 없는 checkout에서도 model을 생성한다. packages/go/models.txt는 bindmodel을, 그것을 import하는 시험을 scan하는 markdownmodel보다 먼저 생성한다 (T334-3-15-3c-11).
-- 둘 이상의 runtime이 바인딩하는 docs/spec/interfaces.md의 binding value unit(INT-1~INT-11, INT-87, INT-88)을 runtime별로 읽었고, database를 읽지 않으면서 여섯 runtime 모두에 공개 호출 하나가 있는 unit은 없다. group-result-exact-i64와 collection-identity-from-fixture는 내부 decode와 key를 시험하므로 FCV-2에 따라 native로 남는다. query-terminal-first-builder-error, native-row-cell-bytes, model-read-null-and-empty-text, coverage-composite-keys-composite-key-rows는 database를 읽으므로 database recipe에 속한다. generated-field-types-follow-runtime-model은 T334-3-17의 generator 출력이다. 이 row에서 변환되는 recipe는 없다 (T334-3-19).
 - tests/dbspec/canonical.json과 tests/dbspec/invalid.json의 analyze 사례가 compare runner가 요구하는 dbspec.format step을 가지며, 텍스트에 primary key 없는 table이 있는 네 개는 invalid 사례가 된다. 멈추게 하는 error 뒤에는 어느 runtime도 문서 전체에 대해 판정하는 규칙의 diagnostic을 보고하지 않는다(DBS-144). PHP library와 PHP extension은 limit stop 전에 읽은 table의 key와 column 규칙을 더 이상 보고하지 않는다. Rust parser는 최상위 줄의 잘못된 문자를 Go처럼 그 줄의 유일한 syntax diagnostic으로 보고한다 (T334-3-18-6-2).
 - recipe가 다루지 않던 native analyze 시험이 recipe 사례가 된다. tests/dbspec/canonical.json의 analyze 사례 여덟 개와 tests/dbspec/invalid.json의 열일곱 개가 packages/rust/schema/tests/dbspec_analyze.rs의 token 사례와 PHP DbspecAnalyzeTest의 focused 사례를 담고, 여섯 runtime 모두에서 실행된다. Rust 파일과 PHP limit 시험은 지우고, PHP 시험은 recipe 텍스트가 담을 수 없는 잘못된 UTF-8 byte를 가진 사례 하나만 남긴다 (T334-3-18-6).
 - Rust dbspec 분석기는 syntax 진단으로 포기된 줄의 단어를 DBS-139와 다른 runtime처럼 `word`로 분류한다. 열린 diagram 블록 안의 diagram 줄은 새 블록이 아니라 항목으로 읽는다 (T334-3-18-6-1).

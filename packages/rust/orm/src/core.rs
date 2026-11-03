@@ -558,7 +558,7 @@ impl Core {
 
     pub fn limit(&mut self, offset: u32, count: u32) {
         if count == 0 {
-            self.fail("limit requires a positive count");
+            self.fail("limit requires a non-negative offset and a positive count");
             return;
         }
         self.limit = Some((offset, count));
