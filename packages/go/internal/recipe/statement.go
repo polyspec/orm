@@ -286,6 +286,13 @@ func capturedEvents(events []orm.StatementEvent, compare string, c *databaseCont
 		if compare == "tables" && len(e.Tables) == 0 {
 			continue
 		}
+		if compare == "statements" {
+			// The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+			value = map[string]any{"object": []any{
+				[]any{"sql", map[string]any{"text": e.SQL}},
+				[]any{"kind", map[string]any{"text": e.Kind}},
+			}}
+		}
 		out = append(out, value)
 	}
 	return out, nil

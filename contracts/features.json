@@ -10040,7 +10040,8 @@
           "audit_record_of_the_first_write",
           "audit_transaction_entry_points",
           "audit_selected_columns",
-          "soft_delete_restore"
+          "soft_delete_restore",
+          "soft_delete_statements"
         ],
         "owners": {
           "go": {
