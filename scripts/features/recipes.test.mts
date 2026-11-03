@@ -82,7 +82,7 @@ caseTest('the recipe schema refuses each break of the format', COMPUTE, () => {
     ['a step that compares its result without expect', change(database, ['cases', 0, 'steps', decode, 'expect'])],
     ['model.connect with expect', change(database, ['cases', 0, 'steps', 0, 'expect'], at(database, ['cases', 0, 'steps', decode, 'expect']))],
     ['sql.exec without its reason', change(database, ['cases', 0, 'steps', 1, 'reason'])],
-    ['SQL for two of the three databases', change(database, ['cases', 0, 'steps', 1, 'sql', 'sqlite'])],
+    ['SQL for no database', change(database, ['cases', 0, 'steps', 1, 'sql'], {})],
     ['an int as a JSON number', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: 1 })],
     ['an int that is not a decimal', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1e3' })],
     ['a value with two wrappers', change(database, ['seed', 'rows', 'audit_log', 0, 'seq'], { int: '1', text: '1' })],
