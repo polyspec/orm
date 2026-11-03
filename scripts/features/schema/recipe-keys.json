@@ -218,6 +218,7 @@
     ],
     "schema.add_tables_and_columns": [
       "expect",
+      "message_contains",
       "op",
       "schema"
     ],
@@ -350,6 +351,7 @@
       "columns",
       "compile",
       "connection",
+      "derived_integers",
       "expect",
       "from",
       "joins",
@@ -446,6 +448,13 @@
       "op",
       "plan",
       "source"
+    ],
+    "dbspec.add_tables_steps": [
+      "dialect",
+      "expect",
+      "op",
+      "source",
+      "target"
     ],
     "utils.aes_status": [
       "connection",
