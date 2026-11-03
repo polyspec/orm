@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, transactionConflict, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -1863,7 +1863,7 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
-      if (s.conflict !== undefined) throw new OrmError('DEADLOCK', s.conflict);
+      if (s.conflict !== undefined) throw transactionConflict(s.conflict);
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };

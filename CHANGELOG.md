@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- TypeScript exports `transactionConflict(message)` and Python exports `transaction_conflict(message)`, the retryable `DEADLOCK` error of INT-48, which only the other runtimes had; the utilities of both use it and the recipe helpers call it. The recipe `model_queries_chain` reads the scalar SUM of a joined child as the integer of INT-160 and compares the message of the NULL collection key.
 - The uses of each parameter, the output columns of a plan, blind index sources, a composite upsert key, the operators of each column type and a request of another manifest are recipe cases of all six runtimes, through the new ops `ir.param_uses` and `planner.columns`; TypeScript and Python now refuse an order comparison on `uuid`, as the others did.
 - The AES envelope, its tampering, a wrong key and the blind index vector are cases of the codec recipe in all six runtimes, with the form of an envelope as an expect, and the hostcodec tests of Go, PHP and the PHP extension are gone.
 - The refusal of two unaliased relations with one result name (CPX-5) is the case `duplicate_relation_name` of the recipe `complex_query` in every runtime; the Python test of it is removed, and the Python interface_contract coverage stays native without reading the feature environment.

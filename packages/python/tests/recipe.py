@@ -40,6 +40,7 @@ from polyspec.orm import (
     connect_catalog,
     orm,
     register_model,
+    transaction_conflict,
 )
 from polyspec.orm.engine.model import field_of
 from polyspec.orm.engine.params import param_uses
@@ -2890,7 +2891,7 @@ def _op_utils_run(step: dict, context: dict) -> dict:
                 tables=statement["tables"],
             )
         if "conflict" in step:
-            raise OrmError("DEADLOCK", step["conflict"])
+            raise transaction_conflict(step["conflict"])
         return last
 
     result = _connection_of(step, context).utils().run(run)
