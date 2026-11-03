@@ -1,4 +1,4 @@
-// Requirements: DIA-18, DIA-56, DSL-137, PRT-77.
+// Requirements: DIA-24, DIA-18, DIA-56, DSL-137, PRT-77.
 package orm_test
 
 // Requirements: FCV-2, FCV-3, FCV-4.

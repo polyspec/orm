@@ -1124,7 +1124,8 @@
         "group-row-driver-cell-forms",
         "model_queries_chain-mysql",
         "model_queries_chain-postgres",
-        "model_queries_chain-sqlite"
+        "model_queries_chain-sqlite",
+        "go-time-setter-records-the-first-bad-text"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -2022,7 +2023,6 @@
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
         "contracts/fixtures/insert_parts.json",
-        "contracts/fixtures/time_precision.dbs",
         "packages/go/model/coverage_helpers_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
@@ -2082,7 +2082,6 @@
         "packages/ts/tests/identity-load.mjs",
         "packages/python/tests/identity_load.py",
         "packages/rust/orm/tests/identity_load.rs",
-        "packages/go/orm/time_precision_test.go",
         "packages/python/tests/test_mysql_found_rows.py",
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
@@ -2373,15 +2372,6 @@
             "packages/ts/tests/identity-load.mjs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
-          ]
-        },
-        {
-          "id": "time-precision-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestSQLiteTimePrecision$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/time_precision_test.go",
-            "contracts/fixtures/time_precision.dbs"
           ]
         },
         {

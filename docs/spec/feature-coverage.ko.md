@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 06c29eb21c7a7012b539934b33110fd24d04e174ab61710069d6fe42750891d3 -->
+<!-- source-sha256: 836499aadbf6ee54ea891193180b3c11d99a248af68d7c78df7afeb3207978c6 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -17,6 +17,7 @@
   - `request-hook-params-are-read-only`(INT-78)는 모든 runtime에서 native로 남는다. 각 언어는 bind된 값 쓰기를 자기 형식, 곧 frozen array, tuple, 복사본, compiler 오류로 거부하며, `hook.install`의 동작은 매개변수를 읽고 더할 뿐이므로 어떤 recipe step도 그 쓰기를 시도할 수 없다.
   - `dynamic-vs-scanned-model-chain-dispatch`(PLN-40)는 모든 runtime에서 native로 남는다. recipe step은 scan이 쓴 이름(case `scanned-chain-methods-are-generated`)과 호출 하나의 결과만 보므로, 생성된 코드를 그것을 호출한 소비자와 함께 compile하거나, 정확한 signature를 읽거나, PHP나 Python 호출이 선언된 메서드를 탔는지 `__call`과 `__getattr__`을 탔는지 구분할 수 없다. 이 구분은 reflection만 보여 준다.
   - `native-public-package-entry`(INT-138)는 모든 runtime에서 native로 남는다. recipe step은 client를 자기 경로로 이미 import한 runner 안에서 돌므로, repository 밖 소비자가 native 형식으로 진입점을 찾는다는 사실을 어떤 step도 나타낼 수 없다.
+  - `parameter-slot-validation-vectors`(PRT-67, DIA-31)는 모든 runtime에서 native로 남는다. 그 case는 date 객체 같은 runtime의 native host 값으로 JSON recipe 값이 쓸 수 없고, typed API가 compile 때 거부하는 값으로 recipe op이 넘길 수 없다. recipe가 쓸 수 있는 값은 모두 `tests/bind/messages.json`이 맡는다.
   - 생성 메서드를 호출하는 conformance 본문(`terminal_by`, `terminal_reuse`, `relation_empty`, `aes_values`, `hex_malformed`, `empty_reads`, `now_defaults`, `delete_recursive`, `affected_counts`)은 모든 runtime에서 native로 남는다. 생성 메서드는 언어의 source이고 recipe step은 일반 builder를 호출하기 때문이다. `conformance-generated-methods-check`는 recipe `conformance_verification`의 fixture와 seed에서 이 본문을 실행하고 출력을 같은 이름의 case expect와 비교하므로 두 경로가 어긋날 수 없다.
   - 고정 시계 본문 `clock_truncate_write`와 `clock_compare_six_digits`는 모든 runtime에서 native로 남는다. FixClock이 시험 진입점이기 때문이다(PRT-53). `conformance-fixed-clock-check`는 이 본문을 `tests/conformance/check/fixed_clock.json`과 비교하며, 이 파일은 client가 쓰는 곳의 정확한 시계를 적는다. 시간 창 형식(F16)은 대신할 수 없다. 그 형식은 database 시계에 가까운 시간임을 확인할 뿐 여섯 자리 값과 그 절삭을 확인하지 않는다.
   - `static-model-chain-generation`(INT-27), `dynamic-model-chain-resolution`(INT-28), `dynamic-vs-scanned-model-chain-dispatch`(PLN-40), `dynamic-model-new-output-name-rejects-stored-column`(DSL-160)은 native로 남는다. 각각 정적 또는 동적 runtime 쪽 동작이며 반대쪽에는 그 호출이 없다. `generator-orders-sets-by-imports`(DSL-157)는 Go만의 것이다.

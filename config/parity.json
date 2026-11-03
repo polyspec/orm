@@ -1284,6 +1284,14 @@
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/time_precision.rs",
+          "reason": "test: calls the crate-private check_param, time_value, bound_time_value and clock_digits directly, reached through super; the values that a write can hold are the bind_time and bind_datetime cases of tests/bind/messages.json (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/engine/mod.rs",
+          "reason": "test: unit tests of the crate-private compile of the engine, reached through super; the statements of a default now column on each database are the case now_defaults of the recipe conformance_verification (K313)"
         }
       ]
     }
@@ -14585,80 +14593,144 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_p0_roundtrip"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testSqlite"
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_p0_roundtrip\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
-          "id": "CoverageConformanceVerificationExtensionTest::testSqlite"
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_p0_roundtrip\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
           "id": "datetime_p0_roundtrip"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
           "id": "datetime_p0_roundtrip"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_p0_roundtrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
-          "id": "time_p3_roundtrip"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::time_p3_roundtrip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
-          "id": "datetime_precision_rejected"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/conformance_sqlite.py",
-          "id": "datetime_precision_rejected"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
-          "id": "conformance_sqlite::datetime_precision_rejected"
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_p0_roundtrip"
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/time_precision_test.go",
-          "id": "TestSQLiteTimePrecision"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/time_p3_roundtrip"
         },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"time_p3_roundtrip\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_precision_rejected"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"datetime_precision_rejected\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"datetime_precision_rejected\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::datetime_precision_rejected"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/temporal_stored_text"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite with data set \"temporal_stored_text\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite with data set \"temporal_stored_text\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "temporal_stored_text"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "temporal_stored_text"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::temporal_stored_text"
+        }
+      ]
+    },
+    {
+      "id": "go-time-setter-records-the-first-bad-text",
+      "kind": "feature",
+      "requirements": [
+        "PRT-67a"
+      ],
+      "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/model/time_text_test.go",
           "id": "TestTimeSetterRecordsBadText"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/engine/mod.rs",
-          "id": "engine::tests::sqlite_insert_binds_the_clock_for_default_now"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/go"
+      }
     },
     {
       "id": "catalog-connection-requires-an-existing-sqlite-database",
@@ -16413,11 +16485,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/bind_vectors.rs",
           "id": "bind_check::bind_vectors::bind_vectors"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/unit/time_precision.rs",
-          "id": "db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved"
         },
         {
           "implementation": "go",

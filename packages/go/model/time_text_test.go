@@ -10,7 +10,7 @@ import (
 
 // A time setter records a text that is not a time as the statement's error: the first bad set wins, the statement
 // returns CODEC_ENCODE naming the column, and no row changes (T189).
-// Requirements: DIA-24. Invalid time text is rejected with CODEC_ENCODE before writing.
+// Requirements: PRT-67a.
 func TestTimeSetterRecordsBadText(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

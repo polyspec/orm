@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A model write of a text that no time form reads returns `CODEC_ENCODE` in PHP and the PHP extension, as PRT-67 states; it returned `CODEC_DECODE`. The stored form of a temporal column and that refusal run in the recipe `conformance_verification`; PRT-67a names the setter form that only Go has.
 - The microseconds of the update time and of a soft deletion and the now condition run in the recipe `conformance_verification` in every runtime, on `clock_cell` and `soft_record`; their native tests are gone, and the recipe function `seconds_later` is new. TypeScript keeps the test of `wallMicros`, its own clock source.
 - The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check` and `php-model-check` hold the generated models; the TypeScript build writes its own.
 - INT-78a states that the `root` of a hooked handle is the connection in Go, TypeScript and Python, the runtimes that have one; a Rust compiler fixture states that a request hook cannot write a bound value.

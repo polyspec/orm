@@ -77460,6 +77460,337 @@
      }
     }
    ]
+  },
+  {
+   "id": "temporal_stored_text",
+   "requirements": [
+    "DIA-24",
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00.500"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05.000000"
+      },
+      "clock": {
+       "text": "10:00:00.500000"
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00"
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT DATE_FORMAT(`at`, '%Y-%m-%d %H:%i:%s'), TIME_FORMAT(`clock`, '%H:%i:%s.%f') FROM time_cell ORDER BY seq",
+      "postgres": "SELECT to_char(at, 'YYYY-MM-DD HH24:MI:SS'), to_char(clock, 'HH24:MI:SS.MS') FROM time_cell ORDER BY seq",
+      "sqlite": "SELECT CAST(at AS TEXT), CAST(clock AS TEXT) FROM time_cell ORDER BY seq"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500000"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500000"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000000"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.500"
+         }
+        ],
+        [
+         {
+          "text": "2026-01-02 03:04:05"
+         },
+         {
+          "text": "10:00:00.000"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "ClockCell",
+     "values": {
+      "label": {
+       "text": "a"
+      },
+      "at0": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "at3": {
+       "text": "2026-01-02 03:04:05.1"
+      },
+      "at6": {
+       "text": "2026-01-02 03:04:05.1"
+      }
+     }
+    },
+    {
+     "op": "catalog.read_only_query",
+     "sql": {
+      "mysql": "SELECT DATE_FORMAT(at6, '%Y-%m-%d %H:%i:%s.%f') FROM clock_cell",
+      "postgres": "SELECT to_char(at6, 'YYYY-MM-DD HH24:MI:SS.US') FROM clock_cell",
+      "sqlite": "SELECT CAST(at6 AS TEXT) FROM clock_cell"
+     },
+     "expect": {
+      "mysql": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      },
+      "postgres": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      },
+      "sqlite": {
+       "rows": [
+        [
+         {
+          "text": "2026-01-02 03:04:05.100000"
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-01-02 03:04:05"
+      },
+      "clock": {
+       "text": "10:00:00.5001"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "time_text_refused",
+   "requirements": [
+    "PRT-67"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "bad1"
+      },
+      "clock": {
+       "text": "10:11:12"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TimeCell",
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "model.create",
+     "connection": "db",
+     "model": "TimeCell",
+     "values": {
+      "at": {
+       "text": "2026-06-01 12:34:56"
+      },
+      "clock": {
+       "text": "10:11:12"
+      }
+     },
+     "as": "row"
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "at": {
+       "text": "bad4"
+      }
+     },
+     "expect": {
+      "mysql": {
+       "error": "CODEC_ENCODE"
+      },
+      "postgres": {
+       "error": "CODEC_ENCODE"
+      },
+      "sqlite": {
+       "error": "CODEC_ENCODE"
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "TimeCell",
+     "expect": {
+      "mysql": {
+       "json": 1
+      },
+      "postgres": {
+       "json": 1
+      },
+      "sqlite": {
+       "json": 1
+      }
+     }
+    }
+   ]
   }
  ]
 }
