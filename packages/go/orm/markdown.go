@@ -572,6 +572,9 @@ func subType(m *runtimemodel.Model, sub *ir.Sub) string {
 		return "f64"
 	}
 	if f := m.Entities[sub.Query.Entity].Field(sub.Column); f != nil {
+		if sub.Agg == "sum" && (f.Type == "i16" || f.Type == "i32") {
+			return "i64" // INT-160: a sum leaves the range of its column.
+		}
 		return f.Type
 	}
 	return "text"

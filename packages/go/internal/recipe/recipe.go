@@ -159,6 +159,32 @@ type result struct {
 	dbspec any
 }
 
+// reportCase appends the pass of the running case to the file that ORM_RECIPE_RESULTS names, the line the feature
+// checker reads (FCV-12). A run outside the checker names no file.
+func reportCase(t *testing.T, id, database string) {
+	t.Helper()
+	path := os.Getenv("ORM_RECIPE_RESULTS")
+	if path == "" || t.Failed() {
+		return
+	}
+	line := "CASE " + id + " [" + database + "] PASS\n"
+	if database == None {
+		line = "CASE " + id + " PASS\n"
+	}
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatalf("recipe results: %v", err)
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			t.Errorf("recipe results: %v", err)
+		}
+	}()
+	if _, err := file.WriteString(line); err != nil {
+		t.Fatalf("recipe results: %v", err)
+	}
+}
+
 // Run runs every case of the recipe at path, relative to the test's package directory, on database. The options configure
 // the ops that need a function from the test, such as WithIRAnswer.
 func Run(t *testing.T, path, database string, opts ...Option) {
@@ -193,6 +219,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
 				}
 			}
+			reportCase(t, c.ID, database)
 		})
 	}
 }
@@ -204,10 +231,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkPlanner(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.chain", "dbspec.compare":
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
-		"dbspec.parse_set", "dbspec.set", "dbspec.read_file", "dbspec.read_bytes":
+		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)
@@ -1182,6 +1209,8 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		got, err = dbspecDiff(s, bound)
 	case "dbspec.plan_steps":
 		got, err = dbspecPlanSteps(s, bound)
+	case "dbspec.add_tables_steps":
+		got, err = dbspecAddTablesSteps(s, bound)
 	case "dbspec.chain":
 		got, err = dbspecChain(s, bound)
 	case "dbspec.compare":
@@ -1260,6 +1289,25 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 		rows = append(rows, planStepFields(st))
 	}
 	return map[string]any{"steps": rows}, nil
+}
+
+// dbspecAddTablesSteps runs dbspec.add_tables_steps (AddTablesAndColumnsSteps) on the source and target that s names, with no
+// unsupported items, for the dialect of s, and returns {added, statements, differences}.
+func dbspecAddTablesSteps(s step, bound map[string]result) (any, error) {
+	source, err := dbspecDocument(s.Source, bound)
+	if err != nil {
+		return nil, err
+	}
+	target, err := dbspecDocument(s.Target, bound)
+	if err != nil {
+		return nil, err
+	}
+	added, steps, differences := dbspec.AddTablesAndColumnsSteps(source, nil, target, dbspec.Dialect(s.Dialect))
+	statements := make([]string, 0, len(steps))
+	for _, st := range steps {
+		statements = append(statements, st.Statement)
+	}
+	return map[string]any{"added": append([]string{}, added...), "statements": statements, "differences": append([]string{}, differences...)}, nil
 }
 
 // knownDialect reports whether d is one of the three dialects.

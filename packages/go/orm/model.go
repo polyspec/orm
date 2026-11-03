@@ -231,7 +231,11 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		if st.extra == nil {
 			st.extra = map[string]any{}
 		}
-		st.extra[col.Name] = v
+		added, err := addedColumnValue(col.Type, v)
+		if err != nil {
+			return nil, codecErr(CodeCodecDecode, "added column %s: %v", col.Name, err)
+		}
+		st.extra[col.Name] = added
 	}
 	st.original = make(originals, 0, sh.original)
 	for _, name := range sh.keys {

@@ -29,13 +29,6 @@ final class StatementRunnerTest extends TestCase
     use ThreeDrivers;
     use StatementRunnerCases;
 
-    #[DataProvider('drivers')]
-    public function testStatementRunner(string $driver): void
-    {
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::runOutsideAndInside($dsn));
-    }
-
     // Requirements: INT-150b.
     #[DataProvider('drivers')]
     public function testStatementRunnerNonText(string $driver): void

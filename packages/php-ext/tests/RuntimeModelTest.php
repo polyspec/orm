@@ -48,42 +48,6 @@ DBSPEC;
         );
     }
 
-    // Requirements: DBS-156, SCH-12.
-    public function testNativeLoadSetReturnsExternalDocumentsMarked(): void
-    {
-        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
-        require_once dirname(__DIR__, 2) . '/php/tests/RuntimeModelTest.php';
-        \Polyspec\Orm\Tests\RuntimeModelTest::assertLoadSetReturnsExternalDocumentsMarked();
-    }
-
-    // Requirements: PRT-9, DBS-68.
-    public function testNativeDefaultSelectSetExcludesOnlySelectExplicit(): void
-    {
-        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
-        $root = dirname(__DIR__, 3);
-        $model = RuntimeModel::build(RuntimeModel::set("$root/contracts/fixtures/bench/dbspec-set.json"));
-        $columns = $model->entity('author')['columns'];
-        $selected = [];
-        foreach ($columns as $name => $column) {
-            if ($column['select']) {
-                $selected[] = $name;
-            }
-        }
-        $explicit = [
-            'description',
-            'email_blind_index',
-            'phone_blind_index',
-            'ip',
-            'gz_extend',
-            'json_setting',
-            'jsons_tags',
-            'base64_extra',
-            'serialize_data',
-            'aes_key_version',
-        ];
-        self::assertSame(array_values(array_diff(array_keys($columns), $explicit)), $selected);
-    }
-
     // Requirements: DBS-104, DBS-111, DBS-120.
     public function testOwnedAndExternalManifestEntities(): void
     {

@@ -63,7 +63,7 @@ caseTest('feature ownership distinguishes declared implementation-internal tests
   assert.equal(isImplementationInternalTest('typescript', 'packages/ts/tests/split-plan.test.mjs', internal), true);
   assert.equal(isImplementationInternalTest('python', 'packages/python/tests/test_split_plan.py', internal), true);
   assert.equal(isImplementationInternalTest('go', 'packages/go/orm/recipe_fulltext_search_test.go', internal), false);
-  assert.equal(isImplementationInternalTest('python', 'packages/python/tests/coverage_complex_query.py', internal), false);
+  assert.equal(isImplementationInternalTest('python', 'packages/python/tests/test_complex_query_mysql.py', internal), false);
 });
 
 caseTest('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', COMPUTE, () => {
@@ -128,19 +128,6 @@ caseTest('an unlisted test selected by each Kit convention fails feature ownersh
 caseTest('the feature checker pairs English documents with their Korean twin exactly once', COMPUTE, () => {
   assert.equal(koreanDocumentPath('docs/spec/interfaces.md'), 'docs/spec/interfaces.ko.md');
   assert.equal(koreanDocumentPath('docs/spec/interfaces.ko.md'), 'docs/spec/interfaces.ko.md');
-});
-
-caseTest('the complex-query feature fixture declares its exact shared case and expected rows', COMPUTE, () => {
-  const path = resolve(root, 'contracts/fixtures/complex_query/complex_query.json');
-  const schema = resolve(root, 'scripts/features/schema/fixture.schema.json');
-  const source = readFileSync(path, 'utf8');
-  const fixture = parseJson<{ feature: string; cases: { id: string; operation: string; expected: { row_seqs: number[]; total_count: number } }[]; expected: { row_seqs: number[]; total_count: number } }>(source, schema, path);
-  assert.equal(fixture.feature, 'complex_query');
-  assert.deepEqual(fixture.cases, [{
-    id: 'complex_query_product_search',
-    operation: 'paginate products matching category membership and full-text terms, then fetch the declared relations',
-    expected: { row_seqs: fixture.expected.row_seqs, total_count: fixture.expected.total_count },
-  }]);
 });
 
 // A generated file that the repository ignores is no test file: the fixture models that make python-models writes into

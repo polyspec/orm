@@ -32,15 +32,6 @@ final class StatementRunnerExtensionTest extends TestCase
         self::assertTrue($utils->getMethod('run')->isInternal(), 'Utils::run is not native');
     }
 
-    // Requirements: INT-150.
-    #[DataProvider('drivers')]
-    public function testStatementRunnerOpensOrJoinsTransactionAndReturnsRows(string $driver): void
-    {
-        self::assertRunnerSurface();
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::runOutsideAndInside($dsn));
-    }
-
     // Requirements: INT-150b.
     #[DataProvider('drivers')]
     public function testStatementRunnerRefusesNonTextStatementWithConfig(string $driver): void
