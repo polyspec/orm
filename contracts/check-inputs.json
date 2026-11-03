@@ -2504,16 +2504,6 @@
         "packages/go/internal/dialects/plans_physical_test.go"
       ]
     },
-    "dbspec-apply-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "databases"
-      ],
-      "inputs": [
-        "packages/go/internal/dialects/apply_physical_test.go"
-      ]
-    },
     "dbspec-lock-go-check": {
       "scope": "owner",
       "needs": [
@@ -2690,31 +2680,6 @@
         "packages/php/tests/DbspecRenderTest.php",
         "packages/php/tests/DbspecTimedCases.php",
         "tests/dbspec/ddl.json"
-      ]
-    },
-    "dbspec-apply-php-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/DbspecApplyTest.php",
-        "tests/dbspec/stress.mts"
-      ]
-    },
-    "dbspec-apply-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python",
-        "databases"
-      ],
-      "inputs": [
-        "packages/python/tests/dbspec_apply.py",
-        "packages/python/tests/dbspec_apply_runner.py",
-        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-php-extension-check": {
@@ -3167,37 +3132,6 @@
         "tests/testcase.mts"
       ]
     },
-    "dbspec-apply-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/DbspecApplyTest.php",
-        "packages/php-ext/src/apply.c",
-        "tests/dbspec/stress.mts"
-      ]
-    },
-    "dbspec-apply-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "databases"
-      ],
-      "inputs": [
-        "packages/rust/orm/tests/dbspec_apply.rs",
-        "packages/rust/orm/tests/common/plan_cases.rs",
-        "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/testcase/src/lib.rs",
-        "tests/dbspec/plan-cases.json",
-        "tests/dbspec/stress.mts"
-      ]
-    },
     "dbspec-verify-errors-check": {
       "scope": "owner",
       "needs": [
@@ -3235,18 +3169,6 @@
         "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
         "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
         "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
-      ]
-    },
-    "dbspec-apply-ts-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/dbspec-apply-physical.mjs",
-        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-apply-pairs-check": {

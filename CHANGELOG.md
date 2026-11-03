@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The apply chain, its history and state, the lock scope, finalize, the stress plan and the pooler are the recipe `dbspec_apply` in the six runtimes, each command one call of the public apply API on a named connection, and their native tests are removed.
 - `active_frame()` of Python is a stated requirement (INT-161) with its native test, the recipe `utils` refuses `setLocal` outside a transaction, and the recipe `aes_rotation` holds the status counts of several key versions.
 - Three Python natives of column functions and subqueries are gone; the recipe holds their values (#T334-3-4-24)
 - The catalog connection, read-only refusal, describe and table page tests of Rust are cases of the catalog_connection recipe in all six runtimes, and TypeScript describes a SQLite view instead of failing with TABLE_METADATA_INVALID.

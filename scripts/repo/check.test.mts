@@ -10,7 +10,6 @@ import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, CI_RUN_EXCEPTIONS, ciPassedErrors, ciGroups, jobOverlapErrors, jobTargets, lockedCacheErrors, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, kitGates, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
-import { parseArguments as parseKitTestArguments } from '@polyspec/kit/run-tests';
 import { fixlessMessageErrors } from './messages.mts';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mts';
 import { connectProbeErrors } from './probes.mts';
@@ -21,7 +20,7 @@ import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
-import { andLists, commands as shellCommands, segments, shellSegments } from './shell.mts';
+import { andLists, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
 import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
@@ -43,40 +42,24 @@ const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
 const trackedAll = new Set(trackedFiles('*'));
-caseTest('dbspec apply gives the stress case its own 120 second runner deadline', COMPUTE, () => {
-  const root = repository.pathname;
-  const runnerOptions = (target: string) => {
-    const result = spawnSync('make', ['-n', target], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout.split(/\r?\n/)
-      .filter(line => /run-tests\.m(?:js|ts)/.test(line))
-      .flatMap(line => shellCommands(line, 'sh'))
-      .flatMap(command => {
-        const runner = command.args.findIndex(argument => /\/run-tests\.m(?:js|ts)$/.test(argument));
-        return runner < 0 ? [] : [parseKitTestArguments(command.args.slice(runner + 1), root)];
-      });
-  };
-  const stress = 'testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks';
-  const phpRestFilter = '^(?!.*testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks).*';
-  const phpArgs = runnerOptions('dbspec-apply-php-check');
-  const extensionArgs = runnerOptions('dbspec-apply-php-extension-check');
-  const pythonArgs = runnerOptions('dbspec-apply-python-check');
-  for (const [name, calls] of [['PHP', phpArgs], ['PHP extension', extensionArgs]] as const) {
-    assert.equal(calls.length, 2, `${name} emits a default and a stress run`);
-    assert.deepEqual(calls.map(call => [call.tool, call.timeoutSeconds]), [['phpunit', 30], ['phpunit', 120]], name);
-    assert.equal(calls[0]?.args[calls[0].args.indexOf('--filter') + 1], phpRestFilter, `${name} excludes only the stress method from the default run`);
-    assert.equal(calls[1]?.args[calls[1].args.indexOf('--filter') + 1], stress, `${name} selects the stress method for the extended run`);
-  }
-  assert.equal(pythonArgs.length, 2, 'Python emits a default and a stress run');
-  assert.deepEqual(pythonArgs.map(call => [call.tool, call.timeoutSeconds]), [['python', 30], ['python', 120]]);
-  assert.deepEqual(pythonArgs[0]?.args.slice(-3), [
-    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql',
-    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres',
-    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite',
-  ]);
-  assert.deepEqual(pythonArgs[1]?.args.slice(-1), [
-    'packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks',
-  ]);
+caseTest('the stress case of the dbspec_apply recipe runs under the 120 second deadline of a database case on every runtime', COMPUTE, () => {
+  const recipe = JSON.parse(text('contracts/fixtures/dbspec_apply/dbspec_apply.json')) as { cases: { id: string }[] };
+  assert.ok(recipe.cases.some(recipeCase => recipeCase.id === 'stress_plan_commits_each_step'), 'the recipe holds the stress case');
+  const holds: [string, RegExp][] = [
+    ['packages/go/testcase/testcase.go', /\bDatabase = 2 \* time\.Minute\b/],
+    ['packages/go/internal/recipe/database.go', /testcase\.Start\(t, testcase\.Database\)/],
+    ['tests/testcase.mts', /export const DATABASE = 120_000;/],
+    ['packages/ts/tests/recipe.mjs', /registerRecipeCase\(recipeCase, database, DATABASE,/],
+    ['packages/python/tests/testcase.py', /^DATABASE = 120\.0$/m],
+    ['packages/python/tests/recipe.py', /class DatabaseRecipeCase\(VectorCase\):[^]*?deadline = testcase\.DATABASE/],
+    ['packages/rust/testcase/src/lib.rs', /pub const DATABASE: Duration = Duration::from_secs\(120\);/],
+    ['packages/rust/tests/src/recipe.rs', /async_trial\(format!\("\{entry\}::\{id\}"\), polyspec_orm_testcase::DATABASE,/],
+    ['packages/php/phpunit.xml.dist', /timeoutForMediumTests="120"/],
+    ['packages/php-ext/phpunit.xml.dist', /timeoutForMediumTests="120"/],
+    ['packages/php/tests/DbspecApplyRecipeTest.php', /#\[Medium\]\nclass DbspecApplyRecipeTest\b/],
+    ['packages/php-ext/tests/DbspecApplyRecipeTestExtensionTest.php', /#\[Medium\]\s*\n(?:.*\n)*?.*class DbspecApplyRecipeTestExtensionTest\b/],
+  ];
+  for (const [path, hold] of holds) assert.match(text(path), hold, path);
 });
 
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
@@ -637,12 +620,12 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
     client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-check/typescript'],
     client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-check/python'],
     client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-check/rust'],
-    dbspec_go: ['dbspec-introspect-check', 'dbspec-apply-check'],
-    dbspec_php: ['dbspec-introspect-php-check', 'dbspec-apply-php-check'],
-    dbspec_php_extension: ['dbspec-introspect-php-extension-check', 'dbspec-apply-php-extension-check'],
-    dbspec_typescript: ['dbspec-introspect-ts-check', 'dbspec-apply-ts-check'],
-    dbspec_python: ['dbspec-introspect-python-check', 'dbspec-apply-python-check'],
-    dbspec_rust: ['dbspec-introspect-rust-check', 'dbspec-apply-rust-check'],
+    dbspec_go: ['dbspec-introspect-check'],
+    dbspec_php: ['dbspec-introspect-php-check'],
+    dbspec_php_extension: ['dbspec-introspect-php-extension-check'],
+    dbspec_typescript: ['dbspec-introspect-ts-check'],
+    dbspec_python: ['dbspec-introspect-python-check'],
+    dbspec_rust: ['dbspec-introspect-rust-check'],
     performance: ['perf-check'],
   })) {
     for (const target of expected) assert.ok((targets[group] ?? []).includes(target), `${target} runs in ${group}`);

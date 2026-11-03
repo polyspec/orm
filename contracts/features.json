@@ -4324,7 +4324,6 @@
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
         "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "tests/dbspec/hashes.json",
         "tests/dbspec/sets.json",
         "tests/dbspec/canonical.json",
@@ -4334,7 +4333,6 @@
       ],
       "tests": [
         "packages/go/internal/dialects/apply_clients_physical_test.go",
-        "packages/go/internal/dialects/apply_physical_test.go",
         "packages/go/internal/dialects/ddl_physical_test.go",
         "packages/go/internal/dialects/facts_physical_test.go",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
@@ -4344,7 +4342,6 @@
         "packages/go/internal/dialects/schema_documents_physical_test.go",
         "packages/go/internal/dialects/sqlite_filename_physical_test.go",
         "packages/php/tests/DbspecApplyCleanupTest.php",
-        "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/DbspecCatalogChecksTest.php",
         "packages/php/tests/DbspecIntrospectStressTest.php",
         "packages/php/tests/DbspecIntrospectTest.php",
@@ -4357,11 +4354,9 @@
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/orm/tests/dbspec_apply.rs",
         "packages/rust/orm/tests/dbspec_introspect.rs",
         "packages/rust/orm/tests/dbspec_plan_apply.rs",
         "packages/rust/tests/tests/dbspec_plan_cases_none.rs",
-        "packages/ts/tests/dbspec-apply-physical.mjs",
         "packages/ts/tests/dbspec-introspect.mjs",
         "packages/ts/tests/dbspec-introspect-round-trip.mjs",
         "packages/ts/tests/introspect_case.mjs",
@@ -4463,7 +4458,6 @@
         "packages/rust/schema/src/names.rs",
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
         "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-        "packages/php-ext/tests/DbspecApplyTestExtensionTest.php",
         "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
         "packages/php-ext/tests/DbspecPlanApplyTestExtensionTest.php",
         "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
@@ -13832,7 +13826,7 @@
     {
       "id": "dbspec-apply-stress-mysql",
       "paths": [
-        "packages/go/internal/dialects/apply_stress_physical_test.go"
+        "packages/go/orm/recipe_dbspec_apply_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS=mysql dbspec-apply-stress-bench"
@@ -13840,7 +13834,7 @@
     {
       "id": "dbspec-apply-stress-pg-sqlite",
       "paths": [
-        "packages/go/internal/dialects/apply_stress_physical_test.go"
+        "packages/go/orm/recipe_dbspec_apply_test.go"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"

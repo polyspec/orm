@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: e655dcbc4e12361fff2a219cf5158d5bf35947df982760d7f479ed5064fe049e -->
+<!-- source-sha256: b5426bb472cdbb26fcf5432bde0f5ce508d6bcb1c4a9c6a3926e5a58087d83d4 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -212,7 +212,7 @@ orm 자신의 규칙만 적는다.
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
   Enforced by: `make dbspec-introspect-check`
 - Own: 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
-  Enforced by: `make dbspec-apply-check`
+  Enforced by: `make parity-check`
 - Own: 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
   Enforced by: none, 이름은 검토의 판단이며 언어 사이의 이름을 비교하는 검사가 없다
 - Refines P11: code 주석과 commit message는 영어다. tracked code 파일의 주석에는 한글이 없으며, `make comment-language-check`(T131)가 한글 주석을 파일과 줄을 대며 실패시킨다. commit message에도 한글을 쓰지 않는다. 새로 쓰거나 바꾸는 주석은 영어다(PRINCIPLES.md).
