@@ -2531,10 +2531,15 @@
         "packages/ts/tests/models-scan.mjs",
         "packages/ts/tests/model-new-output-name.mjs",
         "packages/ts/tsconfig.build.json",
+        "scripts/typescript/models.mts",
         "contracts/fixtures/bench/dbspec-set.json",
         "contracts/fixtures/bench/bench.dbs",
         "contracts/fixtures/bench/bench_reader.dbs",
-        "contracts/fixtures/bench/bench_shared.dbs"
+        "contracts/fixtures/bench/bench_shared.dbs",
+        "contracts/fixtures/complex_query/dbspec-set.json",
+        "contracts/fixtures/dbspec-set.json",
+        "tests/markdown/corpus/dbspec/dbspec-set.json",
+        "tests/bind/dbspec-set.json"
       ]
     },
     "dbspec-language-check": {
