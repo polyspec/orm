@@ -123,8 +123,8 @@ Key   = [Operator] Column
 .and_photo_url('a.png').and_photo_url(['a', 'b']).and_photo_url(None).and_ne_seq([1, 2])
 ```
 
-- **DSL-49** Null is accepted only for nullable columns. Go, Rust, and TypeScript reject null for a non-null column at compile time; PHP and Python return `CONFIG`.
-- **DSL-50** Lists are accepted only without an operator, with `Eq`, and with `Ne`. Other operators reject lists and null.
+- **DSL-49** Go rejects null for a non-null column at compile time, and Rust does the same, and TypeScript does the same, and PHP returns `CONFIG`, and Python returns `CONFIG`; null is accepted only for nullable columns.
+- **DSL-50** Go rejects at compile time a list or null with an operator other than `Eq` and `Ne`, and Rust does the same, and TypeScript does the same, and PHP returns `CONFIG`, and Python returns `CONFIG`; lists are accepted only without an operator, with `Eq`, and with `Ne`.
 - **DSL-51** PHP, TypeScript and Python use their own null value, Go uses `orm.Null`, and Rust uses `Null`.
 - **DSL-52** Go methods use generic type parameters with the allowed value types of each column. Integer columns accept `int`, `int32`, `int64`, and slices of those types.
 - **DSL-53** An unexecuted model as the value renders `IN (SELECT …)`, or `NOT IN` with `Ne`. The model must add exactly one column with `addColumn<Col>()`; otherwise `CONFIG` is returned.

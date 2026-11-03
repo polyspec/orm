@@ -860,6 +860,22 @@ def _send(step: dict, call=None) -> None:
         )
 
 
+# The chain method prefix of each operator of markdown.send (DSL-50).
+OPERATOR_METHODS = {"eq_method": "eq_", "ne_method": "ne_", "gt_method": "gt_"}
+
+
+def _chain_value(wrapper: dict):
+    """The Python value of a wrapper for a chain method: an int, a nil, or a list of ints."""
+    ((kind, value),) = wrapper.items()
+    if kind == "int":
+        return int(value)
+    if kind == "nil":
+        return None
+    if kind == "array":
+        return [_chain_value(item) for item in value]
+    raise AssertionError(f"the parameter {json.dumps(wrapper)} has no chain value")
+
+
 def _query_slot(models, db, step: dict) -> None:
     """Runs the generated typed filter of the slot column of step. A temporal column's filter takes the text of its wrapper, the
     text form of the value (DBS-121); a host-value column's filter (HOST_FILTERS) takes the Python value of its wrapper: an int
@@ -867,6 +883,18 @@ def _query_slot(models, db, step: dict) -> None:
     path refuses it with the code the expect names. A text or bool wrapper reaches the filter unchanged, so the filter refuses it
     itself. A column or operator without a typed filter here is a defect of the recipe."""
     table, _, name = step["column"].partition(".")
+    if (
+        step["operator"] in OPERATOR_METHODS
+        or list(step["params"][0]) == ["array"]
+        or (list(step["params"][0]) == ["nil"] and name in HOST_FILTERS)
+    ):
+        # A chain method of an operator (DSL-50), or a list: the value goes to the dynamic attribute of the generated model, so
+        # the chain refuses what its operator does not take.
+        prefix = OPERATOR_METHODS.get(step["operator"], "")
+        getattr(models.Slots().connect(db), f"{prefix}{name}")(
+            _chain_value(step["params"][0])
+        ).gets()
+        return
     if step["operator"] == "like_contains":
         # The contains condition of the text column is the lk operator of the generated model, a dynamic attribute (DSL-29).
         # The wrapper's value goes unchanged, and a nil wrapper is the SQL NULL that the contains condition binds.
@@ -958,9 +986,10 @@ def _message_value(text: str):
     # A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
     if params == []:
         return []
-    if not isinstance(params, list) or len(params) != 1:
-        raise AssertionError(f"the statement message {text} holds no single parameter")
-    return params[0]
+    if not isinstance(params, list):
+        raise AssertionError(f"the statement message {text} holds no parameters")
+    # A list of several parameters (a list condition, DSL-50) is compared as the list.
+    return params[0] if len(params) == 1 else params
 
 
 def _validation_model(schema: Path):

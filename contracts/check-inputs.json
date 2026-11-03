@@ -3316,6 +3316,8 @@
       "inputs": [
         "packages/rust/orm/tests/dbspec_apply.rs",
         "packages/rust/orm/tests/common/plan_cases.rs",
+        "packages/rust/orm/tests/common/dbspec_probe.rs",
+        "packages/rust/testcase/src/lib.rs",
         "tests/dbspec/plan-cases.json",
         "tests/dbspec/stress.mts"
       ]

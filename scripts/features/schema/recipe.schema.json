@@ -2069,9 +2069,12 @@
           "operator": {
             "enum": [
               "eq",
-              "like_contains"
+              "like_contains",
+              "eq_method",
+              "ne_method",
+              "gt_method"
             ],
-            "description": "eq compares the column with the parameter; like_contains compares it with the pattern that contains the parameter (the transform of tests/bind/vectors.json)."
+            "description": "eq compares the column with the parameter through the chain method without an operator; like_contains compares it with the pattern that contains the parameter (the transform of tests/bind/vectors.json); eq_method, ne_method and gt_method call the chain method of the operator Eq, Ne or Gt."
           },
           "params": {
             "type": "array",

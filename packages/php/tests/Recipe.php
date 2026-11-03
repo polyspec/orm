@@ -1239,10 +1239,11 @@ final class Recipe
         if (is_array($params) && $params === []) {
             return [];
         }
-        if (!is_array($params) || count($params) !== 1) {
-            Assert::fail("the statement message $text holds no single parameter");
+        if (!is_array($params)) {
+            Assert::fail("the statement message $text holds no parameters");
         }
-        return $params[0];
+        // A list of several parameters (a list condition, DSL-50) is compared as the list.
+        return count($params) === 1 ? $params[0] : $params;
     }
 
     /**
@@ -1255,7 +1256,12 @@ final class Recipe
     private static function sendQuery(array $step, mixed $db): void
     {
         $column = $step['column'];
-        if ($step['operator'] === 'like_contains') {
+        $operatorPrefix = ['eq_method' => 'eq', 'ne_method' => 'ne', 'gt_method' => 'gt'][$step['operator']] ?? null;
+        if ($operatorPrefix !== null) {
+            // A chain method of an operator (DSL-50), which __call dispatches.
+            $method = $operatorPrefix . ucfirst(self::BIND_FILTERS[$column]
+                ?? Assert::fail("the column $column has no typed filter in the PHP cases"));
+        } elseif ($step['operator'] === 'like_contains') {
             // The contains condition of the text column is the lk operator of the generated model, which __call
             // dispatches (DSL-29).
             if ($column !== 'slots.text_value') {

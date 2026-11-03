@@ -11,11 +11,58 @@ use std::fmt::Display;
 use std::future::Future;
 use std::io::Write;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::Mutex;
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod sqlite_file;
 pub use sqlite_file::SqliteFile;
+
+/// The time a case allows for each step of its work (the Go testcase package's stepBudget). The MySQL stress plan applies its steps
+/// at 28 to 35 ms a step on the slowest CI runs, so 250 ms is several times the slowest step rate: it is an upper bound, and a stuck
+/// step is found by [`StallGuard`] long before.
+pub const STEP_BUDGET: Duration = Duration::from_millis(250);
+/// The time for the work around the steps, such as creating and dropping a database (the Go testcase package's fixedBudget).
+pub const FIXED_BUDGET: Duration = Duration::from_secs(60);
+
+/// The deadline of a case that applies `steps` steps one after another: [`STEP_BUDGET`] for each step plus [`FIXED_BUDGET`].
+pub fn step_budget(steps: usize) -> Duration {
+    STEP_BUDGET * u32::try_from(steps).expect("the step count fits u32") + FIXED_BUDGET
+}
+
+/// Ends work that reports no progress for `limit` (the Go testcase package's StallGuard). Each [`StallGuard::progressed`] call restarts the
+/// limit, so a long case that keeps applying steps is never cut off by it, while a stuck step is.
+pub struct StallGuard {
+    limit: Duration,
+    last: Mutex<Instant>,
+}
+
+impl StallGuard {
+    /// A guard whose limit starts now.
+    pub fn new(limit: Duration) -> Self {
+        Self { limit, last: Mutex::new(Instant::now()) }
+    }
+
+    /// Records one unit of progress, such as an applied step.
+    pub fn progressed(&self) {
+        *self.last.lock().expect("the stall guard lock is not poisoned") = Instant::now();
+    }
+
+    /// Polls `work` until it ends and returns its output. It returns an error, and drops `work`, when no progress came within the limit.
+    pub async fn run<T>(&self, work: impl Future<Output = T>) -> Result<T, String> {
+        let mut work = std::pin::pin!(work);
+        loop {
+            let due = *self.last.lock().expect("the stall guard lock is not poisoned") + self.limit;
+            let now = Instant::now();
+            if due <= now {
+                return Err(format!("no step was applied within {:?}", self.limit));
+            }
+            if let Ok(output) = tokio::time::timeout(due - now, work.as_mut()).await {
+                return Ok(output);
+            }
+        }
+    }
+}
 
 /// Deadline for a case that only computes in memory and reads repository files. Basis: the largest of such cases
 /// (parse and emit of the dbspec stress document) finishes within a few seconds, so a case over one minute is stuck.

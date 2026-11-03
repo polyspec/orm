@@ -1188,6 +1188,8 @@ struct SendStep {
     value: Filter,
     /// The contains condition (the like_contains operator) of the column, which the generated lk method runs (DSL-29).
     contains: bool,
+    /// The operator of the step, which selects the chain method of Eq, Ne or Gt (DSL-50).
+    operator: String,
 }
 
 /// The typed filter value of a statement: the text of a string column, the integer that the text of an integer column
@@ -1200,6 +1202,7 @@ enum Filter {
     I16(i16),
     I32(i32),
     I64(i64),
+    I64List(Vec<i64>),
     F64(f64),
     Bool(bool),
 }
@@ -1212,12 +1215,14 @@ impl SendStep {
                 column: String::new(),
                 value: Filter::Text(String::new()),
                 contains: false,
+                operator: String::new(),
             });
         }
         let operator = step["operator"].as_str().unwrap_or_default();
         let contains = match operator {
             "eq" => false,
             "like_contains" => true,
+            "eq_method" | "ne_method" | "gt_method" => false,
             _ => return Err(format!("operator {operator} has no typed filter in the Rust cases")),
         };
         let column = step["column"].as_str().unwrap_or_default();
@@ -1231,6 +1236,17 @@ impl SendStep {
         let (wrapper, body) = kind(&step["params"][0])?;
         let value = match column {
             _ if wrapper == "nil" => Filter::Nil,
+            "slots.i64_value" if wrapper == "array" => {
+                let items = body.as_array().ok_or_else(|| format!("the parameter {} holds no list", step["params"][0]))?;
+                let list = items
+                    .iter()
+                    .map(|item| {
+                        let text = item["int"].as_str().ok_or_else(|| format!("the list item {item} holds no int"))?;
+                        integer::<i64>(column, text)
+                    })
+                    .collect::<Result<Vec<i64>, String>>()?;
+                Filter::I64List(list)
+            }
             "slots.f64_value" => Filter::F64(float(column, wrapper, body)?),
             "slots.bool_value" => Filter::Bool(boolean(column, wrapper, body)?),
             "slots.bytes_value" => {
@@ -1247,7 +1263,7 @@ impl SendStep {
                 }
             }
         };
-        Ok(Self { begin: None, column: column.to_owned(), value, contains })
+        Ok(Self { begin: None, column: column.to_owned(), value, contains, operator: operator.to_owned() })
     }
 
     /// Runs the call on the connection `db`.
@@ -1262,7 +1278,14 @@ impl SendStep {
                 _ => unreachable!("the Rust cases exclude a contains wrapper of another kind"),
             };
         }
+        match (self.operator.as_str(), &self.value) {
+            ("eq_method", Filter::I64List(v)) => return bind_model::Slots::new().connect(db).eq_i64_value(v.clone()).gets().await.map(drop),
+            ("ne_method", Filter::I64List(v)) => return bind_model::Slots::new().connect(db).ne_i64_value(v.clone()).gets().await.map(drop),
+            ("gt_method", Filter::I64(v)) => return bind_model::Slots::new().connect(db).gt_i64_value(*v).gets().await.map(drop),
+            _ => {}
+        }
         match (self.column.as_str(), &self.value) {
+            ("slots.i64_value", Filter::I64List(v)) => bind_model::Slots::new().connect(db).i64_value(v.clone()).gets().await.map(drop),
             ("slots.time0_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time0_value(v.as_str()).gets().await.map(drop),
             ("slots.time3_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time3_value(v.as_str()).gets().await.map(drop),
             ("slots.time6_value", Filter::Text(v)) => bind_model::Slots::new().connect(db).time6_value(v.as_str()).gets().await.map(drop),
@@ -1354,7 +1377,9 @@ fn message_value(message: &Value) -> Result<Value, String> {
         // A statement with no parameter (a nil compared with eq is IS NULL, DSL-48) has the empty list as its message.
         Some([]) => Ok(Value::Array(Vec::new())),
         Some([only]) => Ok(only.clone()),
-        _ => Err(format!("the statement message {message} holds no one parameter")),
+        // A list of several parameters (a list condition, DSL-50) is compared as the list.
+        Some(several) => Ok(Value::Array(several.to_vec())),
+        None => Err(format!("the statement message {message} holds no parameters")),
     }
 }
 

@@ -366,8 +366,7 @@ impl Servers {
     }
 }
 
-/// Runs one probe: creates the database, runs the body within the deadline, and always
-/// drops it. Writes the start, result, and elapsed time, one line each.
+/// Runs one probe with the default deadline PROBE_DEADLINE. See [`run_probe_within`].
 pub async fn run_probe<T>(
     servers: &mut Servers,
     id: &str,
@@ -375,16 +374,29 @@ pub async fn run_probe<T>(
     index: usize,
     body: impl for<'c> FnOnce(&'c mut Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, String>> + 'c>>,
 ) -> Result<T, String> {
+    run_probe_within(servers, id, db, index, PROBE_DEADLINE, body).await
+}
+
+/// Runs one probe: creates the database, runs the body within `deadline`, and always
+/// drops it. A case that applies a number of steps passes its deadline from testcase::step_budget. Writes the start, result, and elapsed time, one line each.
+pub async fn run_probe_within<T>(
+    servers: &mut Servers,
+    id: &str,
+    db: &str,
+    index: usize,
+    deadline: Duration,
+    body: impl for<'c> FnOnce(&'c mut Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, String>> + 'c>>,
+) -> Result<T, String> {
     // The deadline of a probe case is the probe's own deadline plus the same time for creating and dropping its database.
-    let mut probe = polyspec_orm_testcase::start(id, PROBE_DEADLINE * 2);
+    let mut probe = polyspec_orm_testcase::start(id, deadline * 2);
     let session = servers.session(db, index);
     let name = session.name.clone();
     let (result, conn) = match servers.create(&session).await {
         Err(e) => (Err(format!("create: {e}")), None),
         Ok(mut conn) => {
-            let result = match tokio::time::timeout(PROBE_DEADLINE, body(&mut conn)).await {
+            let result = match tokio::time::timeout(deadline, body(&mut conn)).await {
                 Ok(result) => result,
-                Err(_) => Err(format!("exceeded {PROBE_DEADLINE:?}")),
+                Err(_) => Err(format!("exceeded {deadline:?}")),
             };
             (result, Some(conn))
         }
