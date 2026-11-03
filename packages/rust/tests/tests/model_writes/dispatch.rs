@@ -340,6 +340,9 @@ fn author_chain(db: &Db, where_: &Value, columns: &[String]) -> Result<Author, S
             author = match column.as_str() {
                 "seq" => author.add_column_seq(),
                 "name" => author.add_column_name(),
+                "aes_key_version" => author.add_column_aes_key_version(),
+                "aes_hex_email" => author.add_column_aes_hex_email(),
+                "aes_hex_phone" => author.add_column_aes_hex_phone(),
                 other => return Err(format!("Author column {other} has no recipe column")),
             };
         }
@@ -377,12 +380,23 @@ async fn author_query(db: &Db, step: &Value) -> Result<Value, String> {
     Ok(json!({ "rows": rows }))
 }
 
+/// The recipe wrapper of a nullable text cell.
+fn optional_text(cell: Option<&str>) -> Value {
+    match cell {
+        Some(text) => json!({ "text": text }),
+        None => json!({ "null": "text" }),
+    }
+}
+
 fn author_field(row: &Author, column: &str) -> Result<Value, String> {
     match column {
         "seq" => Ok(json!({ "int": row.get_seq().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
         "read_count" => Ok(json!({ "int": row.get_read_count().map_err(fail)?.to_string() })),
         "user_seq" => Ok(json!({ "int": row.get_user_seq().map_err(fail)?.to_string() })),
+        "aes_key_version" => Ok(json!({ "int": row.get_aes_key_version().map_err(fail)?.to_string() })),
+        "aes_hex_email" => Ok(optional_text(row.get_aes_hex_email().map_err(fail)?)),
+        "aes_hex_phone" => Ok(optional_text(row.get_aes_hex_phone().map_err(fail)?)),
         other => Err(format!("Author column {other} has no recipe getter")),
     }
 }

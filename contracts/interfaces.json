@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:4ff04c06c3237042a66d89f102febbebf06df378f63dc1e5f8bc9ff215503f60",
-    "php": "sha256:0a4347b4cfcc2300cda6dfd1777adf6853cd40990bd6b1dd447fdcd8b7d8f822",
-    "rust": "sha256:527aceb9485a7e1db9f5e9deccfdc378d373b0406cd1526d1ef1efe845a3e6fa",
-    "typescript": "sha256:1d01e70bed9ad7a795df9803b091a96503ff6b3fb6d6cd6a01c4453a6717ba93",
-    "python": "sha256:42ae870355ca5fa2e87e4117772fedf675210575c0ab0da6fa966ee4f6fc80db"
+    "go": "sha256:fe2e69495872088e2141bc9fffc764ce1eac59c0e52286431aab9e85679aa34a",
+    "php": "sha256:18ffbe75e39282754e0dd5ab1d761fcd6b29c05d39523f389838b5c387581cb2",
+    "rust": "sha256:883ce1c9c0521690d7d541b35b046849d07a89d5f889100977c6ba9367d37aa1",
+    "typescript": "sha256:d7a339056bc452859c661705eed99d1d06b242ea5926f97612139ae6192bd147",
+    "python": "sha256:92e3aa6ecdd823eb7cf145e54a288e9305a80b9680b0b030602fb051ef39b980"
   },
   "native_surfaces": [
     {
@@ -200,7 +200,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:87d2b186ab1371e16258c3694142f442bfa052e98b39b5191831bad105a7c0f8",
+      "symbol_hash": "sha256:15064a62867c10242b0ae7e5c204e90fc6a8eaff0a88aab4aa568c8082e81c71",
       "rules": [
         "Model.connect",
         "Model.and",
@@ -217,6 +217,7 @@
         "Model.getSum",
         "Model.getAvg",
         "Model.getsPage",
+        "Model.getPagePlanSteps",
         "Model.getQuery",
         "Model.create",
         "Model.creates",
@@ -334,6 +335,7 @@
         "getSum",
         "getAvg",
         "getsPage",
+        "getPagePlanSteps",
         "getQuery",
         "create",
         "creates",
@@ -1234,6 +1236,47 @@
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsPage",
           "signature": "public function getsPage(int $page, int $perPage): Polyspec\\Orm\\Page"
+        }
+      }
+    },
+    {
+      "id": "Model.getPagePlanSteps",
+      "for": "entity",
+      "inputs": [
+        "PagePerPage"
+      ],
+      "output": "QueryPlanStep[]",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "OPERATOR_NOT_ALLOWED",
+        "CAPABILITY_UNSUPPORTED"
+      ],
+      "state": "The model is not changed; the same model can run again",
+      "native": {
+        "go": {
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetPagePlanSteps",
+          "signature": "receiver=*{Entity}Model func(page, perPage int) ([]orm.QueryPlanStep, error)"
+        },
+        "php": {
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getPagePlanSteps",
+          "signature": "public function getPagePlanSteps(int $page, int $perPage): array"
+        },
+        "rust": {
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_page_plan_steps",
+          "signature": "pub async fn get_page_plan_steps(&self, page: u32, per_page: u32) -> polyspec_orm::Result<Vec<polyspec_orm::QueryPlanStep>>"
+        },
+        "typescript": {
+          "symbol": "packages/ts/src/model.ts::Model.getPagePlanSteps",
+          "signature": "public async getPagePlanSteps(page: number, perPage: number): Promise<QueryPlanStep[]>"
+        },
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_page_plan_steps",
+          "signature": "def get_page_plan_steps(self, page: int, per_page: int) -> list[dict]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getPagePlanSteps",
+          "signature": "public function getPagePlanSteps(int $page, int $perPage): array"
         }
       }
     },
