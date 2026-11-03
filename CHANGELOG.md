@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CFG-28 states that a schema change through PgBouncer is followed by `RECONNECT`, since a model connection keeps its named statements.
 - A catalog session on PostgreSQL sends `DEALLOCATE ALL` right after its `BEGIN` in Go, Rust, TypeScript and Python, so through PgBouncer it reads and writes a table after a schema change changed a statement's types (CFG-28).
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.
