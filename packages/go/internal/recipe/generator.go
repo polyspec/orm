@@ -29,7 +29,11 @@ type generatorOptions struct {
 		Output string `json:"output"`
 		Scan   string `json:"scan"`
 	} `json:"before"`
-	Sources map[string]map[string]string `json:"sources"`
+	Sources       map[string]map[string]string `json:"sources"`
+	SchemaReplace *struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	} `json:"schema_replace"`
 }
 
 // generatorExpect is the expect of a generator.generate step: the names of the generated methods that must be present and
@@ -40,6 +44,7 @@ type generatorExpect struct {
 		Excludes []string `json:"excludes"`
 	} `json:"value"`
 	Error    string `json:"error"`
+	Message  string `json:"message"`
 	Position *struct {
 		Line   int `json:"line"`
 		Column int `json:"column"`
@@ -69,6 +74,9 @@ func checkGenerator(t *testing.T, dir string, s step, database string) error {
 		}
 		if code := generatorErrorCode(err); code != want.Error {
 			return fmt.Errorf("error code %q, want %s: %w", code, want.Error, err)
+		}
+		if !strings.Contains(err.Error(), want.Message) {
+			return fmt.Errorf("error does not contain %q: %w", want.Message, err)
 		}
 		if want.Position != nil {
 			m := parsePosition.FindStringSubmatch(err.Error())
@@ -102,7 +110,7 @@ var parsePosition = regexp.MustCompile(`\.go:(\d+):(\d+)`)
 
 // generatorErrorCode reads the code of docs/spec/errors.yaml from a refusal of the scan (DSL-44, DSL-152).
 func generatorErrorCode(err error) string {
-	var refused *generator.ScanRefusedError
+	var refused *generator.RefusedError
 	if errors.As(err, &refused) {
 		return refused.Code
 	}
@@ -138,6 +146,9 @@ func generateScanned(t *testing.T, dir, schema string, o generatorOptions) (map[
 	owned, err := documentTexts(dir, []string{schema})
 	if err != nil {
 		return nil, err
+	}
+	if o.SchemaReplace != nil {
+		owned[0] = strings.ReplaceAll(owned[0], o.SchemaReplace.From, o.SchemaReplace.To)
 	}
 	external, err := documentTexts(dir, o.Used)
 	if err != nil {
@@ -233,6 +244,7 @@ func generatedMethods(out string) (map[string]bool, error) {
 			if receiverName(fn.Recv.List[0].Type) != model {
 				continue
 			}
+			names[table] = true
 			names[table+"."+methodName(fn.Name.Name)] = true
 		}
 	}

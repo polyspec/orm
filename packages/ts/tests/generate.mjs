@@ -193,19 +193,6 @@ caseTest('generate', PROCESS, async () => {
       check(declares('Card', 'auditSeq'), 'Card declares auditSeq, the prefix of ix_card_audit, without a scanned call');
       check(declares('CardHistory', 'seq'), 'CardHistory declares seq, the prefix of ix_card_history_row, without a scanned call');
     }
-    // A model method name cannot be a column name: since restore() exists, a restore column is rejected too.
-    const reservedSchema = await setOf(join(work, 'reserved-set'), [['reserved.dbs', 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n']]);
-    const reserved = run('gen', '--set', reservedSchema, '--out', join(work, 'reserved'));
-    check(reserved.status !== 0 && reserved.stderr.includes('column name is a reserved method name: restore'), `a column named restore: ${reserved.status} ${reserved.stderr}`);
-    // A column name that holds an operator or connector segment is rejected, and a name that only contains one as text is not.
-    for (const [column, segment] of [['price_gt_limit', 'gt'], ['with_tax', 'with']]) {
-      const segmentSchema = await setOf(join(work, `segment-${column}`), [['segment.dbs', `dbspec 1 segment\n\ntable thing {\n  id i64 identity\n  ${column} i32\n  primary key (id)\n}\n`]]);
-      const refused = run('gen', '--set', segmentSchema, '--out', join(work, `segment-${column}-out`));
-      check(refused.status !== 0 && refused.stderr.includes(`column name may not contain the segment "${segment}": ${column}`), `a column named ${column}: ${refused.status} ${refused.stderr}`);
-    }
-    const acceptedSchema = await setOf(join(work, 'segment-min-price'), [['segment.dbs', 'dbspec 1 segment\n\ntable thing {\n  id i64 identity\n  min_price i32\n  primary key (id)\n}\n']]);
-    const accepted = run('gen', '--set', acceptedSchema, '--out', join(work, 'segment-min-price-out'));
-    check(accepted.status === 0, `a column named min_price: ${accepted.status} ${accepted.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });
   }
@@ -278,20 +265,6 @@ void rawPrice;
     assert.match(diagnostics[0], /^\.runtime\/run\/ts-generated-getter-[A-Za-z0-9_-]+\/negative\.ts\(4,7\): error TS2322: Type '\(v0: number \| Model \| readonly number\[\] \| ValueFunction\) => Item' is not assignable to type 'number'\.$/);
   } finally {
     await rm(consumerDir, { recursive: true, force: true });
-  }
-});
-
-// Requirements: DSL-129.
-caseTest('generated method collision', PROCESS, async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'orm-ts-gen-collision-'));
-  try {
-    const document = 'dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n';
-    const set = await setOf(join(dir, 'set'), [['collision.dbs', document]]);
-    const result = run('gen', '--set', set, '--out', join(dir, 'model'));
-    assert.notEqual(result.status, 0, result.stderr);
-    assert.match(result.stderr, /item\.sum_amount: the condition method sumAmount collides with a generated method of item/);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
   }
 });
 

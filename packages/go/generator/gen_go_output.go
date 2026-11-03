@@ -26,14 +26,17 @@ func (e *ScannedSourceError) Error() string {
 	return "the scanned packages do not compile with the generated models:\n" + listErrors(e.Errors)
 }
 
-// ScanRefusedError is a refusal of the scan with its code of
-// docs/spec/errors.yaml (docs/spec/dsl.md, DSL-44 and DSL-152).
-type ScanRefusedError struct {
+// RefusedError is a refusal of the generator with its code of
+// docs/spec/errors.yaml: a scan that does not parse or leaves a getter
+// unattached (docs/spec/dsl.md, DSL-44 and DSL-152), and CONFIG for a name that
+// the chain rules or the column name rules refuse (DSL-37, DSL-116, DSL-127,
+// DSL-129 and DSL-130).
+type RefusedError struct {
 	Code string
 	Text string
 }
 
-func (e *ScanRefusedError) Error() string {
+func (e *RefusedError) Error() string {
 	return e.Code + ": " + e.Text
 }
 
