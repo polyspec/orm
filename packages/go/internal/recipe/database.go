@@ -90,6 +90,7 @@ type databaseStep struct {
 	Namespace string                     `json:"namespace"`
 	Binds     json.RawMessage            `json:"binds"`
 	PageWith  json.RawMessage            `json:"page_with"`
+	Other     json.RawMessage            `json:"other"`
 	Seq       int64                      `json:"seq"`
 	Expect    map[string]json.RawMessage `json:"expect"`
 	Schema    json.RawMessage            `json:"schema"`
@@ -728,8 +729,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if len(s.PageWith) > 0 {
 			var with struct {
-				OrderBy    []string `json:"order_by"`
-				ColumnName *string  `json:"column_name"`
+				OrderBy          []string `json:"order_by"`
+				ColumnName       *string  `json:"column_name"`
+				PrimaryKey       []string `json:"primary_key"`
+				Limit            *int     `json:"limit"`
+				ResultColumnName *string  `json:"result_column_name"`
+				DropLastCell     bool     `json:"drop_last_cell"`
+				FillLastCell     *struct {
+					Fill  string `json:"fill"`
+					Count int    `json:"count"`
+				} `json:"fill_last_cell"`
 			}
 			if err := json.Unmarshal(s.PageWith, &with); err != nil {
 				return outcome{}, err
@@ -738,6 +747,27 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			if with.ColumnName != nil {
 				page.Metadata.Columns = slices.Clone(page.Metadata.Columns)
 				page.Metadata.Columns[0].Name = *with.ColumnName
+			}
+			if with.PrimaryKey != nil {
+				page.Metadata.PrimaryKey = with.PrimaryKey
+			}
+			if with.Limit != nil {
+				page.Limit = *with.Limit
+			}
+			if with.ResultColumnName != nil {
+				page.Result.Columns = slices.Clone(page.Result.Columns)
+				page.Result.Columns[0].Name = *with.ResultColumnName
+			}
+			if with.DropLastCell || with.FillLastCell != nil {
+				page.Result.Rows = slices.Clone(page.Result.Rows)
+				row := slices.Clone(page.Result.Rows[0])
+				if with.DropLastCell {
+					row = row[:len(row)-1]
+				}
+				if with.FillLastCell != nil {
+					row[len(row)-1] = strings.Repeat(with.FillLastCell.Fill, with.FillLastCell.Count)
+				}
+				page.Result.Rows[0] = row
 			}
 		}
 		snapshot, err := orm.CatalogSnapshotFromPage(page, s.Index)
@@ -762,6 +792,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": snapshot.snapshot.Revision()}}}, nil
+	case "catalog.revision_compare":
+		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		other, err := boundAPI[snapshotOf](s.Other, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		revision := snapshot.snapshot.Revision()
+		return outcome{fields: map[string]any{"json": map[string]any{"length": len(revision), "differs": revision != other.snapshot.Revision()}}}, nil
 	case "catalog.row_cells":
 		snapshot, err := boundAPI[snapshotOf](s.Snapshot, c)
 		if err != nil {
@@ -1626,6 +1667,8 @@ func plain(value any, nativeType, database string) (any, error) {
 		return map[string]any{"null": true}, nil
 	case int64:
 		return map[string]any{"int": strconv.FormatInt(v, 10)}, nil
+	case uint64:
+		return map[string]any{"int": strconv.FormatUint(v, 10)}, nil
 	case bool:
 		return map[string]any{"bool": v}, nil
 	case float64:

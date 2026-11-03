@@ -714,6 +714,10 @@ const OPS = {
     const snapshot = stepArgument(s.snapshot, context);
     return { value: { text: snapshot.revision } };
   },
+  async 'catalog.revision_compare'(s, context) {
+    const { revision } = stepArgument(s.snapshot, context);
+    return { json: { length: revision.length, differs: revision !== stepArgument(s.other, context).revision } };
+  },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
   },
@@ -757,6 +761,18 @@ const OPS = {
     if (s.page_with?.column_name !== undefined) {
       const [first, ...rest] = page.metadata.columns;
       page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
+    if (s.page_with?.primary_key !== undefined) page.metadata = { ...page.metadata, primaryKey: s.page_with.primary_key };
+    if (s.page_with?.limit !== undefined) page.limit = s.page_with.limit;
+    if (s.page_with?.result_column_name !== undefined) {
+      const [first, ...rest] = page.result.columns;
+      page.result = { ...page.result, columns: [{ ...first, name: s.page_with.result_column_name }, ...rest] };
+    }
+    if (s.page_with?.drop_last_cell === true || s.page_with?.fill_last_cell !== undefined) {
+      const [first, ...rest] = page.result.rows;
+      const row = s.page_with.drop_last_cell === true ? first.slice(0, -1) : [...first];
+      if (s.page_with.fill_last_cell !== undefined) row[row.length - 1] = s.page_with.fill_last_cell.fill.repeat(s.page_with.fill_last_cell.count);
+      page.result = { ...page.result, rows: [row, ...rest] };
     }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };

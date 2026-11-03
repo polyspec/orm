@@ -15122,11 +15122,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_decimals.rs",
-          "id": "finite_grid_decimals_preserve_precision_and_scale"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -15160,6 +15155,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::grid_decimal_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "grid_decimal_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "grid_decimal_values"
         }
       ]
     },
@@ -15171,11 +15181,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_numbers.rs",
-          "id": "grid_numbers_preserve_native_bits_and_unsigned_range"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -15199,6 +15204,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::grid_number_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "grid_number_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "grid_number_values"
         }
       ]
     },
@@ -15446,11 +15466,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_preserves_immutable_values_and_key_order"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15464,6 +15479,21 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_key_order"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_key_order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_key_order"
         }
       ]
     },
@@ -15485,11 +15515,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_rejects_invalid_identity_and_distinguishes_conflicts"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15503,8 +15528,42 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_rejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_rejected"
         }
       ]
+    },
+    {
+      "id": "rust-row-snapshot-cell-forms",
+      "kind": "feature",
+      "requirements": [
+        "INT-109a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_snapshot.rs",
+          "id": "row_baseline_rejects_what_only_the_rust_forms_hold"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-row-update-verification-rejects-coercion-and-unrequested-changes",
@@ -15524,11 +15583,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15542,6 +15596,21 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_update_verification"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_update_verification"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_update_verification"
         }
       ]
     },
@@ -15571,6 +15640,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_update_verification"
         },
         {
           "implementation": "go",

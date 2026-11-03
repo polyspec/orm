@@ -2509,6 +2509,12 @@ def _op_revision(step: dict, context: dict) -> dict:
     return {"value": {"text": _step_argument(step["snapshot"], context).revision}}
 
 
+def _op_revision_compare(step: dict, context: dict) -> dict:
+    revision = _step_argument(step["snapshot"], context).revision
+    other = _step_argument(step["other"], context).revision
+    return {"json": {"length": len(revision), "differs": revision != other}}
+
+
 def _op_row_cells(step: dict, context: dict) -> dict:
     snapshot = _step_argument(step["snapshot"], context)
     types = [column.native_type for column in snapshot.metadata.columns]
@@ -2555,6 +2561,39 @@ def _op_row_snapshot(step: dict, context: dict) -> dict:
             columns = [first, *page.metadata.columns[1:]]
             page = dataclasses.replace(
                 page, metadata=dataclasses.replace(page.metadata, columns=columns)
+            )
+        with_ = step["page_with"]
+        if "primary_key" in with_:
+            page = dataclasses.replace(
+                page,
+                metadata=dataclasses.replace(
+                    page.metadata, primary_key=with_["primary_key"]
+                ),
+            )
+        if "limit" in with_:
+            page = dataclasses.replace(page, limit=with_["limit"])
+        if "result_column_name" in with_:
+            first = dataclasses.replace(
+                page.result.columns[0], name=with_["result_column_name"]
+            )
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, columns=[first, *page.result.columns[1:]]
+                ),
+            )
+        if "drop_last_cell" in with_ or "fill_last_cell" in with_:
+            row = list(page.result.rows[0])
+            if "drop_last_cell" in with_:
+                row.pop()
+            if "fill_last_cell" in with_:
+                fill = with_["fill_last_cell"]
+                row[-1] = fill["fill"] * fill["count"]
+            page = dataclasses.replace(
+                page,
+                result=dataclasses.replace(
+                    page.result, rows=[row, *page.result.rows[1:]]
+                ),
             )
     else:
         page = _step_argument(step["page"], context)
@@ -3782,6 +3821,7 @@ _DATABASE_OPS = {
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,
     "catalog.revision": _op_revision,
+    "catalog.revision_compare": _op_revision_compare,
     "catalog.row_cells": _op_row_cells,
     "model.read_bind_cell": _op_read_bind_cell,
     "catalog.current_namespace": _op_current_namespace,

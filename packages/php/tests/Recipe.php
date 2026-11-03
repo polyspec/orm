@@ -2666,6 +2666,12 @@ final class Recipe
             case 'catalog.revision':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 return ['value' => ['text' => $snapshot->revision()]];
+            case 'catalog.revision_compare':
+                $revision = self::stepArgument($s['snapshot'], $context)->revision();
+                return ['json' => [
+                    'length' => strlen($revision),
+                    'differs' => $revision !== self::stepArgument($s['other'], $context)->revision(),
+                ]];
             case 'catalog.row_cells':
                 $snapshot = self::stepArgument($s['snapshot'], $context);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2777,6 +2783,44 @@ final class Recipe
                             ),
                             $page->result,
                             $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
+                    $with = $s['page_with'];
+                    if (isset($with['primary_key'])) {
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $page->metadata->columns,
+                                $with['primary_key'],
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
+                    if (isset($with['limit']) || isset($with['result_column_name']) || isset($with['drop_last_cell']) || isset($with['fill_last_cell'])) {
+                        $columns = $page->result->columns;
+                        $rows = $page->result->rows;
+                        if (isset($with['result_column_name'])) {
+                            $columns[0] = $with['result_column_name'];
+                        }
+                        if (isset($with['drop_last_cell'])) {
+                            array_pop($rows[0]);
+                        }
+                        if (isset($with['fill_last_cell'])) {
+                            $rows[0][array_key_last($rows[0])] = str_repeat($with['fill_last_cell']['fill'], $with['fill_last_cell']['count']);
+                        }
+                        $page = new CatalogTablePage(
+                            $page->metadata,
+                            new CatalogResult($columns, $rows),
+                            $with['limit'] ?? $page->limit,
                             $page->offset,
                             $page->orderBy,
                             $page->hasMore,
@@ -4410,6 +4454,11 @@ final class Recipe
         }
         if (is_bool($value)) {
             return ['bool' => $value];
+        }
+        if (is_string($value) && $nativeType === null && ctype_digit($value) && strlen($value) >= 19
+            && filter_var($value, FILTER_VALIDATE_INT) === false) {
+            // PHP holds a MySQL unsigned value beyond its integer as its digits (INT-102).
+            return ['int' => $value];
         }
         if (is_string($value) && preg_match('/binary|bytea|blob/i', $nativeType ?? '') === 1) {
             return ['bytes_hex' => bin2hex($value)];
