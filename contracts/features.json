@@ -4432,6 +4432,7 @@
       ],
       "parity": [
         "generator",
+        "php-generator-scan-vector-in-both-php-modes",
         "dynamic-model-new-output-name-rejects-stored-column",
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
@@ -4439,7 +4440,6 @@
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods",
-        "mechanically-derived-chain-method-names",
         "static-model-chain-generation",
         "dynamic-model-chain-resolution",
         "dsl-50-operator-value-shapes",
@@ -4454,6 +4454,7 @@
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
+        "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/ts/tests/model-new-output-name.mjs",
@@ -4462,7 +4463,6 @@
         "packages/ts/tests/chain-types.mjs",
         "packages/go/model/chain_types_test.go",
         "packages/go/generator/gen_go_check_test.go",
-        "packages/go/generator/gen_go_key_prefix_test.go",
         "packages/go/generator/gen_go_output_test.go",
         "packages/go/generator/gen_go_output_internal_test.go",
         "packages/go/generator/gen_go_packages_test.go",
@@ -4673,6 +4673,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
+              "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
               "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
               "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
             ],
@@ -9222,7 +9223,10 @@
         "coverage-constraints-and-relations-constraint-errors",
         "constraints_and_relations-mysql",
         "constraints_and_relations-postgres",
-        "constraints_and_relations-sqlite"
+        "constraints_and_relations-sqlite",
+        "immutable_write-mysql",
+        "immutable_write-postgres",
+        "immutable_write-sqlite"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -9232,7 +9236,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+        "contracts/fixtures/constraints_and_relations/constraints_and_relations.json",
+        "contracts/fixtures/immutable_write/immutable_write.json"
       ],
       "tests": [
         "packages/go/engine/planner/soft_delete_test.go",

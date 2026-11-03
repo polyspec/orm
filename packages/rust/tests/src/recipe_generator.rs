@@ -15,7 +15,7 @@ pub fn check(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
     let n = NEXT.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!("orm-recipe-generator-{}-{n}", std::process::id()));
     let result = generate(step, dir, &root);
-    let outcome = if result.is_err() && root.join("model").exists() { Err("a refused generation wrote its output".to_string()) } else { compare(want, result) };
+    let outcome = if result.is_err() && root.join("model").exists() { Err("a refused generation wrote its output".to_string()) } else { compare(want, result).and_then(|()| compare_text(want, &root)) };
     std::fs::remove_dir_all(&root).map_err(|e| format!("remove {}: {e}", root.display()))?;
     outcome
 }
@@ -51,6 +51,29 @@ fn compare(want: &Value, result: Result<BTreeSet<String>, String>) -> Result<(),
     for name in want["value"]["excludes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
         if names.contains(name) {
             return Err(format!("generated code declares {name}"));
+        }
+    }
+    Ok(())
+}
+
+/// Compares the generated files of the set with the texts of the expect.
+fn compare_text(want: &Value, root: &Path) -> Result<(), String> {
+    let wanted = &want["value"]["text"];
+    if wanted.is_null() {
+        return Ok(());
+    }
+    let mut text = String::new();
+    for entry in std::fs::read_dir(root.join("model")).map_err(|e| e.to_string())? {
+        text.push_str(&std::fs::read_to_string(entry.map_err(|e| e.to_string())?.path()).map_err(|e| e.to_string())?);
+    }
+    for part in wanted["includes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if !text.contains(part) {
+            return Err(format!("generated text lacks {part}"));
+        }
+    }
+    for part in wanted["excludes"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        if text.contains(part) {
+            return Err(format!("generated text holds {part}"));
         }
     }
     Ok(())

@@ -73,6 +73,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/ConstraintsAndRelationsRecipeTest
 require_once dirname(__DIR__, 2) . '/php/tests/CatalogConnectionSqliteOnlyRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionsRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AuditTriggersRecipeTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/ImmutableWriteRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CompositeKeysRecipeTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/GeneratorScanTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DbspecRulesRecipeTest.php';

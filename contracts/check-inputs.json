@@ -4861,7 +4861,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
+        "packages/go/orm/recipe_immutable_write_test.go",
         "packages/go/internal/recipe/recipe.go",
         "packages/go/internal/recipe/database.go"
       ]
@@ -4874,9 +4876,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
         "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
         "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+        "packages/rust/tests/tests/immutable_write_mysql.rs",
+        "packages/rust/tests/tests/immutable_write_postgres.rs",
+        "packages/rust/tests/tests/immutable_write_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
         "packages/rust/tests/Cargo.toml"
       ]
@@ -4889,9 +4895,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/ts/tests/constraints_and_relations-mysql.test.mjs",
         "packages/ts/tests/constraints_and_relations-postgres.test.mjs",
         "packages/ts/tests/constraints_and_relations-sqlite.test.mjs",
+        "packages/ts/tests/immutable_write-mysql.test.mjs",
+        "packages/ts/tests/immutable_write-postgres.test.mjs",
+        "packages/ts/tests/immutable_write-sqlite.test.mjs",
         "packages/ts/tests/recipe.mjs"
       ]
     },
@@ -4903,9 +4913,13 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/python/tests/test_constraints_and_relations_mysql.py",
         "packages/python/tests/test_constraints_and_relations_postgres.py",
         "packages/python/tests/test_constraints_and_relations_sqlite.py",
+        "packages/python/tests/test_immutable_write_mysql.py",
+        "packages/python/tests/test_immutable_write_postgres.py",
+        "packages/python/tests/test_immutable_write_sqlite.py",
         "packages/python/tests/recipe.py"
       ]
     },
@@ -4918,7 +4932,9 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "packages/php/tests/ImmutableWriteRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
         "packages/php/tests/bootstrap.php"
@@ -4934,9 +4950,12 @@
       ],
       "inputs": [
         "contracts/fixtures/constraints_and_relations/**",
+        "contracts/fixtures/immutable_write/**",
         "packages/php-ext/tests/ConstraintsAndRelationsRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ImmutableWriteRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ConstraintsAndRelationsRecipeTest.php",
+        "packages/php/tests/ImmutableWriteRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php"
       ]

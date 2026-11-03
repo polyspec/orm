@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0dd65a602683f8bfb4cbaadefb7e106a2d53ffae13c06310241bd2c116ea1eda -->
+<!-- source-sha256: b23b04f57fb3242ee1024dd7fe7926a218534ad98bb71353fd5d4cfb1d0d1573 -->
 # 변경 이력
 
 ## Unreleased
 
+- immutable table의 거부는 recipe `immutable_write`이다(DBS-84). update와 delete는 `DRIVER`로 실패하고, 메시지는 `table refused_row is immutable`을 담으며, driver 원인이 남고, 이후 읽기는 저장된 값을 돌려준다. op의 outcome은 `message_holds`와 `driver_cause`를 받는다. delete는 이전에 어느 runtime에서도 검사하지 않았다. (#T334-3-4-16)
+- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
 - recipe `schema_install`은 install이 밝히는 차이를 담는다. 모든 op의 outcome이 `message_suffix`를 받고, `install_external_drift`는 메시지가 `column user.coverage_missing does not exist`로 끝나기를 기대한다. `coverageItemsOf`를 읽던 `CoverageSchemaInstallNativeTest`의 세 시험은 지웠고, 그 recipe와 `SchemaSetTest`가 담는다. (#T334-3-4-15)
 - `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
