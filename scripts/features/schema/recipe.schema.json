@@ -794,6 +794,7 @@
             "dsn.connect",
             "dsn.sqlite_file",
             "markdown.connect",
+            "markdown.session",
             "keyring.versions",
             "dbspec.introspect_sqlite",
             "dbspec.apply_fault",
@@ -897,7 +898,16 @@
             "db.notify",
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
-            "utils.groups"
+            "utils.groups",
+            "dbspec.plan",
+            "dbspec.connect",
+            "dbspec.exec",
+            "dbspec.other_database",
+            "dbspec.apply",
+            "dbspec.recover",
+            "dbspec.rollback",
+            "dbspec.finalize",
+            "dbspec.schema"
           ]
         }
       },
@@ -985,6 +995,9 @@
         },
         {
           "$ref": "#/$defs/ops/markdown.send"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.session"
         },
         {
           "$ref": "#/$defs/ops/model.assign"
@@ -1222,6 +1235,33 @@
         },
         {
           "$ref": "#/$defs/ops/utils.groups"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.plan"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.exec"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.other_database"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.recover"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.rollback"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.finalize"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.schema"
         }
       ]
     },
@@ -1309,6 +1349,9 @@
               },
               "connection": {
                 "$ref": "#/$defs/name"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
               }
             }
           }
@@ -1637,11 +1680,7 @@
           "expect": {
             "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
             "type": "object",
-            "required": [
-              "mysql",
-              "postgres",
-              "sqlite"
-            ],
+            "minProperties": 1,
             "additionalProperties": false,
             "properties": {
               "mysql": {
@@ -1655,6 +1694,19 @@
               }
             }
           }
+        }
+      },
+      "markdown.session": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "replies", "messages", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.session" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "replies": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener answers, in order, one for each line it receives." },
+          "messages": { "type": "array", "items": { "type": "string" }, "description": "The lines that the listener must have received when the connection closes." },
+          "expect": { "$ref": "#/$defs/expect" }
         }
       },
       "markdown.connect": {
@@ -1738,7 +1790,7 @@
         }
       },
       "dbspec.apply_fault": {
-        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. Statements of fail_statements fail in the call, and stop_on_applied stops the call at its first applied event. The result is the code of the apply error, its failure and its cleanup errors (PLN-92, PLN-93, PLN-96, PLN-106).",
         "type": "object",
         "required": [
           "op",
@@ -1773,6 +1825,32 @@
             "type": "integer",
             "minimum": 1
           },
+          "fail_statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "statement",
+                "message"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "statement": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sqlite_result": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "stop_on_applied": {
+            "type": "string"
+          },
           "expect": {
             "type": "object",
             "required": [
@@ -1782,16 +1860,27 @@
             "properties": {
               "none": {
                 "type": "object",
-                "required": [
-                  "code"
-                ],
                 "additionalProperties": false,
                 "properties": {
                   "code": {
                     "enum": [
                       "verify",
-                      "drift"
+                      "drift",
+                      "locked",
+                      "chain"
                     ]
+                  },
+                  "failure_ends_with": {
+                    "type": "string"
+                  },
+                  "failure": {
+                    "type": "string"
+                  },
+                  "cleanup": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "history_state": {
                     "type": "string"
@@ -3125,11 +3214,23 @@
             "properties": {
               "begin": true
             }
+          },
+          {
+            "required": [
+              "surface"
+            ],
+            "properties": {
+              "surface": true
+            }
           }
         ],
         "properties": {
           "op": {
             "const": "markdown.send"
+          },
+          "surface": {
+            "enum": ["audit", "isolation", "timeout_ms", "get_query", "subscribe", "lock", "set_local", "local", "backend_waiting_for_lock", "privileges", "aes_status", "aes_rotate", "schema_install", "schema_evolution", "schema_exists"],
+            "description": "A public call that has no form on a markdown connection (DIA-183 to DIA-189), run in place of a statement."
           },
           "column": {
             "type": "string",
@@ -4288,6 +4389,25 @@
             "type": "object",
             "required": [
               "op",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
               "unconnected",
               "model"
             ],
@@ -4958,6 +5078,22 @@
         "properties": {
           "op": {
             "const": "events.fail_subscriber"
+          },
+          "refusal": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -6257,6 +6393,11 @@
         "properties": {
           "op": {
             "const": "catalog.reconnect"
+          },
+          "user_from_database": {
+            "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
+            "type": "string",
+            "minLength": 1
           }
         }
       },
@@ -7052,6 +7193,9 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },
@@ -7099,6 +7243,536 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.plan": {
+        "type": "object",
+        "required": [
+          "op",
+          "lines",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.plan"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          }
+        }
+      },
+      "dbspec.connect": {
+        "type": "object",
+        "required": [
+          "op",
+          "as"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.connect"
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          },
+          "through": {
+            "description": "pooler connects through ORM_TEST_PGBOUNCER_DSN; a missing variable fails the case.",
+            "const": "pooler"
+          }
+        }
+      },
+      "dbspec.exec": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "sql"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.exec"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "sql": {
+            "$ref": "#/$defs/sql"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.other_database": {
+        "type": "object",
+        "required": [
+          "op",
+          "as",
+          "steps"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.other_database"
+          },
+          "as": {
+            "$ref": "#/$defs/name"
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/step"
+            }
+          }
+        }
+      },
+      "dbspec.apply": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds, compared without case.",
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
+            "type": "object",
+            "required": [
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "every": {
+                "const": true
+              },
+              "stop": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.recover": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.recover"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds, compared without case.",
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
+            "type": "object",
+            "required": [
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "every": {
+                "const": true
+              },
+              "stop": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.rollback": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.rollback"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds, compared without case.",
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
+            "type": "object",
+            "required": [
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "every": {
+                "const": true
+              },
+              "stop": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.finalize": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "plans",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.finalize"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "plans": {
+            "description": "The bound plans of dbspec.plan, in chain order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "count": {
+            "description": "The event kinds that the value counts, each as a member of its own, and an empty list counts none; a member events counts every event when absent.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "detail": {
+            "description": "A text that the message of the failure holds, compared without case.",
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "description": "The whole message of a failure that is not an apply error; the code of the value is then message.",
+            "type": "string",
+            "minLength": 1
+          },
+          "elapsed": {
+            "description": "The bounds of the time that the command takes, in milliseconds.",
+            "type": "object",
+            "required": [
+              "at_least_ms",
+              "below_ms"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at_least_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "below_ms": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "on": {
+            "description": "What the event handler does at the first event of the kind, or at each with every: an event may also name its plan and step; the nested steps run, and then stop ends the command, whose code is then stopped.",
+            "type": "object",
+            "required": [
+              "event"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string",
+                "minLength": 1
+              },
+              "plan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "every": {
+                "const": true
+              },
+              "stop": {
+                "const": true
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/step"
+                }
+              }
+            }
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.schema": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "description": "Introspects the database of a named connection; the value is the schema text of its manifest, empty on a database with no table.",
+        "properties": {
+          "op": {
+            "const": "dbspec.schema"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "only": {
+            "$ref": "#/$defs/only"
           },
           "expect": {
             "$ref": "#/$defs/expect"

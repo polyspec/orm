@@ -626,17 +626,13 @@ caseTest('the CI groups run every target of CHECK_TARGETS but the gates of kit i
   assert.deepEqual([...groups.flatMap(group => targets[group] ?? []), ...own.docs, ...own.editor].sort(byCodeUnit), checkTargets(makefile).filter(target => !kitGates(makefile).includes(target)).sort(byCodeUnit));
   assert.ok(jobTargets(makefile).editor.includes('dbspec-vscode-check'), 'the VS Code extension check runs in the editor job, which ci-vscode-integration reaches (CR9)');
   assert.ok((targets.static ?? []).includes('catalog-row-baseline-go-check'), 'the appended owner check runs in the static CI group');
-  // The group-rows-db targets each run in exactly one CI group (KSTD-10-1).
-  for (const target of ['group-rows-db-go', 'group-rows-db-typescript', 'group-rows-db-python', 'group-rows-db-php', 'group-rows-db-php-extension', 'group-rows-db-rust']) {
-    assert.equal(groups.flatMap(group => targets[group] ?? []).filter(name => name === target).length, 1, `${target} runs in one CI group`);
-  }
   for (const [group, expected] of Object.entries({
-    client_db_go: ['client-db-go-check', 'group-rows-db-go', 'dialect-facts-check'],
-    client_db_php: ['client-db-php-check', 'group-rows-db-php', 'complex-query-check/php'],
-    client_db_php_extension: ['client-db-php-extension-check', 'group-rows-db-php-extension', 'complex-query-check/php-extension'],
-    client_db_typescript: ['client-db-typescript-check', 'group-rows-db-typescript', 'complex-query-check/typescript'],
-    client_db_python: ['client-db-python-check', 'group-rows-db-python', 'complex-query-check/python'],
-    client_db_rust: ['client-db-rust-check', 'group-rows-db-rust', 'complex-query-check/rust'],
+    client_db_go: ['client-db-go-check', 'dialect-facts-check'],
+    client_db_php: ['client-db-php-check', 'complex-query-check/php'],
+    client_db_php_extension: ['client-db-php-extension-check', 'complex-query-check/php-extension'],
+    client_db_typescript: ['client-db-typescript-check', 'complex-query-check/typescript'],
+    client_db_python: ['client-db-python-check', 'complex-query-check/python'],
+    client_db_rust: ['client-db-rust-check', 'complex-query-check/rust'],
     dbspec_go: ['dbspec-introspect-check', 'dbspec-apply-check'],
     dbspec_php: ['dbspec-introspect-php-check', 'dbspec-apply-php-check'],
     dbspec_php_extension: ['dbspec-introspect-php-extension-check', 'dbspec-apply-php-extension-check'],
@@ -1208,10 +1204,6 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
 caseTest('a target that runs code using the TypeScript build output holds it', COMPUTE, () => {
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), (path: string) => files.has(path) ? text(path) : undefined), []);
-  // group-rows-db-typescript reads the build output, so its recipe starts by holding it (KSTD-10-2).
-  const groupRowsLines = text('Makefile').split('\n');
-  const groupRowsAt = groupRowsLines.indexOf('group-rows-db-typescript: typescript-build');
-  assert.equal(groupRowsLines[groupRowsAt + 1], '\t$(READ_TYPESCRIPT)');
   const sources: Record<string, string> = {
     'scripts/reads.mjs': "const run = ['node', ['packages/ts/tests/db.mjs']];\n",
     'packages/ts/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
@@ -1784,9 +1776,6 @@ caseTest('a go generate that make orm-check runs twice fails', COMPUTE, () => {
 // The go test case checks the repository's Makefile (with variables resolved), verification commands, scripts and a minimal unit.
 caseTest('every go test runs through go-test.mts or run-long', COMPUTE, () => {
   const makefile = text('Makefile');
-  // group-rows-db-go runs its go test through go-test.mts, with its own run line and no deadline (KSTD-10-3).
-  const groupRowsGo = makefile.split('\n').indexOf('group-rows-db-go:');
-  assert.ok(makefile.split('\n')[groupRowsGo + 1]?.startsWith('\t$(GO_TEST) ./packages/go/model'), 'group-rows-db-go runs go test through GO_TEST');
   const variables = makeVariables(makefile);
   const { recipes, scripts } = runUnits();
   const expanded = recipes.map(unit => ({ ...unit, commands: unit.commands.map(command => expand(command, variables)) }));

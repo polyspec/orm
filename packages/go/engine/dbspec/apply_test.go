@@ -81,42 +81,6 @@ func logResult(t *testing.T, name string, start time.Time) {
 	t.Logf("%s %s elapsed=%s", result, name, time.Since(start))
 }
 
-// TestApplyReportsCleanupErrors checks that apply preserves the primary failure and all cleanup errors in order in Go's native error chain.
-// Requirements: PLN-97, PLN-106.
-func TestApplyReportsCleanupErrors(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	start := time.Now()
-	t.Log("RUN apply/cleanup-errors deadline=20s")
-	now, plans, ctx := applyTestSetup(t)
-
-	stop := errors.New("stop")
-	stopAt := stopAfterApplied(stop)
-	// Without a cleanup error, it returns the failure unwrapped.
-	if res, err := Apply(ctx, applyTestConn(t), DialectSQLite, plans, now, stopAt); err != nil || !res.Stopped || !errors.Is(res.Stop, stop) {
-		t.Errorf("apply stopped by an event without a cleanup error: %+v, %v, want stopped by the event error", res, err)
-	}
-
-	release := errors.New("release failed")
-	restore := errors.New("restore failed")
-	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA foreign_keys = 0": restore, "PRAGMA locking_mode = normal": release}}
-	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
-	if !errors.Is(err, stop) || !errors.Is(err, restore) || !errors.Is(err, release) {
-		t.Errorf("apply stopped by an event with failing cleanup: %v, want all three errors", err)
-	}
-	if want := stop.Error() + "\n" + restore.Error() + "\n" + release.Error(); err == nil || err.Error() != want {
-		t.Errorf("apply cleanup error order: %v, want %q", err, want)
-	}
-
-	begin := sqliteResultError(5)
-	restore = errors.New("restore failed")
-	c = &failing{conn: applyTestConn(t), fail: map[string]error{"BEGIN EXCLUSIVE": begin, "PRAGMA foreign_keys = 0": restore}}
-	_, err = Apply(ctx, c, DialectSQLite, plans, now, nil)
-	if applyErr := (*ApplyError)(nil); !errors.As(err, &applyErr) || applyErr.Code != "locked" || !errors.Is(err, restore) {
-		t.Errorf("apply with a failing BEGIN EXCLUSIVE and foreign key restore: %v, want locked and the restore error", err)
-	}
-	logResult(t, "apply/cleanup-errors", start)
-}
-
 // TestApplyStopWithCleanupFailureReturnsJoin checks that when an event stops apply and a cleanup step then fails,
 // the result is the joined error of the stop and the cleanup failure, not a stop by itself.
 // Requirements: PLN-97.
@@ -151,26 +115,6 @@ func TestEffectRequiresRow(t *testing.T) {
 		t.Error("effect with a query that returns no row: no error")
 	}
 	logResult(t, "apply/effect-row", start)
-}
-
-// TestRollbackRejectsRecordedStepOutsidePlan checks that when the step of an applied row is outside the plan's steps, rollback stops without reading the step
-// with a chain error (docs/spec/plans.md "Apply").
-func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	start := time.Now()
-	t.Log("RUN apply/rollback-step-outside deadline=20s")
-	now, plans, ctx := applyTestSetup(t)
-	conn := applyTestConn(t)
-	applyOK(t, ctx, conn, plans, now)
-	if _, err := conn.ExecContext(ctx, `UPDATE "dbspec$plans" SET step = 99`); err != nil {
-		t.Fatal(err)
-	}
-	err := Rollback(ctx, conn, DialectSQLite, plans, now, nil)
-	applyErr := (*ApplyError)(nil)
-	if !errors.As(err, &applyErr) || applyErr.Code != "chain" || !strings.Contains(applyErr.Message, "the recorded step 99 is outside the plan's") {
-		t.Errorf("rollback of an applied row at step 99: %v, want a chain error about the recorded step", err)
-	}
-	logResult(t, "apply/rollback-step-outside", start)
 }
 
 // TestFinalizeMarksPlanDone checks that finalize of an applied plan that hides nothing, which has no finalize step,

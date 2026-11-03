@@ -19,8 +19,6 @@ use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
 use crate::row::{decode_boolean_columns, decode_styled, read_cell, read_row, DriverRow};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
-
-pub const SECRET_MASK: &str = "$SECRET";
 pub const NOW_MASK: &str = "$NOW";
 
 /// Compares a row value with a bound parameter regardless of representation
@@ -172,7 +170,7 @@ pub(crate) fn param_arg(b: &BindSlot, params: &[Param]) -> Result<Param> {
     crate::bind_check::transform_param(&b.transform, v)
 }
 
-/// The hook's view of the binds: `secret` slots masked, everything else as bound.
+/// The hook's view of the binds: `now` slots masked, everything else as bound.
 pub(crate) fn masked(st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
     let mut out = Vec::with_capacity(args.len());
     let mut i = 0;
@@ -181,10 +179,6 @@ pub(crate) fn masked(st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
             "parent" => {
                 out.extend_from_slice(&args[i..i + n_parent]);
                 i += n_parent;
-            }
-            "secret" => {
-                out.push(Param::Str(SECRET_MASK.into()));
-                i += 1;
             }
             "now" => {
                 out.push(Param::Str(NOW_MASK.into()));

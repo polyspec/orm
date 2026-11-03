@@ -21,6 +21,7 @@ type faultConn struct {
 	cause  error
 	failAt int
 	reads  int
+	fail   map[string]error
 }
 
 // QueryContext counts the reads of the SQLite master query and fails the chosen one.
@@ -34,12 +35,33 @@ func (f *faultConn) QueryContext(ctx context.Context, query string, args ...any)
 	return f.Conn.QueryContext(ctx, query, args...)
 }
 
+// ExecContext fails a statement of fail in the call.
+func (f *faultConn) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	if err, ok := f.fail[query]; ok {
+		return nil, err
+	}
+	return f.Conn.ExecContext(ctx, query, args...)
+}
+
+// sqliteResult is an error of a SQLite result code, as the driver returns it.
+type sqliteResult struct {
+	message string
+	code    int
+}
+
+func (e sqliteResult) Error() string { return e.message }
+func (e sqliteResult) Code() int     { return e.code }
+
 // checkApplyFault runs one dbspec.apply_fault step (FCV-4): the public Apply or Rollback on a memory SQLite connection,
 // after applied_first and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected
-// failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+// failure must reach the apply error as its cause (PLN-92, PLN-93, PLN-96). Errors.Join holds the failure, then the cleanup
+// errors in order (PLN-97, PLN-106).
 func checkApplyFault(t *testing.T, s step, bound map[string]result, database string) error {
 	var want struct {
 		Code         string   `json:"code"`
+		Failure      string   `json:"failure"`
+		FailureEnds  string   `json:"failure_ends_with"`
+		Cleanup      []string `json:"cleanup"`
 		HistoryState string   `json:"history_state"`
 		AbsentEvents []string `json:"absent_events"`
 	}
@@ -82,9 +104,22 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 		fault.cause = errors.New("catalog read failed")
 		fault.failAt = fault.reads + s.FailCatalogRead
 	}
+	if s.FailStatements != nil {
+		fault.fail = map[string]error{}
+		for _, f := range s.FailStatements {
+			var injected error = errors.New(f.Message)
+			if f.SQLiteResult != 0 {
+				injected = sqliteResult{message: f.Message, code: f.SQLiteResult}
+			}
+			fault.fail[f.Statement] = injected
+		}
+	}
 	var kinds []string
 	events := func(event dbspec.ApplyEvent) error {
 		kinds = append(kinds, event.Kind)
+		if s.StopOnApplied != "" && event.Kind == "applied" {
+			return errors.New(s.StopOnApplied)
+		}
 		return nil
 	}
 	var failure error
@@ -96,10 +131,28 @@ func checkApplyFault(t *testing.T, s step, bound map[string]result, database str
 		if err == nil && result.Failure != nil {
 			failure = result.Failure
 		}
+		if err == nil && result.Stopped {
+			failure = result.Stop
+		}
 	}
-	var applyErr *dbspec.ApplyError
-	if !errors.As(failure, &applyErr) || applyErr.Code != want.Code {
-		return fmt.Errorf("the call returned %v, want the code %s", failure, want.Code)
+	if failure == nil {
+		return fmt.Errorf("the call succeeded, want %+v", want)
+	}
+	if want.Code != "" {
+		var applyErr *dbspec.ApplyError
+		if !errors.As(failure, &applyErr) || applyErr.Code != want.Code {
+			return fmt.Errorf("the call returned %v, want the code %s", failure, want.Code)
+		}
+	}
+	messages := strings.Split(failure.Error(), "\n")
+	if want.Failure != "" && messages[0] != want.Failure {
+		return fmt.Errorf("the failure is %q, want %q", messages[0], want.Failure)
+	}
+	if !strings.HasSuffix(messages[0], want.FailureEnds) {
+		return fmt.Errorf("the failure is %q, want it to end with %q", messages[0], want.FailureEnds)
+	}
+	if want.Cleanup != nil && !slices.Equal(messages[1:], want.Cleanup) {
+		return fmt.Errorf("the cleanup errors are %q, want %q", messages[1:], want.Cleanup)
 	}
 	if fault.cause != nil && !errors.Is(failure, fault.cause) {
 		return fmt.Errorf("the error %v does not hold the catalog read error", failure)

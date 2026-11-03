@@ -41,6 +41,14 @@
       "reply",
       "token"
     ],
+    "markdown.session": [
+      "corpus",
+      "expect",
+      "messages",
+      "op",
+      "replies",
+      "token"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -56,9 +64,11 @@
       "call",
       "expect",
       "fail_catalog_read",
+      "fail_statements",
       "op",
       "plan",
-      "sql"
+      "sql",
+      "stop_on_applied"
     ],
     "dbspec.ddl_behavior": [
       "case",
@@ -186,7 +196,8 @@
       "op",
       "operator",
       "params",
-      "process_zone"
+      "process_zone",
+      "surface"
     ],
     "model.assign": [
       "column",
@@ -468,7 +479,8 @@
       "as",
       "connection",
       "kind",
-      "op"
+      "op",
+      "refusal"
     ],
     "events.stop_failing": [
       "op",
@@ -640,7 +652,8 @@
       "op"
     ],
     "catalog.reconnect": [
-      "op"
+      "op",
+      "user_from_database"
     ],
     "catalog.revision": [
       "as",
@@ -746,6 +759,7 @@
     ],
     "utils.set_local": [
       "connection",
+      "expect",
       "name",
       "op",
       "value"
@@ -777,6 +791,82 @@
     "utils.groups": [
       "connection",
       "expect",
+      "op"
+    ],
+    "dbspec.plan": [
+      "as",
+      "lines",
+      "op"
+    ],
+    "dbspec.connect": [
+      "as",
+      "op",
+      "through"
+    ],
+    "dbspec.exec": [
+      "connection",
+      "expect",
+      "only",
+      "op",
+      "sql"
+    ],
+    "dbspec.other_database": [
+      "as",
+      "op",
+      "steps"
+    ],
+    "dbspec.apply": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.recover": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.rollback": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.finalize": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.schema": [
+      "connection",
+      "expect",
+      "only",
       "op"
     ]
   }
