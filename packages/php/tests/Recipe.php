@@ -3833,7 +3833,9 @@ final class Recipe
     /** A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result. */
     private static function chainWrite(array $s, array $context, \Closure $terminal): array
     {
-        $table = self::tableModel($s['model'], self::connectionOf($s, $context), $context);
+        $table = ($s['unconnected'] ?? false) === true
+            ? self::chainModel($s['model'], $context)
+            : self::tableModel($s['model'], self::connectionOf($s, $context), $context);
         $model = self::chainAssign($table, $s['values'] ?? [], $context);
         foreach ($s['attached'] ?? [] as $name => $value) {
             $model->{'new' . self::pascal((string) $name)}(self::chainValue($value, $context));

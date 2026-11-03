@@ -742,9 +742,6 @@
           }
         },
         {
-          "$ref": "#/$defs/withinValue"
-        },
-        {
           "$ref": "#/$defs/outcomes/json"
         }
       ]
@@ -7447,9 +7444,6 @@
                         "$ref": "#/$defs/value"
                       },
                       {
-                        "$ref": "#/$defs/withinValue"
-                      },
-                      {
                         "$ref": "#/$defs/ref"
                       }
                     ]
@@ -8567,28 +8561,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/value"
-          }
-        }
-      }
-    },
-    "withinValue": {
-      "type": "object",
-      "required": [
-        "within"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "within": {
-          "type": "object",
-          "required": [
-            "seconds"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "seconds": {
-              "type": "integer",
-              "minimum": 0
-            }
           }
         }
       }

@@ -3019,7 +3019,11 @@ def _chain_write(step: dict, context: dict, terminal) -> dict:
     """A write through a model set from values, then its terminal; the written model is bound, and its JSON is the result."""
     db = _connection_of(step, context)
     model = _chain_assign(
-        _new_row(context, db, step["model"]), step.get("values"), context
+        _new_core_model(context, step["model"])
+        if step.get("unconnected") is True
+        else _new_row(context, db, step["model"]),
+        step.get("values"),
+        context,
     )
     for name, value in step.get("attached", {}).items():
         model.core.set_new(name, _chain_value(value, context))

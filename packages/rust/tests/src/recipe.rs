@@ -4852,7 +4852,13 @@ mod tables {
         /// The written model is bound with as, and its toArray is the result.
         async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
             let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
-            let mut row = self.row(model, db, &step["values"])?;
+            let mut row = if step["unconnected"].as_bool() == Some(true) {
+                let mut row = TableRow::from_core(core_of(model)?);
+                assign_values(&mut row, &step["values"])?;
+                row
+            } else {
+                self.row(model, db, &step["values"])?
+            };
             for (name, value) in members(&step["attached"]) {
                 let plain = match param(value)? {
                     Param::Null => Value::Null,

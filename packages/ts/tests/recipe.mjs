@@ -1788,7 +1788,8 @@ function chainAssign(m, values, context) {
 
 /** A write through a model set from values, then its terminal; the written model is bound, and its toArray is the result. */
 async function chainWrite(s, context, terminal) {
-  const m = chainAssign(coreModel(s.model, context).connect(connectionOf(s, context)), s.values, context);
+  const model = coreModel(s.model, context);
+  const m = chainAssign(s.unconnected === true ? model : model.connect(connectionOf(s, context)), s.values, context);
   for (const [name, value] of Object.entries(s.attached ?? {})) m[CORE].setNew(name, chainValue(value, context));
   if (s.duplication !== undefined) m.duplication(chainAssign(coreModel(s.model, context), s.duplication, context));
   const row = await terminal(m);
