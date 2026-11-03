@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The refusal of two unaliased relations with one result name (CPX-5) is the case `duplicate_relation_name` of the recipe `complex_query` in every runtime; the Python test of it is removed, and the Python interface_contract coverage stays native without reading the feature environment.
 - The immutable write of Go is its recipe, and the Go coverage tests of the generated connection, the bench manifest install, the model generation check and the hot-path read run in the normal go test: the first two take case databases in place of the seeded bench database.
 - The ordered-json, codec-column and batch-create writes are the cases of the recipe `model_writes_chain` on the builder of every runtime: member order and number text, a repeated member name, codec columns in the stored text, an IP with whitespace, a stale optimistic update, and `creates` (refused before any statement, over the SQLite bind limit, rows in order across batches, every batch rolled back); the coverage tests of the feature are gone. `contracts/features.json` declares the empty `dependents` of the `model_writes` and `model_queries` coverage, which the schema requires.
 - The chains of the generated-model queries are the cases of the recipe `model_queries_chain` on the builder of every runtime: page and total, sum, function column, removed columns, join with its index and subquery, relation, a NULL collection key and group rows; the coverage tests of the feature are removed, and PRT-35 fixes the code of a NULL key, not its message
