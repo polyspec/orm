@@ -959,6 +959,7 @@
       "id": "a_document_with_a_diagnostic_prints_it_and_writes_nothing",
       "requirements": [
         "DBS-27",
+        "DBS-162",
         "SCH-12"
       ],
       "steps": [
@@ -978,6 +979,7 @@
       "id": "a_check_whose_generation_fails_reports_it_and_writes_nothing",
       "requirements": [
         "DBS-27",
+        "DBS-162",
         "DBS-175",
         "SCH-12"
       ],
@@ -992,6 +994,246 @@
             "5:8 type: document shop: type \"tinyint\" is not a dbspec type"
           ],
           "check": true
+        }
+      ]
+    },
+    {
+      "id": "a_type_of_no_parameters_given_one_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag i64(1)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: i64 takes no parameters"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_varchar_without_parameters_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag varchar\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: varchar(n) needs 1 <= n <= 16383"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_varchar_of_two_parameters_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag varchar(1,2)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: varchar(n) needs 1 <= n <= 16383"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_varchar_with_a_word_parameter_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag varchar(x)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: varchar(n) needs 1 <= n <= 16383"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_varchar_below_its_range_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag varchar(0)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: varchar(n) needs 1 <= n <= 16383"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_varchar_above_its_range_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag varchar(16384)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: varchar(n) needs 1 <= n <= 16383"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_time_above_its_range_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag time(7)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: time(p) needs 0 <= p <= 6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_datetime_without_parameters_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag datetime\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: datetime(p) needs 0 <= p <= 6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_datetime_above_its_range_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag datetime(7)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: datetime(p) needs 0 <= p <= 6"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_decimal_of_one_parameter_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag decimal(10)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_decimal_above_its_precision_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag decimal(19,0)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_decimal_whose_scale_passes_its_precision_has_its_message",
+      "requirements": [
+        "DBS-162",
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag decimal(2,3)\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: decimal(p,s) needs 1 <= p <= 18 and 0 <= s <= p"
+          ]
         }
       ]
     }

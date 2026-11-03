@@ -1,12 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3392601876180ee4212fda8db48cc4c6bfb23efaddd7dca6e572956784d0f3af -->
+<!-- source-sha256: a1dde4c355ef70f8ab440a42b8d9ffec48d38d28191e9839ee7b4ed977725ab0 -->
 # 변경 이력
 
 ## Unreleased
 
+- dbspec rule `type`의 모든 message가 여섯 runtime에서 DBS-162가 적은 문장이다. Go, PHP, PHP extension, Rust가 parameter 오류를 각자 다르게 적지 않으며, generator case가 message 전체를 담는다. make rule이 없는 CHECK_TARGETS의 target은 사라졌고, `catalog-rust`는 없는 시험 파일을 가리키지 않는다 (#T334-3-12-6)
 - `performance_gate`는 각 class가 가리키는 database의 `BENCH_<DATABASE>_DSN`을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - Tests: CFG-3의 MySQL 세션 설정은 모든 runtime에서 `dsn_connection` recipe의 case `mysql_session_settings`가 `dsn.connect`의 새 key `session_read`로 확인하며, `sql_mode` native와 `tests/dsn/mysql-session.json`은 사라졌다.
-- `performance_gate`는 각 class가 가리키는 database의 BENCH_<DATABASE>_DSN을 읽으며, gate, `perf-check`, `php-ext-memory-check`는 feature 변수를 읽지 않는다. 모르는 type의 message는 모든 runtime에서 `type "<word>" is not a dbspec type` 하나다 (#T334-3-12-6)
 - transaction이 끝나기 전에 풀린 lock은 INT-72가 말하는 대로 Go와 Python에서 `CONFIG`이다: Go는 버려지는 연결을 자기가 닫은 것을 실패한 rollback으로 세어 `ROLLBACK`을 보고했고, Python은 `RELEASE_LOCK`의 NULL에서 TypeError를 냈다. recipe utils의 case `a_lock_released_early_is_reported_at_the_end_of_its_transaction`이 이것을 말하고, transaction 종료의 failing driver native는 FCV-2에 이름이 오른다.
 - `vector` 파일을 읽던 Rust 시험 `coverage_conformance_verification`을 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다. binary `conformance`는 남는다. `generated`와 `fixed-clock` 검사가 그것을 실행한다.
 - vector 파일을 읽던 PHP와 PHP extension 시험을, 그 시험만 쓰던 coverage helper와 함께 없앴다. 그 unit의 binding은 데이터베이스별 recipe 시험 `conformance_verification`을 가리킨다.

@@ -3,11 +3,11 @@
 
 ## Unreleased
 
+- Every message of the dbspec rule `type` has the words DBS-162 states, in all six runtimes: Go, PHP, the PHP extension and Rust no longer word a parameter error their own way, and the generator cases hold each whole message. Targets of CHECK_TARGETS with no make rule are gone, and `catalog-rust` no longer names test files that do not exist (#T334-3-12-6)
 - Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
-- `performance_gate` reads the BENCH_<DATABASE>_DSN of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A lock released before the end of its transaction is `CONFIG` in Go and Python, as INT-72 states: Go reported `ROLLBACK` because it counted its own close of the discarded connection as a failed rollback, and Python raised a TypeError on the NULL of `RELEASE_LOCK`. The case `a_lock_released_early_is_reported_at_the_end_of_its_transaction` of the recipe utils states it, and the failing-driver natives of the transaction end are named in FCV-2.
 - The Rust test `coverage_conformance_verification`, which read the vector files, is gone; the bindings of its units name the recipe test `conformance_verification` of each database. The binary `conformance` stays: the `generated` and `fixed-clock` checks run it.
 - The PHP and PHP extension tests that read the vector files are gone, with the coverage helpers only they used; the bindings of their units name the recipe test `conformance_verification` of each database.
