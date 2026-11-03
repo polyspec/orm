@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 746cf11184c67f80f9b5fb997330a356e9aad5cf2996307c02476419bd08f84e -->
+<!-- source-sha256: b3a95e6b4293d47ba5825eaa3151b4a41e41fddb1db3c6d500a12fa30c3caf89 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -15,7 +15,7 @@ sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
 markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 ```
 
-- **CFG-1** scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다. scheme `markdown`은 데이터베이스 대신 flowmark server의 markdown IR executor를 선택한다. 그 DSN, server 연결, 거절하는 설정은 [프로토콜](protocol.ko.md#_5-ir-executors)과 [capability 표](dialects.ko.md#markdown-ir-executor)에 있다. 모든 클라이언트가 이를 구현한다. Python 클라이언트는 이 연결에 server 연결 하나를 유지한다.
+- **CFG-1** scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다. scheme `markdown`은 데이터베이스 대신 flowmark server의 markdown IR executor를 선택한다. 그 DSN, server 연결, 거절하는 설정은 [프로토콜](protocol.ko.md#_5-ir-executors)과 [capability 표](dialects.ko.md#markdown-ir-executor)에 있다. 서버가 거부한 연결은 `max_user_connections` 초과처럼 모든 클라이언트에서 `DRIVER`로 실패하며, 서버의 메시지를 담고 네이티브 오류를 cause로 둔다. TLS 실패(CFG-16), SQLite 파일, 서버가 모르는 time zone은 `CONFIG`다. 모든 클라이언트가 이를 구현한다. Python 클라이언트는 이 연결에 server 연결 하나를 유지한다.
 - **CFG-2** 모든 연결은 서버 시간대와 상관없이 datetime 값을 UTC로 읽고 쓴다([dialects](dialects.ko.md#date-and-time)). MySQL 연결은 `time_zone = '+00:00'`을, PostgreSQL 연결은 `TimeZone`을 `UTC`로 설정하고, SQLite 값과 ORM 값 함수는 클라이언트에서 UTC를 쓴다. offset이 있는 값은 UTC wall clock으로 쓰고 UTC로 다시 읽는다. 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받으며, 다른 값은 `CONFIG`를 반환한다.
 - **CFG-3** 모든 MySQL 연결은 열릴 때 드라이버 자체 설정 뒤에 세션 `sql_mode`를 `STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION`로 정한다. 그래서 변환, 잘림, grouping 결과가 서버의 `sql_mode`에 따르지 않고, 드라이버가 더한 mode(sqlx의 `PIPES_AS_CONCAT`, client flag의 `IGNORE_SPACE`)는 대체된다. 연결은 `@@SESSION.sql_mode`를 `ONLY_FULL_GROUP_BY,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION`로 읽는다(`mysql.session.sql_mode_set`, `tests/dsn/mysql-session.json`).
 - **CFG-4** 연결 설정은 최대 연결 수 `poolSize`를 받는다. Go는 `orm.Config{PoolSize: n}`, PHP는 `new Config(poolSize: n)`, TypeScript는 `{ poolSize: n }`, Rust는 `Db::connect(dsn, n, config)`, Python은 `connect(dsn, {"poolSize": n})`이다. 0이거나 지정하지 않으면 풀을 유지하는 클라이언트는 최대 10개의 연결을 열고, 음수는 `CONFIG`를 반환한다. 풀은 최대값보다 많은 연결을 열지 않으며, 모든 연결이 사용 중일 때 연결이 필요한 문이나 트랜잭션은 연결이 반환될 때까지 기다린다. TypeScript의 SQLite 드라이버는 연결 하나를 유지한다. PHP는 요청마다 연결을 연다. 각 `Db`가 연결 하나를 열고 그 연결은 `Db`와 함께 닫히며, 요청보다 오래 남는 연결은 없다. PHP의 풀은 PgBouncer나 ProxySQL이 맡는다([연결 pooler](#connection-poolers)). PHP 클라이언트는 자기 풀을 가지지 않는다. php-fpm worker는 한 번에 요청 하나를 처리하고 다음 요청과 상태를 공유하지 않으며, 요청을 넘어 유지한 연결은 한 요청의 세션 상태를 다음 요청에 넘기고 서버 연결 수를 worker 수만큼 늘린다. 풀러는 대신 적은 서버 연결을 모든 worker가 나누어 쓰게 한다. 클라이언트가 무시하는 설정은 호출자가 연결이 풀링된다고 믿게 하므로, 0이 아닌 n의 `new Config(poolSize: n)`은 `CONFIG`를 반환한다. `stats()`는 `Db`의 연결 하나인 1을 `maxOpenConnections`로 보고한다.

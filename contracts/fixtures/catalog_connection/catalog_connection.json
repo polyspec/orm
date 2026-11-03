@@ -9106,6 +9106,7 @@
     {
       "id": "plain_connect_on_a_held_place_is_refused_once",
       "requirements": [
+        "CFG-1",
         "CFG-35"
       ],
       "only": [
@@ -9139,6 +9140,7 @@
         {
           "op": "catalog.reconnect",
           "user_from_database": "o1_",
+          "refused_code": "DRIVER",
           "refused_message": "max_user_connections"
         },
         {

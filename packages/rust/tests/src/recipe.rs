@@ -3384,7 +3384,9 @@ mod database {
                 if let Some(text) = step.get("refused_message").and_then(Value::as_str) {
                     return match CatalogConnection::connect(&dsn).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
-                        Err(error) if error.to_lowercase().contains(text) => Ok(Output::fields(json!({}))),
+                        Err(error) if error.to_lowercase().contains(text) && error.starts_with(step["refused_code"].as_str().unwrap_or_default()) => {
+                            Ok(Output::fields(json!({})))
+                        }
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
                     };
                 }

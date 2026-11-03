@@ -2584,6 +2584,7 @@ final class Recipe
                         Catalog::connect($reconnectDsn);
                     } catch (OrmException $error) {
                         Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        Assert::assertSame($s['refused_code'], $error->code_, 'the code of the refused connection');
                         return [];
                     }
                     Assert::fail('the server accepted the connection that the step expects it to refuse');

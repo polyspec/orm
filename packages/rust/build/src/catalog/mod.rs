@@ -37,6 +37,19 @@ mod value_tests;
 #[path = "../../tests/unit/catalog_tool_errors.rs"]
 mod tool_error_tests;
 
+/// A connection that the server refuses, with the code of the driver error (CFG-1).
+fn connect_error(error: sqlx::Error) -> String {
+    polyspec_orm::Error::from(error).to_string()
+}
+
+/// Starts the time of CFG-35 when a write session ends, on any of its returns.
+pub(super) struct ClosesOnDrop<'a>(pub(super) &'a CatalogConnection);
+impl Drop for ClosesOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.closed_connection();
+    }
+}
+
 /// How long after a close of its own a catalog tries a refused connect again (CFG-35).
 const REOPEN_AFTER_CLOSE: std::time::Duration = std::time::Duration::from_secs(2);
 
@@ -47,7 +60,7 @@ pub struct CatalogConnection {
     pool: Pool,
     dialect: String,
     /// Until when a refused connect is a socket of this catalog still on the server (CFG-35).
-    reopen_until: std::time::Instant,
+    reopen_until: std::sync::Mutex<std::time::Instant>,
 }
 impl CatalogConnection {
     pub async fn connect(raw: &str) -> Result<Self, String> {
@@ -77,13 +90,13 @@ impl CatalogConnection {
                 return Err("CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN".into());
             }
         };
-        let mut connection = Some(Conn::acquire(&pool).await.map_err(|e| e.to_string())?);
+        let mut connection = Some(Conn::acquire(&pool).await.map_err(connect_error)?);
         let mut reopen_until = std::time::Instant::now();
         if dialect == "mysql" {
             drop(connection.take());
             reopen_until += REOPEN_AFTER_CLOSE;
         }
-        Ok(Self { connection, pool, dialect, reopen_until })
+        Ok(Self { connection, pool, dialect, reopen_until: std::sync::Mutex::new(reopen_until) })
     }
     pub fn dialect(&self) -> &str {
         &self.dialect
@@ -108,7 +121,7 @@ impl CatalogConnection {
     /// Executes one caller-authorized statement; this does not impose read-only isolation.
     pub async fn query(&mut self, sql: &str, params: &[crate::tool_db::P], limits: crate::tool_db::QueryLimits) -> Result<crate::tool_db::QueryResult, String> {
         if self.connection.is_none() {
-            self.connection = Some(Conn::acquire(&self.pool).await.map_err(|error| error.to_string())?);
+            self.connection = Some(self.open_connection().await?);
         }
         let Some(connection) = self.connection.as_mut() else {
             return Err("the catalog holds no connection".into());
@@ -195,25 +208,28 @@ impl CatalogConnection {
         result
     }
     /// Starts the time in which a refused connect of MySQL is the closed connection still on the server.
-    fn closed_connection(&mut self) {
+    pub(super) fn closed_connection(&self) {
         if self.dialect == "mysql" {
-            self.reopen_until = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
+            *self.reopen_until.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = std::time::Instant::now() + REOPEN_AFTER_CLOSE;
         }
     }
-    /// The read-only connection of a read, which closes when it drops.
-    async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
-        read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
-        // A socket that this catalog closed holds its place in max_user_connections until the server ends that thread. The
-        // server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35 from the
-        // close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+    /// Opens a connection. A socket that this catalog closed holds its place in max_user_connections until the server ends
+    /// that thread. The server announces that to no one, so this is a timer: the reopen is tried again within the 2 s of CFG-35
+    /// from the close (within 40 ms measured). A connect that follows no close of this catalog fails at once.
+    pub(super) async fn open_connection(&self) -> Result<Conn, String> {
         let mut acquired = Conn::acquire(&self.pool).await;
         while acquired.as_ref().err().is_some_and(|error| error.to_string().contains("1226"))
-            && std::time::Instant::now() < self.reopen_until
+            && std::time::Instant::now() < *self.reopen_until.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
         {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             acquired = Conn::acquire(&self.pool).await;
         }
-        let mut connection = acquired.map_err(|error| error.to_string())?;
+        acquired.map_err(connect_error)
+    }
+    /// The read-only connection of a read, which closes when it drops.
+    async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
+        read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
+        let mut connection = self.open_connection().await?;
         connection.discard_on_drop();
         if self.dialect == "sqlite" {
             connection.exec("PRAGMA query_only=ON", &[]).await.map_err(|error| error.to_string())?;

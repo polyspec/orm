@@ -2425,6 +2425,8 @@ def _op_reconnect(step: dict, context: dict) -> dict:
         except Exception as error:  # noqa: BLE001 - any error of the refused connection
             if step["refused_message"] not in str(error).lower():
                 raise AssertionError(f"the server refused the connection for another reason: {error}") from error
+            if getattr(error, "code", None) != step["refused_code"]:
+                raise AssertionError(f"the refused connection has another code than {step['refused_code']}: {error}") from error
             return {}
         raise AssertionError("the server accepted the connection that the step expects it to refuse")
     catalog = connect_catalog(dsn)

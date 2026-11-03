@@ -74,6 +74,7 @@ type databaseStep struct {
 	SQL            json.RawMessage `json:"sql"`
 	Refused        bool            `json:"refused"`
 	RefusedMessage string          `json:"refused_message"`
+	RefusedCode    string          `json:"refused_code"`
 	MaxRows        int             `json:"max_rows"`
 	MaxBytes       int             `json:"max_bytes"`
 	Page           json.RawMessage `json:"page"`
@@ -274,7 +275,7 @@ func caseSocketDSN(caseDSN, socket string) (string, error) {
 
 // refusedConnect reports whether the server refused the connection of catalog, whose first statement opens it, with text in
 // its message. The connection of the case stays.
-func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err error, text string) error {
+func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err error, code, text string) error {
 	if err == nil {
 		_, err = catalog.CurrentNamespace(c.ctx)
 		err = closeFirst(err, catalog.Close())
@@ -284,6 +285,9 @@ func refusedConnect(c *databaseContext, catalog *orm.CatalogConnection, err erro
 	}
 	if !strings.Contains(strings.ToLower(err.Error()), text) {
 		return fmt.Errorf("the server refused the connection for another reason: %w", err)
+	}
+	if got := orm.ErrorCode(err); got != code {
+		return fmt.Errorf("the refused connection has the code %q, want %q: %w", got, code, err)
 	}
 	return nil
 }
@@ -845,7 +849,7 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		if s.RefusedMessage != "" {
-			return outcome{}, refusedConnect(c, catalog, err, s.RefusedMessage)
+			return outcome{}, refusedConnect(c, catalog, err, s.RefusedCode, s.RefusedMessage)
 		}
 		namespace, err := catalog.CurrentNamespace(c.ctx)
 		if err != nil {

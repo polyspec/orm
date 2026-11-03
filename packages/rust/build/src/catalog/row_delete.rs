@@ -9,7 +9,8 @@ use std::sync::{atomic::AtomicBool, Arc};
 impl CatalogConnection {
     pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher, permit: CommitPermit) -> Result<u64, String> {
         let keys = prepare_mutation(original, &self.dialect, &cancellation, &publish)?;
-        let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
+        let _closes = super::ClosesOnDrop(self);
+        let mut connection = begin_mutation(self, &cancellation).await?;
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);

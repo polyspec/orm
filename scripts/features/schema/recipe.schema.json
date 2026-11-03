@@ -6381,6 +6381,11 @@
             "description": "The server must refuse the connection: the text that the error message of the driver holds, compared in lower case. The connection of the case stays.",
             "type": "string",
             "minLength": 1
+          },
+          "refused_code": {
+            "description": "With refused_message: the code of the error of that refusal.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
           }
         }
       },

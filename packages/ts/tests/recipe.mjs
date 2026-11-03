@@ -679,6 +679,7 @@ const OPS = {
       const refused = await connectCatalog(dsn).then(catalog => catalog.close().then(() => null), error => error);
       if (refused === null) throw new Error('the server accepted the connection that the step expects it to refuse');
       if (!refused.message.toLowerCase().includes(s.refused_message)) throw new Error(`the server refused the connection for another reason: ${refused.message}`);
+      if (refused.code !== s.refused_code) throw new Error(`the refused connection has the code ${refused.code}, want ${s.refused_code}`);
       return {};
     }
     const catalog = await connectCatalog(dsn);

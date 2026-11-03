@@ -644,6 +644,7 @@
     ],
     "catalog.reconnect": [
       "op",
+      "refused_code",
       "refused_message",
       "user_from_database"
     ],
