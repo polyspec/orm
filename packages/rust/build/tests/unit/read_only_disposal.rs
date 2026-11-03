@@ -24,7 +24,7 @@ async fn check() {
         let catalog = CatalogConnection::connect(&dsn).await.unwrap();
         let mut owner = catalog;
         let table = format!("orm_readonly_discard_{}", std::process::id());
-        owner.connection.as_mut().unwrap().exec(&format!("CREATE TABLE {table}(n INTEGER NOT NULL)"), &[]).await.unwrap();
+        Conn::acquire(&owner.pool).await.unwrap().exec(&format!("CREATE TABLE {table}(n INTEGER NOT NULL)"), &[]).await.unwrap();
         let pool = owner.pool.clone();
         let (ready, received) = tokio::sync::oneshot::channel();
         let task = tokio::spawn(async move {
@@ -53,7 +53,7 @@ async fn check() {
         let mut next = Conn::acquire(&owner.pool).await.unwrap();
         let write = next.exec(&format!("INSERT INTO {table}(n) VALUES(7)"), &[]).await;
         drop(next);
-        owner.connection.as_mut().unwrap().exec(&format!("DROP TABLE {table}"), &[]).await.unwrap();
+        Conn::acquire(&owner.pool).await.unwrap().exec(&format!("DROP TABLE {table}"), &[]).await.unwrap();
         owner.close().await;
         assert!(write.is_ok(), "cancelled scope must not leak into a reused connection");
         polyspec_orm_testcase::step(format_args!("{dialect} passed"));

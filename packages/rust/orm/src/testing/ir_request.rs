@@ -136,6 +136,18 @@ fn func(value: &Value, at: &str) -> ir::Func {
 }
 
 /// The list of parameter numbers of `key`, empty if absent.
+/// The parameters of each additional row of an insert.
+fn rows(value: Option<&Value>) -> Vec<Vec<usize>> {
+    let Some(value) = value else { return Vec::new() };
+    let rows = value.as_array().unwrap_or_else(|| panic!("{REJECTED}input.rows: expected an array, got {value}"));
+    rows.iter()
+        .map(|row| {
+            let row = row.as_array().unwrap_or_else(|| panic!("{REJECTED}input.rows: expected an array, got {row}"));
+            row.iter().map(|p| index(p, "input.rows")).collect()
+        })
+        .collect()
+}
+
 fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
     object
         .get(key)
@@ -423,12 +435,13 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
             "key_by",
             "set",
             "on_duplicate",
+            "rows",
             "optimistic",
             "agg",
         ],
     );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "optimistic", "agg"] {
+    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "rows", "optimistic", "agg"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -439,6 +452,7 @@ pub fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         n_params: index(object.get("n_params").unwrap_or_else(|| panic!("{REJECTED}input.n_params: expected a count")), "input.n_params"),
         set: object.get("set").map(|set| assigns(set, "input.set")).unwrap_or_default(),
         on_duplicate: object.get("on_duplicate").map(|set| assigns(set, "input.on_duplicate")).unwrap_or_default(),
+        rows: rows(object.get("rows")),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);

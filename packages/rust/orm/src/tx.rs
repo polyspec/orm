@@ -545,11 +545,13 @@ enum OnceScope<'a> {
         db: &'a Db,
         tx: Arc<TxShared>,
     },
-    /// `audit` is the transaction's audit before the savepoint, restored when the savepoint does not release.
+    /// `audit` and `inserted` are the transaction's audit and inserted keys before the savepoint, restored when the
+    /// savepoint does not release.
     Savepoint {
         tx: Arc<TxShared>,
         name: String,
         audit: Option<AuditKey>,
+        inserted: HashMap<String, HashSet<i64>>,
     },
 }
 
@@ -564,10 +566,11 @@ impl<'a> OnceScope<'a> {
     fn close(self) -> OnceStep<'a, Result<()>> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
-            OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, audit, inserted } => Box::pin(async move {
                 let released = tx.savepoint_step(KIND_RELEASE, &name).await;
                 if released.is_err() {
                     *tx.audit.lock().unwrap() = audit;
+                    *tx.inserted.lock().unwrap() = inserted;
                 }
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 released
@@ -587,8 +590,9 @@ impl<'a> OnceScope<'a> {
                     rolled_back
                 }
             }),
-            OnceScope::Savepoint { tx, name, audit } => Box::pin(async move {
+            OnceScope::Savepoint { tx, name, audit, inserted } => Box::pin(async move {
                 *tx.audit.lock().unwrap() = audit;
+                *tx.inserted.lock().unwrap() = inserted;
                 let undone = rollback_savepoint(&tx, &name).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 undone
@@ -645,7 +649,8 @@ where
                             match tx.savepoint_step(KIND_SAVEPOINT, &name).await {
                                 Ok(()) => {
                                     let audit = tx.audit();
-                                    Ok(OnceScope::Savepoint { tx, name, audit })
+                                    let inserted = tx.inserted.lock().unwrap().clone();
+                                    Ok(OnceScope::Savepoint { tx, name, audit, inserted })
                                 }
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);

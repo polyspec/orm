@@ -1145,10 +1145,12 @@ export async function executeCoverage(
         catch (error) { errors.push(`${key}: ${error instanceof Error ? error.message : String(error)}`); continue; }
         // The deadline of one run is the sum of the deadlines of the processes that run starts. Two state readers and native
         // each process has its own timeoutMs.
-        const count = (dsn ? 2 : 0) + processes.flat().length;
+        // A recipe process runs the cases of its recipe, each with its own deadline, so it holds one deadline per case.
+        const processDeadline = (spec: Spec | undefined): number => timeoutMs * Math.max(1, spec?.recipe?.length ?? 1);
+        const runDeadline = (dsn ? 2 * timeoutMs : 0) + processes.reduce((sum, children, index) => sum + children.length * processDeadline(native[index]), 0);
         for (let attempt = 1; attempt <= (item.recipe ? 1 : 2); attempt++) {
           let failure: string | undefined;
-          const passed = await runCase(`${key} run ${attempt}`, count * timeoutMs, async ({ step }) => {
+          const passed = await runCase(`${key} run ${attempt}`, runDeadline, async ({ step }) => {
             let caught = false;
             try {
               const stateBefore = dsn ? await state(item.database, dsn, timeoutMs) : null;
@@ -1162,7 +1164,7 @@ export async function executeCoverage(
                 const recipeResults = spec.recipe ? join(directory, `${key.replaceAll('/', '_')}-${index}.results`) : undefined;
                 for (const child of processes[index] ?? []) {
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
-                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...process.env, ...child.env, ...(recipeResults ? { ORM_RECIPE_RESULTS: recipeResults } : {}) }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
+                  const result = await run(child.program, child.args, child.cwd, processDeadline(spec), { ...process.env, ...child.env, ...(recipeResults ? { ORM_RECIPE_RESULTS: recipeResults } : {}) }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
                   if (feature.id === 'performance_gate') {
                     const measurements = performanceMeasurementsFromOutput(
@@ -1200,7 +1202,7 @@ export async function executeCoverage(
             if (caught) throw new Error(failure);
           });
           if (!passed) {
-            errors.push(`${key} run ${attempt}: ${failure ?? `deadline ${count * timeoutMs} ms exceeded`}`);
+            errors.push(`${key} run ${attempt}: ${failure ?? `deadline ${runDeadline} ms exceeded`}`);
             break;
           }
         }

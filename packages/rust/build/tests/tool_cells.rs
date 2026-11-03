@@ -29,8 +29,10 @@ async fn physical_tool_cells() {
         if !matches!(connection.query(bytes, &[]).await.as_deref(), Ok([row]) if row.as_slice() == [tool_db::Val::Binary(vec![0xff])]) {
             failures.push(format!("{dialect}:binary-value"));
         }
-        if dialect == "mysql" && connection.query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[]).await.is_ok() {
-            failures.push("mysql:unsigned-overflow".into());
+        if dialect == "mysql"
+            && !matches!(connection.query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[]).await.as_deref(), Ok([row]) if row.as_slice() == [tool_db::Val::Unsigned(u64::MAX)])
+        {
+            failures.push("mysql:unsigned-value".into());
         }
         let valid = connection.query("SELECT 1, 'valid', NULL", &[]).await.expect("valid scalar query");
         assert_eq!(valid[0], vec![tool_db::Val::Int(1), tool_db::Val::Text("valid".into()), tool_db::Val::Null]);

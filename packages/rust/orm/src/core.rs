@@ -271,7 +271,10 @@ impl Core {
 
     pub(crate) fn fail_err(&mut self, e: Error) {
         if self.err.is_none() {
-            self.err = Some((e.code().to_owned(), e.to_string()));
+            // err() builds an Engine error, whose text writes the code, so the message holds it no second time.
+            let (code, text) = (e.code().to_owned(), e.to_string());
+            let msg = text.strip_prefix(&format!("{code}: ")).map_or_else(|| text.clone(), str::to_owned);
+            self.err = Some((code, msg));
         }
     }
 
