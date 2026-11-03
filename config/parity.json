@@ -398,6 +398,7 @@
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
+        "packages/php/tests/transaction_deadlock_child.php",
         "packages/php/tests/was_inserted_child.php",
         "packages/php/tests/DbspecApplyLockWaitPDO.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
@@ -633,6 +634,10 @@
         {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
+        {
+          "glob": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+          "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks of --enable-polyspec-orm-native-test; it tests the build, not ORM client behavior."
         },
         {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
@@ -3192,62 +3197,42 @@
     },
     {
       "id": "dbspec-apply-verification-errors",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PLN-92",
         "PLN-93",
         "PLN-96"
       ],
+      "file": "tests/dbspec/apply-verification-errors.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestSettledVerifyPreservesIntrospectionErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/settled-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/rollback-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/post-forward-introspection-error"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "symbol": "TestRecipeDbspecApplyVerificationErrorsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testVerifyErrorsAreNotDriftAndPreserveCause"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyVerificationErrorsRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
-          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift"
+          "test": "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyVerificationErrorsRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_settled_introspection_error_and_real_drift"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_rollback_preserves_introspection_error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_post_forward_introspection_error_does_not_report_success"
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_verify_errors_separately_from_drift"
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "symbol": "dbspec_apply_verification_errors_none"
         }
       ]
     },
@@ -3594,41 +3579,119 @@
       ]
     },
     {
-      "id": "dbspec-render-physical",
-      "kind": "feature",
+      "id": "dbspec-render-physical-mysql",
+      "kind": "suite",
       "requirements": [
         "DIA-113"
       ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render-physical.mjs",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_render_physical.py",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
-          "id": "render_physical"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/dbspec_render_physical_test.go",
-          "id": "TestDBSpecRenderPhysical"
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "id": "DbspecRenderTest::testBehaviourPhysical"
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
-          "id": "DbspecRenderTestExtensionTest::testBehaviourPhysical"
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+          "symbol": "dbspec_render_physical_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+          "symbol": "dbspec_render_physical_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+          "symbol": "dbspec_render_physical_sqlite"
         }
       ]
     },
@@ -6286,159 +6349,6 @@
       ]
     },
     {
-      "id": "coverage-transactions-transaction-rollback",
-      "kind": "feature",
-      "requirements": [
-        "DSL-118",
-        "INT-45",
-        "PLN-13",
-        "PLN-20",
-        "PLN-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-          "id": "AuditLazyFakePdoTest::testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        }
-      ]
-    },
-    {
-      "id": "model-transaction-unconnected-model-context",
-      "kind": "feature",
-      "requirements": [
-        "PLN-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        }
-      ]
-    },
-    {
       "id": "handle-disposal-abort-or-unwind-rolls-back",
       "kind": "feature",
       "requirements": [
@@ -6574,92 +6484,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/model.mjs",
           "id": "cancellation"
-        }
-      ]
-    },
-    {
-      "id": "coverage-transactions-transaction-savepoint",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119",
-        "DSL-123",
-        "DSL-125",
-        "DSL-126",
-        "INT-40",
-        "INT-41",
-        "INT-42",
-        "INT-43",
-        "INT-45",
-        "INT-46",
-        "INT-47",
-        "INT-48",
-        "PLN-17",
-        "PLN-21",
-        "PLN-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
         }
       ]
     },
@@ -7728,7 +7552,8 @@
         "SCH-12",
         "DBS-156",
         "DBS-100",
-        "DBS-103"
+        "DBS-103",
+        "DBS-99"
       ],
       "file": "tests/dbspec/load-set.json",
       "cases": "$.cases[*].id",
@@ -9120,16 +8945,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -9173,16 +8999,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -9226,16 +9053,17 @@
         "DBS-108",
         "DBS-119",
         "DBS-120",
+        "INT-55",
+        "INT-77",
+        "INT-91",
+        "INT-96",
+        "FCV-8",
+        "FCV-9",
         "FCV-10",
         "FCV-11",
         "FCV-12",
         "FCV-13",
         "FCV-14",
-        "FCV-8",
-        "FCV-9",
-        "INT-55",
-        "INT-77",
-        "INT-91",
         "SCH-11",
         "SCH-7"
       ],
@@ -12243,7 +12071,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -12255,8 +12083,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_show_create.rs",
-          "symbol": "show_create_vectors"
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -13012,7 +12840,7 @@
       ]
     },
     {
-      "id": "dbspec-show-create-check-body",
+      "id": "dbspec-show-create-reader-text",
       "kind": "feature",
       "requirements": [
         "DIA-84"
@@ -13020,68 +12848,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/show_create_introspect_test.go",
-          "id": "TestMySQLIntrospectionOfShownChecks"
+          "test": "packages/go/engine/dbspec/show_create_test.go",
+          "id": "TestMySQLShownCheckVectors"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::testIntrospect"
+          "test": "packages/php/tests/DbspecShowCreateTest.php",
+          "id": "DbspecShowCreateTest::testShowCreate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
-          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-parentheses"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-ends-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/name-without-check"
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "non-ascii-literal"
         },
         {
           "implementation": "python",
@@ -13089,44 +12872,48 @@
           "id": "non-ascii-literal"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-quote"
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
+          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-show-create-check-body",
+      "kind": "suite",
+      "requirements": [
+        "DIA-84"
+      ],
+      "file": "tests/dbspec/show-create-introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_show_create_introspect_test.go",
+          "symbol": "TestRecipeDbspecShowCreateIntrospectNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateIntrospectTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_show_create_introspect-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-backslash"
+          "test": "packages/python/tests/test_dbspec_show_create_introspect_none.py"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-parentheses"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-ends-with-backslash"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "name-without-check"
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -14446,7 +14233,8 @@
       "id": "transaction-flow-overlap-rejected",
       "kind": "feature",
       "requirements": [
-        "DSL-121"
+        "DSL-121",
+        "INT-47"
       ],
       "bindings": [
         {
@@ -14478,449 +14266,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/transaction_flow.rs",
           "id": "overlapping_statements_on_the_transaction_connection_return_config"
-        }
-      ]
-    },
-    {
-      "id": "transaction-savepoint-nested-rollback",
-      "kind": "feature",
-      "requirements": [
-        "DSL-119"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::sqlite_send_savepoint"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::mysql_send_savepoint"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx_send_tests.rs",
-          "id": "tx::send_tests::postgres_send_savepoint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "transaction-timeout-options",
-      "kind": "feature",
-      "requirements": [
-        "DSL-125"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::transaction_timeout_is_the_postgres_statement_timeout"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        }
-      ]
-    },
-    {
-      "id": "transaction-callback-error-rolls-back",
-      "kind": "feature",
-      "requirements": [
-        "DSL-118"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionRollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionRollback",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_rollback",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_rollback"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/tx.rs",
-          "id": "tx::tests::one_shot_transaction_preserves_callback_error_and_rolls_back"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback"
-        }
-      ]
-    },
-    {
-      "id": "transaction-retry-on-deadlock",
-      "kind": "feature",
-      "requirements": [
-        "PLN-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionSavepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionSavepoint",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_savepoint"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_savepoint",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_savepoint",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_savepoint"
-          ]
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionDeadlockRetry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
-          ]
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_deadlock_retry"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_deadlock_retry",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "transaction-retry-on-deadlock-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "PLN-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_transactions_test.go",
-          "id": "TestCoverageTransactionDeadlockRetry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageTransactionDeadlockRetry",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelTestExtensionTest.php",
-          "id": "ModelTestExtensionTest::testDeadlockRetry"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_deadlock_retry"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_deadlock_retry",
-          "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_transaction_deadlock_retry"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
-          "id": "coverage_transactions::coverage_transaction_deadlock_retry",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_transactions::coverage_transaction_deadlock_retry"
-          ]
         }
       ]
     },
@@ -15650,11 +14995,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generated manifest text and hash match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/runtimemodel/runtimemodel_test.go",
-          "id": "TestLoadRebuildsTheModelOfTheManifestText"
         },
         {
           "implementation": "php",
@@ -17738,40 +17078,40 @@
     },
     {
       "id": "dbspec-introspect-messages",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "DIA-191"
       ],
+      "file": "tests/dbspec/introspect-messages.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestSQLiteUnsupportedColumnReasonQuotesMissingCheck"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "dbspec.introspect.sqlite-empty-check-reason"
+          "test": "packages/go/orm/recipe_dbspec_introspect_messages_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMessagesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php/tests/DbspecIntrospectMessagesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectMessagesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectMessagesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect_messages-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_introspect_messages.py",
-          "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
+          "test": "packages/python/tests/test_dbspec_introspect_messages_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_unsupported_column_reason_quotes_missing_check"
+          "test": "packages/rust/tests/tests/dbspec_introspect_messages_none.rs",
+          "symbol": "dbspec_introspect_messages_none"
         }
       ]
     },
@@ -18780,62 +18120,122 @@
       ]
     },
     {
-      "id": "dbspec-set-decimal",
-      "kind": "feature",
+      "id": "dbspec-set-decimal-mysql",
+      "kind": "suite",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalMysql"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testDecimalDocument"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-decimal.mjs",
-          "id": "decimal_schema.dbs"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/sqlite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/mysql"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/postgres"
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-          "id": "DecimalModelDbNativeTest::testNativeRoundTrip"
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/decimal_model_db.py",
-          "id": "test_round_trip"
+          "test": "packages/python/tests/test_set_decimal_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_mysql"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+          "symbol": "dbspec_set_decimal_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_postgres"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+          "symbol": "dbspec_set_decimal_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_sqlite"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+          "symbol": "dbspec_set_decimal_sqlite"
         }
       ]
     },
@@ -26719,6 +26119,54 @@
       ]
     },
     {
+      "id": "transaction-audit-lazy-fake-pdo",
+      "kind": "feature",
+      "requirements": [
+        "INT-44b"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+          "id": "AuditLazyFakePdoTest::testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "transaction-send-savepoint",
+      "kind": "feature",
+      "requirements": [
+        "INT-46a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::sqlite_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::mysql_send_savepoint"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx_send_tests.rs",
+          "id": "tx::send_tests::postgres_send_savepoint"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "coverage-parameter-chunking-native",
       "kind": "feature",
       "requirements": [
@@ -31121,7 +30569,9 @@
         "DBS-112",
         "PRT-32",
         "PRT-81",
-        "PRT-82"
+        "PRT-82",
+        "DIA-24",
+        "PRT-33"
       ],
       "file": "tests/planner/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -31163,7 +30613,9 @@
         "DBS-65",
         "DBS-85",
         "DBS-111",
-        "DBS-112"
+        "DBS-112",
+        "DBS-100",
+        "DBS-103"
       ],
       "file": "tests/dbspec/runtime-model.json",
       "cases": "$.cases[*].id",
@@ -42708,6 +42160,7 @@
       "id": "transactions-mysql",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42719,8 +42172,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42766,6 +42219,7 @@
       "id": "transactions-postgres",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42777,8 +42231,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42824,6 +42278,7 @@
       "id": "transactions-sqlite",
       "kind": "suite",
       "requirements": [
+        "CFG-24",
         "DSL-118",
         "DSL-119",
         "DSL-123",
@@ -42835,8 +42290,8 @@
         "INT-43",
         "INT-45",
         "INT-46",
-        "INT-47",
         "INT-48",
+        "INT-49",
         "PLN-13",
         "PLN-16",
         "PLN-17",

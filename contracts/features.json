@@ -1025,9 +1025,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/mysql"
                   },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "case_database": true
                 }
               ],
               "postgres": [
@@ -1038,9 +1038,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/postgres"
                   },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "case_database": true
                 }
               ],
               "sqlite": [
@@ -1051,9 +1051,9 @@
                     "dsn_model_connection"
                   ],
                   "symbols": {
-                    "dsn_model_connection": "TestCoverageGeneratedModelConnection"
+                    "dsn_model_connection": "TestCoverageGeneratedModelConnection/sqlite"
                   },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "case_database": true
                 }
               ]
             }
@@ -3201,8 +3201,9 @@
         }
       ],
       "parity": [
-        "coverage-transactions-transaction-rollback",
-        "coverage-transactions-transaction-savepoint",
+        "transactions-mysql",
+        "transactions-postgres",
+        "transactions-sqlite",
         "transaction-failure-rollback",
         "transaction-failure-rollback-fault",
         "php-internal-rollback-rollback-fault",
@@ -3211,12 +3212,15 @@
         "mysql-lock-wait-canceled",
         "transaction-execution-flow-context",
         "transaction-flow-overlap-rejected",
+        "transaction-audit-lazy-fake-pdo",
+        "transaction-send-savepoint",
         "utils-mysql",
         "utils-postgres",
         "utils-sqlite"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
+        "packages/php/tests/transaction_deadlock_child.php",
         "contracts/fixtures/rollback.dbs",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/model/coverage_helpers_test.go",
@@ -3259,9 +3263,6 @@
         "packages/php/tests/SessionStateTest.php",
         "packages/rust/orm/tests/session_state.rs",
         "packages/go/orm/transaction_end_test.go",
-        "packages/go/model/coverage_transactions_test.go",
-        "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/rust/tests/tests/integration/coverage_transactions.rs",
         "packages/ts/tests/coverage_transactions.mjs",
         "packages/go/orm/rollback_fault_test.go",
         "packages/go/orm/rollback_fault_entry_test.go",
@@ -3310,6 +3311,19 @@
         "packages/php-ext/tests/SessionStateTestExtensionTest.php",
         "packages/php-ext/tests/SqliteRowLockRestoreTestExtensionTest.php",
         "packages/php-ext/tests/StatementFaultTestExtensionTest.php",
+        "packages/go/orm/recipe_transactions_test.go",
+        "packages/php/tests/TransactionsRecipeTest.php",
+        "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+        "packages/ts/tests/transactions-mysql.test.mjs",
+        "packages/ts/tests/transactions-postgres.test.mjs",
+        "packages/ts/tests/transactions-sqlite.test.mjs",
+        "packages/python/tests/test_transactions_mysql.py",
+        "packages/python/tests/test_transactions_postgres.py",
+        "packages/python/tests/test_transactions_sqlite.py",
+        "packages/rust/tests/tests/transactions_mysql.rs",
+        "packages/rust/tests/tests/transactions_postgres.rs",
+        "packages/rust/tests/tests/transactions_sqlite.rs",
+        "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/go/orm/recipe_utils_test.go",
         "packages/php/tests/UtilsRecipeTest.php",
         "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
@@ -3625,59 +3639,120 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "transaction_rollback",
-          "transaction_savepoint"
+          "model_write_outside_transaction_is_config",
+          "callback_success_commits",
+          "callback_failure_rolls_back",
+          "savepoint_failure_rolls_back_only_the_inner_transaction",
+          "nested_options_are_config",
+          "row_lock_inside_transaction_is_accepted",
+          "unconnected_model_outside_a_transaction_is_config",
+          "unconnected_model_joins_the_transaction",
+          "every_row_lock_needs_a_transaction",
+          "a_nested_timeout_is_config_before_its_callback",
+          "a_nested_retry_is_accepted_and_ignored",
+          "every_isolation_level_runs",
+          "a_write_in_a_read_only_transaction_is_refused",
+          "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+          "a_locked_statement_ends_at_timeout_ms",
+          "a_conflict_runs_the_whole_callback_again",
+          "the_default_retry_is_three",
+          "retry_zero_returns_the_deadlock",
+          "a_locked_sqlite_writer_is_canceled_and_not_retried",
+          "a_real_deadlock_is_retried_and_both_flows_commit"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_transactions_test.go"
+              "packages/go/orm/recipe_transactions_test.go"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_transactions_test.go",
+                  "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "TestCoverageTransactionRollback",
-                    "transaction_savepoint": "TestCoverageTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsSqlite"
                 }
               ]
             }
@@ -3685,52 +3760,95 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageTransactionsTest.php"
+              "packages/php/tests/TransactionsRecipeTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageTransactionsTest.php",
+                  "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -3738,52 +3856,94 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_transactions.rs"
+              "packages/rust/tests/tests/transactions_mysql.rs",
+              "packages/rust/tests/tests/transactions_postgres.rs",
+              "packages/rust/tests/tests/transactions_sqlite.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_mysql.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_postgres.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_transactions.rs",
+                  "test": "packages/rust/tests/tests/transactions_sqlite.rs",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "coverage_transactions::coverage_transaction_rollback",
-                    "transaction_savepoint": "coverage_transactions::coverage_transaction_savepoint"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ]
             }
@@ -3791,16 +3951,47 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
+              "packages/ts/tests/transactions-mysql.test.mjs",
+              "packages/ts/tests/transactions-postgres.test.mjs",
+              "packages/ts/tests/transactions-sqlite.test.mjs",
               "packages/ts/tests/coverage_transactions.mjs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-mysql.test.mjs",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3808,10 +3999,36 @@
               "postgres": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-postgres.test.mjs",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3819,10 +4036,35 @@
               "sqlite": [
                 {
                   "runner": "node",
+                  "test": "packages/ts/tests/transactions-sqlite.test.mjs",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3832,16 +4074,46 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
+              "packages/python/tests/test_transactions_mysql.py",
+              "packages/python/tests/test_transactions_postgres.py",
+              "packages/python/tests/test_transactions_sqlite.py",
               "packages/python/tests/coverage_transactions.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_mysql.py",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3849,10 +4121,35 @@
               "postgres": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_postgres.py",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3860,10 +4157,34 @@
               "sqlite": [
                 {
                   "runner": "python",
+                  "test": "packages/python/tests/test_transactions_sqlite.py",
+                  "cases": [
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
+                  ],
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
+                },
+                {
+                  "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -3873,55 +4194,96 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageTransactionsExtensionTest.php"
+              "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/AuditLazyFakePdoTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageTransactionsTest.php"
+              "contracts/fixtures/bench/dbspec-set.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transaction_rollback",
-                    "transaction_savepoint"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transaction_rollback": "testTransactionRollback",
-                    "transaction_savepoint": "testTransactionSavepoint"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -4937,10 +5299,18 @@
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
         "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
-        "packages/ts/tests/dbspec-render-physical.mjs",
-        "packages/python/tests/dbspec_render_physical.py",
-        "packages/rust/orm/tests/dbspec_render_physical.rs",
-        "packages/go/orm/dbspec_render_physical_test.go",
+        "packages/ts/tests/dbspec_render_physical-mysql.test.mjs",
+        "packages/ts/tests/dbspec_render_physical-postgres.test.mjs",
+        "packages/ts/tests/dbspec_render_physical-sqlite.test.mjs",
+        "packages/python/tests/test_render_physical_mysql.py",
+        "packages/python/tests/test_render_physical_postgres.py",
+        "packages/python/tests/test_render_physical_sqlite.py",
+        "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+        "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+        "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+        "packages/go/orm/recipe_dbspec_render_physical_test.go",
+        "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+        "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
         "packages/ts/tests/dbspec-rules.mjs",
         "packages/ts/tests/dbspec-stress.mjs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
@@ -4960,10 +5330,10 @@
         "packages/ts/tests/dbspec-unicode.mjs",
         "packages/php/tests/DbspecUnicodeTest.php",
         "packages/go/engine/dbspec/show_create_test.go",
-        "packages/go/engine/dbspec/show_create_introspect_test.go",
+        "packages/go/orm/recipe_dbspec_show_create_introspect_test.go",
         "packages/php/tests/DbspecShowCreateTest.php",
         "packages/ts/tests/dbspec-show-create.mjs",
-        "packages/ts/tests/dbspec-show-create-introspect.mjs",
+        "packages/ts/tests/dbspec_show_create_introspect-none.test.mjs",
         "packages/php/tests/DbspecBehaviourTest.php",
         "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
         "packages/ts/tests/package-declarations.mjs",
@@ -4974,7 +5344,7 @@
         "packages/go/engine/dbspec/analyze_test.go",
         "packages/go/engine/dbspec/set_test.go",
         "packages/rust/schema/tests/dbspec_set.rs",
-        "packages/rust/schema/tests/dbspec_show_create.rs",
+        "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
         "packages/ts/tests/dbspec-set.mjs",
         "packages/ts/tests/dbspec-set-edges.mjs",
         "packages/ts/tests/browser-entry.mjs",
@@ -4995,7 +5365,7 @@
         "packages/python/tests/dbspec_apply.py",
         "packages/python/tests/dbspec_apply_runner.py",
         "packages/python/tests/dbspec_vectors_reader.py",
-        "packages/python/tests/test_introspect_messages.py",
+        "packages/python/tests/test_dbspec_introspect_messages_none.py",
         "packages/go/engine/dbspec/names_test.go",
         "packages/php/tests/DbspecPlanReaderTest.php",
         "packages/go/engine/dbspec/introspect_query_count_test.go",
@@ -5093,7 +5463,7 @@
             "tests/dbspec/unicode/main.go",
             "tests/dbspec/unicode/main_test.go",
             "packages/go/engine/dbspec/show_create_test.go",
-            "packages/go/engine/dbspec/show_create_introspect_test.go",
+            "packages/go/orm/recipe_dbspec_show_create_introspect_test.go",
             "packages/go/engine/dbspec/analyze_test.go",
             "tests/dbspec/show-create.json",
             "packages/php-ext/src/unicode_word.h",
@@ -5171,7 +5541,7 @@
             "packages/rust/schema/src/lib.rs",
             "packages/rust/schema/src/dbspec/unicode_word.rs",
             "tests/dbspec/show-create.json",
-            "packages/rust/schema/tests/dbspec_show_create.rs",
+            "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
             "packages/rust/schema/tests/dbspec_set.rs",
             "tests/dbspec/set-files.json",
             "packages/rust/schema/src/dbspec/set.rs",
@@ -5206,7 +5576,7 @@
             "packages/ts/tests/dbspec-unicode.mjs",
             "packages/ts/src/dbspec/unicode_word.ts",
             "packages/ts/tests/dbspec-show-create.mjs",
-            "packages/ts/tests/dbspec-show-create-introspect.mjs",
+            "packages/ts/tests/dbspec_show_create_introspect-none.test.mjs",
             "tests/dbspec/show-create.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plan-cases.json",
@@ -5680,7 +6050,18 @@
         "packages/php/tests/SchemaSetTest.php",
         "packages/ts/tests/schema-set.mjs",
         "packages/ts/tests/install_changed_database.mjs",
-        "packages/ts/tests/dbspec-set-decimal.mjs",
+        "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs",
+        "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs",
+        "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs",
+        "packages/python/tests/test_set_decimal_mysql.py",
+        "packages/python/tests/test_set_decimal_postgres.py",
+        "packages/python/tests/test_set_decimal_sqlite.py",
+        "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+        "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+        "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+        "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+        "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+        "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
         "packages/php/tests/case_database.php",
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
@@ -5698,12 +6079,16 @@
         "packages/python/tests/case_database.py",
         "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
         "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
-        "packages/ts/tests/dbspec-apply-verify-errors.mjs",
+        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
         "packages/ts/tests/dbspec-begin-exclusive-lock.mjs",
         "packages/python/tests/test_dbspec_sqlite_lock.py",
-        "packages/python/tests/test_dbspec_verify_errors.py",
+        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/php/tests/DbspecSqliteLockTest.php",
-        "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
+        "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+        "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
         "packages/php-ext/tests/SchemaUtilsNativeTest.php",
         "packages/go/engine/dbspec/sqlite_lock_result_test.go",
         "packages/rust/orm/src/schema.rs",
@@ -13928,7 +14313,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerSqlite"
@@ -13945,7 +14331,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerMysql"
@@ -13962,7 +14349,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json",
                   "symbol": "TestRecipeStatementRunnerPostgres"
@@ -14172,7 +14560,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
@@ -14188,7 +14577,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
@@ -14204,7 +14594,8 @@
                     "opened_transaction_commits_its_writes",
                     "failed_statement_is_its_database_code_and_rolls_back",
                     "refused_write_is_its_database_code",
-                    "joined_statements_roll_back_with_the_outer_transaction"
+                    "joined_statements_roll_back_with_the_outer_transaction",
+                    "retryable_error_of_the_function_runs_it_once"
                   ],
                   "recipe": "contracts/fixtures/statement_runner/statement_runner.json"
                 }
