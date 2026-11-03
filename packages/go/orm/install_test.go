@@ -100,9 +100,9 @@ func dbName(t *testing.T, dsn string) string {
 func TestInstallAppliesRenderedStatements(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "audit")
-	m, diagnostics := runtimemodel.Load(s.Text)
-	if len(diagnostics) > 0 {
-		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	m, invalid := runtimemodel.Load(s.Text)
+	if invalid != nil {
+		t.Fatal(invalid)
 	}
 	eachDatabase(t, []string{"sqlite", "mysql", "postgres"}, s, 2, func(t *testing.T, driver, dsn string, db *orm.DB) {
 		statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(driver))

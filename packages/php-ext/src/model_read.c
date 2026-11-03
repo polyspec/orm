@@ -458,14 +458,26 @@ ZEND_METHOD(Polyspec_Orm_Model, assembleRow)
             if(name==NULL||raw==NULL) continue;
             zval converted; ZVAL_COPY(&converted,raw); if(!read_convert_resource(&converted)){zval_ptr_dtor(&converted);zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS();}
             if (Z_TYPE(converted) != IS_NULL && kind != NULL) {
-                if (read_string_is(kind, "i16") || read_string_is(kind, "i32") || read_string_is(kind, "i64")) {
-                    bool numeric;
-                    if (!read_is_numeric(&converted, &numeric)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
-                    if (numeric) { zend_long n = zval_get_long(&converted); zval_ptr_dtor(&converted); ZVAL_LONG(&converted, n); }
-                } else if (read_string_is(kind, "f64")) {
-                    bool numeric;
-                    if (!read_is_numeric(&converted, &numeric)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
-                    if (numeric) { double n = zval_get_double(&converted); zval_ptr_dtor(&converted); ZVAL_DOUBLE(&converted, n); }
+                if (read_string_is(kind, "i16") || read_string_is(kind, "i32") || read_string_is(kind, "i64") ||
+                    read_string_is(kind, "f64") || read_string_is(kind, "bool")) {
+                    /* INT-160: an added column is decoded by the type of its plan column, the rule of groupValue. */
+                    zval context, name_copy, column_copy, kind_copy;
+                    array_init(&context);
+                    ZVAL_COPY(&name_copy, name);
+                    ZVAL_EMPTY_STRING(&column_copy);
+                    ZVAL_COPY(&kind_copy, kind);
+                    zend_hash_str_update(Z_ARRVAL(context), "name", sizeof("name") - 1, &name_copy);
+                    zend_hash_str_update(Z_ARRVAL(context), "column", sizeof("column") - 1, &column_copy);
+                    zend_hash_str_update(Z_ARRVAL(context), "type", sizeof("type") - 1, &kind_copy);
+                    zval args[3], decoded;
+                    ZVAL_COPY(&args[0], db);
+                    ZVAL_COPY_VALUE(&args[1], &context);
+                    ZVAL_COPY_VALUE(&args[2], &converted);
+                    ZVAL_UNDEF(&decoded);
+                    bool ok = read_model_call(&model, "groupValue", &decoded, 3, args);
+                    for (int arg = 0; arg < 3; arg++) zval_ptr_dtor(&args[arg]);
+                    if (!ok) { if (!Z_ISUNDEF(decoded)) zval_ptr_dtor(&decoded); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }
+                    ZVAL_COPY_VALUE(&converted, &decoded);
                 } else if (read_string_is(kind, "date") || read_string_is(kind, "datetime")) {
                     zval time;
                     if (!model_time_value_in_zone(&converted, zone, &time)) { zval_ptr_dtor(&converted); zval_ptr_dtor(&st); zval_ptr_dtor(&model); zval_ptr_dtor(&shape); RETURN_THROWS(); }

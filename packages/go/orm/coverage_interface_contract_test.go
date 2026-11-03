@@ -1,5 +1,3 @@
-//go:build featurecoverage
-
 package orm_test
 
 import (

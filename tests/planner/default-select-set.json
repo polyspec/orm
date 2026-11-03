@@ -1,0 +1,64 @@
+{
+  "$schema": "../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "PRT-9",
+    "DBS-68"
+  ],
+  "cases": [
+    {
+      "id": "default-select-set",
+      "requirements": [
+        "PRT-9",
+        "DBS-68"
+      ],
+      "steps": [
+        {
+          "op": "planner.compile",
+          "schema": "default-select-set.dbs",
+          "input": {
+            "entity": "note",
+            "ir_version": 1,
+            "kind": "all",
+            "n_params": 0
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "mysql": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT `a`.`id` AS `a__id`, `a`.`title` AS `a__title`, `a`.`created_at` AS `a__created_at` FROM `note` AS `a`",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "postgres": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"title\" AS \"a__title\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\"",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ],
+                "sqlite": [
+                  {
+                    "role": "main",
+                    "sql": "SELECT \"a\".\"id\" AS \"a__id\", \"a\".\"title\" AS \"a__title\", \"a\".\"created_at\" AS \"a__created_at\" FROM \"note\" AS \"a\"",
+                    "slots": [],
+                    "tables": [
+                      "note"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

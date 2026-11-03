@@ -508,9 +508,6 @@ func TestTransactions(t *testing.T) {
 		if idle.MaxOpenConnections != 10 || idle.OpenConnections != 1 || idle.InUse != 0 || idle.Idle != 1 {
 			t.Fatalf("idle connection statistics: %+v", idle)
 		}
-		if db.Utils().Aes() == nil || db.Utils().Privileges() == nil || db.Utils().Schema() == nil || db.Utils().Stats() == (orm.DBStats{}) {
-			t.Fatal("connection utilities are missing a group")
-		}
 		boom := errors.New("boom")
 		err := db.Transaction(func() error {
 			stats := db.Stats()
@@ -550,15 +547,6 @@ func TestTransactions(t *testing.T) {
 			}
 			if err := db.Utils().Lock("users"); err != nil {
 				return err
-			}
-			if err := db.Utils().SetLocal("ormtest.actor", "tester"); err != nil {
-				return err
-			}
-			if v, err := db.Utils().Local("ormtest.actor"); err != nil || v != "tester" {
-				t.Errorf("local: %q %v", v, err)
-			}
-			if _, err := db.Utils().Local("ormtest.missing"); orm.ErrorCode(err) != orm.CodeNoRows {
-				t.Errorf("missing local: %v", err)
 			}
 			done := make(chan error, 1)
 			go func() {

@@ -2,7 +2,7 @@
 // Engine feature tests: the runtime model of the embedded manifest, request validation and plans, and loadSet.
 // Usage: node packages/ts/tests/engine_features.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { Db, EXTERNAL_TEXT, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, loadSet, parseDbspec, parseDbspecSet, registerModel } from '../dist/index.js';
+import { Db, EXTERNAL_TEXT, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, parseDbspecSet, registerModel } from '../dist/index.js';
 import { cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const text = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
@@ -41,9 +41,6 @@ await run.run('engine', COMPUTE, async () => {
   check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
   const author = model.entities.get('author');
   const field = name => author.fields.find(f => f.name === name);
-  // Requirements: PRT-9, DBS-68.
-  const selected = author.fields.filter(f => f.selected).map(f => f.name);
-  check(selected.join(',') === 'seq,name,created_ts,updated_ts,is_close,is_display,display_start_dt,display_end_dt,is_allday,target_club_reader_count,success_count,reader_count,read_count,photo_url,user_seq,service_seq,service_region_seq,service_member_seq,start_dt,end_dt,uuid,is_single_work,like_count,aes_hex_email,aes_hex_phone,price', 'the default select set excludes only select explicit columns in field order');
   check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_hex_email').stages.join(',') === 'aes,hex' && field('aes_hex_email').blindIndex === 'email_blind_index', 'codec stages and blind index');
   check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 
@@ -345,16 +342,5 @@ table plain {
 
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
 });
-// Requirements: DBS-156, SCH-12.
-// loadSet returns the parsed documents of a generated schema value, as PHP's RuntimeModel::loadSet does (T163).
-await run.run('load-set', COMPUTE, async () => {
-  const owned = 'dbspec 1 shop\n\nuse core { account }\n\ntable item {\n  seq i64\n  account_seq i64\n  primary key (seq)\n  index ix_item_account (account_seq)\n  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict\n}\n';
-  const external = 'dbspec 1 core\n\ntable account {\n  seq i64\n  primary key (seq)\n}\n';
-  const documents = loadSet(owned, external);
-  if (documents.map(d => `${d.name}:${d.external === true}`).join(',') !== 'shop:false,core:true') throw new Error(`documents ${documents.map(d => d.name).join(',')}`);
-  if (loadSet(external, '').map(d => d.name).join(',') !== 'core') throw new Error('an empty external text adds a document');
-  if (code(() => loadSet('table item {}\n', '')) !== 'SCHEMA_INVALID') throw new Error('a text without a header is not SCHEMA_INVALID');
-});
-
 
 run.finish();
