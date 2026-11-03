@@ -84,6 +84,8 @@ type databaseStep struct {
 	Expect    map[string]json.RawMessage `json:"expect"`
 	Schema    json.RawMessage            `json:"schema"`
 	Steps     []json.RawMessage          `json:"steps"`
+	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
+	Statements []frameStatement `json:"statements"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`
