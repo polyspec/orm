@@ -88,6 +88,8 @@
       "expect": {
         "length": 1,
         "keys": [1],
+        "values": [1],
+        "entries": [[1, 1]],
         "first": 1,
         "get": 1,
         "get_text": null,

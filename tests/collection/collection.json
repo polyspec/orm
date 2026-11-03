@@ -11,6 +11,8 @@
     "INT-71",
     "INT-80",
     "INT-81",
+    "INT-82",
+    "INT-83",
     "INT-84",
     "INT-86",
     "INT-90",
@@ -807,6 +809,8 @@
         "INT-63",
         "INT-80",
         "INT-81",
+        "INT-82",
+        "INT-83",
         "INT-84",
         "INT-86"
       ],
@@ -836,6 +840,8 @@
                   1,
                   0
                 ],
+                "values": [1, 0],
+                "entries": [[1, 1], [0, 0]],
                 "first": 1,
                 "get": 1,
                 "get_text": null,
@@ -900,6 +906,8 @@
                   0,
                   5
                 ],
+                "values": [0, 5],
+                "entries": [[0, 0], [5, 5]],
                 "first": 0,
                 "get": null,
                 "get_text": null,

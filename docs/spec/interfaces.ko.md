@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 7965753d5cf15bc6c4af664316ac25b4af75fdf3cc6d911eb2d4ba09e03fc726 -->
+<!-- source-sha256: 07ded08f84572b4b5f65ffff5bb5d6cbf0fb48ccfe2c7167667be0cdeececdae -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -227,6 +227,7 @@ relation 결과는 schema에 따라 한 행 또는 collection이다. Go와 Rust�
 ## 9. Collection·Key·Page — IF-25 ~ IF-27
 
 - **INT-62** `Collection<T>`: 순서가 있는 행, 길이, first, key lookup
+- **INT-62a** PHP-extension package `polyspec/orm-php-ext`의 native collection은 시험이 확인하는 다음을 보장한다: 이미 있는 key의 `put`은 그 자리의 model을 바꾸고, `toJson`과 `jsonSerialize`는 collection 순서로 model을 내주며, connection을 주어 호출한 collection은 `connect`처럼 모든 model을 연결하고 그 collection을 반환한다.
 - **INT-63** `Key`: 논리 타입 tag와 값
 - **INT-64** `Page<T>`: `items`, `totalCount`, `totalPages`, `page`, `perPage`
 - **INT-80** `Collection.get(key)`는 `key`와 같은 타입과 값의 key를 가진 모델을 돌려준다. 그 key를 가진 모델이 없으면 결과는 없음이다: Go는 오류 없이 zero value, PHP는 `null`, TypeScript는 `undefined`, Python은 `None`이다. SQL NULL key는 `CODEC_DECODE`로 실패하며, Go는 변환할 수 없는 key에 대해 `KeyOf`의 변환 오류를 반환한다.
@@ -546,7 +547,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-158** `polyspec/orm-php-ext` package의 PHP extension은 MySQL catalog를 INT-157의 PDO 연결 하나로 유지하며, 열 타입, 서버가 문장을 거부할 때의 cell, 예산 멈춤도 같다.
 - **INT-159** Go는 `limit(offset, count)`에서 부호 있는 offset을 받으며, PHP, PHP extension, TypeScript, Python도 같다. 음수 offset은 코드 `CONFIG`인 INT-88의 builder 오류다. Rust의 offset은 unsigned라 compiler가 거부한다.
 - **INT-152** SQLite에서 기술된 테이블의 그리드 셀은 저장된 값의 저장 클래스를 유지한다: INTEGER 또는 REAL 열에 저장된 텍스트는 텍스트 셀이다. INT-98은 타입이 정해진 읽기에 적용되며, 그리드 셀에는 적용되지 않는다.
-- **INT-153** `read_only_query`는 temporal 값을 그 temporal grid cell(INT-103)의 텍스트로 돌려준다: UTC의 `HH:MM:SS`, `YYYY-MM-DD` 또는 `YYYY-MM-DD HH:MM:SS`이며, 조회에는 선언된 정밀도가 없으므로 MySQL과 PostgreSQL에서는 소수 6자리다; SQLite에서는 저장된 텍스트다. binary 값과, 선언된 타입이 없는 column의 유효한 UTF-8이 아닌 값은 거부하지 않고 runtime의 byte 형식으로 돌려준다.
+- **INT-153** `read_only_query`는 temporal 값을 그 temporal grid cell(INT-103)의 텍스트로 돌려준다: UTC의 `HH:MM:SS`, `YYYY-MM-DD` 또는 `YYYY-MM-DD HH:MM:SS`이며, 조회에는 선언된 정밀도가 없으므로 MySQL과 PostgreSQL에서는 소수 6자리다; SQLite에서는 저장된 텍스트다. binary 값과 유효한 UTF-8이 아닌 모든 값은 거부하지 않고 runtime의 byte 형식으로 돌려주며, 읽기 전용 grid 질의는 그런 값을 binary cell로, described table 읽기는 그 byte로 돌려준다.
 - **INT-104** 읽기 전용 그리드 조회와 일반 읽기 전용 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행되며, 일반 읽기 전용 조회의 쓰는 문은 `QUERY_READ_ONLY`로 실패하며, 데이터베이스의 읽기 전용 범위가 거부하는 쓰기, 예컨대 쓰는 루틴을 그리드 조회에서 호출하는 것도 `QUERY_READ_ONLY`로 실패한다.
 - **INT-105** `polyspec-orm-build`의 커밋 허가(permit)는 거부된 네이티브 insert, update, delete를 롤백한다. 커밋 성공이 되는 일은 없다.
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
@@ -564,15 +565,17 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-116** `polyspec-orm-build` Rust 도구는 타입 있는 바인드의 값을 데이터베이스에서 보존한다. 타입 있는 NULL은 빈 텍스트나 0이 아니라 선택된 네이티브 바인드 종류를 쓴다.
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
 - **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다. 연결을 잃은 commit이 catalog를 끝내지는 않는다. 다음 호출은 새 연결로 읽는다.
+- **INT-118a** `polyspec-orm-build`의 commit 분류기는 `COMMIT` 중의 끊긴 전송이나 protocol 오류를 응답 없음으로 보며, 명시적 거부로 보지 않는다. 이는 Rust driver 오류에만 해당한다.
 - **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 수집는 보이는 것으로 가정하지 않고 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
-- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
+- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다. 할당이 없는 insert는 기본값만으로 행을 쓰고 생성된 키를 돌려주며, 모든 dialect에서 같다. 거부된 insert는 아무것도 남기지 않으며, 다음 insert는 자기 값으로 판정된다.
+- **INT-123a** `polyspec-orm-build`의 `insert_row`는 성공하면 `Committed`를 마지막에 알리고, `Applied`에서 취소되면 `RolledBack`을 알리며 행은 그대로 남는다. MySQL과 PostgreSQL의 `Locked` 단계에서는 다른 연결이 테이블 잠금을 본다. 한 연결에서 join된 두 insert는 각자의 행과 서로 다른 키를 돌려주며, 변동하는 expression default에서도 같다. 이는 Rust의 형식에만 해당한다. 다른 runtime에는 phase 알림, 취소 flag, 한 연결에서 join된 insert가 없다.
 - **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.
-- **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부한다. 피연산자와 항의 개수는 거부 사유가 아니다.
+- **INT-136** 읽기 전용 grid 질의는 읽기만 하는 statement 하나를 받아들인다: `SELECT`, 또는 그 부분이 읽기만 하는 `WITH` 질의. 주석이나 문자열 리터럴 안의 `;`는 statement를 끝내지 않는다. 쓰기, commit, 프로시저 호출, `INTO` 선택, `FOR UPDATE` 잠금, 또는 뒤따르는 두 번째 statement가 있는 문장은 거부한다. statement의 길이, 중첩, 피연산자와 항의 개수는 거부 사유가 아니다.
 - **INT-137** `polyspec-orm-build` crate의 Rust 카탈로그 연결은 취소된 task가 열어 둔 읽기 전용 scope를 pool에 돌려보내지 않는다: connection을 폐기하고 다음 checkout은 쓸 수 있다.
 - **INT-138** 각 구현의 native package 진입점은 소비자 import에 선언된 public client 표면을 노출한다: Go module package, PHP Composer autoloader, 로드된 PHP extension 선언, TypeScript package exports, Python package import, Rust crate root이다. 소비자는 해당 native 형식으로 진입점을 해석해 public 선언을 사용할 수 있으며, test-only 진입점은 별도 요구사항을 따른다.
 - **INT-141** Rust `polyspec-orm` API는 행 값을 위한 `Val`을 공개한다: `Null`, `I64`, `F64`, `Str`, `Bytes`, `DateTime`, `Date`, `Bool`, `Json`, `Ordered`. `Null`은 SQL NULL을 나타내고, `Ordered`는 JSON 리터럴 null을 포함한 ordered JSON을 `Null`과 구분해 보존한다. 공개 typed accessor는 유효하지 않거나 손실이 있는 변환에 `CODEC_DECODE`로 실패한다. 공개 `take_*` 메서드는 성공하면 `Val::Null`을 남기고 변환에 실패하면 원래 값을 보존한다. 날짜·시간 및 ordered 값 payload 타입을 사용할 수 있도록 crate는 `chrono`와 `ordered_json`을 재노출한다.

@@ -102,7 +102,7 @@ final class CollectionTest extends TestCase
         }
     }
 
-    // Requirements: INT-62, INT-81, INT-82, INT-83, INT-84.
+    // Requirements: INT-62a.
     public function testTypedIdentityOrderedReplacementAndArrayViews(): void
     {
         $collection = new Collection();
@@ -334,8 +334,7 @@ final class CollectionTest extends TestCase
         }
     }
 
-    // Requirements: INT-85.
-    // Requirements: PLN-6.
+    // Requirements: INT-62a.
     public function testConnectAndInvokeReachEachModelAndReturnTheCollection(): void
     {
         [$collection, $first, $second] = self::collectionWithTwoModels();

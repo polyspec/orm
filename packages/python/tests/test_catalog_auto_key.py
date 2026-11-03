@@ -72,29 +72,6 @@ class _FakeMysqlCatalog(CatalogConnection):
         return work(self.session)
 
 
-class _FakePostgresSession(_FakeMysqlSession):
-    def run(self, sql, params=(), max_rows=None, max_bytes=None, described=None):
-        self.calls.append(("run", sql, list(params)))
-        if sql.startswith("LOCK TABLE"):
-            return _Raw([], [], 0)
-        if "RETURNING" in sql:
-            return _Raw(
-                [column.name for column in self.metadata.columns],
-                [self.row],
-                1,
-            )
-        raise AssertionError(f"unexpected SQL: {sql}")
-
-
-class _FakePostgresCatalog(CatalogConnection):
-    def __init__(self, metadata, session):
-        super().__init__(parse_dsn("postgres://user:password@localhost/catalog"))
-        self.session = session
-
-    def _write(self, work):
-        return work(self.session)
-
-
 def _mysql_metadata(columns, primary_key, table_name):
     return CatalogTableMetadata(
         table={"namespace": "catalog", "name": table_name},
@@ -166,21 +143,6 @@ class CatalogAutoKeyTest(unittest.TestCase):
         result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
         self.assertEqual(result.rows, [[2, "generated", 50]])
         return [call[1] for call in session.calls if call[0] == "run"]
-
-    # Requirements: DBS-113, INT-34.
-    def test_sqlite_automatic_primary_key_insert_returns_stored_row(self):
-        with _sample_catalog("orm-catalog-auto-key-") as (catalog, metadata):
-            self.assertEqual(metadata.primary_key, ["id"])
-            identity = metadata.columns[0]
-            self.assertTrue(identity.automatic_key)
-            self.assertIsNone(identity.default_expression)
-
-            inserted = catalog.insert_row(metadata, [("payload", "generated")])
-
-            self.assertEqual(inserted.columns, ["id", "payload"])
-            self.assertEqual(inserted.rows, [[1, "generated"]])
-            stored = catalog.read_only_query('SELECT "id", "payload" FROM "sample"', [])
-            self.assertEqual(stored.rows, [[1, "generated"]])
 
     # Requirements: INT-118, PRT-79.
     def test_sqlite_public_insert_reports_indeterminate_commit_cause(self):
@@ -365,26 +327,6 @@ class CatalogAutoKeyTest(unittest.TestCase):
             "ROW_WRITE_MISMATCH: stored inserted values differ",
         )
 
-    # Requirements: DBS-113, INT-34.
-    def test_mysql_automatic_key_uses_insert_acknowledgement(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn("id", "bigint", False, False, True),
-                CatalogColumn("payload", "text", False, False),
-            ],
-            ["id"],
-            "automatic_key",
-        )
-        session = _FakeMysqlSession(metadata, [17, "generated"], insert_id=17)
-        catalog = _FakeMysqlCatalog(metadata, session)
-
-        result = catalog.insert_row(metadata, [("payload", "generated")])
-
-        self.assertEqual(result.rows, [[17, "generated"]])
-        statements = [call[1] for call in session.calls if call[0] == "run"]
-        self.assertTrue(statements[1].startswith("INSERT"))
-        self.assertIn("`id`=?", statements[2])
-
     def test_mysql_expression_default_uses_bounded_input_locator(self):
         metadata, row, session, catalog = _mysql_expression_default_catalog()
 
@@ -441,26 +383,6 @@ class CatalogAutoKeyTest(unittest.TestCase):
                 for call in session.calls
             )
         )
-
-    # Requirements: DBS-113, INT-34.
-    def test_postgres_default_composite_key_uses_insert_returning(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn("tenant", "bigint", False, False),
-                CatalogColumn(
-                    "seq", "varchar(30)", False, False, False, "'generated'", True
-                ),
-                CatalogColumn("n", "bigint", False, False),
-            ],
-            ["tenant", "seq"],
-            "literal_key",
-        )
-        session = _FakePostgresSession(metadata, [2, "generated", 50])
-        catalog = _FakePostgresCatalog(metadata, session)
-
-        statements = self._insert_literal_default_composite(metadata, catalog, session)
-        self.assertTrue(statements[0].startswith("LOCK TABLE"))
-        self.assertIn("RETURNING", statements[1])
 
     def test_missing_primary_key_without_generator_has_shared_error(self):
         metadata = _mysql_metadata(

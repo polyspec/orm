@@ -38,11 +38,11 @@ impl BenchModels for FulltextSearch {
 
 /// The fields of query.search: the statement of the count and the bind value after the DIA-6 transform.
 async fn search(db: &Db, dialect: Dialect, step: &Value) -> Result<Value, String> {
-    if step["model"] != "Author" {
-        return Err(format!("model {} has no query.search entry", step["model"]));
+    if polyspec_orm_tests::recipe_reads::read(step, "model")["model"] != "Author" {
+        return Err(format!("model {} has no query.search entry", polyspec_orm_tests::recipe_reads::read(step, "model")["model"]));
     }
-    let text = step["text"].as_str().ok_or_else(|| "query.search: text is not a string".to_owned())?;
-    let names = step["columns"].as_array().map(|columns| columns.iter().filter_map(Value::as_str).collect::<Vec<_>>());
+    let text = polyspec_orm_tests::recipe_reads::read(step, "text")["text"].as_str().ok_or_else(|| "query.search: text is not a string".to_owned())?;
+    let names = polyspec_orm_tests::recipe_reads::read(step, "columns")["columns"].as_array().map(|columns| columns.iter().filter_map(Value::as_str).collect::<Vec<_>>());
     let columns: &'static [&'static str] = match names.as_deref() {
         Some(["name", "description"]) => &["name", "description"],
         other => return Err(format!("query.search columns {other:?} have no recipe entry")),

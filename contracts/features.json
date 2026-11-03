@@ -55,6 +55,9 @@
         }
       ],
       "parity": [
+        "connection_pool-mysql",
+        "connection_pool-postgres",
+        "connection_pool-sqlite",
         "coverage-dsn-connection",
         "model-construction-connection-rust",
         "model-construction-connection-typescript",
@@ -181,7 +184,17 @@
         "packages/ts/tests/dsn_reject_parameters-none.test.mjs",
         "packages/python/tests/test_dsn_reject_checked_none.py",
         "packages/python/tests/test_dsn_reject_parameters_none.py",
-        "packages/go/orm/recipe_dsn_reject_test.go"
+        "packages/go/orm/recipe_dsn_reject_test.go",
+        "packages/go/orm/recipe_connection_pool_test.go",
+        "packages/ts/tests/connection_pool-mysql.test.mjs",
+        "packages/ts/tests/connection_pool-postgres.test.mjs",
+        "packages/ts/tests/connection_pool-sqlite.test.mjs",
+        "packages/python/tests/test_connection_pool_mysql.py",
+        "packages/python/tests/test_connection_pool_postgres.py",
+        "packages/python/tests/test_connection_pool_sqlite.py",
+        "packages/rust/tests/tests/connection_pool_mysql.rs",
+        "packages/rust/tests/tests/connection_pool_postgres.rs",
+        "packages/rust/tests/tests/connection_pool_sqlite.rs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -643,7 +656,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/recipe_dsn_connection_test.go"
+              "packages/go/orm/recipe_dsn_connection_test.go",
+              "packages/go/orm/recipe_connection_pool_test.go"
             ],
             "commands": {
               "mysql": [
@@ -652,6 +666,12 @@
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionMysql"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_connection_pool_test.go",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json",
+                  "symbol": "TestRecipeConnectionPoolMysql"
                 }
               ],
               "postgres": [
@@ -660,6 +680,12 @@
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionPostgres"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_connection_pool_test.go",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json",
+                  "symbol": "TestRecipeConnectionPoolPostgres"
                 }
               ],
               "sqlite": [
@@ -668,6 +694,12 @@
                   "test": "packages/go/orm/recipe_dsn_connection_test.go",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json",
                   "symbol": "TestRecipeDsnConnectionSqlite"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/recipe_connection_pool_test.go",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json",
+                  "symbol": "TestRecipeConnectionPoolSqlite"
                 }
               ]
             }
@@ -748,7 +780,10 @@
             "tests": [
               "packages/rust/tests/tests/dsn_connection_mysql.rs",
               "packages/rust/tests/tests/dsn_connection_postgres.rs",
-              "packages/rust/tests/tests/dsn_connection_sqlite.rs"
+              "packages/rust/tests/tests/dsn_connection_sqlite.rs",
+              "packages/rust/tests/tests/connection_pool_mysql.rs",
+              "packages/rust/tests/tests/connection_pool_postgres.rs",
+              "packages/rust/tests/tests/connection_pool_sqlite.rs"
             ],
             "commands": {
               "mysql": [
@@ -756,6 +791,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_mysql.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/connection_pool_mysql.rs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "postgres": [
@@ -763,6 +803,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_postgres.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/connection_pool_postgres.rs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "sqlite": [
@@ -770,6 +815,11 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/dsn_connection_sqlite.rs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/connection_pool_sqlite.rs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ]
             }
@@ -779,7 +829,10 @@
             "tests": [
               "packages/ts/tests/dsn_connection-mysql.test.mjs",
               "packages/ts/tests/dsn_connection-postgres.test.mjs",
-              "packages/ts/tests/dsn_connection-sqlite.test.mjs"
+              "packages/ts/tests/dsn_connection-sqlite.test.mjs",
+              "packages/ts/tests/connection_pool-mysql.test.mjs",
+              "packages/ts/tests/connection_pool-postgres.test.mjs",
+              "packages/ts/tests/connection_pool-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
@@ -787,6 +840,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-mysql.test.mjs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/connection_pool-mysql.test.mjs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "postgres": [
@@ -794,6 +852,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-postgres.test.mjs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/connection_pool-postgres.test.mjs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "sqlite": [
@@ -801,6 +864,11 @@
                   "runner": "node",
                   "test": "packages/ts/tests/dsn_connection-sqlite.test.mjs",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/connection_pool-sqlite.test.mjs",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ]
             }
@@ -810,7 +878,10 @@
             "tests": [
               "packages/python/tests/test_dsn_connection_mysql.py",
               "packages/python/tests/test_dsn_connection_postgres.py",
-              "packages/python/tests/test_dsn_connection_sqlite.py"
+              "packages/python/tests/test_dsn_connection_sqlite.py",
+              "packages/python/tests/test_connection_pool_mysql.py",
+              "packages/python/tests/test_connection_pool_postgres.py",
+              "packages/python/tests/test_connection_pool_sqlite.py"
             ],
             "commands": {
               "mysql": [
@@ -818,6 +889,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_mysql.py",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_connection_pool_mysql.py",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "postgres": [
@@ -825,6 +901,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_postgres.py",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_connection_pool_postgres.py",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ],
               "sqlite": [
@@ -832,6 +913,11 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_dsn_connection_sqlite.py",
                   "recipe": "contracts/fixtures/dsn_connection/dsn_connection.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_connection_pool_sqlite.py",
+                  "recipe": "contracts/fixtures/connection_pool/connection_pool.json"
                 }
               ]
             }
@@ -901,6 +987,7 @@
         "go-model-constructor-api",
         "php-internal-model-conditions",
         "collection-null-identity-from-physical-row",
+        "php-extension-collection-surface",
         "php-extension-model-date-read-decode-error",
         "model_queries-mysql",
         "model_queries-postgres",
@@ -931,6 +1018,7 @@
         "packages/python/tests/test_collection_none.py",
         "packages/ts/tests/collection-none.test.mjs",
         "packages/php-ext/tests/CollectionRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/CollectionTest.php",
         "packages/php/tests/CollectionRecipeTest.php",
         "packages/go/markdownmodel/recipe_collection_test.go",
         "packages/rust/tests/tests/collection_none.rs",
@@ -7738,8 +7826,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path 성능 기준",
       "status": "implemented",
-      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case runs twice on its exact ORM_FEATURE_DSN, with matching before/after database-state digests, and compares its ratio with the fixed reference of contracts/performance-references.json, recorded from one passed check run of a clean checkout. A measurement above its reference is diagnostic and never fails correctness. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
-      "description_ko": "Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 정확한 ORM_FEATURE_DSN에서 두 번 실행되고 데이터베이스 전후 상태 digest가 일치하며, 그 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
+      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case runs twice on the `BENCH_<DATABASE>_DSN` of its database, with matching before/after database-state digests, and compares its ratio with the fixed reference of contracts/performance-references.json, recorded from one passed check run of a clean checkout. A measurement above its reference is diagnostic and never fails correctness. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 자기 database의 `BENCH_<DATABASE>_DSN`에서 두 번 실행되고 데이터베이스 전후 상태 digest가 일치하며, 그 비율을 contracts/performance-references.json의 고정 기준값과 비교한다. 기준값은 깨끗한 checkout의 통과한 check run 하나에서 기록했다. 기준값을 넘는 측정은 진단용이며 correctness를 실패시키지 않는다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -10802,16 +10890,6 @@
         "packages/rust/orm/tests/was_inserted.rs"
       ],
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test was_inserted"
-    },
-    {
-      "id": "rust-temp-sqlite-fixture",
-      "paths": [
-        "packages/rust/tests/tests/common/temp_sqlite.rs"
-      ],
-      "tests": [
-        "packages/rust/tests/tests/refusal_before_request.rs"
-      ],
-      "command": "make --no-print-directory temp-sqlite-fixture-rust-helper-check"
     },
     {
       "id": "php-database-test-assertions",

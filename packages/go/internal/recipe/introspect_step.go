@@ -49,8 +49,8 @@ type introspectVector struct {
 // introspectSource is the documents of a step by name and its vector, which is empty for a step with paths.
 func introspectSource(s databaseStep, dir string) (map[string]string, introspectVector, error) {
 	texts := map[string]string{}
-	if len(s.Paths) > 0 {
-		for _, path := range s.Paths {
+	if len(s.k("paths").Paths) > 0 {
+		for _, path := range s.k("paths").Paths {
 			text, diagnostics, err := dbspec.ReadFile(filepath.Join(dir, path))
 			if err != nil {
 				return nil, introspectVector{}, err
@@ -62,7 +62,7 @@ func introspectSource(s databaseStep, dir string) (map[string]string, introspect
 		}
 		return texts, introspectVector{}, nil
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, s.Vectors))
+	raw, err := os.ReadFile(filepath.Join(dir, s.k("vectors").Vectors))
 	if err != nil {
 		return nil, introspectVector{}, err
 	}
@@ -72,9 +72,9 @@ func introspectSource(s databaseStep, dir string) (map[string]string, introspect
 	if err := json.Unmarshal(raw, &vectors); err != nil {
 		return nil, introspectVector{}, err
 	}
-	index := slices.IndexFunc(vectors.Cases, func(candidate introspectVector) bool { return candidate.ID == s.Case })
+	index := slices.IndexFunc(vectors.Cases, func(candidate introspectVector) bool { return candidate.ID == s.k("case").Case })
 	if index < 0 {
-		return nil, introspectVector{}, fmt.Errorf("the vectors have no case %s", s.Case)
+		return nil, introspectVector{}, fmt.Errorf("the vectors have no case %s", s.k("case").Case)
 	}
 	vector := vectors.Cases[index]
 	for name, lines := range vector.Documents {
@@ -214,8 +214,8 @@ func dbspecIntrospectRefusal(s step) (any, error) {
 			fmt.Fprintln(os.Stderr, "close the SQLite memory connection:", closeErr)
 		}
 	}()
-	return dialectRefusal(s.Dialect, func() {
-		_, _, _ = dbspec.Introspect(context.Background(), db, dbspec.Dialect(s.Dialect), "introspected") //nolint:errcheck // The call panics.
+	return dialectRefusal(s.k("dialect").Dialect, func() {
+		_, _, _ = dbspec.Introspect(context.Background(), db, dbspec.Dialect(s.k("dialect").Dialect), "introspected") //nolint:errcheck // The call panics.
 	})
 }
 
@@ -224,8 +224,8 @@ func dbspecIntrospectRefusal(s step) (any, error) {
 func introspectFailureStep(s databaseStep, c *databaseContext) error {
 	raw := testdb.Open(c.t, c.database, c.dsn)
 	defer testcase.Close(c.t, raw)
-	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(s.CatalogOf), "introspected"); err == nil {
-		return fmt.Errorf("the %s catalog queries did not fail on %s", s.CatalogOf, c.database)
+	if _, _, err := dbspec.Introspect(c.ctx, raw, dbspec.Dialect(s.k("catalog_of").CatalogOf), "introspected"); err == nil {
+		return fmt.Errorf("the %s catalog queries did not fail on %s", s.k("catalog_of").CatalogOf, c.database)
 	}
 	return nil
 }
