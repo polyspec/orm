@@ -3308,6 +3308,25 @@ mod database {
                         if let Some(name) = with["column_name"].as_str() {
                             page.metadata.columns[0].name = name.to_owned();
                         }
+                        if with.get("primary_key").is_some() {
+                            page.metadata.primary_key = strings(&with["primary_key"]).map_err(fault)?;
+                        }
+                        if let Some(limit) = with["limit"].as_u64() {
+                            page.limit = limit as usize;
+                        }
+                        if let Some(name) = with["result_column_name"].as_str() {
+                            page.result.columns[0].name = name.to_owned();
+                        }
+                        if with.get("drop_last_cell").is_some() {
+                            page.result.rows[0].pop();
+                        }
+                        if let Some(fill) = with.get("fill_last_cell") {
+                            let text = fill["fill"].as_str().ok_or_else(|| fault("fill is not text".into()))?;
+                            let count = fill["count"].as_u64().ok_or_else(|| fault("count is not a number".into()))?;
+                            if let Some(last) = page.result.rows[0].last_mut() {
+                                *last = GridCell::Text(text.repeat(count as usize));
+                            }
+                        }
                         Some(page)
                     }
                     None => None,
@@ -3327,6 +3346,11 @@ mod database {
             "catalog.revision" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
                 Output::fields(json!({ "value": { "text": snapshot.revision() } }))
+            }
+            "catalog.revision_compare" => {
+                let revision = snapshot(&step["snapshot"], context).map_err(fault)?.revision().to_owned();
+                let other = snapshot(&step["other"], context).map_err(fault)?.revision().to_owned();
+                Output::fields(json!({ "json": { "length": revision.len(), "differs": revision != other } }))
             }
             "catalog.row_cells" => {
                 let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;

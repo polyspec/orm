@@ -870,6 +870,7 @@
             "catalog.close",
             "catalog.reconnect",
             "catalog.revision",
+            "catalog.revision_compare",
             "catalog.row_cells",
             "model.read_bind_cell",
             "generator.generate",
@@ -1148,6 +1149,9 @@
         },
         {
           "$ref": "#/$defs/ops/catalog.revision"
+        },
+        {
+          "$ref": "#/$defs/ops/catalog.revision_compare"
         },
         {
           "$ref": "#/$defs/ops/catalog.row_cells"
@@ -3505,6 +3509,43 @@
               "column_name": {
                 "description": "The name that replaces the name of the first column of the descriptor of the page.",
                 "type": "string"
+              },
+              "primary_key": {
+                "description": "The key columns that replace the primary key of the descriptor of the page.",
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/name"
+                }
+              },
+              "limit": {
+                "description": "The limit that replaces the limit of the page.",
+                "type": "integer"
+              },
+              "result_column_name": {
+                "description": "The name that replaces the name of the first column of the result of the page.",
+                "type": "string"
+              },
+              "drop_last_cell": {
+                "description": "Removes the last cell of the first row of the page.",
+                "const": true
+              },
+              "fill_last_cell": {
+                "description": "Replaces the last cell of the first row of the page with the text fill repeated count times.",
+                "type": "object",
+                "required": [
+                  "fill",
+                  "count"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "fill": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
               }
             }
           },
@@ -6247,6 +6288,35 @@
           }
         }
       },
+      "catalog.revision_compare": {
+        "description": "Compares the revision of a snapshot with the revision of another: the outcome is the json {\"length\": the characters of the revision, \"differs\": whether the two differ}.",
+        "type": "object",
+        "required": [
+          "op",
+          "snapshot",
+          "other",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "catalog.revision_compare"
+          },
+          "snapshot": {
+            "$ref": "#/$defs/ref"
+          },
+          "other": {
+            "$ref": "#/$defs/ref"
+          },
+          "expect": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/$defs/outcomes/json"
+            }
+          }
+        }
+      },
       "catalog.revision": {
         "type": "object",
         "required": [
@@ -7642,7 +7712,6 @@
     },
     "assignments": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "array",
         "prefixItems": [

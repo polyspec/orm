@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 19a861b865e5207c891a734a9e635ebd73363bd089e294b71e93a7a4ef6ee7de -->
+<!-- source-sha256: 1323d4cf21abf15943767e8b8b343b51fc6207f9b35152e8ae6421d4af5b771a -->
 # 변경 이력
 
 ## Unreleased
 
+- 행 baseline과 native update 검증이 여섯 runtime, 세 데이터베이스의 `catalog_connection` recipe case `row_update_verification`, `row_baseline_key_order`, `row_baseline_rejected`가 되었고, op `catalog.revision_compare`와 `page_with`의 대체가 늘었다. Rust 시험은 사라졌고 Rust 형식만 담는 부분(`rust-row-snapshot-cell-forms`)만 남는다. TypeScript는 SQLite view를 정의 text가 하나가 아닌 table로 거부하지 않는다.
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
 - recipe `statement_events`가 INT-96이 정한 subscriber의 실패를 여섯 runtime, 세 database에서 담는다: 정확한 메시지와, 원인인 subscriber의 오류이며, 결과 `{"error": <code>}`에 이제 `message`와 `cause`로 적을 수 있다.
 - row의 JSON 형식은 array 형식처럼 `time`과 `datetime` column을 모든 클라이언트에서 소수 여섯 자리로 쓴다. 지금까지 TypeScript, Python, Rust는 column precision으로, Go와 PHP는 여섯 자리로 썼다.

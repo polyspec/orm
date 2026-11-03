@@ -639,6 +639,12 @@
       "op",
       "snapshot"
     ],
+    "catalog.revision_compare": [
+      "expect",
+      "op",
+      "other",
+      "snapshot"
+    ],
     "catalog.row_cells": [
       "expect",
       "op",

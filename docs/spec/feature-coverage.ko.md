@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 2a3d757fbb8bfc7931fedaa1334e64a5959525f119dc584ca1d4081e08d8c5c8 -->
+<!-- source-sha256: 54de932f04a6c5793fb66b971e3a5c31af2a429b2fd6517b8206863af08ebfa0 -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -91,7 +91,8 @@
   - `catalog.table_page {table, limit, offset, columns}`는 그 table의 page를 읽는다(`table_page`). expect는 `{"columns": [<name>, ...], "order_by": [<name>, ...], "has_more": <bool>, "rows": [[<value>, ...], ...]}`이고, `columns`는 page의 모든 column을 물리 순서로 적으며(INT-114), 그 행은 `columns`가 적은 column의 cell을 그 순서로 가지며, `as`가 page를 묶는다.
   - `catalog.read_only_query {sql, max_rows, max_bytes}`는 `read_only_query`로 읽기를 실행한다. expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다. `max_rows`와 `max_bytes`는 선택이고, 없으면 runtime의 기본값이다.
   - `catalog.read_only_grid_query {sql, max_rows, max_bytes}`는 `read_only_grid_query`로 읽기를 실행한다. expect는 `columns`가 선택인 `{"columns": [<name>, ...], "rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
-  - `catalog.row_snapshot {page, index}`는 runtime의 from-page 생성자(Rust `RowSnapshot::from_page`, Go `CatalogSnapshotFromPage`, PHP, TypeScript, Python은 catalog의 `rowSnapshotFromPage` 또는 `row_snapshot_from_page`)로 묶인 page의 `index` 행 snapshot을 만든다. `as`가 그것을 묶고, 그 step은 `expect`가 없다. `page` 대신 쓰는 `page_with {page, order_by, column_name?}`은 묶인 page에 그 `order_by`를 적용하고, `column_name`이 있으면 descriptor의 첫 열 이름을 그 값으로 바꿔 만든다. 이런 step은 거부 `{"error": CODE, "message_suffix": TEXT}`를 기대하며, 오류 메시지는 `TEXT`로 끝난다(INT-109).
+  - `catalog.row_snapshot {page, index}`는 runtime의 from-page 생성자(Rust `RowSnapshot::from_page`, Go `CatalogSnapshotFromPage`, PHP, TypeScript, Python은 catalog의 `rowSnapshotFromPage` 또는 `row_snapshot_from_page`)로 묶인 page의 `index` 행 snapshot을 만든다. `as`가 그것을 묶고, 그 step은 `expect`가 없다. `page` 대신 쓰는 `page_with {page, order_by, column_name?, primary_key?, limit?, result_column_name?, drop_last_cell?, fill_last_cell?}`은 묶인 page에 그 `order_by`와 있는 대체를 적용해 만든다. `column_name`은 descriptor의 첫 열 이름, `primary_key`는 descriptor의 key, `limit`은 page의 limit, `result_column_name`은 result의 첫 열 이름을 바꾸고, `drop_last_cell`은 첫 행의 마지막 칸을 없애며, `fill_last_cell {fill, count}`는 그 칸을 `fill`을 `count`번 반복한 값으로 바꾼다. 이런 step은 거부 `{"error": CODE}`를 기대하며, 오류 메시지가 `TEXT`로 끝나면 `"message_suffix": TEXT`를 함께 적는다(INT-109).
+  - `catalog.revision_compare {snapshot, other}`는 묶인 두 snapshot의 revision을 읽고, 결과는 json `{"length": <snapshot revision의 글자 수>, "differs": <둘이 다른가>}`이다(INT-108).
   - `catalog.insert_row {metadata, values}`는 묶인 metadata와 column 이름의 object인 `values`의 값으로 행을 넣는다(`insert_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.update_row {snapshot, set}`은 묶인 snapshot의 행을 `set`의 값으로 바꾼다(`update_row`). expect는 `{"rows": [[<value>, ...], ...]}` 또는 `{"error": ...}`이다.
   - `catalog.delete_row {snapshot}`은 묶인 snapshot의 행을 지운다(`delete_row`). expect는 지운 행 수인 `{"value": {"int": ...}}` 또는 `{"error": ...}`이다.
