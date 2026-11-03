@@ -1397,7 +1397,7 @@ class DocumentParser:
                 self._at("type", tok, f"{kind}(p) needs 0 <= p <= 6")
                 return None
             return DbspecType(kind, precision=p)
-        self._at("type", tok, f"{kind} is not a dbspec type")
+        self._at("type", tok, f'type "{kind}" is not a dbspec type')
         return None
 
     def _column(self, table: _Table, toks, line: int, comments) -> None:

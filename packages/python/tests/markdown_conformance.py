@@ -377,6 +377,8 @@ def conformance_cases() -> dict:
         return {
             "length": rows.length,
             "keys": rows.keys(),
+            "values": [row_id(row) for row in rows.values()],
+            "entries": [[key, row_id(row)] for key, row in rows.entries()],
             "first": row_id(rows.first()),
             "get": row_id(rows.get(1)),
             "get_text": row_id(rows.get("1")),

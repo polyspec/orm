@@ -1,6 +1,6 @@
 <?php
 
-// Requirements: DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, DIA-11, DIA-14, PRT-77, DIA-24, DIA-18, DIA-56.
+// Requirements: DBS-115, DIA-11, DIA-14, DIA-18, DIA-24, DIA-37, DIA-56, DSL-54, DSL-99, DSL-137, DSL-139, DSL-144, INT-39, PRT-77, DSL-10, DSL-19, DSL-47, DSL-67, DSL-96, DSL-98, DSL-123, PRT-14.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;

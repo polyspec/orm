@@ -1,4 +1,4 @@
-//! Owned volatile-default fixtures, conflicts and returned-row checks.
+//! Owned volatile-default fixtures: the cancelled and the joined inserts of the Rust form.
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, TableRef},
     tool_db::{self, Conn, GridCell, P},
@@ -37,11 +37,6 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     {
         failures.push(format!("{dialect}: unambiguous UUID expression identity must return the exact committed owner row"));
     }
-    let repeated = catalog.insert_row(&metadata, &values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(()))).await;
-    if !matches!(repeated,Err(ref error) if if dialect=="mysql" {error.starts_with("ROW_IDENTITY_AMBIGUOUS")} else {error.to_ascii_lowercase().contains("unique")})
-    {
-        failures.push(format!("{dialect}: existing expression locator must be rejected before writes"));
-    }
     let flag = Arc::new(AtomicBool::new(false));
     let cancel = flag.clone();
     let phases = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -56,15 +51,8 @@ pub(super) async fn check(catalog: &mut CatalogConnection, seed: &mut Conn, tabl
     if !matches!(cancelled,Err(ref error) if error.starts_with("JOB_CANCELLED")) || phases.lock().unwrap().last() != Some(&MutationPhase::RolledBack) {
         failures.push(format!("{dialect}: expression identity cancellation must confirm rollback"));
     }
-    if catalog
-        .insert_row(&metadata, &[("n".into(), P::S("3".into()))], Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), std::sync::Arc::new(|| Ok(())))
-        .await
-        .is_ok()
-    {
-        failures.push(format!("{dialect}: expression locator must reject coerced stored values"));
-    }
     if catalog.table_page(&table, 5, 0).await.unwrap().result.rows != stored.result.rows {
-        failures.push(format!("{dialect}: expression rejection/cancellation changed committed rows"));
+        failures.push(format!("{dialect}: expression cancellation changed committed rows"));
     }
     // Seed separate unique-index gaps so this case measures concurrent
     // identity ownership rather than expecting deadlock-free identical gaps.

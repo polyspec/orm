@@ -8,7 +8,9 @@
     "INT-52",
     "INT-53",
     "INT-61",
-    "INT-73"
+    "INT-72",
+    "INT-73",
+    "INT-79"
   ],
   "fixture": "contracts/fixtures/statement_events/dbspec-set.json",
   "cases": [
@@ -657,6 +659,164 @@
               "name": "orm_test.session_state"
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "a_lock_released_early_is_reported_at_the_end_of_its_transaction",
+      "requirements": [
+        "INT-72"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "install": false,
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "schema.install",
+          "connection": "conn"
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.lock",
+              "connection": "conn",
+              "name": "orm_test.not_held"
+            },
+            {
+              "op": "utils.run",
+              "connection": "conn",
+              "statements": [
+                {
+                  "kind": "utility",
+                  "tables": [],
+                  "sql": "DO RELEASE_LOCK('orm_test.not_held')"
+                }
+              ]
+            }
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CONFIG",
+              "message_holds": "lock orm_test.not_held was not held at transaction end"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stats_report_the_pool_of_the_connection",
+      "requirements": [
+        "INT-79"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "conn"
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
+        },
+        {
+          "op": "transaction",
+          "connection": "conn",
+          "steps": [
+            {
+              "op": "utils.stats",
+              "connection": "conn",
+              "expect": {
+                "mysql": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                },
+                "postgres": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                },
+                "sqlite": {
+                  "json": {
+                    "max_open_connections": 1,
+                    "open_connections": 1,
+                    "in_use": 1,
+                    "idle": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "utils.stats",
+          "connection": "conn",
+          "expect": {
+            "mysql": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "postgres": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            },
+            "sqlite": {
+              "json": {
+                "max_open_connections": 1,
+                "open_connections": 1,
+                "in_use": 0,
+                "idle": 1
+              }
+            }
+          }
         }
       ]
     }

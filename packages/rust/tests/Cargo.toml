@@ -26,13 +26,6 @@ path = "../../../examples/complex/rust/main.rs"
 name = "demo"
 path = "../../../examples/thin-slice/rust/main.rs"
 
-# One libtest-mimic trial per conformance vector of each dialect (polyspec_orm_testcase::trial). Its trials read the
-# seeded bench databases of the run (BENCH_*_DSN), which make orm-check and the runner of a run give.
-[[test]]
-name = "coverage_conformance_verification"
-path = "tests/coverage_conformance_verification.rs"
-harness = false
-
 # Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
 name = "collection_none"
@@ -137,6 +130,22 @@ harness = false
 [[test]]
 name = "dbspec_apply_sqlite"
 path = "tests/dbspec_apply_sqlite.rs"
+harness = false
+
+# Each case of the connection_pool recipe is a trial of its program (FCV-3).
+[[test]]
+name = "connection_pool_mysql"
+path = "tests/connection_pool_mysql.rs"
+harness = false
+
+[[test]]
+name = "connection_pool_postgres"
+path = "tests/connection_pool_postgres.rs"
+harness = false
+
+[[test]]
+name = "connection_pool_sqlite"
+path = "tests/connection_pool_sqlite.rs"
 harness = false
 
 # Each case of the utils recipe, contracts/fixtures/utils/utils.json, is the trial utils_recipe_<database>::<case id> on a

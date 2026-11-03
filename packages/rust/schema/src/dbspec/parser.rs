@@ -1106,7 +1106,7 @@ impl Parser {
             let message = if word.kind == Kind::Word && known.contains(&word.text) {
                 format!("type '{}' has parameters out of range", word.text)
             } else {
-                format!("unknown type '{}'", word.text)
+                format!("type \"{}\" is not a dbspec type", word.text)
             };
             self.report(err(word.pos, "type", message));
         }
