@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 30f2d518d24df98abd841b6bacf86adb7ac0ece76e3305417607a413e8f21a49 -->
+<!-- source-sha256: 3b1d8bdc9af4e8c9f77d517ce893fd291f2793477bb41eaeb32edcf6c699d895 -->
 # 변경 이력
 
 ## Unreleased
@@ -20,11 +20,10 @@
 - 행 baseline과 native update 검증이 여섯 runtime, 세 데이터베이스의 `catalog_connection` recipe case `row_update_verification`, `row_baseline_key_order`, `row_baseline_rejected`가 되었고, op `catalog.revision_compare`와 `page_with`의 대체가 늘었다. Rust 시험은 사라졌고 Rust 형식만 담는 부분(`rust-row-snapshot-cell-forms`)만 남는다. TypeScript는 SQLite view를 정의 text가 하나가 아닌 table로 거부하지 않는다.
 - TypeScript가 SQLite view를 기술한다. `sqlite_master`에서 `type = 'table'`로 view의 정의를 읽어 행을 찾지 못하고 `TABLE_METADATA_INVALID`로 거부했다. `catalog_connection` recipe case `view_table_page`가 이를 담는다(INT-113).
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
+- introspection은 여섯 runtime에서 recipe dbspec_introspect다. round trip, PostgreSQL loose sequence와 routine의 이유를 포함한 tests/dbspec/introspect.json의 case, catalog query 수, 실패한 catalog query를 담고, dialect-refusal은 다섯 runtime에서 unknown dialect를 담는다. PDO의 silent error mode(DIA-133a)와 PHP extension의 method(DIA-133b)만 native로 남는다 (#T334-3-12-5)
 - 서버가 거부한 연결은 모든 클라이언트에서 `DRIVER`다. PHP와 extension은 `CONFIG`를, Rust catalog는 코드 없는 문자열을 보고했다.
 - catalog는 `max_user_connections`가 거부한 연결을 자신의 연결을 닫은 뒤 2초 안에서만 다시 시도하고, Go의 budget 중단은 rollback을 시도하지 않고 `CATALOG_LIMIT`만 보고한다.
 - recipe transactions의 case `a_rollback_fault_is_consumed_by_the_next_failed_rollback`이 새 op `fault.next_rollback`으로 모든 runtime의 INT-72를 말한다: fault는 commit된 transaction을 지나 남고, 다음 실패 callback은 FAULT를 담은 ROLLBACK을 보고하며, 그다음 transaction은 callback error만 보고한다.
-- Recipe `statement_events`가 statement event의 server transaction을 담고, vector `tests/events/vectors.json`과 그 native 실행기는 사라졌다.
-- `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
 - Go physical 시험의 query 형태는 모든 database에서 recipe case다: `{"random": true}`는 `model.query`를 `orderByRandom`으로 정렬하고, case `query_now_and_random_order`가 `now`와 함께 그것을 시험한다. tuple과 날짜 함수는 이미 case였다 (#T334-3-18).
 - - output 이름 충돌의 compile case는 planner.compile expect의 선택 항목 message로 모든 dialect의 오류 문장 전체를 시험한다 (#T334-3-6-2)
 - recipe가 닿지 못하는 catalog native는 internal test로 남고, generated_identity_sqlite, read_only_grid_shapes, temporal_text_row_cycle_sqlite가 random key, 거부되는 grid 쓰기, temporal row cycle을 담습니다.
@@ -68,8 +67,8 @@
 - PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - `make perf-check`는 PERF-1의 Go 측정을 MySQL, PostgreSQL, SQLite에서 실행하고, `client-db-check`의 Go lane은 클라이언트 결과를 검증하지 않는 그 시험을 건너뛴다.
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
-- Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - `request_hook`과 `statement_events`의 Go coverage 파일은 사라졌다. 그 case는 같은 이름의 recipe이며 `config/parity.json`이 그곳에 묶는다. PERF-1의 Go 측정은 feature build tag 없는 `packages/go/bench/performance_measurement_test.go`다. recipe는 결과를 정할 뿐 시간을 정하지 않기 때문이다. `make perf-check`는 그 MySQL 시험을 실행한다.
+- Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - row의 JSON 형식은 array 형식처럼 `time`과 `datetime` column을 모든 클라이언트에서 소수 여섯 자리로 쓴다. 지금까지 TypeScript, Python, Rust는 column precision으로, Go와 PHP는 여섯 자리로 썼다.
 - conformance vector의 쓰기 case 아홉 개를 더 recipe conformance_verification에서 돌린다 (#T334-3-4-23)
 - recipe가 담는 Go request hook native를 없앴다. 실패하는 hook의 읽기도 statement가 실행되지 않음을 적는다. native로 남는 unit은 FCV-2에 이유와 함께 적었다.
