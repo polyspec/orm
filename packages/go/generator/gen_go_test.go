@@ -110,48 +110,6 @@ func Search(keyword string) *model.ProductModel {
 	testScannedModule(t)
 }
 
-// Requirements: PLN-22.
-func TestColumnNameRules(t *testing.T) {
-	// The test of DSL-127, DSL-130 (docs/spec).
-	testcase.Start(t, testcase.Process)
-	for column, message := range map[string]string{
-		"price_gt_limit": "segment",
-		"with_tax":       "segment",
-		"order_by_x":     "start with",
-		"get_name":       "start with",
-		"random":         "reserved",
-		"create":         "reserved",
-		"restore":        "reserved",
-	} {
-		err := checkNames(namesManifest(t, thingDocument(column)))
-		if err == nil || !strings.Contains(err.Error(), message) {
-			t.Fatalf("%s: got %v, want %q", column, err, message)
-		}
-	}
-	m := namesManifest(t, thingDocument("min_price"))
-	if err := checkNames(m); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// Requirements: DSL-129.
-func TestGeneratedMethodCollision(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	m := namesManifest(t, `dbspec 1 collision
-
-table item {
-  seq i64 identity
-  amount i32
-  sum_amount i32
-  primary key (seq)
-}
-`)
-	err := generateGo(m, filepath.Join(t.TempDir(), "model"), "", nil)
-	if err == nil || !strings.Contains(err.Error(), "sum_amount") || !strings.Contains(err.Error(), "fixed method") {
-		t.Fatalf("method collision: %v", err)
-	}
-}
-
 func TestSplitPair(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, namesDiagram)

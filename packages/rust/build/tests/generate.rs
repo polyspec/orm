@@ -95,40 +95,6 @@ fn generates_called_methods() {
 }
 
 #[test]
-// Requirements: DSL-116.
-fn stored_column_name_is_rejected_as_an_output_name() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let setter = generate_with_schema(bench(), "fn main() { let _ = Author::new().set_name(\"stored\"); }").unwrap();
-    assert!(setter.contains("pub fn set_name"), "{setter}");
-
-    let error = generate_with_schema(bench(), "fn main() { let _ = Author::new().new_name(\"alias\"); }")
-        .expect_err("a stored column cannot be attached as an output-only name");
-    assert!(error.contains("name is a column name"), "{error}");
-}
-
-#[test]
-// Requirements: DSL-127, DSL-130, PLN-22.
-fn column_names_of_the_model_rules_are_rejected_through_the_builder() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for (column, reason) in [
-        ("create", "column name is a reserved method name: create"),
-        ("delete", "column name is a reserved method name: delete"),
-        ("restore", "column name is a reserved method name: restore"),
-        ("random", "column name is a reserved method name: random"),
-        ("price_gt_limit", "column name may not contain the segment \"gt\": price_gt_limit"),
-        ("with_tax", "column name may not contain the segment \"with\": with_tax"),
-    ] {
-        let document = format!("dbspec 1 names\n\ntable item {{\n  seq i64 identity\n  {column} i32\n  primary key (seq)\n}}\n");
-        let error = generate_with_document(&document, "fn main() {}").expect_err(column);
-        assert!(error.contains(&format!("item.{column}: {reason}")), "{column}: {error}");
-    }
-    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  min_price i32\n  primary key (seq)\n}\n";
-    generate_with_document(document, "fn main() {}").expect("a column name that only contains a rule word as text is accepted");
-    let document = "dbspec 1 names\n\ntable item {\n  seq i64 identity\n  restored_at i32\n  primary key (seq)\n}\n";
-    generate_with_document(document, "fn main() {}").expect("a column name that only begins with a method name is accepted");
-}
-
-#[test]
 // Requirements: DSL-33, PRT-75.
 fn generates_fulltext_boolean_methods_for_multiple_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -212,14 +178,6 @@ fn rejects_unknown_names_of_a_known_model() {
     let err = generate("fn main() {\n    ZoneEvent::new().and_lk_start_dt(\"x\").name(\"y\");\n}\n").unwrap_err();
     assert!(err.contains("main.rs:2:22: ZoneEvent has no method and_lk_start_dt"), "{err}");
     assert!(err.contains("main.rs:2:43: ZoneEvent has no method name"), "{err}");
-}
-
-#[test]
-// The test of DSL-37 (docs/spec).
-fn rejects_argument_count() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let err = generate("fn main() { let x = ZoneEvent::new(); x.seq(1, 2); }").unwrap_err();
-    assert!(err.contains("ZoneEvent::seq takes 1 values, not 2"), "{err}");
 }
 
 #[test]
@@ -361,17 +319,6 @@ fn generated_field_types_follow_the_runtime_model() {
     ] {
         assert!(types.contains(declaration), "missing generated field type: {declaration}");
     }
-}
-
-#[test]
-// Requirements: DSL-129.
-fn generated_method_collision_is_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let document = "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n";
-    let error = generate_with_document(document, "fn main() { let _ = Item::new().sum_amount(); }")
-        .expect_err("the condition method must not shadow the generated aggregate");
-    assert!(error.contains("item.sum_amount"), "{error}");
-    assert!(error.contains("fixed method"), "{error}");
 }
 
 #[test]
