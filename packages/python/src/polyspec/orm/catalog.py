@@ -248,6 +248,9 @@ _DESCRIBED_TIME_TEXT = re.compile(
     r"([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{1,6}))?"
 )
 _DESCRIBED_DATETIME_TEXT = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9:.]+)")
+# MySQL TIMESTAMP and PostgreSQL timestamptz and timetz follow a time zone, which dbspec declares for no column (INT-103).
+_MYSQL_ZONED_TYPE = re.compile(r"timestamp(?:\([0-6]\))?")
+_POSTGRES_ZONED_TYPE = re.compile(r"(?:timestamp|time)(?:\([0-6]\))? with time zone")
 _CHECK_OPENING = re.compile(r"CHECK\s*\(", re.IGNORECASE)
 _CHECK_GLOB = re.compile(r"GLOB '((?:\[0-9\])*)'")
 _CHECK_WHOLE_TEMPORAL = re.compile(r"IS (time|datetime)\(")
@@ -354,10 +357,19 @@ def _described_boolean(value, column: CatalogColumn, dialect: str):
 def _described_temporal(value, column: CatalogColumn, dialect: str):
     """The catalog value of one driver value of a described column: the dbspec text of a date, time or datetime column
     with exactly its declared precision, and every other value as it is. A value outside the dbspec form fails with
-    GRID_TEMPORAL_VALUE; a non-zero digit past p, or on SQLite fraction digits other than the CHECK precision or no CHECK
-    precision, fails with GRID_TEMPORAL_PRECISION."""
+    GRID_TEMPORAL_VALUE; a non-zero digit past p, or on SQLite fraction digits other than the CHECK precision, or than 0
+    with no CHECK, fails with GRID_TEMPORAL_PRECISION. A value of a column that follows a time zone fails with
+    CATALOG_VALUE."""
+    if value is None:
+        return value
+    zoned = {"mysql": _MYSQL_ZONED_TYPE, "postgres": _POSTGRES_ZONED_TYPE}.get(dialect)
+    if zoned is not None and zoned.fullmatch(column.native_type.strip().lower()):
+        raise _error(
+            codes.CATALOG_VALUE,
+            f"column {column.name!r} of type {column.native_type} follows a time zone, which dbspec does not declare",
+        )
     temporal = _temporal_kind(column, dialect)
-    if temporal is None or value is None:
+    if temporal is None:
         return value
     kind, precision, declared = temporal
     if dialect == "sqlite":
@@ -369,12 +381,7 @@ def _described_temporal(value, column: CatalogColumn, dialect: str):
         if kind == "date":
             return value
         if not declared:
-            # INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
-            if kind != "datetime":
-                raise _error(
-                    codes.GRID_TEMPORAL_PRECISION,
-                    f"column {column.name!r} has no dbspec CHECK that fixes its fraction digits",
-                )
+            # INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
             precision = 0
         if digits != precision:
             raise _error(

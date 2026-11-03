@@ -497,6 +497,9 @@ function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): Ca
 function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue {
   const plain = plainValue(value, column);
   if (described === undefined) return plain;
+  if (plain !== null && zonedType(dialect, described.nativeType)) {
+    throw err(CODE_VALUE, `${described.name} of type ${described.nativeType} follows a time zone, which dbspec does not declare`);
+  }
   const boolean = describedBoolean(plain, described, dialect);
   if (boolean !== undefined) return boolean;
   if (dialect === 'sqlite') return sqliteTemporal(plain, described);
@@ -521,6 +524,13 @@ function describedBoolean(plain: CatalogValue, described: CatalogColumn, dialect
   throw err(CODE_VALUE, `${described.name} holds ${String(plain)}, not a boolean`);
 }
 
+/** A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column, which follows a time zone that dbspec declares for no column (INT-103). */
+function zonedType(dialect: DriverName, nativeType: string): boolean {
+  const native = nativeType.trim().toLowerCase();
+  if (dialect === 'mysql') return /^timestamp(\([0-6]\))?$/.test(native);
+  return dialect === 'postgres' && /^(timestamp|time)(\([0-6]\))? with time zone$/.test(native);
+}
+
 /** A cell of a described table with its size in the read budget. */
 function describedCell(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): { cell: CatalogValue; size: number } {
   const cell = describedValue(value, column, described, dialect);
@@ -540,9 +550,8 @@ function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogV
     throw err(CODE_TEMPORAL_VALUE, `${described.name} holds a value that is not a dbspec ${kind}`);
   }
   if (kind === 'date') return plain;
-  // INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
-  const fixed = described.checkPrecision ?? (kind === 'datetime' ? 0 : null);
-  if (fixed === null) throw err(CODE_TEMPORAL_PRECISION, `${described.name} has no dbspec CHECK that fixes its fraction digits`);
+  // INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
+  const fixed = described.checkPrecision ?? 0;
   const digits = fractionDigits(plain);
   if (digits !== fixed) {
     throw err(CODE_TEMPORAL_PRECISION, `${described.name} holds ${digits} fraction digits; its dbspec CHECK fixes ${fixed}`);

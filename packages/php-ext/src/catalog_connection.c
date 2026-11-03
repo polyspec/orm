@@ -1814,6 +1814,22 @@ static char cat_temporal_kind(const char *dialect, const char *type)
     return 0;
 }
 
+/* A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column (Catalog::isZonedColumn): the time zone it follows is one
+ * that dbspec declares for no column (INT-103). */
+static bool cat_zoned_column(const char *dialect, const char *type)
+{
+    size_t n = strcspn(type, "( ");
+    bool stamp = n == 9 && zend_binary_strncasecmp(type, n, "TIMESTAMP", 9, 9) == 0;
+    bool clock = n == 4 && zend_binary_strncasecmp(type, n, "TIME", 4, 4) == 0;
+    const char *rest = type + n;
+    if (*rest == '(') {
+        if (rest[1] < '0' || rest[1] > '6' || rest[2] != ')') return false;
+        rest += 3;
+    }
+    if (strcmp(dialect, "mysql") == 0) return stamp && *rest == '\0';
+    return strcmp(dialect, "postgres") == 0 && (stamp || clock) && strcasecmp(rest, " with time zone") == 0;
+}
+
 /*
  * The fraction digits of a described temporal column (Catalog::declaredPrecision): the digits of the first "(n)" of its
  * native type, and otherwise the default of the database, 0 on MySQL and 6 on PostgreSQL.
@@ -1898,6 +1914,13 @@ static bool cat_described_rows(zval *rows, zval *metadata, const char *dialect)
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) {
             zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), i++);
             zval trv, *native = column == NULL ? NULL : catalog_prop(column, "nativeType", &trv);
+            if (native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) != IS_NULL && cat_zoned_column(dialect, Z_STRVAL_P(native))) {
+                cat_refuse("a column of this type follows a time zone");
+                zval_ptr_dtor(&out_row);
+                zval_ptr_dtor(&described);
+                zval_ptr_dtor(rows);
+                return false;
+            }
             char kind = native != NULL && Z_TYPE_P(native) == IS_STRING && Z_TYPE_P(cell) == IS_STRING
                 ? cat_temporal_kind(dialect, Z_STRVAL_P(native)) : 0;
             zend_long precision = kind != 0 ? cat_declared_precision(dialect, Z_STRVAL_P(native)) : 0;

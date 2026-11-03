@@ -17,6 +17,8 @@ var (
 	catalogMySQLDateTimeType  = regexp.MustCompile(`^datetime(?:\(([0-6])\))?$`)
 	catalogPostgresTimeType   = regexp.MustCompile(`^time(?:\(([0-6])\))? without time zone$`)
 	catalogPostgresStampType  = regexp.MustCompile(`^timestamp(?:\(([0-6])\))? without time zone$`)
+	catalogMySQLZonedType     = regexp.MustCompile(`^timestamp(?:\([0-6]\))?$`)
+	catalogPostgresZonedType  = regexp.MustCompile(`^(?:timestamp|time)(?:\([0-6]\))? with time zone$`)
 	catalogDescribedDateText  = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}$`)
 	catalogDescribedTimeText  = regexp.MustCompile(`^([0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.([0-9]{1,6}))?$`)
 	catalogDescribedStampText = regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?)$`)
@@ -79,8 +81,14 @@ func catalogTemporalKind(column CatalogColumn, dialect string) (kind string, pre
 // catalogDescribedTemporal is the catalog value of one driver value of a described column: the dbspec text of a date,
 // time or datetime column with exactly its declared precision, and every other value as it is. A value outside the
 // dbspec form fails with GRID_TEMPORAL_VALUE, and a non-zero digit past p, or on SQLite fraction digits other than the
-// CHECK precision or no CHECK precision, fails with GRID_TEMPORAL_PRECISION.
+// CHECK precision, or than 0 with no CHECK, fails with GRID_TEMPORAL_PRECISION. A value of a MySQL TIMESTAMP or a
+// PostgreSQL timestamptz or timetz column follows a time zone that dbspec declares for no column, and fails with
+// CATALOG_VALUE (INT-103).
 func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (any, error) {
+	native := strings.ToLower(strings.TrimSpace(column.NativeType))
+	if value != nil && (dialect == "mysql" && catalogMySQLZonedType.MatchString(native) || dialect == "postgres" && catalogPostgresZonedType.MatchString(native)) {
+		return nil, catalogErr(CodeCatalogValue, "column %q of type %s follows a time zone, which dbspec does not declare", column.Name, column.NativeType)
+	}
 	kind, precision, declared, ok := catalogTemporalKind(column, dialect)
 	if !ok || value == nil {
 		return value, nil
@@ -101,10 +109,7 @@ func catalogDescribedTemporal(value any, column CatalogColumn, dialect string) (
 			return text, nil
 		}
 		if !declared {
-			// INT-103 and DIA-24: a SQLite DATETIME with no CHECK has precision 0. A CHECK-less TIME stays a refusal (T334-3-3-8).
-			if kind != "datetime" {
-				return nil, catalogErr(CodeGridTemporalPrecision, "column %q has no dbspec CHECK that fixes its fraction digits", column.Name)
-			}
+			// INT-103 and DIA-24: a SQLite DATETIME or TIME with no CHECK has precision 0.
 			precision = 0
 		}
 		if digits != precision {

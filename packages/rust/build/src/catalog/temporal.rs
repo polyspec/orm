@@ -77,14 +77,9 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                     GridCell::Text(text) if is_temporal(kind, text) => {
                         // A SQLite fraction is kept at the digits of the CHECK that fixes it (SQLite has no temporal storage class).
                         let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
-                        // DIA-24: a CHECK that fixes p requires exactly p fraction digits. INT-103 and DIA-24: a SQLite DATETIME with
-                        // no CHECK has precision 0; a CHECK-less TIME has no declared p (T334-3-3-8), so its text is kept as main reads it.
-                        let expected = match (checks.get(index).copied().flatten(), kind) {
-                            (_, "date") => None,
-                            (Some(precision), _) => Some(precision),
-                            (None, "datetime") => Some(0),
-                            (None, _) => None,
-                        };
+                        // DIA-24: a CHECK that fixes p requires exactly p fraction digits. INT-103 and DIA-24: a SQLite DATETIME or
+                        // TIME with no CHECK has precision 0.
+                        let expected = if kind == "date" { None } else { Some(checks.get(index).copied().flatten().unwrap_or(0)) };
                         if let Some(precision) = expected {
                             if precision != digits {
                                 return Err(format!(

@@ -1395,6 +1395,233 @@
       ]
     },
     {
+      "id": "undeclared_temporal_reads",
+      "requirements": [
+        "INT-103"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "CREATE TABLE undeclared_temporal (seq INT PRIMARY KEY, ts TIMESTAMP(3) NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "INSERT INTO undeclared_temporal VALUES (1, '2020-01-02 03:04:05.500'), (2, NULL)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "ts"
+          ],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "mysql"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "ts"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "ts"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "null": true
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "CREATE TABLE undeclared_temporal (seq INT PRIMARY KEY, tz TIMESTAMPTZ, ttz TIMETZ)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "INSERT INTO undeclared_temporal VALUES (1, '2020-01-02 03:04:05.5+00', '12:34:56+00'), (2, NULL, NULL)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "tz"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "ttz"
+          ],
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "postgres"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "tz",
+            "ttz"
+          ],
+          "expect": {
+            "postgres": {
+              "columns": [
+                "seq",
+                "tz",
+                "ttz"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "null": true
+                  },
+                  {
+                    "null": true
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "CREATE TABLE undeclared_temporal (seq INTEGER PRIMARY KEY, ts TIMESTAMP, t TIME)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "dbspec declares none of these types (DBS-42 time zone instants; on SQLite a TIMESTAMP and a TIME with no CHECK are not dbspec columns), so only the native driver creates them",
+          "sql": "INSERT INTO undeclared_temporal VALUES (1, '2020-01-02 03:04:05.5', '12:34:56'), (2, NULL, '12:34:56.5')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "ts",
+            "t"
+          ],
+          "expect": {
+            "sqlite": {
+              "columns": [
+                "seq",
+                "ts",
+                "t"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "datetime": "2020-01-02 03:04:05.5"
+                  },
+                  {
+                    "time": "12:34:56"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "undeclared_temporal",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "t"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_PRECISION"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "grid_declared_columns",
       "requirements": [
         "INT-103",

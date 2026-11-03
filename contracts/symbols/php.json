@@ -5543,6 +5543,10 @@
     "exported": false,
     "signature": "private static function isUtf8(string $value): bool"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::isZonedColumn": {
+    "exported": false,
+    "signature": "private static function isZonedColumn(string $dialect, string $nativeType): bool"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::keyPredicate": {
     "exported": false,
     "signature": "private function keyPredicate(Polyspec\\Orm\\CatalogTableMetadata $metadata): string"

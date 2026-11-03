@@ -2076,6 +2076,14 @@ final class Catalog
     {
         $rows = self::convertRows($raw, self::nativeTypes($metadata), $dialect);
         foreach ($metadata->columns as $i => $column) {
+            if (self::isZonedColumn($dialect, $column->nativeType)) {
+                foreach ($rows as $row) {
+                    if ($row[$i] !== null) {
+                        throw self::refused("column \"$column->name\" of type $column->nativeType follows a time zone");
+                    }
+                }
+                continue;
+            }
             if (self::isBooleanColumn($dialect, $column->nativeType)) {
                 // A boolean column is read as a bool by its column type (DIA-29).
                 foreach ($rows as $r => $row) {
@@ -2108,6 +2116,17 @@ final class Catalog
             }
         }
         return $rows;
+    }
+
+    /** A MySQL TIMESTAMP or a PostgreSQL timestamptz or timetz column, which follows a time zone that dbspec declares for no column (INT-103). */
+    private static function isZonedColumn(string $dialect, string $nativeType): bool
+    {
+        $native = strtolower(trim($nativeType));
+        return match ($dialect) {
+            'mysql' => preg_match('/^timestamp(\([0-6]\))?$/', $native) === 1,
+            'postgres' => preg_match('/^(timestamp|time)(\([0-6]\))? with time zone$/', $native) === 1,
+            default => false,
+        };
     }
 
     /** A boolean column by its native type: tinyint(1) on MySQL, boolean on PostgreSQL and SQLite (DIA-29). */

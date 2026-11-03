@@ -763,6 +763,10 @@
     "exported": false,
     "signature": "function validateReadOnly(query: string, dialect: DriverName): void"
   },
+  "packages/ts/src/catalog.ts::zonedType": {
+    "exported": false,
+    "signature": "function zonedType(dialect: DriverName, nativeType: string): boolean"
+  },
   "packages/ts/src/clock.ts::wallMicros": {
     "exported": true,
     "signature": "export function wallMicros(): number"
