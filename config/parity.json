@@ -15217,11 +15217,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_decimals.rs",
-          "id": "finite_grid_decimals_preserve_precision_and_scale"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -15255,6 +15250,21 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::grid_decimal_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "grid_decimal_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "grid_decimal_values"
         }
       ]
     },
@@ -15266,11 +15276,6 @@
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_numbers.rs",
-          "id": "grid_numbers_preserve_native_bits_and_unsigned_range"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
@@ -15294,8 +15299,42 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::grid_number_values"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "grid_number_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "grid_number_values"
         }
       ]
+    },
+    {
+      "id": "rust-plain-query-unsigned-driver-cause",
+      "kind": "feature",
+      "requirements": [
+        "INT-102a"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/grid_numbers.rs",
+          "id": "plain_query_keeps_the_driver_cause_of_an_unsigned_value"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "catalog-queries-use-database-enforced-read-only-scopes",

@@ -9201,7 +9201,6 @@
       ],
       "tests": [
         "packages/rust/build/tests/grid_cells.rs",
-        "packages/rust/build/tests/grid_decimals.rs",
         "packages/rust/build/tests/grid_numbers.rs",
         "packages/rust/build/tests/grid_temporal.rs",
         "packages/rust/build/tests/lock_probe/mod.rs",
@@ -9278,7 +9277,6 @@
             "packages/rust/build/tests/tool_statement.rs",
             "packages/rust/build/tests/tool_values.rs",
             "packages/rust/build/tests/grid_cells.rs",
-            "packages/rust/build/tests/grid_decimals.rs",
             "packages/rust/build/tests/grid_numbers.rs",
             "packages/rust/build/tests/grid_temporal.rs",
             "packages/rust/build/tests/row_commit_permit.rs",

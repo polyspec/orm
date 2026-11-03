@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 23aa5ff96946ff3e70494dc81f58d6581eeee678e6cde9350afa2d5029502929 -->
+<!-- source-sha256: 916faa1b775230ddb316ad8ebd727f03d7ed50b5bd5efe31586df1c5197182ea -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -538,6 +538,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-100** Rust 네이티브 모델 생성: 같은 문서 집합의 모델을 두 번 생성하면 같은 모델, manifest, 외부 텍스트가 나온다. 같은 문서로 crate가 빌드한 모델은, 빌드의 경로를 생성의 경로로 바꾸면 생성된 모델과 같다.
 - **INT-101** precision 없이 선언된 `time`·`datetime` 열은 방언의 기본 정밀도를 가진다: MySQL은 0, PostgreSQL은 6. MySQL은 6을 넘는 정밀도를 거부하며(DIA-54), PostgreSQL은 선언된 정밀도를 선언대로 읽는다. 선언된 정밀도보다 많은 소수 자릿수를 가진 `time`·`datetime` 값을 쓰는 typed 카탈로그 쓰기는 문을 실행하기 전에 `CODEC_ENCODE`로 실패한다.
 - **INT-102** 그리드 부동소수 셀은 값의 네이티브 IEEE-754 비트를 가진다(`Float32(u32)`, `Float64(u64)`). 음의 0과 비유한 값을 보존하며 JSON 숫자 강제 변환을 하지 않는다. MySQL unsigned 값은 부호 없는 64비트 범위 전체를 보존하는 `Unsigned(u64)` 셀이다.
+- **INT-102a** `polyspec-orm-build`의 `read_only_query`는 부호 있는 64비트 범위를 넘는 MySQL unsigned 값에서 driver의 원인과 함께 실패한다.
 - **INT-103** 시간 그리드 셀은 값의 dbspec 텍스트 형식을 가진다: `Date`는 `YYYY-MM-DD`, `Time`은 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 각각 소수 자릿수를 갖는다. 기술된 테이블의 읽기는 열이 선언한 정밀도 p를 정확히 쓴다. 선언이 없는 읽기 전용 그리드 조회는 여섯 자리를 쓰며, SQLite에서는 저장된 텍스트와 각 값의 저장 클래스를 그대로 둔다. MySQL `TIMESTAMP`와 PostgreSQL `timestamptz`, `timetz`는 미지원이며 `CATALOG_VALUE`로 실패하고, 그 NULL은 null 셀이다. MySQL `YEAR`는 orm이 시간 의미를 선언하지 않는 정수값 type이므로, 그리드 읽기는 `CATALOG_VALUE`로 실패한다. 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜(MySQL 영날짜 0000-00-00 포함), PostgreSQL infinity는 `GRID_TEMPORAL_VALUE`로 실패하며, 기술된 테이블의 SQLite 텍스트가 dbspec 형식이 아니면 `GRID_TEMPORAL_VALUE`로 실패한다. 자릿수를 고정하는 datetime 열의 SQLite CHECK는 SQLite 고유의 시간 검사이므로, 그것을 읽는 사례는 SQLite에서만 실행되며 recipe catalog_connection-sqlite-only에 있다. CHECK가 없는 SQLite DATETIME이나 TIME 열은 precision 0이다: 소수부가 없는 텍스트는 dbspec 텍스트로 읽히고, 0이 아닌 소수부는 `GRID_TEMPORAL_PRECISION`으로 실패한다. TIMESTAMP로 선언한 SQLite 열은 dbspec 시간 열이 아니므로 읽기는 저장된 텍스트를 검사 없이 돌려준다.
 - **INT-157** `polyspec/orm` PHP client의 MySQL catalog는 PostgreSQL, SQLite처럼 연결 하나, PDO만 쥔다. pdo_mysql은 열의 UNSIGNED flag도 charset도 알려 주지 않으므로 grid query는 둘을 그 연결에서 서버로부터 읽는다. 같은 query를 `WHERE FALSE` 아래 둔 임시 표의 열 타입이며, 이 표에는 행이 없고, 식과 별칭을 포함한 모든 결과 열에 타입이 붙는다. READ ONLY transaction이 이 문장을 거부하므로 문장은 읽기 transaction 사이에 실행되고, 서버는 그동안 쓰기를 하는 stored function을 거부한다. `CREATE TEMPORARY TABLES` 권한이 없는 사용자처럼 서버가 문장을 거부하면 각 cell은 값을 따르며 값을 보존한다. signed 64-bit 범위를 넘는 숫자는 unsigned cell, UTF-8이 아닌 bytes는 binary cell이다. 예산으로 멈춘 query는 그 멈춤과 함께 닫히는 연결로 종료한다.
 - **INT-158** `polyspec/orm-php-ext` package의 PHP extension은 MySQL catalog를 INT-157의 PDO 연결 하나로 유지하며, 열 타입, 서버가 문장을 거부할 때의 cell, 예산 멈춤도 같다.

@@ -10841,6 +10841,108 @@
           }
         }
       ]
+    },
+    {
+      "id": "grid_number_values",
+      "requirements": [
+        "INT-102"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.5 AS DOUBLE)",
+            "postgres": "SELECT 1.5::double precision",
+            "sqlite": "SELECT 1.5"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "f64_bits": "4609434218613702656"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(1.5 AS DOUBLE)",
+            "postgres": "SELECT 1.5::double precision",
+            "sqlite": "SELECT 1.5"
+          },
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": {
+            "mysql": "SELECT CAST(NULL AS DOUBLE)",
+            "postgres": "SELECT NULL::double precision",
+            "sqlite": "SELECT CAST(NULL AS REAL)"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "null": "null"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }
