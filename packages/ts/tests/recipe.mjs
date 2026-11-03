@@ -1739,7 +1739,8 @@ function chainBuilt(s, context) {
   };
   // A bound chain is read again: a terminal leaves it as it was (DSL-98).
   if (s.from !== undefined) return byKey(refOf(s.from, context));
-  const m = coreModel(s.model, context).connect(connectionOf(s, context));
+  const model = coreModel(s.model, context);
+  const m = s.unconnected === true ? model : model.connect(connectionOf(s, context));
   const build = new ChainBuild(context);
   const paged = s.page === true;
   build.query(m, s, { limit: !paged && s.offset === undefined });
@@ -1790,10 +1791,13 @@ const TABLE_OPS = {
     const m = chainBuilt(s, context);
     if (s.compile === true) return { json: plainJson(await m.getQuery()) };
     if (s.plan === true) {
-      const steps = await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count);
+      const steps = s.plan_page === undefined
+        ? await m.getPagePlanSteps(Math.floor(s.limit.offset / s.limit.count) + 1, s.limit.count)
+        : await m.getPagePlanSteps(s.plan_page.page, s.plan_page.per_page);
       return { json: steps.map(step => {
         const sql = step.sql.toUpperCase();
-        return { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        const shown = { role: step.role, tables: step.tables, count: Object.fromEntries(s.plan_count.map(text => [text, sql.split(text).length - 1])) };
+        return s.plan_sql === true ? { ...shown, sql: step.sql } : shown;
       }) };
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
