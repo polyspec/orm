@@ -190,6 +190,38 @@ async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
     Ok(names.join(","))
 }
 
+/// The markdown.connect op (FCV-4, PRT-64): `Db::connect` on a listener that answers the first line with the reply of the step,
+/// checked against the line it received and the outcome of the expect of `database`.
+fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
+    use std::io::{BufRead as _, Write as _};
+    let expect = &step["expect"][database];
+    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let reply = text("reply");
+    let server = std::thread::spawn(move || -> Result<String, String> {
+        let (connection, _) = listener.accept().map_err(|error| error.to_string())?;
+        let mut writer = connection.try_clone().map_err(|error| error.to_string())?;
+        let mut line = String::new();
+        std::io::BufReader::new(connection).read_line(&mut line).map_err(|error| error.to_string())?;
+        writeln!(writer, "{reply}").map_err(|error| error.to_string())?;
+        Ok(line.trim_end().to_owned())
+    });
+    let dsn = format!("markdown://127.0.0.1:{port}/{}?token={}", text("corpus"), text("token"));
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
+    let outcome = runtime.block_on(connect_driver(&dsn, &Value::Null));
+    let received = server.join().map_err(|_| "the listener panicked".to_owned())??;
+    if received != text("received") {
+        return Err(format!("the listener received {received:?}, want {:?}", text("received")));
+    }
+    let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
+    match outcome {
+        Err((code, message)) if code == want && message.contains(holds) => Ok(()),
+        Err((code, message)) => Err(format!("error {code} ({message}), want {want} with {holds}")),
+        Ok(_) => Err(format!("error none, want {want}")),
+    }
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
@@ -262,6 +294,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
+        "markdown.connect" => return markdown_connect(step, database),
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),

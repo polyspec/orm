@@ -5,12 +5,14 @@
 package recipe
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -80,6 +82,10 @@ type step struct {
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
 	Name        string                     `json:"name"`
+	Corpus      string                     `json:"corpus"`
+	Token       string                     `json:"token"`
+	Reply       string                     `json:"reply"`
+	Received    string                     `json:"received"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -281,6 +287,9 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
 		r.cell, r.err = connectDriver(s.DSN, s.Config)
+	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
+	case "markdown.connect":
+		r.err = markdownConnect(s)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
 	}
@@ -332,6 +341,34 @@ func sqliteFileName(name, query string) (string, error) {
 		}
 	}
 	return strings.Join(names, ","), nil
+}
+
+// markdownConnect runs the markdown.connect op: it returns the outcome of the connection, or an error with no code when the
+// listener did not receive the line of the step.
+func markdownConnect(s step) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.Close() }()
+	received := make(chan string, 1)
+	go func() {
+		defer close(received)
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		line, _ := bufio.NewReader(conn).ReadString('\n')
+		_, _ = fmt.Fprintln(conn, s.Reply)
+		received <- strings.TrimRight(line, "\n")
+	}()
+	port := listener.Addr().(*net.TCPAddr).Port
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), dsnConfig{})
+	if got := <-received; got != s.Received {
+		return fmt.Errorf("the listener received %q, want %q", got, s.Received)
+	}
+	return connected
 }
 
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection

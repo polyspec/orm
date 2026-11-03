@@ -37,6 +37,14 @@
       "op",
       "query"
     ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
+    ],
     "dsn.sqlite_file": [
       "expect",
       "name",

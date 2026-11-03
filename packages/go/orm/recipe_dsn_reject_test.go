@@ -8,7 +8,7 @@ import (
 )
 
 // TestRecipeDsnRejectNone runs the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, without a database (FCV-3).
-// Requirements: CFG-2, CFG-17, CFG-19, CFG-26, FCV-15.
+// Requirements: CFG-2, CFG-17, CFG-19, CFG-26, FCV-15, PRT-64.
 func TestRecipeDsnRejectNone(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	recipe.Run(t, "../../../contracts/fixtures/dsn_reject/dsn_reject.json", recipe.None)

@@ -160,6 +160,9 @@ def recipe_tests(path: str, database: str):
                 if step["op"] == "keyring.versions":
                     _keyring_versions(step, database)
                     continue
+                if step["op"] == "markdown.connect":
+                    _markdown_connect(step, database)
+                    continue
                 if step["op"] == "markdown.builder":
                     _markdown_builder(step, database)
                     continue
@@ -1421,6 +1424,40 @@ def _connect_driver(dsn: str, config: dict | None = None) -> str:
         return db.driver
     finally:
         db.close()
+
+
+def _markdown_connect(step: dict, database: str) -> None:
+    """Runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply
+    of the step, and checks the line it received and the outcome of the expect of database."""
+    listener = socket.create_server(("127.0.0.1", 0))
+    received = []
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection, connection.makefile("rwb") as stream:
+            received.append(stream.readline().decode().rstrip("\n"))
+            stream.write(step["reply"].encode() + b"\n")
+            stream.flush()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    port = listener.getsockname()[1]
+    outcome = step["expect"][database]
+    got = None
+    message = ""
+    try:
+        _connect_driver(f"markdown://127.0.0.1:{port}/{step['corpus']}?token={step['token']}")
+    except OrmError as error:
+        got = error.code
+        message = str(error)
+    server.join()
+    listener.close()
+    if received != [step["received"]]:
+        raise AssertionError(f"the listener received {received}, want {step['received']}")
+    if got != outcome["error"]:
+        raise AssertionError(f"got {got}, want {outcome['error']}")
+    if outcome.get("message_holds", "") not in message:
+        raise AssertionError(f"message {message}, want one that holds {outcome['message_holds']}")
 
 
 def _dsn_connect(step: dict, database: str) -> None:

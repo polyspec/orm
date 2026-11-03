@@ -60,6 +60,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'markdown.connect') await checkMarkdownConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
@@ -99,6 +100,31 @@ async function connectDriver(dsn, config = {}) {
   } finally {
     await db.close();
   }
+}
+
+// checkMarkdownConnect runs the markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the
+// reply of the step.
+async function checkMarkdownConnect(step, database) {
+  const received = [];
+  const server = await listenMarkdownTestServer(createServer(socket => {
+    createInterface({ input: socket }).once('line', line => {
+      received.push(line);
+      socket.end(`${step.reply}\n`);
+    });
+    socket.on('error', () => {});
+  }));
+  const expect = step.expect[database];
+  let failure;
+  try {
+    await connectDriver(`markdown://127.0.0.1:${new URL(server.dsn).port}/${step.corpus}?token=${step.token}`);
+  } catch (error) {
+    failure = error;
+  } finally {
+    await server.close();
+  }
+  if (!isDeepStrictEqual(received, [step.received])) throw new Error(`the listener received ${JSON.stringify(received)}, want ${step.received}`);
+  if (failure?.code !== expect.error) throw new Error(`error ${failure?.code ?? 'none'}, want ${expect.error}`);
+  if (!failure.message.includes(expect.message_holds ?? '')) throw new Error(`message ${failure.message}, want one that holds ${expect.message_holds}`);
 }
 
 // checkDsnConnect runs the dsn.connect op (FCV-4) on the DSN text of the step, and checks the refusal code or the driver of its expect.

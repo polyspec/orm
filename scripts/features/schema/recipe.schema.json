@@ -765,6 +765,7 @@
           "enum": [
             "dsn.connect",
             "dsn.sqlite_file",
+            "markdown.connect",
             "keyring.versions",
             "markdown.builder",
             "model.connect",
@@ -857,6 +858,9 @@
         },
         {
           "$ref": "#/$defs/ops/dsn.sqlite_file"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.connect"
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
@@ -1332,6 +1336,19 @@
             "description": "A read-only transaction; a nested transaction that names it is refused with CONFIG.",
             "type": "boolean"
           }
+        }
+      },
+      "markdown.connect": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "reply", "received", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.connect" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "reply": { "type": "string", "description": "The line that a listener answers the first message with." },
+          "received": { "type": "string", "description": "The line that the listener must have received." },
+          "expect": { "$ref": "#/$defs/expect" }
         }
       },
       "dsn.sqlite_file": {

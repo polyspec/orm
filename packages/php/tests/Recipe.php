@@ -144,6 +144,10 @@ final class Recipe
                     self::dsnConnectStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'markdown.connect') {
+                    self::markdownConnectStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'keyring.versions') {
                     self::keyringVersionsStep($step, $database);
                     continue;
@@ -623,6 +627,27 @@ final class Recipe
         } finally {
             exec('rm -rf ' . escapeshellarg($directory));
         }
+    }
+
+    /** The markdown.connect op (FCV-4, PRT-64): Db.connect on a listener that answers the first line with the reply of the step. */
+    private static function markdownConnectStep(array $step, string $database): void
+    {
+        $server = \Polyspec\Orm\Tests\start_markdown_test_server([$step['reply']]);
+        $code = null;
+        $message = '';
+        try {
+            self::connectDriver($server[2]);
+        } catch (OrmException $error) {
+            $code = $error->code_;
+            $message = $error->getMessage();
+        }
+        Assert::assertSame(
+            [$step['received']],
+            \Polyspec\Orm\Tests\markdown_test_server_received_messages($server),
+            'the lines that the listener received',
+        );
+        Assert::assertSame($step['expect'][$database]['error'] ?? null, $code);
+        Assert::assertStringContainsString($step['expect'][$database]['message_holds'] ?? '', $message);
     }
 
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */

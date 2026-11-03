@@ -13786,33 +13786,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownConnectRefused"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/markdown_connect_refused"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testConnectRefused"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMarkdownConnectionRefusesConnectError"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"markdown_connect_refused\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/connect-refused"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_connect_refused"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "markdown_connect_refused"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_connect_refused"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::markdown_connect_refused"
         }
       ]
     },
@@ -42298,7 +42298,8 @@
         "CFG-17",
         "CFG-19",
         "CFG-26",
-        "FCV-15"
+        "FCV-15",
+        "PRT-64"
       ],
       "file": "contracts/fixtures/dsn_reject/dsn_reject.json",
       "cases": "$.cases[*].id",
