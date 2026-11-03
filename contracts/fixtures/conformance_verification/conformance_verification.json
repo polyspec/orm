@@ -139,7 +139,8 @@
   "INT-99",
   "COD-20",
   "DIA-25",
-  "COD-2"
+  "COD-2",
+  "PRT-78"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -56324,6 +56325,458 @@
               },
               {
                "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "page_statement_does_not_hold_its_values",
+   "requirements": [
+    "PRT-78"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 0,
+      "count": 2
+     },
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 6,
+         "name": "author-6"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "seq": {
+       "int": "6"
+      }
+     },
+     "order": [],
+     "columns": [
+      "name"
+     ],
+     "remove_columns": [
+      "user_seq",
+      "service_seq",
+      "service_region_seq",
+      "service_member_seq"
+     ],
+     "limit": {
+      "offset": 1,
+      "count": 2
+     },
+     "expect": {
+      "mysql": {
+       "json": []
+      },
+      "postgres": {
+       "json": []
+      },
+      "sqlite": {
+       "json": []
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "compare": "all",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "0"
+              },
+              {
+               "int": "2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT ?, ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "1"
+              },
+              {
+               "int": "2"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT $2 OFFSET $3"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "1"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = ? LIMIT ? OFFSET ?"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "int": "6"
+              },
+              {
+               "int": "2"
+              },
+              {
+               "int": "1"
               }
              ]
             }

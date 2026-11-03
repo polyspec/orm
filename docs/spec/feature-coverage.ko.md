@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: b52cfd67d4fc65e6e39d9a363d7c0c19f3871ece6af64691591c12fb603d28da -->
+<!-- source-sha256: 6ac6893c6a1ff42f73f91d023c11f926756c14e8b4966cce30b85055b73d100b -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -26,6 +26,7 @@
   - `statement-runner-python-active-frame`(INT-161)은 Python에서 FCV-2의 한 언어 표면으로 native로 남는다. `active_frame()`은 Python에서만 public이고, 다른 런타임에는 recipe op가 이름 붙일 호출이 없다.
   - `transaction-concurrent-use-and-flow-isolation`, `handle-disposal-abort-or-unwind-rolls-back`, `handle-disposal-abandoned-query-cancels-and-releases`(PLN-18, INT-67, CFG-9)는 모든 런타임에서 FCV-2의 언어 형태로 native로 남는다. 주제가 각 런타임의 flow나 disposal 형태(goroutine, fiber, thread, task; drop된 handle, 취소된 context, signal, close)이고, recipe의 step은 한 flow에서 실행되어 그중 어느 것도 적지 못한다. `utils-backend-waiting-for-lock`(INT-53)도 두 번째 flow이므로 native로 남는다. 기다리는 backend는 첫 flow가 쥔 행에서 막힌 문장을 필요로 하고, 그동안 첫 flow가 보고를 읽는다. recipe `utils`는 waiter가 없는 사례를 가진다.
   - `collection-parent-expansion-preserves-bare-dollar`(DSL-153)는 모든 runtime에서 FCV-2 driver 항목으로 native로 남는다: parent slot의 placeholder 번호 매기기는 generator가 쓰지 않는 statement를 받으므로 어떤 public op도 bare `$`를 줄 수 없다.
+  - `plan-cache-in-list-shapes-share-ten-bucketed-keys`와 `page-cache-root-limit-values`(CPX-4, PRT-78)는 비공개 상태에 대한 FCV-2 항목으로 모든 runtime에서 native로 남습니다. plan cache가 가진 항목 수, 곧 1개부터 300개 값의 IN list에서 최대 10개와 300개 page에서 1개는 connection 내부의 수이며 이를 읽는 public 호출이 없습니다. Go, PHP, PHP extension, Python은 항목을 세고, TypeScript와 Rust는 PRT-78의 key인 서로 다른 shape key를 셉니다. 그 shape의 public 모습은 `core_in_list_padding`과 `page_statement_does_not_hold_its_values` case가 지킵니다.
   - `collection-composite-key-encoding`(PRT-35)는 FCV-2 driver 항목으로 모든 runtime에서 native로 남습니다. composite key의 encoded text와 구성 요소의 타입은 driver 행에서 읽히며, 여섯 runtime이 모두 가진 public 호출 중 구성 요소를 받거나 그 text를 돌려주는 것은 없습니다.
   - `group-row-driver-cell-forms`(INT-68, INT-90)는 모든 runtime에서 FCV-2의, recipe 값이 담을 수 없는 입력으로 native로 남는다. text나 float인 count와 반복된 열은 driver cell의 형태이고, listener의 답은 count가 JSON number이고 행이 JSON object이므로(PRT-69) 그중 어느 것도 담지 못한다. `collection-recipe`(`tests/collection/collection.json`)는 나머지 group row 동작을 모두 `ir.answer`로 담으며 새 op가 필요 없다. PHP의 `toArray` 선언 형태와 PHP extension의 iterator는 다른 runtime에 없는 FCV-2 binding surface로, parity 단위 없이 native 시험으로 남는다.
   - `connection-cancelled-transaction-session-state`(CFG-39)는 Go에서 native로 남는다. handle의 context는 Go에만 있고, 다른 runtime에는 그것으로 callback 도중 transaction을 취소하는 호출이 없다.

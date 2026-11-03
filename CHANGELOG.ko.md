@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bb995150fb2fa4795e92326b603119d48875196a001bc37f647008bad922f85b -->
+<!-- source-sha256: 3005e32e98e86fb326952459643af1eca9e628f5ef3dc9aeba42cd17e50bd910 -->
 # 변경 이력
 
 ## Unreleased
 
+- recipe case가 두 page가 한 statement를 쓰고 bind만 달라짐을 지키며, plan cache 항목 수는 FCV-2에 적힌 대로 native로 남는다.
 - transaction 안에서 Future가 query를 버리는 Python 시험(CFG-9)은 dialect마다 빈 database에서 `test_query_cancel.py`에 native로 남고, Python feature runner `feature_items`, `each_item`, `run_cases`를 없앴다. 이제 Python은 `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽지 않는다.
 - Secret의 statement event bind와 secret bind slot이 사라졌다. AES가 client로 옮겨간 뒤 어떤 statement도 secret을 bind하지 않으므로 `$SECRET`을 INT-91, DSL-68, PRT-32와 모든 client에서 뺐다.
 - 여섯 runtime에서 expected revision native 넷을 지운다. recipe conformance_verification의 case `expect_revision`이 모든 database에서 match, mismatch, update, delete를 시험한다 (#T334-3-6-2)
