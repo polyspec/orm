@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- 시험: chain의 finalize는 모든 runtime에서 `dbspec_apply` recipe가 맡고, 아무것도 숨기지 않는 plan의 새 case를 둔다: finalize event는 행이 `applied`일 때 오고, 문장은 실행되지 않으며, 행은 `done`이 된다. Go의 `TestFinalizeMarksPlanDone`은 삭제했다.
 - Rust tests crate는 clippy `-D warnings`를 통과한다: seed reader와 connect step이 금지된 `unwrap_or_default`와 `ok`를 호출하지 않는다 (T326-16).
 - `conformance-generated-methods-check`는 본문 `now_defaults`, `delete_recursive`, `affected_counts`도 그 recipe case의 expect와 비교한다.
 - Go는 conformance vector를 recipe conformance_verification과 fixed-clock 본문으로만 돌린다. tag가 붙은 시험 `coverage_conformance_verification_test.go`와 그 helper, `testdb.FeatureDatabase`, runner `packages/go/testing/feature-json.mts`, target `feature-go-unit`, build tag `featurecoverage`를 없앴다 (#T334-3-12-2)
@@ -108,7 +109,7 @@
 - `make perf-check`는 PERF-1의 Go 측정을 MySQL, PostgreSQL, SQLite에서 실행하고, `client-db-check`의 Go lane은 클라이언트 결과를 검증하지 않는 그 시험을 건너뛴다.
 - TypeScript `getReadCount` member의 parity check는 새로 build한 결과로 본다: `var/typescript/dist.key`가 남긴 오래된 `packages/ts/dist`는 Author 외 model 25개에 대해 R11 undeclared-public 25건을 보고했고, 다시 build하면 `parity --phase api`는 보고하지 않으며 Author 선언은 그대로 남는다 (T326-17).
 - orm-gen이 생성하는 PHP 코드는 집합의 parse된 runtime model을 가지므로, 새 PHP process의 요청은 manifest를 parse하지 않는다. bench 집합의 model을 읽는 php-fpm 요청은 opcode cache에서 5.04 ms 대신 0.53 ms가 걸린다. 다른 manifest hash나 다른 runtime model 형식의 데이터는 무시하고 전처럼 parse하며, `meta()` 검사는 유지한다(DBS-177, DBS-178, T357).
-문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.
+- 문서: FCV-2가 `interface_contract`의 공개 표면 unit마다 native로 남는 이유를 native binding 규칙이 읽는 형식으로 적는다.
 - Go physical 시험의 query 형태는 모든 database에서 recipe case다: `{"random": true}`는 `model.query`를 `orderByRandom`으로 정렬하고, case `query_now_and_random_order`가 `now`와 함께 그것을 시험한다. tuple과 날짜 함수는 이미 case였다 (#T334-3-18).
 - constraint error와 immutable write는 Rust, Go, Python에서도 recipe가 시험한다: recipe는 check 이름, unique key, SQLite code 이름, driver cause를 비교하고, `refusal.rs`는 없앴다 (#T334-3-18).
 - schema 정의의 manifest, analysis, format unit은 recipe만 묶는다: Go `TestFormat`은 없앴고, 잘못된 byte는 native로 명시한 unit `dbspec-encoding-and-limit-natives`에 들어가고, extension class의 출처 시험은 internal이다 (#T334-3-18).

@@ -8465,6 +8465,365 @@
       ]
     },
     {
+      "id": "finalize_of_a_plan_that_hides_nothing",
+      "requirements": [
+        "PLN-94"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.plan",
+          "lines": [
+            "dbplan 1 only",
+            "from empty",
+            "",
+            "dbspec 1 schema",
+            "",
+            "table notes {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}"
+          ],
+          "as": "only"
+        },
+        {
+          "op": "dbspec.connect",
+          "as": "conn"
+        },
+        {
+          "op": "dbspec.apply",
+          "connection": "conn",
+          "plans": [
+            "only"
+          ],
+          "count": [],
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "applied"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.finalize",
+          "connection": "conn",
+          "plans": [
+            "only"
+          ],
+          "count": [
+            "finalize",
+            "statement",
+            "done"
+          ],
+          "on": {
+            "event": "finalize",
+            "steps": [
+              {
+                "op": "dbspec.exec",
+                "connection": "conn",
+                "sql": {
+                  "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+                  "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+                  "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+                },
+                "expect": {
+                  "mysql": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "postgres": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "sqlite": {
+                    "value": {
+                      "array": [
+                        {
+                          "array": [
+                            {
+                              "text": "only"
+                            },
+                            {
+                              "text": "applied"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "object": [
+                  [
+                    "code",
+                    {
+                      "text": "ok"
+                    }
+                  ],
+                  [
+                    "finalize",
+                    {
+                      "int": "1"
+                    }
+                  ],
+                  [
+                    "statement",
+                    {
+                      "int": "0"
+                    }
+                  ],
+                  [
+                    "done",
+                    {
+                      "int": "1"
+                    }
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.exec",
+          "connection": "conn",
+          "sql": {
+            "mysql": "SELECT name, state FROM `dbspec$plans` ORDER BY name",
+            "postgres": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name",
+            "sqlite": "SELECT name, state FROM \"dbspec$plans\" ORDER BY name"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "array": [
+                      {
+                        "text": "only"
+                      },
+                      {
+                        "text": "done"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "rollback_refused_by_null_rows",
       "requirements": [
         "PLN-96"

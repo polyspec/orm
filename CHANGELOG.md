@@ -3,8 +3,8 @@
 
 ## Unreleased
 
-Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
-
+- Tests: the finalization of a chain is held by the `dbspec_apply` recipe in every runtime, with a new case for a plan that hides nothing: its finalize event comes while the row is `applied`, no statement runs and the row becomes `done`; the Go `TestFinalizeMarksPlanDone` is gone.
+- Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
 - - The compile case of an output name conflict holds the exact text of the error in every dialect, by the optional message of a planner.compile expect (#T334-3-6-2)
 - The catalog natives a recipe cannot reach stay as internal tests, and generated_identity_sqlite, read_only_grid_shapes and temporal_text_row_cycle_sqlite hold the random key, the refused grid write and the temporal row cycle.
 - Go, PHP and the PHP extension read a MySQL `BIGINT UNSIGNED` past the signed range instead of refusing it, and the row baseline tells the two largest values apart.
