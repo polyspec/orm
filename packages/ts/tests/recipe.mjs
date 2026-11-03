@@ -25,7 +25,7 @@ import { Engine } from '../dist/index.js';
 import { styledField } from '../dist/core.js';
 import { relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
-import { checkGeneratedFiles, checkGenerator } from './recipe_generator.mjs';
+import { checkGeneratedFiles, checkRefusedGeneration, checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { applyOps } from './recipe_apply.mjs';
 import { classesFromModel } from './registered_models.mjs';
@@ -88,6 +88,7 @@ export function runRecipe(path, database) {
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
           else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (step.op === 'generator.check') checkGeneratedFiles(step, dir);
+          else if (step.op === 'generator.refused') checkRefusedGeneration(step, dir);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));
@@ -714,6 +715,10 @@ const OPS = {
     const snapshot = stepArgument(s.snapshot, context);
     return { value: { text: snapshot.revision } };
   },
+  async 'catalog.revision_compare'(s, context) {
+    const { revision } = stepArgument(s.snapshot, context);
+    return { json: { length: revision.length, differs: revision !== stepArgument(s.other, context).revision } };
+  },
   async 'catalog.current_namespace'(_, { catalog }) {
     return { value: { text: await catalog.currentNamespace() } };
   },
@@ -757,6 +762,18 @@ const OPS = {
     if (s.page_with?.column_name !== undefined) {
       const [first, ...rest] = page.metadata.columns;
       page.metadata = { ...page.metadata, columns: [{ ...first, name: s.page_with.column_name }, ...rest] };
+    }
+    if (s.page_with?.primary_key !== undefined) page.metadata = { ...page.metadata, primaryKey: s.page_with.primary_key };
+    if (s.page_with?.limit !== undefined) page.limit = s.page_with.limit;
+    if (s.page_with?.result_column_name !== undefined) {
+      const [first, ...rest] = page.result.columns;
+      page.result = { ...page.result, columns: [{ ...first, name: s.page_with.result_column_name }, ...rest] };
+    }
+    if (s.page_with?.drop_last_cell === true || s.page_with?.fill_last_cell !== undefined) {
+      const [first, ...rest] = page.result.rows;
+      const row = s.page_with.drop_last_cell === true ? first.slice(0, -1) : [...first];
+      if (s.page_with.fill_last_cell !== undefined) row[row.length - 1] = s.page_with.fill_last_cell.fill.repeat(s.page_with.fill_last_cell.count);
+      page.result = { ...page.result, rows: [row, ...rest] };
     }
     const snapshot = context.catalog.rowSnapshotFromPage(page, s.index);
     return { bind: snapshot, keys: snapshot.keys().map(key => plain(key, null)), key_indexes: snapshot.keyIndexList() };
@@ -1731,7 +1748,8 @@ class ChainBuild {
     for (const relation of q.relations ?? []) m[CORE].relation(relation.many === true, this.relation(relation));
     if (q.where !== undefined) this.predicate(m, '', q.where);
     for (const entry of q.order ?? []) {
-      if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
+      if (entry.random === true) m.orderByRandom();
+      else if (typeof entry === 'string') m[CORE].orderBy(entry.replace(/^-/, ''), entry.startsWith('-'), []);
       else if (entry.fn !== undefined) m[CORE].orderBy(fnColumn(entry.fn), entry.dir === 'desc', [chainFunc(entry.fn)]);
       else m[CORE].orderBy(entry.column, entry.dir === 'desc', []);
     }

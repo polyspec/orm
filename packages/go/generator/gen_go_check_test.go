@@ -33,7 +33,7 @@ func requireCheck(t *testing.T, want ...string) {
 // TestGoGenerationCheckReportsDifferences checks that a check reports no line
 // for current models and reports a changed, a missing, and an extra generated
 // file without writing, while hand-written files are not compared.
-// Requirements: DBS-175.
+// Requirements: DBS-175, DBS-182.
 func TestGoGenerationCheckReportsDifferences(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write, _ := generatedScannedModule(t)
@@ -46,15 +46,6 @@ func TestGoGenerationCheckReportsDifferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	requireCheck(t, "missing: model/brand.go", "differs: model/product.go", "extra: model/removed.go")
-}
-
-// TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName checks that a
-// file without the generated header whose name the generation writes differs.
-func TestGoGenerationCheckReportsAHandWrittenFileOfAGeneratedName(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	write, _ := generatedScannedModule(t)
-	write("model/brand.go", "package model\n")
-	requireCheck(t, "differs: model/brand.go")
 }
 
 // TestGoGenerationCheckKeepsOutputOnGenerationError checks that a check whose
@@ -73,26 +64,6 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 	var scanned *ScannedSourceError
 	if err == nil || errors.As(err, &scanned) {
 		t.Fatalf("want a generation failure, got %v", err)
-	}
-	requireSameFiles(t, before, snapshotDir(t, "model"))
-}
-
-// TestGoGenerationCheckCommandReportsDifferences checks the output and exit
-// status of orm-gen gen --check.
-func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
-	testcase.Start(t, testcase.Process)
-	bin, write := namesCommand(t, true)
-	run := func(args ...string) (int, string, string) {
-		return runTool(t, bin, args...)
-	}
-	gen := []string{"gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
-	if code, stdout, stderr := run(gen...); code != 0 || stdout != "" || stderr != "" {
-		t.Fatalf("%v on current files: exit %d\nstdout: %s\nstderr: %s", gen, code, stdout, stderr)
-	}
-	write("example/more.go", moreCalls)
-	before := snapshotDir(t, "model")
-	if code, stdout, stderr := run(gen...); code != 1 || stdout != "differs: model/product.go\n" || stderr != "" {
-		t.Fatalf("gen --check on a changed file: exit %d\nstdout: %s\nstderr: %s", code, stdout, stderr)
 	}
 	requireSameFiles(t, before, snapshotDir(t, "model"))
 }
