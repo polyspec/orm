@@ -160,6 +160,48 @@ name = "statement_runner_sqlite"
 path = "tests/statement_runner_sqlite.rs"
 harness = false
 
+# Each case of the recipe tests/dbspec/render-physical.json on mysql, as dbspec_render_physical_mysql::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_render_physical_mysql"
+path = "tests/dbspec_render_physical_mysql.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/render-physical.json on postgres, as dbspec_render_physical_postgres::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_render_physical_postgres"
+path = "tests/dbspec_render_physical_postgres.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/render-physical.json on sqlite, as dbspec_render_physical_sqlite::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_render_physical_sqlite"
+path = "tests/dbspec_render_physical_sqlite.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/set-decimal.json on mysql, as dbspec_set_decimal_mysql::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_mysql"
+path = "tests/dbspec_set_decimal_mysql.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/set-decimal.json on postgres, as dbspec_set_decimal_postgres::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_postgres"
+path = "tests/dbspec_set_decimal_postgres.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/set-decimal.json on sqlite, as dbspec_set_decimal_sqlite::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_set_decimal_sqlite"
+path = "tests/dbspec_set_decimal_sqlite.rs"
+harness = false
+
+# Each case of the recipe tests/dbspec/apply-verification-errors.json, as dbspec_apply_verification_errors_none::<case id> (FCV-3, FCV-4).
+[[test]]
+name = "dbspec_apply_verification_errors_none"
+path = "tests/dbspec_apply_verification_errors_none.rs"
+harness = false
+
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
 # statement_events_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -632,6 +674,16 @@ path = "tests/dbspec_load_set_none.rs"
 harness = false
 
 # Each case of The rule diagnostics and canonical forms of tests/dbspec/rules.json, tests/dbspec/rules.json, is the trial dbspec_rules_recipe_none::<case id> (FCV-3).
+[[test]]
+name = "dbspec_show_create_introspect_none"
+path = "tests/dbspec_show_create_introspect_none.rs"
+harness = false
+
+[[test]]
+name = "dbspec_introspect_messages_none"
+path = "tests/dbspec_introspect_messages_none.rs"
+harness = false
+
 [[test]]
 name = "dbspec_rules_recipe_none"
 path = "tests/dbspec_rules_recipe_none.rs"

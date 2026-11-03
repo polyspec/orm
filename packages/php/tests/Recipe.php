@@ -174,6 +174,18 @@ final class Recipe
                     self::dsnConnectStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'dbspec.introspect_shown') {
+                    self::dbspecIntrospectShownStep($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+                    continue;
+                }
+                if ($step['op'] === 'dbspec.apply_fault') {
+                    self::dbspecApplyFaultStep($step, $bound, $database);
+                    continue;
+                }
+                if ($step['op'] === 'dbspec.introspect_sqlite') {
+                    self::dbspecIntrospectSqliteStep($step, $database);
+                    continue;
+                }
                 if ($step['op'] === 'markdown.connect') {
                     self::markdownConnectStep($step, $database);
                     continue;
@@ -1519,6 +1531,130 @@ final class Recipe
     }
 
     /**
+     * Runs one dbspec.apply_fault step (FCV-4): the public apply or rollback on a SQLite connection, after applied_first
+     * and sql, with the fail_catalog_read-th read of the SQLite master query in the call failing. An injected failure must
+     * reach the apply error as its cause (PLN-92, PLN-93, PLN-96).
+     *
+     * @param array<string, mixed> $step
+     * @param array<string, mixed> $bound
+     */
+    private static function dbspecApplyFaultStep(array $step, array $bound, string $database): void
+    {
+        $expect = $step['expect'][$database];
+        $master = "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master\n"
+            . "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
+        $plans = [self::dbspecBound($step['plan'], $bound)];
+        $now = static fn(): \DateTimeImmutable => new \DateTimeImmutable('2026-10-01T00:00:00Z');
+        $pdo = dbspec_failing_pdo('dbspec_apply_fault', []);
+        if (($step['applied_first'] ?? false) === true) {
+            Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+        }
+        foreach ($step['sql'] ?? [] as $statement) {
+            $pdo->exec($statement);
+        }
+        $cause = null;
+        if (isset($step['fail_catalog_read'])) {
+            $cause = new \PDOException('catalog read failed');
+            $pdo->failQuery($master, $cause, $step['fail_catalog_read']);
+        }
+        $kinds = [];
+        $events = static function (\Polyspec\Orm\Dbspec\ApplyEvent $event) use (&$kinds): void {
+            $kinds[] = $event->kind;
+        };
+        $error = null;
+        try {
+            if ($step['call'] === 'rollback') {
+                Dbspec::rollback($pdo, 'sqlite', $plans, $now, $events);
+            } else {
+                Dbspec::apply($pdo, 'sqlite', $plans, $now, $events);
+            }
+        } catch (\Polyspec\Orm\Dbspec\ApplyError $caught) {
+            $error = $caught;
+        }
+        Assert::assertNotNull($error, "the call succeeded, want {$expect['code']}");
+        Assert::assertSame($expect['code'], $error->code_);
+        if ($cause !== null) {
+            $previous = $error->getPrevious();
+            Assert::assertTrue(
+                $previous === $cause || $previous?->getPrevious() === $cause,
+                'the apply error holds the catalog read error'
+            );
+        }
+        if (isset($expect['history_state'])) {
+            Assert::assertSame($expect['history_state'], $pdo->query('SELECT state FROM "dbspec$plans"')->fetchColumn());
+        }
+        foreach ($expect['absent_events'] ?? [] as $kind) {
+            Assert::assertNotContains($kind, $kinds);
+        }
+    }
+
+    /**
+     * Runs one dbspec.introspect_shown step (FCV-4): the public Dbspec::introspect on the canned catalog of a case of
+     * the vectors file, whose check lines and unsupported objects, or error, it compares (DIA-84). A reason compares
+     * by its rule, the text before the first ": ", since its text differs between the clients.
+     *
+     * @param array<string, mixed> $step
+     */
+    private static function dbspecIntrospectShownStep(array $step, string $dir, string $database): void
+    {
+        $vectors = json_decode((string) file_get_contents($dir . '/' . $step['vectors']), true, 512, JSON_THROW_ON_ERROR);
+        $found = null;
+        foreach ($vectors['cases'] as $vector) {
+            if ($vector['id'] === $step['case']) {
+                $found = $vector;
+            }
+        }
+        Assert::assertNotNull($found, 'the vectors have the case');
+        $pdo = new CannedCatalogPdo($vectors['catalog'], implode("\n", $found['create']) . "\n", $found['name']);
+        $expect = $step['expect'][$database];
+        try {
+            $result = Dbspec::introspect($pdo, 'mysql', 'introspected');
+        } catch (RuntimeException $error) {
+            Assert::assertSame($expect['error'] ?? null, $error->getMessage());
+            return;
+        }
+        Assert::assertArrayNotHasKey('error', $expect, 'the introspection returned no error');
+        $checks = [];
+        foreach (explode("\n", Dbspec::emit($result->document)) as $line) {
+            $line = trim($line);
+            if (str_starts_with($line, 'check ')) {
+                $checks[] = $line;
+            }
+        }
+        $reasons = array_map(
+            static fn($item): string => "$item->kind $item->name: " . explode(': ', $item->reason, 2)[0],
+            $result->unsupported
+        );
+        Assert::assertSame($expect['checks'], $checks, 'checks');
+        Assert::assertSame($expect['unsupported'], $reasons, 'unsupported');
+    }
+
+    /**
+     * Runs one dbspec.introspect_sqlite step (FCV-4): the statements on a memory SQLite connection of its own,
+     * then the public Dbspec::introspect, whose unsupported objects it compares (DIA-191).
+     *
+     * @param array<string, mixed> $step
+     */
+    private static function dbspecIntrospectSqliteStep(array $step, string $database): void
+    {
+        $pdo = new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+        foreach ($step['sql'] as $statement) {
+            $pdo->exec($statement);
+        }
+        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
+        $got = array_map(
+            static fn($item): array => [
+                'kind' => $item->kind,
+                'table' => $item->table,
+                'name' => $item->name,
+                'reason' => $item->reason,
+            ],
+            $result->unsupported
+        );
+        Assert::assertSame($step['expect'][$database]['unsupported'], $got);
+    }
+
+    /**
      * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
      * versions (INT-74, INT-130), against the expect of database.
      */
@@ -2648,6 +2784,43 @@ final class Recipe
                     $db->close();
                 }
                 return ['value' => $body === null ? ['null' => 'text'] : ['text' => $body]];
+            case 'dbspec.ddl_behavior':
+                // On one native connection of the case database, the connection rules, the statements of the case for the
+                // database, then its behavior steps. A step with dialects runs only on those; a step with fails must fail;
+                // a query compares its first value, as text, with want, and a NULL or absent value fails it (DIA-113).
+                $vectors = json_decode((string) file_get_contents($context['dir'] . '/' . $s['vectors']), true, 512, JSON_THROW_ON_ERROR);
+                $matching = array_values(array_filter($vectors['cases'], static fn(array $c): bool => $c['id'] === $s['case']));
+                if ($matching === []) {
+                    throw new \RuntimeException("the vectors have no case {$s['case']}");
+                }
+                $database = $context['database'];
+                $pdo = case_admin($context['dsn']);
+                $rule = ['mysql' => "SET time_zone = '+00:00'", 'postgres' => "SET TimeZone = 'UTC'", 'sqlite' => 'PRAGMA foreign_keys = ON'][$database];
+                foreach ([$rule, ...$matching[0]['statements'][$database]] as $statement) {
+                    $pdo->exec($statement);
+                }
+                foreach ($matching[0]['behavior'] as $step) {
+                    if (isset($step['dialects']) && !in_array($database, $step['dialects'], true)) {
+                        continue;
+                    }
+                    if (array_key_exists('sql', $step)) {
+                        if (($step['fails'] ?? false) !== true) {
+                            $pdo->exec($step['sql']);
+                            continue;
+                        }
+                        try {
+                            $pdo->exec($step['sql']);
+                        } catch (\PDOException) {
+                            continue;
+                        }
+                        throw new \RuntimeException("{$step['sql']} must fail");
+                    }
+                    $got = dbspec_value($pdo, $step['query']);
+                    if ($got !== $step['want']) {
+                        throw new \RuntimeException("{$step['query']}: got $got, want {$step['want']}");
+                    }
+                }
+                return [];
             case 'sql.exec':
                 // An object form runs only on the databases whose key it holds (FCV-4): an absent key runs nothing.
                 $statement = is_string($s['sql']) ? $s['sql'] : ($s['sql'][$context['database']] ?? null);

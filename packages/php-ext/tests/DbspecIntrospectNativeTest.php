@@ -25,25 +25,6 @@ final class DbspecIntrospectNativeTest extends TestCase
         );
     }
 
-    // Requirements: DIA-191.
-    public function testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck(): void
-    {
-        self::assertTrue((new ReflectionMethod(Dbspec::class, 'introspect'))->isInternal());
-        require_once dirname(__DIR__, 2) . '/php/tests/DbspecIntrospectTest.php';
-        \Polyspec\Orm\Tests\DbspecIntrospectTest::assertUnsupportedColumnReasonQuotesMissingCheck(
-            static fn(PDO $pdo) => Dbspec::introspect($pdo, 'sqlite', 'introspected')
-        );
-    }
-
-    public function testNativeSQLiteAlterAddedUnquotedColumnIsUnsupportedColumn(): void
-    {
-        self::assertTrue((new ReflectionMethod(Dbspec::class, 'introspect'))->isInternal());
-        require_once dirname(__DIR__, 2) . '/php/tests/DbspecIntrospectTest.php';
-        \Polyspec\Orm\Tests\DbspecIntrospectTest::assertSQLiteAlterAddedUnquotedColumnIsReportedAsUnsupportedColumn(
-            static fn(PDO $pdo) => Dbspec::introspect($pdo, 'sqlite', 'introspected')
-        );
-    }
-
     public function testPostgresSequenceAndRoutineCatalogNamesAreReported(): void
     {
         $pdo = new class ('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]) extends PDO {
