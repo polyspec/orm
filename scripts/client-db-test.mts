@@ -60,8 +60,9 @@ export const GO_LANE_PACKAGES = [
   './packages/go/orm/sqlite',
   './packages/go/testcase',
 ];
-// TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes.
-export const GO_LANE_SKIP = '^TestMarkdownConformance$';
+// TestMarkdownConformance needs the flowmark server that markdown-conformance-check/go passes. The measurements of PERF-1 belong to
+// perf-check and feature-check, which read the bench DSNs and report the timing; they assert no client result.
+export const GO_LANE_SKIP = '^(TestMarkdownConformance|TestPerformanceMeasurement(Mysql|Postgres|SQLite))$';
 const GO: Command[] = [go('-skip', GO_LANE_SKIP, ...GO_LANE_PACKAGES)];
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 
   'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];

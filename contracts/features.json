@@ -3495,7 +3495,6 @@
         "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/php/tests/StatementEventsTest.php",
         "packages/rust/orm/tests/statement_events.rs",
-        "packages/go/orm/coverage_statement_events_test.go",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
@@ -3625,7 +3624,7 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_statement_events_test.go"
+              "packages/go/orm/recipe_statement_events_test.go"
             ],
             "inputs": [
               "tests/events/vectors.json"
@@ -3634,40 +3633,25 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_events_test.go",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "TestCoverageStatementEvents"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/go/orm/recipe_statement_events_test.go",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "TestRecipeStatementEventsMysql"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_events_test.go",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "TestCoverageStatementEvents"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/go/orm/recipe_statement_events_test.go",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "TestRecipeStatementEventsPostgres"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_events_test.go",
-                  "cases": [
-                    "statement_events"
-                  ],
-                  "symbols": {
-                    "statement_events": "TestCoverageStatementEvents"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/go/orm/recipe_statement_events_test.go",
+                  "recipe": "contracts/fixtures/statement_events/statement_events.json",
+                  "symbol": "TestRecipeStatementEventsSqlite"
                 }
               ]
             }
@@ -10825,16 +10809,10 @@
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/client_bench_args.rs",
         "packages/rust/tests/tests/client_bench_dsn.rs",
-        "packages/go/bench/coverage_performance_gate_test.go",
         "packages/php/tests/CoveragePerformanceGateTest.php",
         "packages/rust/tests/tests/coverage_performance_gate.rs",
         "packages/go/bench/statements_test.go",
         "tests/timing/preempted.test.mts",
-        "packages/go/bench/coverage_performance_gate_postgres_test.go",
-        "packages/go/bench/coverage_performance_gate_sqlite_test.go",
-        "packages/go/bench/coverage_performance_gate_shared_test.go",
-        "packages/go/bench/coverage_process_cpu_unix_test.go",
-        "packages/go/bench/coverage_process_cpu_windows_test.go",
         "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
         "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
         "packages/php/tests/PerformanceGateCoverageCase.php",
@@ -10848,7 +10826,10 @@
         "packages/ts/tests/coverage_performance_gate_postgres.mjs",
         "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
         "packages/ts/tests/coverage_performance_gate.mjs",
-        "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php"
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+        "packages/go/bench/performance_measurement_test.go",
+        "packages/go/bench/process_cpu_unix_test.go",
+        "packages/go/bench/process_cpu_windows_test.go"
       ],
       "docs": [
         "docs/operations/perf.md"
@@ -10906,52 +10887,50 @@
           "go": {
             "part": "packages/go/bench",
             "tests": [
-              "packages/go/bench/coverage_performance_gate_test.go",
-              "packages/go/bench/coverage_performance_gate_postgres_test.go",
-              "packages/go/bench/coverage_performance_gate_sqlite_test.go"
+              "packages/go/bench/performance_measurement_test.go"
             ],
             "inputs": [
-              "packages/go/bench/coverage_performance_gate_shared_test.go",
-              "packages/go/bench/coverage_process_cpu_unix_test.go",
-              "packages/go/bench/coverage_process_cpu_windows_test.go"
+              "packages/go/bench/performance_measurement_test.go",
+              "packages/go/bench/process_cpu_unix_test.go",
+              "packages/go/bench/process_cpu_windows_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/coverage_performance_gate_test.go",
+                  "test": "packages/go/bench/performance_measurement_test.go",
                   "cases": [
                     "hot_path_gate"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN",
                   "symbols": {
-                    "hot_path_gate": "TestCoveragePerformanceGate"
+                    "hot_path_gate": "TestPerformanceMeasurementMysql"
                   }
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
+                  "test": "packages/go/bench/performance_measurement_test.go",
                   "cases": [
                     "hot_path_gate"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN",
                   "symbols": {
-                    "hot_path_gate": "TestCoveragePerformanceGatePostgres"
+                    "hot_path_gate": "TestPerformanceMeasurementPostgres"
                   }
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+                  "test": "packages/go/bench/performance_measurement_test.go",
                   "cases": [
                     "hot_path_gate"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN",
                   "symbols": {
-                    "hot_path_gate": "TestCoveragePerformanceGateSQLite"
+                    "hot_path_gate": "TestPerformanceMeasurementSQLite"
                   }
                 }
               ]
