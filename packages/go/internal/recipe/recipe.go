@@ -48,6 +48,8 @@ type recipeCase struct {
 }
 
 type step struct {
+	// reads records the keys that the run reads (FCV-4).
+	reads   *stepReads
 	Op      string                     `json:"op"`
 	GenSet  string                     `json:"document_set"`
 	Same    []string                   `json:"unchanged"`
@@ -97,16 +99,16 @@ type step struct {
 	Path     string              `json:"path"`
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
-	Name        string                     `json:"name"`
-	Corpus      string                     `json:"corpus"`
-	Token       string                     `json:"token"`
-	Reply       string                     `json:"reply"`
-	Received    string                     `json:"received"`
+	Name     string `json:"name"`
+	Corpus   string `json:"corpus"`
+	Token    string `json:"token"`
+	Reply    string `json:"reply"`
+	Received string `json:"received"`
 	// Replies and Messages are the fields of markdown.session: the lines the listener answers and the lines it must receive.
 	Replies  []string `json:"replies"`
 	Messages []string `json:"messages"`
 	// Surface is the public call of a markdown.send step that has no form on a markdown connection.
-	Surface string `json:"surface"`
+	Surface     string                     `json:"surface"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -263,8 +265,13 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 				if err := json.Unmarshal(raw, &s); err != nil {
 					t.Fatalf("recipe %s case %s step %d on %s: %v", path, c.ID, index, database, err)
 				}
-				if err := run(t, s, bound, database, model, o); err != nil {
-					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.Op, database, err)
+				s.reads = newStepReads(raw)
+				err := run(t, s, bound, database, model, o)
+				if err == nil {
+					err = s.reads.check()
+				}
+				if err != nil {
+					t.Fatalf("recipe %s case %s step %d (%s) on %s: %v", path, c.ID, index, s.k("op").Op, database, err)
 				}
 			}
 			reportCase(t, c.ID, database)
@@ -274,7 +281,7 @@ func Run(t *testing.T, path, database string, opts ...Option) {
 
 // run maps the op of s to its call and checks the result against the expect of database.
 func run(t *testing.T, s step, bound map[string]result, database string, model *runtimemodel.Model, o options) error {
-	switch s.Op {
+	switch s.k("op").Op {
 	case "planner.compile":
 		return checkPlanner(o.dir, s, database)
 	case "ir.param_uses":
@@ -287,7 +294,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkGeneratedFiles(o.dir, s)
 	case "generator.refused":
 		return checkRefusedGeneration(o.dir, s)
-	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
+	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.introspect_refusal", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
 		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
@@ -297,81 +304,81 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		if err != nil {
 			return err
 		}
-		if s.As != "" {
-			bound[s.As] = result{cell: got}
+		if s.k("as").As != "" {
+			bound[s.k("as").As] = result{cell: got}
 		}
-		expect, ok := s.Expect[database]
+		expect, ok := s.k("expect").Expect[database]
 		if !ok {
-			return fmt.Errorf("%s has no expect for %s", s.Op, database)
+			return fmt.Errorf("%s has no expect for %s", s.k("op").Op, database)
 		}
 		return checkMermaid(expect, got)
 	}
-	if s.Op == "ir.validate" {
-		return checkValidate(s.Expect[database], validate(model, s.Request, s.ManifestHash))
+	if s.k("op").Op == "ir.validate" {
+		return checkValidate(s.k("expect").Expect[database], validate(model, s.k("request").Request, s.k("manifest_hash").ManifestHash))
 	}
-	if s.Op == "ir.answer" {
+	if s.k("op").Op == "ir.answer" {
 		return checkAnswer(t, s, database, o.irAnswer)
 	}
-	if s.Op == "markdown.send" {
+	if s.k("op").Op == "markdown.send" {
 		return checkSend(t, s, o.markdownSend)
 	}
-	if s.Op == "model.assign" {
+	if s.k("op").Op == "model.assign" {
 		return checkAssign(t, s, o.modelAssign)
 	}
-	if s.Op == "collection.key" {
+	if s.k("op").Op == "collection.key" {
 		return checkCollectionKey(s, database)
 	}
-	if s.Op == "markdown.builder" {
+	if s.k("op").Op == "markdown.builder" {
 		return checkBuilder(t, s, database, o.markdownBuilder)
 	}
-	if s.Op == "keyring.versions" {
+	if s.k("op").Op == "keyring.versions" {
 		return checkKeyring(s, database)
 	}
-	if s.Op == "dbspec.introspect_shown" {
+	if s.k("op").Op == "dbspec.introspect_shown" {
 		return checkIntrospectShown(t, o.dir, s, database)
 	}
-	if s.Op == "dbspec.apply_fault" {
+	if s.k("op").Op == "dbspec.apply_fault" {
 		return checkApplyFault(t, s, bound, database)
 	}
-	if s.Op == "dbspec.introspect_sqlite" {
+	if s.k("op").Op == "dbspec.introspect_sqlite" {
 		return checkIntrospectSQLite(t, s, database)
 	}
 	var r result
-	switch s.Op {
+	switch s.k("op").Op {
 	case "codec.decode":
-		raw, err := argument(s.Raw, bound)
+		raw, err := argument(s.k("raw").Raw, bound)
 		if err != nil {
 			return err
 		}
-		r.styled, r.err = orm.Decode(s.Styles, raw)
+		r.styled, r.err = orm.Decode(s.k("styles").Styles, raw)
 		r.decoded = true
 	case "codec.encode":
-		value, err := styledArgument(s.Value, s.Styles, bound)
+		value, err := styledArgument(s.k("value").Value, s.k("styles").Styles, bound)
 		if err != nil {
 			return err
 		}
-		r.cell, r.err = orm.Encode(s.Styles, value)
+		r.cell, r.err = orm.Encode(s.k("styles").Styles, value)
 	case "codec.host_encode":
-		value, err := argument(s.Value, bound)
+		value, err := argument(s.k("value").Value, bound)
 		if err != nil {
 			return err
 		}
-		r.cell, r.err = orm.HostEncode(value, s.Styles, key(s))
+		r.cell, r.err = orm.HostEncode(value, s.k("styles").Styles, key(s))
 	case "codec.host_decode":
-		raw, err := argument(s.Raw, bound)
+		raw, err := argument(s.k("raw").Raw, bound)
 		if err != nil {
 			return err
 		}
-		r.cell, r.err = orm.HostDecode(raw, s.Styles, key(s))
+		r.cell, r.err = orm.HostDecode(raw, s.k("styles").Styles, key(s))
 	case "codec.blind_index":
-		value, err := argument(s.Value, bound)
+		value, err := argument(s.k("value").Value, bound)
 		if err != nil {
 			return err
 		}
 		r.cell, r.err = orm.BlindIndex(value, key(s))
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
-		r.cell, r.err = connectDriver(s.DSN, s.Config)
+		r.cell, r.err = connectDriver(s.k("dsn").DSN, s.k("config").Config)
 	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
 	case "markdown.connect":
 		r.err = markdownConnect(s)
@@ -379,19 +386,19 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	case "markdown.session":
 		r.err = markdownSession(s)
 	default:
-		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
+		return fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 	}
-	if s.As != "" {
-		bound[s.As] = r
+	if s.k("as").As != "" {
+		bound[s.k("as").As] = r
 	}
-	expect, ok := s.Expect[database]
+	expect, ok := s.k("expect").Expect[database]
 	if !ok {
 		if r.err != nil {
 			return fmt.Errorf("unexpected error %w", r.err)
 		}
 		return nil
 	}
-	return check(expect, r, s.Styles)
+	return check(expect, r, s.k("styles").Styles)
 }
 
 // dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
@@ -452,13 +459,13 @@ func markdownConnect(s step) error {
 		}
 		defer func() { _ = conn.Close() }()
 		line, _ := bufio.NewReader(conn).ReadString('\n')
-		_, _ = fmt.Fprintln(conn, s.Reply)
+		_, _ = fmt.Fprintln(conn, s.k("reply").Reply)
 		received <- strings.TrimRight(line, "\n")
 	}()
 	port := listener.Addr().(*net.TCPAddr).Port
-	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), dsnConfig{})
-	if got := <-received; got != s.Received {
-		return fmt.Errorf("the listener received %q, want %q", got, s.Received)
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.k("corpus").Corpus, s.k("token").Token), dsnConfig{})
+	if got := <-received; got != s.k("received").Received {
+		return fmt.Errorf("the listener received %q, want %q", got, s.k("received").Received)
 	}
 	return connected
 }
@@ -484,13 +491,13 @@ func markdownSession(s step) error {
 		lines := bufio.NewScanner(conn)
 		for lines.Scan() {
 			got = append(got, lines.Text())
-			if len(got) <= len(s.Replies) {
-				_, _ = fmt.Fprintln(conn, s.Replies[len(got)-1])
+			if len(got) <= len(s.k("replies").Replies) {
+				_, _ = fmt.Fprintln(conn, s.k("replies").Replies[len(got)-1])
 			}
 		}
 	}()
 	port := listener.Addr().(*net.TCPAddr).Port
-	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), orm.Config{})
+	db, err := orm.Connect(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.k("corpus").Corpus, s.k("token").Token), orm.Config{})
 	if err != nil {
 		return fmt.Errorf("connect: %s", err.Error())
 	}
@@ -503,8 +510,8 @@ func markdownSession(s step) error {
 	if err := db.Close(); err != nil {
 		return fmt.Errorf("close: %s", err.Error())
 	}
-	if got := <-received; !slices.Equal(got, s.Messages) {
-		return fmt.Errorf("the listener received %q, want %q", got, s.Messages)
+	if got := <-received; !slices.Equal(got, s.k("messages").Messages) {
+		return fmt.Errorf("the listener received %q, want %q", got, s.k("messages").Messages)
 	}
 	return failure
 }
@@ -582,10 +589,10 @@ func connectDriver(dsn string, config dsnConfig) (string, error) {
 }
 
 func key(s step) string {
-	if s.Key == nil {
+	if s.k("key").Key == nil {
 		return ""
 	}
-	return *s.Key
+	return *s.k("key").Key
 }
 
 // check compares r with the outcome {value} or {error} of an expect.
@@ -597,7 +604,7 @@ func check(raw json.RawMessage, r result, styles []string) error {
 		BytesPrefix  string          `json:"bytes_prefix_hex"`
 		BytesLength  int             `json:"bytes_length"`
 	}
-	if err := json.Unmarshal(raw, &outcome); err != nil {
+	if err := decodeOutcome(raw, &outcome); err != nil {
 		return err
 	}
 	if outcome.Error != "" {
@@ -1221,7 +1228,7 @@ func checkValidate(raw json.RawMessage, err error) error {
 		Value json.RawMessage `json:"value"`
 		Error string          `json:"error"`
 	}
-	if e := json.Unmarshal(raw, &outcome); e != nil {
+	if e := decodeOutcome(raw, &outcome); e != nil {
 		return e
 	}
 	if outcome.Error != "" {
@@ -1245,7 +1252,7 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	if fn == nil {
 		return fmt.Errorf("ir.answer needs the WithIRAnswer option of the test")
 	}
-	raw, ok := s.Expect[database]
+	raw, ok := s.k("expect").Expect[database]
 	if !ok {
 		return fmt.Errorf("ir.answer has no expect for %s", database)
 	}
@@ -1253,7 +1260,7 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 		Value  json.RawMessage `json:"value"`
 		Params json.RawMessage `json:"params"`
 	}
-	if err := json.Unmarshal(raw, &outcome); err != nil {
+	if err := decodeOutcome(raw, &outcome); err != nil {
 		return err
 	}
 	if outcome.Value == nil && outcome.Params == nil {
@@ -1268,24 +1275,24 @@ func checkAnswer(t *testing.T, s step, database string, fn IRAnswer) error {
 	if err := json.Unmarshal(want, &wantValue); err != nil {
 		return err
 	}
-	got, err := fn(t, s.Chain, s.Answer, s.Answers, params)
+	got, err := fn(t, s.k("chain").Chain, s.k("answer").Answer, s.k("answers").Answers, params)
 	if err != nil {
 		code := orm.ErrorCode(err)
 		if code == "" {
-			return fmt.Errorf("chain %s failed without an orm code: %w", s.Chain, err)
+			return fmt.Errorf("chain %s failed without an orm code: %w", s.k("chain").Chain, err)
 		}
 		got = map[string]any{"error": code}
 	}
 	body, err := json.Marshal(got)
 	if err != nil {
-		return fmt.Errorf("chain %s result %#v: %w", s.Chain, got, err)
+		return fmt.Errorf("chain %s result %#v: %w", s.k("chain").Chain, got, err)
 	}
 	var actual any
 	if err := json.Unmarshal(body, &actual); err != nil {
 		return err
 	}
 	if !reflect.DeepEqual(actual, wantValue) {
-		return fmt.Errorf("chain %s: got %s, want %s", s.Chain, body, want)
+		return fmt.Errorf("chain %s: got %s, want %s", s.k("chain").Chain, body, want)
 	}
 	return nil
 }
@@ -1325,12 +1332,12 @@ type plannerSlot struct {
 // sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must fail with.
 // plannerRequest is the model of the schema of a planner step and the JSON of its input with the manifest_hash of that schema.
 func plannerRequest(dir string, s step) (*runtimemodel.Model, []byte, error) {
-	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.Schema))
+	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.k("schema").Schema))
 	if err != nil {
 		return nil, nil, err
 	}
 	var input map[string]json.RawMessage
-	if err := json.Unmarshal(s.Input, &input); err != nil {
+	if err := json.Unmarshal(s.k("input").Input, &input); err != nil {
 		return nil, nil, err
 	}
 	hash, err := json.Marshal(m.ManifestHash)
@@ -1348,7 +1355,7 @@ func checkParamUses(dir string, s step, database string) error {
 	var outcome struct {
 		Value json.RawMessage `json:"value"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &outcome); err != nil {
 		return err
 	}
 	m, body, err := plannerRequest(dir, s)
@@ -1387,7 +1394,7 @@ func checkPlannerColumns(dir string, s step, database string) error {
 	var outcome struct {
 		Value json.RawMessage `json:"value"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &outcome); err != nil {
 		return err
 	}
 	m, request, err := plannerRequest(dir, s)
@@ -1409,7 +1416,7 @@ func checkPlannerColumns(dir string, s step, database string) error {
 		}
 		assemble := compiled.Steps[0].Assemble
 		got := []any{}
-		for _, name := range s.Names {
+		for _, name := range s.k("names").Names {
 			for _, column := range assemble.Columns {
 				if column.Name == name {
 					got = append(got, map[string]any{"name": name, "type": column.Type, "hidden": column.Hidden})
@@ -1446,10 +1453,10 @@ func checkPlanner(dir string, s step, database string) error {
 	if database != None {
 		return fmt.Errorf("planner.compile runs without a database")
 	}
-	if s.Schema == "" {
+	if s.k("schema").Schema == "" {
 		return fmt.Errorf("planner.compile needs a schema")
 	}
-	raw, ok := s.Expect[database]
+	raw, ok := s.k("expect").Expect[database]
 	if !ok {
 		return fmt.Errorf("planner.compile has no expect for %s", database)
 	}
@@ -1458,15 +1465,15 @@ func checkPlanner(dir string, s step, database string) error {
 		Error   string          `json:"error"`
 		Message string          `json:"message"`
 	}
-	if err := json.Unmarshal(raw, &outcome); err != nil {
+	if err := decodeOutcome(raw, &outcome); err != nil {
 		return err
 	}
-	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.Schema))
+	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.k("schema").Schema))
 	if err != nil {
 		return err
 	}
 	var input map[string]json.RawMessage
-	if err := json.Unmarshal(s.Input, &input); err != nil {
+	if err := json.Unmarshal(s.k("input").Input, &input); err != nil {
 		return err
 	}
 	if _, ok := input["manifest_hash"]; ok {
@@ -1512,7 +1519,7 @@ func checkPlanner(dir string, s step, database string) error {
 			return err
 		}
 		statements := plannerStatements(compiled)
-		if s.AssembleTypes {
+		if s.k("assemble_types").AssembleTypes {
 			for i, step := range compiled.Steps {
 				statements[i].AssembleTypes = map[string]string{}
 				for _, column := range step.Assemble.Columns {
@@ -1576,13 +1583,13 @@ func plannerStatements(compiled plan.Plan) []plannerStatement {
 // dbspecStep runs one dbspec op of a recipe without a database, through the public calls of engine/dbspec (FCV-4), and
 // compares what the call returned, as JSON, with the expect of database.
 func dbspecStep(s step, bound map[string]result, database string) error {
-	want, ok := s.Expect[database]
+	want, ok := s.k("expect").Expect[database]
 	if !ok {
-		return fmt.Errorf("%s has no expect for %s", s.Op, database)
+		return fmt.Errorf("%s has no expect for %s", s.k("op").Op, database)
 	}
 	var got any
 	var err error
-	switch s.Op {
+	switch s.k("op").Op {
 	case "dbspec.parse", "dbspec.parse_plan":
 		got, err = dbspecParse(s, bound)
 	case "dbspec.emit_plan":
@@ -1591,6 +1598,8 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		got, err = dbspecDiff(s, bound)
 	case "dbspec.plan_steps":
 		got, err = dbspecPlanSteps(s, bound)
+	case "dbspec.introspect_refusal":
+		got, err = dbspecIntrospectRefusal(s)
 	case "dbspec.add_tables_steps":
 		got, err = dbspecAddTablesSteps(s, bound)
 	case "dbspec.chain":
@@ -1598,7 +1607,7 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 	case "dbspec.compare":
 		got, err = dbspecCompare(s, bound)
 	default:
-		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
+		return fmt.Errorf("OP_UNKNOWN %s", s.k("op").Op)
 	}
 	if err != nil {
 		return err
@@ -1615,7 +1624,7 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 		return err
 	}
 	if !reflect.DeepEqual(actual, expected) {
-		return fmt.Errorf("%s: got %s, want %s", s.Op, body, want)
+		return fmt.Errorf("%s: got %s, want %s", s.k("op").Op, body, want)
 	}
 	return nil
 }
@@ -1623,19 +1632,19 @@ func dbspecStep(s step, bound map[string]result, database string) error {
 // dbspecParse runs dbspec.parse (Parse) or dbspec.parse_plan (ParsePlan) on the lines of s, binds the result to s.As, and
 // returns {diagnostics: rows} with the rows of the diagnostics (parseRows).
 func dbspecParse(s step, bound map[string]result) (any, error) {
-	text := strings.Join(s.Lines, "\n") + "\n"
+	text := strings.Join(s.k("lines").Lines, "\n") + "\n"
 	var diagnostics []dbspec.Diagnostic
-	if s.Op == "dbspec.parse" {
+	if s.k("op").Op == "dbspec.parse" {
 		doc, _, d := dbspec.Parse(text, nil)
 		diagnostics = d
-		if s.As != "" {
-			bound[s.As] = result{dbspec: doc}
+		if s.k("as").As != "" {
+			bound[s.k("as").As] = result{dbspec: doc}
 		}
 	} else {
 		p, d := dbspec.ParsePlan(text)
 		diagnostics = d
-		if s.As != "" {
-			bound[s.As] = result{dbspec: p}
+		if s.k("as").As != "" {
+			bound[s.k("as").As] = result{dbspec: p}
 		}
 	}
 	return map[string]any{"diagnostics": parseRows(diagnostics, false)}, nil
@@ -1643,7 +1652,7 @@ func dbspecParse(s step, bound map[string]result) (any, error) {
 
 // dbspecEmitPlan runs dbspec.emit_plan (EmitPlan) on the plan that s names and returns {text: the emitted plan}.
 func dbspecEmitPlan(s step, bound map[string]result) (any, error) {
-	p, err := dbspecPlan(s.Plan, bound)
+	p, err := dbspecPlan(s.k("plan").Plan, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1657,9 +1666,9 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	dialect := dbspec.Dialect(s.Dialect)
+	dialect := dbspec.Dialect(s.k("dialect").Dialect)
 	if !knownDialect(dialect) {
-		return dialectRefusal(s.Dialect, func() { dbspec.PlanSteps(source, plan, dialect) })
+		return dialectRefusal(s.k("dialect").Dialect, func() { dbspec.PlanSteps(source, plan, dialect) })
 	}
 	steps, diagnostics := dbspec.PlanSteps(source, plan, dialect)
 	if len(diagnostics) > 0 {
@@ -1676,15 +1685,15 @@ func dbspecPlanSteps(s step, bound map[string]result) (any, error) {
 // dbspecAddTablesSteps runs dbspec.add_tables_steps (AddTablesAndColumnsSteps) on the source and target that s names, with no
 // unsupported items, for the dialect of s, and returns {added, statements, differences}.
 func dbspecAddTablesSteps(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.Source, bound)
+	source, err := dbspecDocument(s.k("source").Source, bound)
 	if err != nil {
 		return nil, err
 	}
-	target, err := dbspecDocument(s.Target, bound)
+	target, err := dbspecDocument(s.k("target").Target, bound)
 	if err != nil {
 		return nil, err
 	}
-	added, steps, differences := dbspec.AddTablesAndColumnsSteps(source, nil, target, dbspec.Dialect(s.Dialect))
+	added, steps, differences := dbspec.AddTablesAndColumnsSteps(source, nil, target, dbspec.Dialect(s.k("dialect").Dialect))
 	statements := make([]string, 0, len(steps))
 	for _, st := range steps {
 		statements = append(statements, st.Statement)
@@ -1771,8 +1780,8 @@ func dbspecDiff(s step, bound map[string]result) (any, error) {
 
 // dbspecChain runs dbspec.chain (Chain) and returns {order: plan names} or, with diagnostics, {messages: ...} of rule chain.
 func dbspecChain(s step, bound map[string]result) (any, error) {
-	plans := make([]*dbspec.Plan, 0, len(s.Plans))
-	for _, raw := range s.Plans {
+	plans := make([]*dbspec.Plan, 0, len(s.k("plans").Plans))
+	for _, raw := range s.k("plans").Plans {
 		p, err := dbspecPlan(raw, bound)
 		if err != nil {
 			return nil, err
@@ -1794,11 +1803,11 @@ func dbspecChain(s step, bound map[string]result) (any, error) {
 // dbspecCompare runs dbspec.compare (CompareSchemas) and returns {differences: rows, diagnostics: rows}, whose diagnostics
 // carry their message for every rule.
 func dbspecCompare(s step, bound map[string]result) (any, error) {
-	source, err := dbspecDocument(s.Source, bound)
+	source, err := dbspecDocument(s.k("source").Source, bound)
 	if err != nil {
 		return nil, err
 	}
-	target, err := dbspecDocument(s.Target, bound)
+	target, err := dbspecDocument(s.k("target").Target, bound)
 	if err != nil {
 		return nil, err
 	}
@@ -1873,11 +1882,11 @@ func readRecipe[T any](t *testing.T, path string) T {
 
 // sourceAndPlan reads the source document and the plan that s names.
 func sourceAndPlan(s step, bound map[string]result) (*dbspec.Document, *dbspec.Plan, error) {
-	source, err := dbspecDocument(s.Source, bound)
+	source, err := dbspecDocument(s.k("source").Source, bound)
 	if err != nil {
 		return nil, nil, err
 	}
-	plan, err := dbspecPlan(s.Plan, bound)
+	plan, err := dbspecPlan(s.k("plan").Plan, bound)
 	return source, plan, err
 }
 
@@ -1917,17 +1926,17 @@ func checkSend(t *testing.T, s step, fn MarkdownSend) error {
 		return fmt.Errorf("markdown.send needs WithMarkdownSend")
 	}
 	var begin *bool
-	if s.Begin != nil {
+	if s.k("begin").Begin != nil {
 		var b struct {
 			ReadOnly bool `json:"read_only"`
 		}
-		if err := json.Unmarshal(s.Begin, &b); err != nil {
+		if err := json.Unmarshal(s.k("begin").Begin, &b); err != nil {
 			return err
 		}
 		begin = &b.ReadOnly
 	}
-	message, code := fn(t, s.Column, s.Operator, s.Params, begin, s.Surface, s.ProcessZone)
-	return checkMessage(s.Expect, message, code)
+	message, code := fn(t, s.k("column").Column, s.k("operator").Operator, s.k("params").Params, begin, s.k("surface").Surface, s.k("process_zone").ProcessZone)
+	return checkMessage(s.k("expect").Expect, message, code)
 }
 
 // checkBuilder runs one markdown.builder step and compares the code and the text of its error with the expect of database (FCV-4).
@@ -1939,10 +1948,10 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 		Error   string `json:"error"`
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &want); err != nil {
 		return err
 	}
-	code, message := fn(t, s.Calls)
+	code, message := fn(t, s.k("calls").Calls)
 	if code != want.Error || message != want.Message {
 		return fmt.Errorf("the terminal returned %q %q, want %q %q", code, message, want.Error, want.Message)
 	}
@@ -1955,7 +1964,7 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 	var want struct {
 		Unsupported []dbspec.Unsupported `json:"unsupported"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &want); err != nil {
 		return err
 	}
 	db, err := sql.Open("sqlite", ":memory:")
@@ -1969,7 +1978,7 @@ func checkIntrospectSQLite(t *testing.T, s step, database string) error {
 	}()
 	db.SetMaxOpenConns(1)
 	ctx := context.Background()
-	for _, statement := range s.SQL {
+	for _, statement := range s.k("sql").SQL {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
 			return err
 		}
@@ -1992,10 +2001,10 @@ func checkKeyring(s step, database string) error {
 		Versions []int32 `json:"versions"`
 		Error    string  `json:"error"`
 	}
-	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+	if err := json.Unmarshal(s.k("expect").Expect[database], &want); err != nil {
 		return err
 	}
-	keyring, err := s.Keyring.keyring()
+	keyring, err := s.k("keyring").Keyring.keyring()
 	if want.Error != "" {
 		if code := orm.ErrorCode(err); code != want.Error {
 			return fmt.Errorf("the keyring returned %v, want %s", err, want.Error)
@@ -2019,8 +2028,8 @@ func checkAssign(t *testing.T, s step, fn ModelAssign) error {
 	if fn == nil {
 		return fmt.Errorf("model.assign needs WithModelAssign")
 	}
-	message, code := fn(t, s.Model, s.Column, s.Value)
-	return checkMessage(s.Expect, message, code)
+	message, code := fn(t, s.k("model").Model, s.k("column").Column, s.k("value").Value)
+	return checkMessage(s.k("expect").Expect, message, code)
 }
 
 // checkMessage checks the message or the code of an error of a markdown listener step against its expect, {"message": JSON}
@@ -2119,7 +2128,7 @@ func checkCollectionKey(s step, database string) error {
 	groups, types := []int{}, []string{}
 	keys := []orm.Key{}
 	var failure error
-	for _, entry := range s.Keys {
+	for _, entry := range s.k("keys").Keys {
 		value, err := entry.nativeKey()
 		if err != nil {
 			return err
@@ -2151,7 +2160,7 @@ func checkCollectionKey(s step, database string) error {
 	if failure != nil {
 		got = map[string]any{"error": orm.ErrorCode(failure), "message": failure.Error()}
 	}
-	return sameKeyResult(got, s.Expect[database])
+	return sameKeyResult(got, s.k("expect").Expect[database])
 }
 
 // sameKeyResult compares the result of a collection.key step with its expect, as JSON values.

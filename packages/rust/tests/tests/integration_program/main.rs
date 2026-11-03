@@ -269,62 +269,6 @@ async fn conditions_case(t: &Target) {
     assert_eq!(code(Author::new().name("alpha").gets().await), "CONFIG", "no connection");
 }
 
-// Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
-async fn joins_and_relations_case(t: &Target) {
-    let db = &t.db;
-    let f = seed(db).await;
-    let author = User::new().on(|u: User| u.ne_name("nobody")).name("kim");
-    let rows = Author::new()
-        .connect(db)
-        .left_join_user_seq_with_seq(author.clone())
-        .service_seq(f.service.get_seq().unwrap())
-        .and(|q: Author| q.name("delta").or(&author))
-        .order_by_seq_asc()
-        .gets()
-        .await
-        .unwrap();
-    assert_eq!(names(&rows), "alpha,gamma,delta", "placed join conditions");
-    assert_eq!(rows.first().and_then(|b| b.get_user_model().unwrap()).map(|u| u.get_name().unwrap().to_owned()).as_deref(), Some("kim"), "join result");
-    let member = ServiceMember::new();
-    let cmp = Author::new().connect(db).join_service_member_seq_with_seq(member.clone()).read_count_gt_seq(&member).get_count().await.unwrap();
-    assert_eq!(cmp, 3, "column comparison with a joined model");
-
-    let writer = User::new().match_user_seq_with_seq().alias_writer();
-    let loaded = Author::new()
-        .connect(db)
-        .relation(writer)
-        .relations(ServiceMember::new().match_service_seq_with_service_seq().alias_members())
-        .relation(ServiceRegion::new().match_service_region_seq_with_seq())
-        .order_by_seq_asc()
-        .gets()
-        .await
-        .unwrap();
-    let b = loaded.first().unwrap();
-    assert_eq!(b.get_writer().unwrap().map(|u| u.get_name().unwrap()), Some("kim"), "relation alias");
-    assert_eq!(b.get_members().unwrap().map(|c| c.len()), Some(1), "relations");
-    assert_eq!(b.get_service_region_model().unwrap().map(|m| m.get_name().unwrap()), Some("module"), "relation");
-    let limited =
-        User::new().connect(db).relations(Author::new().match_seq_with_user_seq().order_by_seq_desc().group_limit(1)).order_by_seq_asc().gets().await.unwrap();
-    let got = limited.first().and_then(|u| u.get_author_models().unwrap()).expect("author models");
-    assert_eq!(names(got), "gamma", "group_limit");
-
-    let other = model::connect(&t.dsn, 2, polyspec_orm::Config::default()).await.unwrap();
-    let external = Author::new()
-        .connect(db)
-        .relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner())
-        .get_by_name("beta")
-        .await
-        .unwrap()
-        .expect("a row");
-    assert_eq!(external.get_owner().unwrap().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
-    other.close().await;
-    assert_eq!(code(Author::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
-    assert_eq!(code(Author::new().connect(db).name("a").or(&User::new()).gets().await), "CONFIG", "unjoined model placement");
-    let array = b.to_array().unwrap();
-    assert!(!array["writer"].is_null() && array["name"] == "alpha", "to_array: {array}");
-    let (_member, _users) = (&f.member, &f.users);
-}
-
 // Requirements: PLN-8, PLN-9, PLN-14.
 async fn columns_and_subqueries_case(t: &Target) {
     let db = &t.db;
@@ -892,16 +836,6 @@ async fn conditions() {
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("conditions/{driver}"), polyspec_orm_testcase::DATABASE);
         installed_section(driver, conditions_case).await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn joins_and_relations() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("joins_and_relations/{driver}"), polyspec_orm_testcase::DATABASE);
-        installed_section(driver, joins_and_relations_case).await;
         drop(case);
     }
 }

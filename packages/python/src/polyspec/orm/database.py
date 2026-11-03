@@ -2552,7 +2552,9 @@ class Db:
         for key in locks:
             released = attempt("SELECT RELEASE_LOCK(?)", [key], faultable=True)
             # If it is not 1, this connection did not hold the lock.
-            if released is not None and int((released["rows"] or [[0]])[0][0]) != 1:
+            # RELEASE_LOCK is NULL when no session holds the lock, so its value is read only when it is present.
+            value = None if released is None else (released["rows"] or [[None]])[0][0]
+            if released is not None and (value is None or int(value) != 1):
                 errors.append(
                     OrmError(
                         codes.CONFIG, f"lock {key} was not held at transaction end"

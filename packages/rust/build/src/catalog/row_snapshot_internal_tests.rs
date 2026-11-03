@@ -119,3 +119,13 @@ fn row_snapshot_revision_preserves_writer_cause_message() {
     let error = RowSnapshot::from_page(&page, 0).expect_err("oversized row must fail");
     assert!(error.contains("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: row snapshot budget exceeded"), "{error}");
 }
+
+#[test]
+fn row_baseline_tells_a_boolean_from_an_integer() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let original = fixture_with_payload(GridCell::Boolean(false));
+    let changed = fixture_with_payload(GridCell::Integer(0));
+    let snapshot = RowSnapshot::from_page(&original, 0).unwrap();
+    assert!(snapshot.check_current(&changed.metadata, &changed.result).unwrap_err().starts_with("ROW_CONFLICT"));
+    assert_ne!(snapshot.revision(), RowSnapshot::from_page(&changed, 0).unwrap().revision());
+}

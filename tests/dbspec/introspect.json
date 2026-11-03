@@ -220,12 +220,14 @@
         [
           "routine",
           "",
-          "f_noop"
+          "f_noop",
+          "a function outside the renderer triggers has no dbspec definition"
         ],
         [
           "sequence",
           "",
-          "s_free"
+          "s_free",
+          "a sequence outside identity has no dbspec definition"
         ],
         [
           "partition",

@@ -2039,23 +2039,13 @@
         "databases"
       ],
       "inputs": [
-        "packages/go/internal/dialects/introspect_physical_test.go",
-        "tests/dbspec/introspect.json"
-      ]
-    },
-    "conformance-ts-suite-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/coverage_conformance_mysql.mjs",
-        "packages/ts/tests/coverage_conformance_postgres.mjs",
-        "packages/ts/tests/coverage_conformance_sqlite.mjs",
-        "packages/ts/tests/conformance_case.mjs",
-        "packages/ts/tests/conformance_vector_count.test.mts"
+        "packages/go/orm/recipe_dbspec_introspect_test.go",
+        "packages/go/internal/recipe/introspect_step.go",
+        "packages/go/engine/dbspec/introspect.go",
+        "packages/go/engine/dbspec/introspect_sqlite.go",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-ts-check": {
@@ -2066,9 +2056,15 @@
         "databases"
       ],
       "inputs": [
-        "packages/ts/tests/dbspec-introspect.mjs",
-        "packages/ts/tests/dbspec-introspect-round-trip.mjs",
-        "packages/ts/tests/introspect_case.mjs"
+        "packages/ts/tests/dbspec_introspect-mysql.test.mjs",
+        "packages/ts/tests/dbspec_introspect-postgres.test.mjs",
+        "packages/ts/tests/dbspec_introspect-sqlite.test.mjs",
+        "packages/ts/tests/recipe_introspect.mjs",
+        "packages/ts/src/dbspec/introspect.ts",
+        "packages/ts/src/dbspec/introspect_sqlite.ts",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-php-check": {
@@ -2081,8 +2077,15 @@
       ],
       "inputs": [
         "Makefile",
+        "packages/php/tests/DbspecIntrospectRecipeTest.php",
+        "packages/php/tests/RecipeIntrospect.php",
+        "packages/php/tests/CountingPdo.php",
         "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php/tests/DbspecCatalogChecksTest.php"
+        "packages/php/tests/DbspecCatalogChecksTest.php",
+        "packages/php/src/Dbspec/CatalogRows.php",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-php-extension-check": {
@@ -2095,8 +2098,16 @@
         "databases"
       ],
       "inputs": [
+        "packages/php/tests/DbspecIntrospectRecipeTest.php",
+        "packages/php/tests/RecipeIntrospect.php",
         "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php-ext/src/introspect.c"
+        "packages/php-ext/tests/DbspecIntrospectRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/DbspecIntrospectExtensionTest.php",
+        "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+        "packages/php-ext/src/introspect.c",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-sqlite-literal-rows-helper-check": {
@@ -2113,44 +2124,6 @@
         "packages/php/tests/DbspecBehaviourTest.php"
       ]
     },
-    "dbspec-introspect-query-count-unit-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "php",
-        "composer",
-        "node-modules",
-        "php-extension-tools",
-        "python"
-      ],
-      "inputs": [
-        "config/parity.json",
-        "Makefile",
-        "packages/go/engine/dbspec/introspect.go",
-        "packages/go/engine/dbspec/introspect_sqlite.go",
-        "packages/go/engine/dbspec/introspect_query_count_test.go",
-        "packages/php/src/Dbspec/CatalogRows.php",
-        "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/DbspecIntrospectQueryCountCases.php",
-        "packages/php/tests/DbspecIntrospectQueryCountTest.php",
-        "packages/php/tests/DbspecIntrospectTest.php",
-        "packages/php/models.txt",
-        "packages/php-ext/src/introspect.c",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-        "packages/python/src/polyspec/orm/dbspec/introspect.py",
-        "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
-        "packages/python/tests/test_dbspec_introspect_query_count.py",
-        "packages/python/tests/test_dbspec_introspect_messages_none.py",
-        "packages/rust/orm/src/dbspec.rs",
-        "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-        "packages/ts/src/dbspec/introspect.ts",
-        "packages/ts/src/dbspec/introspect_sqlite.ts",
-        "packages/ts/tests/dbspec-introspect-query-count.mjs"
-      ]
-    },
     "dbspec-introspect-rust-check": {
       "scope": "owner",
       "needs": [
@@ -2159,7 +2132,13 @@
         "databases"
       ],
       "inputs": [
-        "packages/rust/orm/tests/dbspec_introspect.rs"
+        "packages/rust/tests/tests/dbspec_introspect_mysql.rs",
+        "packages/rust/tests/tests/dbspec_introspect_postgres.rs",
+        "packages/rust/tests/tests/dbspec_introspect_sqlite.rs",
+        "packages/rust/orm/src/dbspec.rs",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-introspect-python-check": {
@@ -2169,11 +2148,18 @@
         "databases"
       ],
       "inputs": [
-        "packages/python/tests/dbspec_introspect.py",
+        "packages/python/tests/test_dbspec_introspect_mysql.py",
+        "packages/python/tests/test_dbspec_introspect_postgres.py",
+        "packages/python/tests/test_dbspec_introspect_sqlite.py",
+        "packages/python/tests/recipe_introspect.py",
         "packages/python/tests/dbspec_introspect_runner.py",
+        "packages/python/tests/test_dbspec_introspect_messages_none.py",
         "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py",
-        "tests/dbspec/introspect.json"
+        "packages/python/src/polyspec/orm/dbspec/introspect.py",
+        "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
+        "contracts/fixtures/dbspec_introspect/**",
+        "tests/dbspec/introspect.json",
+        "tests/dbspec/ddl.json"
       ]
     },
     "dbspec-php-interface-program-helper-check": {
@@ -2201,16 +2187,6 @@
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/ClientGenericsTest.php",
         "packages/php/tests/ModelMethodsTest.php"
-      ]
-    },
-    "dbspec-introspect-python-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "python"
-      ],
-      "inputs": [
-        "packages/python/tests/dbspec_introspect.py",
-        "packages/python/tests/test_dbspec_introspect_support.py"
       ]
     },
     "catalog-mutation-helper-ts-check": {
@@ -2428,16 +2404,6 @@
         "packages/go/internal/dialects/plans_physical_test.go"
       ]
     },
-    "dbspec-apply-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "databases"
-      ],
-      "inputs": [
-        "packages/go/internal/dialects/apply_physical_test.go"
-      ]
-    },
     "dbspec-lock-go-check": {
       "scope": "owner",
       "needs": [
@@ -2616,31 +2582,6 @@
         "tests/dbspec/ddl.json"
       ]
     },
-    "dbspec-apply-php-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/DbspecApplyTest.php",
-        "tests/dbspec/stress.mts"
-      ]
-    },
-    "dbspec-apply-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python",
-        "databases"
-      ],
-      "inputs": [
-        "packages/python/tests/dbspec_apply.py",
-        "packages/python/tests/dbspec_apply_runner.py",
-        "tests/dbspec/stress.mts"
-      ]
-    },
     "dbspec-php-extension-check": {
       "scope": "owner",
       "needs": [
@@ -2718,7 +2659,6 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-        "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/php/testing/conformance/runner.php",
         "tests/conformance/vectors.json",
         "tests/conformance/vectors.postgres.json",
@@ -3040,37 +2980,6 @@
         "contracts/fixtures/bench/**"
       ]
     },
-    "dbspec-apply-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "packages/php/tests/DbspecApplyTest.php",
-        "packages/php-ext/src/apply.c",
-        "tests/dbspec/stress.mts"
-      ]
-    },
-    "dbspec-apply-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "databases"
-      ],
-      "inputs": [
-        "packages/rust/orm/tests/dbspec_apply.rs",
-        "packages/rust/orm/tests/common/plan_cases.rs",
-        "packages/rust/orm/tests/common/dbspec_probe.rs",
-        "packages/rust/testcase/src/lib.rs",
-        "tests/dbspec/plan-cases.json",
-        "tests/dbspec/stress.mts"
-      ]
-    },
     "dbspec-verify-errors-check": {
       "scope": "owner",
       "needs": [
@@ -3107,18 +3016,6 @@
         "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
         "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
         "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
-      ]
-    },
-    "dbspec-apply-ts-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules",
-        "databases"
-      ],
-      "inputs": [
-        "packages/ts/tests/dbspec-apply-physical.mjs",
-        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-apply-pairs-check": {

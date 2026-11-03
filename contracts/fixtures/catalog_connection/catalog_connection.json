@@ -1,6 +1,9 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "INT-8",
+    "INT-4",
+    "COD-31",
     "INT-101",
     "INT-103",
     "INT-104",
@@ -1133,27 +1136,133 @@
         },
         {
           "op": "catalog.read_only_grid_query",
-          "only": [
-            "postgres"
-          ],
-          "sql": "SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1",
-          "max_rows": 199,
+          "sql": "SELECT COUNT(*) FROM (SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1) AS u",
           "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
             }
           }
         },
         {
           "op": "catalog.read_only_grid_query",
-          "only": [
-            "postgres"
-          ],
           "sql": "SELECT 1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1",
-          "max_bytes": 7,
           "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
             "postgres": {
-              "error": "CATALOG_LIMIT"
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT COUNT(*) FROM (SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1 UNION ALL SELECT 1) AS u",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1+1",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "200"
+                  }
+                ]
+              ]
             }
           }
         }
@@ -13614,6 +13723,2704 @@
                   }
                 ]
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_mutation_lifecycle",
+      "requirements": [
+        "INT-106",
+        "INT-123"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)",
+            "sqlite": "CREATE TABLE mutated_row (id INTEGER NOT NULL PRIMARY KEY, n BIGINT NOT NULL UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)"
+          },
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO mutated_row (id, n) VALUES (1, 10), (2, 20)",
+          "reason": "the rows of the update"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "first"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "original"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "11"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "original"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "second"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "second"
+          },
+          "index": 0,
+          "as": "updated"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "20"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "text": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "g",
+              {
+                "int": "99"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_UPDATE_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_UPDATE_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "11"
+                  },
+                  {
+                    "int": "12"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "updated"
+          },
+          "set": [
+            [
+              "id",
+              {
+                "int": "0"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "third"
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "third"
+          },
+          "index": 0,
+          "as": "moved"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE mutated_row ADD COLUMN extra INTEGER",
+          "reason": "a descriptor that changes after the snapshot"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "13"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "postgres": {
+              "error": "ROW_SCHEMA_CHANGED"
+            },
+            "sqlite": {
+              "error": "ROW_SCHEMA_CHANGED"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "ALTER TABLE mutated_row DROP COLUMN extra",
+          "reason": "the descriptor of the snapshot again"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "12"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id)) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))",
+            "sqlite": "CREATE TABLE mutated_child (id BIGINT NOT NULL PRIMARY KEY, parent_id INTEGER NOT NULL, FOREIGN KEY (parent_id) REFERENCES mutated_row (id))"
+          },
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO mutated_child (id, parent_id) VALUES (1, 0)",
+          "reason": "the row that refers to the row of the delete"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "error": "FOREIGN_KEY"
+            },
+            "postgres": {
+              "error": "FOREIGN_KEY"
+            },
+            "sqlite": {
+              "error": "FOREIGN_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": true,
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "12"
+                  },
+                  {
+                    "int": "13"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE mutated_child",
+          "reason": "the delete is free again"
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "1"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "1"
+              }
+            }
+          }
+        },
+        {
+          "op": "catalog.delete_row",
+          "snapshot": {
+            "ref": "moved"
+          },
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            }
+          },
+          "as": "after"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "mutated_row",
+          "as": "descriptor"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "3"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "30"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "3"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_CONFLICT"
+            },
+            "postgres": {
+              "error": "ROW_CONFLICT"
+            },
+            "sqlite": {
+              "error": "ROW_CONFLICT"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "n",
+              {
+                "int": "30"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "n",
+              {
+                "text": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "g",
+              {
+                "int": "40"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "descriptor"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "4"
+              }
+            ],
+            [
+              "id",
+              {
+                "int": "5"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "postgres": {
+              "error": "ROW_INSERT_INVALID"
+            },
+            "sqlite": {
+              "error": "ROW_INSERT_INVALID"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "mutated_row",
+          "limit": 9,
+          "offset": 0,
+          "columns": [
+            "id",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "id",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "id"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE mutated_defaults (id BIGINT NOT NULL PRIMARY KEY, n BIGINT NOT NULL DEFAULT 7, label VARCHAR(20))",
+          "reason": "dbspec declares no such table, so only the native driver creates it"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "mutated_defaults",
+          "as": "defaults"
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "defaults"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "5"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "5"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "defaults"
+          },
+          "values": [
+            [
+              "id",
+              {
+                "int": "6"
+              }
+            ],
+            [
+              "label",
+              {
+                "null": "text"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "6"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "plain_binary_value",
+      "requirements": [
+        "INT-153"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": {
+            "mysql": "SELECT X'00FF', X'FF'",
+            "postgres": "SELECT decode('00ff','hex'), decode('ff','hex')",
+            "sqlite": "SELECT X'00FF', X'FF'"
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "bytes_hex": "00ff"
+                  },
+                  {
+                    "bytes_hex": "ff"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "budget_exact_boundary",
+      "requirements": [
+        "INT-115"
+      ],
+      "steps": [
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 3,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "abc"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'abc' AS value",
+          "max_rows": 1,
+          "max_bytes": 2,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 2 bytes of values"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 2,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 2,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "alpha"
+                  }
+                ],
+                [
+                  {
+                    "text": "beta"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 1,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value",
+          "max_rows": 1,
+          "max_bytes": 128,
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 1 rows"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a page cell of exactly the 8 MiB byte budget",
+          "sql": {
+            "mysql": "CREATE TABLE page_budget_exact (note LONGTEXT)",
+            "postgres": "CREATE TABLE page_budget_exact (note TEXT)",
+            "sqlite": "CREATE TABLE page_budget_exact (note TEXT)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "exactly 8388608 bytes",
+          "sql": {
+            "mysql": "INSERT INTO page_budget_exact VALUES (REPEAT('x', 8388608))",
+            "postgres": "INSERT INTO page_budget_exact VALUES (repeat('x', 8388608))",
+            "sqlite": "INSERT INTO page_budget_exact VALUES (printf('%.*c', 8388608, 'x'))"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "page_budget_exact",
+          "limit": 1,
+          "offset": 0,
+          "columns": [],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            },
+            "postgres": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            },
+            "sqlite": {
+              "columns": [
+                "note"
+              ],
+              "has_more": false
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a page cell one byte over it",
+          "sql": {
+            "mysql": "CREATE TABLE page_budget_over (note LONGTEXT)",
+            "postgres": "CREATE TABLE page_budget_over (note TEXT)",
+            "sqlite": "CREATE TABLE page_budget_over (note TEXT)"
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "8388609 bytes",
+          "sql": {
+            "mysql": "INSERT INTO page_budget_over VALUES (REPEAT('x', 8388609))",
+            "postgres": "INSERT INTO page_budget_over VALUES (repeat('x', 8388609))",
+            "sqlite": "INSERT INTO page_budget_over VALUES (printf('%.*c', 8388609, 'x'))"
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "page_budget_over",
+          "limit": 1,
+          "offset": 0,
+          "columns": [],
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            },
+            "postgres": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            },
+            "sqlite": {
+              "error": "CATALOG_LIMIT",
+              "message_holds": "result has more than 8388608 bytes of values"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "temporal_write_and_limits",
+      "requirements": [
+        "INT-103"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a table of each temporal kind at a stated precision",
+          "sql": {
+            "mysql": "CREATE TABLE temporal_write (k BIGINT NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME(3) NULL, dt6 DATETIME(6) NULL)",
+            "postgres": "CREATE TABLE temporal_write (k BIGINT NOT NULL PRIMARY KEY, d date NULL, t3 time(3) NULL, dt6 timestamp(6) NULL)",
+            "sqlite": "CREATE TABLE temporal_write (k INTEGER NOT NULL PRIMARY KEY, d DATE NULL, t3 TIME NULL CHECK (length(\"t3\") = 12 AND substr(\"t3\", 1, 8) IS time(substr(\"t3\", 1, 8)) AND substr(\"t3\", 9, 1) = '.' AND substr(\"t3\", 10) GLOB '[0-9][0-9][0-9]'), dt6 DATETIME NULL CHECK (length(\"dt6\") = 26 AND substr(\"dt6\", 1, 19) IS datetime(substr(\"dt6\", 1, 19)) AND substr(\"dt6\", 20, 1) = '.' AND substr(\"dt6\", 21) GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'))"
+          }
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "temporal_write",
+          "as": "write",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "primary_key": [
+                "k"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "primary_key": [
+                "k"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "primary_key": [
+                "k"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "write"
+          },
+          "values": [
+            [
+              "k",
+              {
+                "int": "1"
+              }
+            ],
+            [
+              "d",
+              {
+                "date": "2026-01-02"
+              }
+            ],
+            [
+              "t3",
+              {
+                "time": "03:04:05.120"
+              }
+            ],
+            [
+              "dt6",
+              {
+                "datetime": "2026-01-02 03:04:05.123456"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_write",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "first",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "time": "03:04:05.120"
+                  },
+                  {
+                    "datetime": "2026-01-02 03:04:05.123456"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "first"
+          },
+          "index": 0,
+          "as": "first_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "first_row"
+          },
+          "set": [
+            [
+              "d",
+              {
+                "date": "2027-12-31"
+              }
+            ],
+            [
+              "t3",
+              {
+                "time": "23:59:59.999"
+              }
+            ],
+            [
+              "dt6",
+              {
+                "datetime": "0001-01-01 00:00:00.000001"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_write",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "d",
+            "t3",
+            "dt6"
+          ],
+          "as": "second",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "k",
+                "d",
+                "t3",
+                "dt6"
+              ],
+              "order_by": [
+                "k"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "second"
+          },
+          "index": 0,
+          "as": "second_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "second_row"
+          },
+          "set": [
+            [
+              "k",
+              {
+                "int": "3"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "date": "2027-12-31"
+                  },
+                  {
+                    "time": "23:59:59.999"
+                  },
+                  {
+                    "datetime": "0001-01-01 00:00:00.000001"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a temporal key is the row identity",
+          "sql": "CREATE TABLE temporal_key (d DATE NOT NULL PRIMARY KEY, n BIGINT NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the row of that key",
+          "sql": "INSERT INTO temporal_key VALUES ('2026-01-02', 1)"
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "temporal_key",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "d",
+            "n"
+          ],
+          "as": "keyed",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "d",
+                "n"
+              ],
+              "order_by": [
+                "d"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "d",
+                "n"
+              ],
+              "order_by": [
+                "d"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "d",
+                "n"
+              ],
+              "order_by": [
+                "d"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.row_snapshot",
+          "page": {
+            "ref": "keyed"
+          },
+          "index": 0,
+          "as": "keyed_row"
+        },
+        {
+          "op": "catalog.update_row",
+          "snapshot": {
+            "ref": "keyed_row"
+          },
+          "set": [
+            [
+              "n",
+              {
+                "int": "2"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "date": "2026-01-02"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "a stored text that is no dbspec datetime",
+          "sql": "CREATE TABLE temporal_loose (k INTEGER NOT NULL PRIMARY KEY, dt DATETIME NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "only the driver can store it",
+          "sql": "INSERT INTO temporal_loose VALUES (1, '2026-01-02T03:04:05Z')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "temporal_loose",
+          "limit": 1,
+          "offset": 0,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "only the driver can store it",
+          "sql": "INSERT INTO temporal_loose VALUES (2, 20260102)"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "temporal_loose",
+          "limit": 1,
+          "offset": 1,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "only the driver can store it",
+          "sql": "INSERT INTO temporal_loose VALUES (3, '2026-02-30 03:04:05')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "temporal_loose",
+          "limit": 1,
+          "offset": 2,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "only the driver can store it",
+          "sql": "INSERT INTO temporal_loose VALUES (4, '2026-01-02 24:00:00')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "temporal_loose",
+          "limit": 1,
+          "offset": 3,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "sqlite"
+          ],
+          "reason": "only the driver can store it",
+          "sql": "INSERT INTO temporal_loose VALUES (5, '2026-01-02 03:04:05.1234567')"
+        },
+        {
+          "op": "catalog.table_page",
+          "only": [
+            "sqlite"
+          ],
+          "table": "temporal_loose",
+          "limit": 1,
+          "offset": 4,
+          "columns": [
+            "dt"
+          ],
+          "expect": {
+            "sqlite": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT CAST('25:00:00' AS TIME)",
+          "expect": {
+            "mysql": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT CAST('24:00:00' AS time)",
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT CAST('infinity' AS timestamp)",
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT CAST('-infinity' AS date)",
+          "expect": {
+            "postgres": {
+              "error": "GRID_TEMPORAL_VALUE"
+            }
+          }
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "postgres"
+          ],
+          "sql": "SELECT CAST('2026-01-02 03:04:05+00' AS timestamptz)",
+          "expect": {
+            "postgres": {
+              "error": "CATALOG_VALUE"
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "MySQL TIMESTAMP follows a time zone",
+          "sql": "CREATE TABLE temporal_zone (ts TIMESTAMP NULL)"
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "mysql"
+          ],
+          "reason": "its row",
+          "sql": "INSERT INTO temporal_zone VALUES ('2026-01-02 03:04:05')"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "only": [
+            "mysql"
+          ],
+          "sql": "SELECT ts FROM temporal_zone",
+          "expect": {
+            "mysql": {
+              "error": "CATALOG_VALUE"
             }
           }
         }

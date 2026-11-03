@@ -720,7 +720,10 @@ func (t *txConn) rollback() error {
 	if t.unclean || errors.Join(errs...) != nil {
 		errs = append(errs, t.closeSession())
 	}
-	errs = append(errs, t.conn.Close())
+	if closeErr := t.conn.Close(); !errors.Is(closeErr, sql.ErrConnDone) {
+		// closeSession has closed a discarded connection, which is not a failure of this close.
+		errs = append(errs, closeErr)
+	}
 	t.cancel()
 	return errors.Join(errs...)
 }
