@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Go test table of the described catalog read expects `CATALOG_VALUE` for a zoned value, the rule of INT-103 that T334-3-3-8 implemented (T334-3-3-16).
 - A PHP process loads the file of a generated model only when it uses that model: `bootstrap.php` names the classes with `Registry::classes`, the runtime model and chain column lookups read the parsed entities, and `Registry::verify` compares a class with its entity at its first use, so an edited class still fails with `CONFIG` before its first statement. Regenerate the models to take this (T358).
 - `make recipe-runners-check` enforces one recipe runner per runtime (FCV-15). The PHP runner names its model ops in place of dispatching by the prefix `model.`, and the schema no longer holds `utils.set_local`, `utils.local` and `utils.lock`, which no recipe and no runner used (T334-3-25).
 - The generated fulltext methods of the Author model, `fulltextBooleanNameWithDescription` and `fulltextNameWithDescription`, are recipe cases that every runtime runs on the three databases through the new op `query.search_chain`; before, no recipe reached them (T334-3-17-9).
