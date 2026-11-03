@@ -113,6 +113,8 @@
 - TypeScript의 `toJSONText()`와 `JSON.stringify(row)`는 bigint를 담은 행에서 더 이상 던지지 않는다. 둘은 정확한 정수를 JSON 숫자로 쓰고, 스타일 값 안에서도 그렇게 쓴다.
 - request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
 - conformance vector를 `conformance_verification` recipe로 옮기기 시작했다. 여섯 런타임이 세 데이터베이스에서 실행하며, 첫 여덟 case는 연결자, group, chain 재사용, join, relation, 쓰기 순환, transaction, getQuery를 다룬다. 모델을 생성하지 않는 fixture의 model op는 `statement_events`를 포함해 모든 helper에서 하나의 경로로 공개 builder에 닿는다. Rust는 `ALTER` 뒤 MySQL이 text byte로 돌려주는 정수 열을 읽는다.
+- recipe 형식 F16 `within`을 제거했다. 어떤 runner도 fixture도 쓰지 않았다.
+- vector 파일에서 expect가 빠지기 전까지, 모든 conformance vector가 데이터베이스별로 recipe case와 같음을 시험이 확인한다. statement는 필드별로 비교한다.
 - immutable table의 거부는 recipe `immutable_write`이다(DBS-84). update와 delete는 `DRIVER`로 실패하고, 메시지는 `table refused_row is immutable`을 담으며, driver 원인이 남고, 이후 읽기는 저장된 값을 돌려준다. op의 outcome은 `message_holds`와 `driver_cause`를 받는다. delete는 이전에 어느 runtime에서도 검사하지 않았다. (#T334-3-4-16)
 - 분할된 root `in` 목록의 merge를 primary key 없는 표에 대한 public query로 recipe `parameter_chunking`에서 시험합니다.
 - collection의 key identity, typed lookup, group 값의 정확성, 설정된 key를 새 op `collection.key`와 markdown chain `group_count_i64`, `collection_typed_key`, `collection_key_name`을 통해 recipe `collection`의 case로 옮겼습니다.
@@ -662,8 +664,6 @@
 - found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
 - Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
 - transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).
-- recipe 형식 F16 `within`을 제거했다. 어떤 runner도 fixture도 쓰지 않았다.
-- vector 파일에서 expect가 빠지기 전까지, 모든 conformance vector가 데이터베이스별로 recipe case와 같음을 시험이 확인한다. statement는 필드별로 비교한다.
 - KSTD-5-89-9: 완성된 inventory에서 static `var/tools/bin/node scripts/features/check.mts`는 21 feature contracts, error 0을 보고한다. source `9b5a`가 누락 test 파일을 해결했고 DSL-76 shared case는 MySQL, PostgreSQL, SQLite에서 여섯 client가 database마다 두 번 통과했다 (`058143`).
 - KSTD-5-89-10: 구현 내부 test는 각 구현의 `internal` 목록에 선언되고 shared feature 소유권에서 제외된다. languages owner unit은 13개 case를 통과했으며, 기존 DIA-20/21 binding과 맞지 않던 Go MySQL-only fixture 기대값도 바로잡았다.
 - KSTD-2-11-16-1: PHP library와 native extension이 SQLite, PostgreSQL, MySQL에서 활성 statement를 중단하고 rollback한 뒤 root handle 재사용을 유지한다. Library owner는 7 tests / 61 assertions, extension owner는 4 / 44를 통과했다. Raw log와 hash는 checklist에 기록했다.
