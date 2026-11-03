@@ -28590,9 +28590,6 @@
           "test": "packages/python/tests/coverage_performance_gate_mysql.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=mysql",
-            "ORM_FEATURE_DSN=${BENCH_MYSQL_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28700,9 +28697,6 @@
           "test": "packages/python/tests/coverage_performance_gate_postgres.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=postgres",
-            "ORM_FEATURE_DSN=${BENCH_POSTGRES_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
@@ -28810,9 +28804,6 @@
           "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
           "id": "test_hot_path_gate",
           "command": [
-            "env",
-            "ORM_FEATURE_DATABASE=sqlite",
-            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
             "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
             "-m",
             "unittest",
