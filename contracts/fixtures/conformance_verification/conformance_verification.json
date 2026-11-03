@@ -112,7 +112,8 @@
   "DSL-128",
   "CPX-4",
   "PRT-2",
-  "PRT-34"
+  "PRT-34",
+  "PRT-77"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -48076,6 +48077,316 @@
               },
               {
                "int": "0"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "value_function_parameter_indexes",
+   "requirements": [
+    "PRT-77"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "start_dt": {
+          "lt": {
+           "fn": "now",
+           "args": []
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 54
+      },
+      "postgres": {
+       "json": 54
+      },
+      "sqlite": {
+       "json": 54
+      }
+     }
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "where": {
+      "chain": [
+       [
+        "and",
+        {
+         "name": {
+          "eq": {
+           "text": "nobody"
+          }
+         }
+        }
+       ],
+       [
+        "and",
+        {
+         "start_dt": {
+          "gt": {
+           "fn": "seconds_ago",
+           "args": [
+            {
+             "int": "30"
+            }
+           ]
+          }
+         }
+        }
+       ]
+      ]
+     },
+     "expect": {
+      "mysql": {
+       "json": 0
+      },
+      "postgres": {
+       "json": 0
+      },
+      "sqlite": {
+       "json": 0
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`name` = ? AND `a`.`start_dt` > CASE WHEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN DATE_SUB(NOW(6), INTERVAL CASE WHEN ? BETWEEN -315537897600 AND 315537897600 THEN ? END SECOND) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"start_dt\" > CASE WHEN (CAST($2 AS timestamp(6)) - make_interval(secs => CAST(CASE WHEN CAST($3 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($4 AS double precision) END AS double precision))) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (CAST($5 AS timestamp(6)) - make_interval(secs => CAST(CASE WHEN CAST($6 AS double precision) BETWEEN -315537897600 AND 315537897600 THEN CAST($7 AS double precision) END AS double precision))) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "int": "30"
+              }
+             ]
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"start_dt\" > CASE WHEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) BETWEEN '0001-01-01 00:00:00' AND '9999-12-31 23:59:59.999999' THEN (datetime(?, '-' || CAST(? AS TEXT) || ' seconds') || substr(?, 20)) END"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": [
+              {
+               "text": "nobody"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "text": "$NOW"
+              },
+              {
+               "int": "30"
+              },
+              {
+               "text": "$NOW"
               }
              ]
             }

@@ -300,6 +300,10 @@
         {
           "glob": "packages/go/engine/planner/scalar_subquery_type_test.go",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/go/orm/values_test.go",
+          "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
         }
       ]
     },
@@ -7991,11 +7995,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/aes_json.rs",
           "id": "aes_json_column"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/aes_json_test.go",
-          "id": "TestAESJSONColumnSchema"
         }
       ]
     },
@@ -17893,43 +17892,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/values_test.go",
-          "id": "TestFuncIR"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/value_function_parameter_indexes"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DsnTest.php",
-          "id": "DsnTest::testValueFunctionIrCarriesNameAndParameterIndexes"
+          "test": "packages/php/tests/ConformanceVerificationMysqlRecipeTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeValueFunctionIrCarriesNameAndParameterIndexes"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/value_function_ir.mjs",
-          "id": "value_function_ir_parameter_indexes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_values.py",
-          "id": "test_ir_carry_name_and_parameters"
+          "test": "packages/php-ext/tests/ConformanceVerificationMysqlRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationMysqlRecipeTestExtensionTest::testMysql"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/orm",
-            "FEATURE_CARGO_TARGET=--lib",
-            "FEATURE_TEST=request::value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
-          ]
+          "test": "packages/rust/tests/tests/conformance_verification_mysql.rs",
+          "id": "conformance_verification_mysql::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationPostgresRecipeTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationPostgresRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationPostgresRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_postgres.rs",
+          "id": "conformance_verification_postgres::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/value_function_parameter_indexes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ConformanceVerificationSqliteRecipeTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConformanceVerificationSqliteRecipeTestExtensionTest.php",
+          "id": "ConformanceVerificationSqliteRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/conformance_verification_sqlite.rs",
+          "id": "conformance_verification_sqlite::value_function_parameter_indexes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/conformance_verification-sqlite.test.mjs",
+          "id": "value_function_parameter_indexes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "value_function_parameter_indexes"
         }
       ]
     },
