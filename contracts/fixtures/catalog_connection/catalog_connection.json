@@ -3569,6 +3569,142 @@
               ]
             }
           }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE grid_order (seq INTEGER PRIMARY KEY, label VARCHAR(10))",
+          "reason": "rows of a stored table, whose order a wrapped query must keep"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO grid_order (seq, label) VALUES (1, 'a'), (2, 'b'), (3, NULL), (4, 'd')",
+          "reason": "rows of a stored table, whose order a wrapped query must keep"
+        },
+        {
+          "op": "catalog.read_only_grid_query",
+          "sql": "SELECT seq, label FROM grid_order ORDER BY seq DESC",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "label"
+              ],
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "text": "d"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "null": "text"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "text": "b"
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     },
