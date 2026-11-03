@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c5e7f79a27150de53b804755a176ab22bf0b6c11acff1c1d52ac08d6a4c17598 -->
+<!-- source-sha256: 7575546362a8b0ce097e1b77a8712ec4f19f1f183afe054f26a288295ba00bef -->
 # 변경 이력
 
 ## Unreleased
@@ -304,6 +304,7 @@
 - PRT-63의 markdown DSN 거부는 `dsn_reject`의 case이고, DSL-60, DSL-115, DSL-155, CPX-5, DSL-128은 새 case `core_conditions`, `core_columns_and_pages`, `core_writes`, `core_duplicate_relation`과 함께 `conformance_verification`이 담으며, 그 native unit은 없어졌다. FCV-2는 model core unit 네 개가 native로 남는 이유를 밝힌다.
 - `IN` 목록 채움(CPX-4)은 값 1개부터 5개까지의 문을 세 데이터베이스에서 읽는 case `core_in_list_padding`과 `composite_key_rows`의 채워진 tuple이다. runtime의 native 채움 시험은 없어졌다. PHP extension의 native `Request::padIn`은 CPX-6이다.
 - hot path 읽기의 projection, bind, 행(PRT-2, PRT-34)은 세 데이터베이스에서 `conformance_verification`의 case `core_projected_reads`이고, 그 native 시험은 없어졌다.
+- CR15-2: `scripts/features/recipes.test.mts`는 helper가 읽지 않는 recipe schema key를 거부하고, Go, Python, Rust는 `file_created`를 비교하며, PHP는 `markdown.connect`의 `corpus`와 `token`으로 연결한다.
 - CR15-2: 한 연결의 여러 set, 등록되지 않은 set, 수정된 manifest는 statement_events recipe의 case가 되었고, 연결을 지정하지 않은 model op은 모든 runtime에서 case 연결로 실행된다.
 - CR15-2: `sqlite-row-lock-restoration`은 FCV-2 항목으로 native에 남는다. 공개 호출로는 `PRAGMA busy_timeout`을 실패하게 할 수 없기 때문이다.
 - CR15-2: `schema.empty`, `schema.exists`, `schema.installed`는 recipe op이 되었고, schema 비어 있음, 존재, 렌더된 install은 schema_install의 case가 되었으며, PERF-1은 timing의 `BENCH_*` 변수를 적는다.
@@ -436,7 +437,6 @@
 - repeated-document-name 거부 벡터의 제목을 리터럴로 고쳐, parity 바인딩이 TypeScript 벡터 파일에서 그 제목을 찾도록 했습니다 (T334-3-18-3-2)
 - Rust catalog는 tool 질의의 statement와 column 오류의 code를 오류 텍스트 앞에 둔다(INT-124, INT-125): TOOL_QUERY_STATEMENT와 TOOL_QUERY_COLUMNS가 driver 접두어 error occurred while decoding 뒤에 놓이지 않는다 (T334-3-3-5)
 - drop 단계는 복제본이 적용하지 않은 binary log 정리를 거부하고, 거부 메시지에 복제본 SQL thread의 상태와 마지막 오류를 적는다. 테스트 서버 시작은 SQL thread가 멈춘 MySQL 복제본을 재사용하지 않고, 마지막 오류와 함께 보고한 뒤 다시 시작한다 (G5.55-2).
-- CR15-2: `scripts/features/recipes.test.mts`는 helper가 읽지 않는 recipe schema key를 거부하고, Go, Python, Rust는 `file_created`를 비교하며, PHP는 `markdown.connect`의 `corpus`와 `token`으로 연결한다.
 
 ## 0.0.21
 

@@ -307,7 +307,6 @@ A SQLite lock wait between two connections that write the same row ends with `CA
 - The padding of an `IN` list (CPX-4) is the case `core_in_list_padding`, which reads the statements of one to five values on three databases, and the padded tuples of `composite_key_rows`. The native padding tests of the runtimes went. The native `Request::padIn` of the PHP extension is CPX-6.
 - The projection, binds and rows of the hot path reads (PRT-2, PRT-34) are the case `core_projected_reads` of `conformance_verification` on three databases, and their native tests went.
 - CR15-2: `scripts/features/recipes.test.mts` refuses a key of the recipe schema that a helper does not read; Go, Python and Rust compare `file_created`, and PHP connects with the `corpus` and `token` of `markdown.connect`.
-- CR15-2: the recipe schema takes `model.create` and `model.count` without `connection`, which FCV-4 runs on the case connection, and the owner lists of schema_install and statement_events hold every case of their recipes.
 - CR15-2: several sets on a connection, an unregistered set and an edited manifest are cases of the statement_events recipe, and a model op with no connection runs on the case connection in every runtime.
 - CR15-2: `sqlite-row-lock-restoration` stays native as an FCV-2 entry, since no public call makes `PRAGMA busy_timeout` fail.
 - CR15-2: `schema.empty`, `schema.exists` and `schema.installed` are recipe ops, schema emptiness, existence and the rendered install are cases of schema_install, and PERF-1 states the `BENCH_*` variables of the timing.
