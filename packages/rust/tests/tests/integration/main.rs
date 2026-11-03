@@ -5,5 +5,4 @@
 polyspec_orm::models!();
 
 mod coverage_env;
-mod coverage_group_rows_db;
 mod result_chains;

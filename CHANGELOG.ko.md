@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4e12a3e57308e5e2691c3c65c0f958af10a2c3590e2af7f4ca4a0c786c37c3a9 -->
+<!-- source-sha256: 523fd2623be75d4818a5b276dc44917676722f95a447d84d9530ed5ebd8b6e24 -->
 # 변경 이력
 
 ## Unreleased
 
+- group_rows_db native와 physical check를 없앤다. recipe가 값과 읽기 전용 statement를 그대로 담는다 (#T334-3-4-25)
 - `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - Python의 `active_frame()`은 native 시험을 갖춘 명시된 요구사항(INT-161)이 되었고, recipe `utils`는 트랜잭션 밖의 `setLocal`을 거부하며, recipe `aes_rotation`은 여러 키 버전의 status 개수를 담는다.
 - 컬럼 함수와 서브쿼리의 Python native 셋을 없앤다. recipe가 그 값을 담는다 (#T334-3-4-24)
