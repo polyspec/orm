@@ -7,45 +7,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
-	// The test of COD-8 (docs/spec).
-	testcase.Start(t, testcase.Compute)
-	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)
-	email, err := HostEncode("email@example.test", []string{"aes", "hex"}, "old")
-	if err != nil {
-		t.Fatal(err)
-	}
-	phone, err := HostEncode("01012345678", []string{"aes", "hex"}, "old")
-	if err != nil {
-		t.Fatal(err)
-	}
-	row := map[string]any{"seq": int64(7), "aes_key_version": int32(1), "aes_hex_email": email, "aes_hex_phone": phone}
-	rotated, err := RotateAESRow(row, "aes_key_version", []AESRotationColumn{
-		{Name: "aes_hex_email", Styles: []string{"aes", "hex"}},
-		{Name: "aes_hex_phone", Styles: []string{"aes", "hex"}},
-	}, 2, keys)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rotated["aes_key_version"] != int32(2) {
-		t.Fatalf("version = %#v", rotated["aes_key_version"])
-	}
-	for _, c := range []struct{ name, plain string }{
-		{"aes_hex_email", "email@example.test"}, {"aes_hex_phone", "01012345678"},
-	} {
-		decoded, err := HostDecode(rotated[c.name], []string{"aes", "hex"}, "new")
-		if err != nil || decoded != c.plain {
-			t.Fatalf("%s = %q, %v", c.name, decoded, err)
-		}
-	}
-	if as[string](t, row["aes_hex_email"]) == as[string](t, rotated["aes_hex_email"]) {
-		t.Fatal("email was not re-encrypted")
-	}
-	if as[string](t, row["aes_hex_phone"]) == as[string](t, rotated["aes_hex_phone"]) {
-		t.Fatal("phone was not re-encrypted")
-	}
-}
-
 func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)
@@ -142,4 +103,25 @@ func mustAESKeyring(t *testing.T, keys map[int32]string, current int32) AESKeyri
 		t.Fatal(err)
 	}
 	return keyring
+}
+
+// HostDecodeVersioned is an API of Go alone (FCV-2).
+// Requirements: COD-6.
+func TestHostAESDecodesByStoredVersion(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyring, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := HostDecodeVersioned(oldValue, []string{"aes"}, 1, keyring)
+	if err != nil || decoded != "old@example.test" {
+		t.Fatalf("versioned decode = %#v, %v", decoded, err)
+	}
+	if _, err := HostDecodeVersioned(oldValue, []string{"aes"}, 2, keyring); err == nil {
+		t.Fatal("wrong stored version was accepted")
+	}
 }

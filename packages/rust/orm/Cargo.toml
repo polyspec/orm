@@ -63,11 +63,6 @@ log = "0.4"
 # These test targets run a shared vector file with one libtest-mimic trial per case id
 # (polyspec_orm_testcase::trial), so their harness is libtest-mimic.
 [[test]]
-name = "ir_manifest_hash"
-path = "tests/ir_manifest_hash.rs"
-harness = false
-
-[[test]]
 name = "styled_column_states"
 path = "tests/styled_column_states.rs"
 harness = false
@@ -90,11 +85,6 @@ harness = false
 [[test]]
 name = "dbspec_introspect"
 path = "tests/dbspec_introspect.rs"
-harness = false
-
-[[test]]
-name = "dbspec_render_physical"
-path = "tests/dbspec_render_physical.rs"
 harness = false
 
 [[test]]

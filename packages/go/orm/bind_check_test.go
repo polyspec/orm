@@ -93,7 +93,7 @@ func TestBindVectors(t *testing.T) {
 		t.Fatalf("zone %q, %d bind cases; this runner checks in UTC", v.Zone, len(v.Bind))
 	}
 	d := &DB{location: time.UTC}
-	for _, c := range v.Bind {
+	for _, c := range append(v.Bind, v.CompileRefused...) {
 		t.Run(c.Name, func(t *testing.T) {
 			value := vectorValue(t, c.Value)
 			slot := paramSlot{Type: c.Slot.Type, Precision: c.Slot.Precision, Scale: c.Slot.Scale, Length: c.Slot.Length}
@@ -137,25 +137,12 @@ func readBindVectors(t *testing.T) bindVectors {
 	return v
 }
 
-// bindVectors is tests/bind/vectors.json: the shared cases of the bind paths that
-// the six implementations run (tests/bind/README.md).
+// bindVectors is tests/bind/vectors.json: the bind cases that no recipe value or public path can hold (tests/bind/README.md).
 type bindVectors struct {
-	Zone    string `json:"zone"`
-	Message []struct {
-		Name      string `json:"name"`
-		Type      string `json:"type"`
-		Precision int    `json:"precision"`
-		Value     string `json:"value"`
-		JSON      string `json:"json"`
-		Code      string `json:"code"`
-	} `json:"message"`
+	Zone string     `json:"zone"`
 	Bind []bindCase `json:"bind"`
-	// Control holds the begin control message of a transaction with and without its read_only option.
-	Control []struct {
-		Name     string          `json:"name"`
-		ReadOnly bool            `json:"read_only"`
-		JSON     json.RawMessage `json:"json"`
-	} `json:"control"`
+	// CompileRefused holds the cases that the typed API of Go refuses at compile time, so no recipe reaches them here.
+	CompileRefused []bindCase `json:"compile_refused"`
 }
 
 // bindCase is a bind case of tests/bind/vectors.json: a parameter value checked against

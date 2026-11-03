@@ -257,30 +257,13 @@ function declaredPhpMethods(file: string, seen = new Set<string>()): string {
   const source = readFileSync(file, 'utf8');
   const parents = [...source.matchAll(/^\s+use ([A-Za-z]+);$/gm), ...source.matchAll(/class \w+ extends ([A-Za-z]+)/g)];
   let methods = source;
+  // An extension test class extends the shared class in packages/php/tests.
+  const shared = join(dirname(dirname(dirname(file))), 'php', 'tests');
   for (const [, name] of parents)
-    if (existsSync(join(dirname(file), `${name}.php`))) methods += declaredPhpMethods(join(dirname(file), `${name}.php`), seen);
+    for (const directory of [dirname(file), shared])
+      if (existsSync(join(directory, `${name}.php`))) methods += declaredPhpMethods(join(directory, `${name}.php`), seen);
   return methods;
 }
-
-// A PHP catalog owner selects the method of each case by its symbols map or as test_<id>; a method the class lacks makes
-// PHPUnit run no test, so the owner has no execution.
-caseTest('every case of the PHP catalog owner selects a method of its test class', COMPUTE, () => {
-  const root = new URL('../..', import.meta.url).pathname;
-  const missing: string[] = [];
-  const feature = readFeatures(root).features.find(item => item.id === 'catalog_connection');
-  assert.ok(feature);
-  const owner = feature.coverage?.owners?.php;
-  assert.ok(owner);
-  for (const [database, commands] of Object.entries(owner.commands))
-    for (const command of commands) {
-      const methods = declaredPhpMethods(join(root, command.test));
-      for (const id of command.cases) {
-        const method = command.symbol ?? command.symbols?.[id] ?? `test_${id}`;
-        if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
-      }
-    }
-  assert.deepEqual(missing, []);
-});
 
 // The node and python runners select a case by its ID, and the checker refuses a symbols map on them, so a command that
 // declares one never executes.
@@ -399,35 +382,26 @@ caseTest('PHP extension catalog coverage selects the exact recipe entry methods'
   }
 });
 
-// These KSTD-7-4 cases use camelCase PHPUnit methods; without exact symbols, the owner runner filters for a missing
-// snake_case method and records no test execution. Keep this check scoped to the PHP extension feature's four command shapes.
-caseTest('KSTD-7-4 PHP owner commands select their declared methods', COMPUTE, () => {
+// A PHP owner selects the method of each case by its symbol or symbols map, or as test_<id>. The methods are camelCase, so
+// a command without the exact name makes PHPUnit filter for a method the class lacks and record no test execution (KSTD-7-4).
+caseTest('KSTD-7-4 every case of a PHP owner selects a method of its test class', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
-  const manifest = readFeatures(root);
-  const shapes = [
-    {
-      feature: 'statement_events', language: 'php', test: 'packages/php/tests/CoverageStatementEventsTest.php',
-      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
-    },
-    {
-      feature: 'statement_events', language: 'php-extension', test: 'packages/php-ext/tests/CoverageStatementEventsTest.php',
-      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
-    },
-  ] as const;
-  for (const shape of shapes) {
-    const feature = manifest.features.find(item => item.id === shape.feature);
-    assert.ok(feature, `missing feature ${shape.feature}`);
-    const owner = feature.coverage?.owners?.[shape.language];
-    assert.ok(owner, `missing ${shape.language} owner for ${shape.feature}`);
-    const methods = declaredPhpMethods(join(root, shape.source));
-    for (const [database, commands] of Object.entries(owner.commands ?? {})) {
-      const command = commands.find(item => item.test === shape.test && item.cases.join(',') === Object.keys(shape.cases).join(','));
-      assert.ok(command, `${shape.feature}/${shape.language}/${database} omits ${shape.test}`);
-      assert.deepEqual(command.symbols, shape.cases, `${shape.feature}/${shape.language}/${database} symbols`);
-      for (const method of Object.values(shape.cases))
-        assert.match(methods, new RegExp(`function ${method}\\(`), `${shape.test} lacks ${method}`);
-    }
-  }
+  const missing: string[] = [];
+  let selected = 0;
+  for (const feature of readFeatures(root).features)
+    for (const language of ['php', 'php-extension'] as const)
+      for (const [database, commands] of Object.entries(feature.coverage?.owners?.[language]?.commands ?? {}))
+        for (const command of commands ?? []) {
+          const methods = declaredPhpMethods(join(root, command.test));
+          for (const id of command.cases) {
+            const method = command.symbol ?? command.symbols?.[id] ?? `test_${id}`;
+            selected += 1;
+            if (!new RegExp(`function ${method}\\(`).test(methods))
+              missing.push(`${feature.id}/${language}/${database}: ${command.test} ${method}`);
+          }
+        }
+  assert.ok(selected > 0, 'the PHP owners declare cases');
+  assert.deepEqual(missing, []);
 });
 
 caseTest('one feature can run without declaring unrelated coverage complete', COMPUTE, () => {
@@ -554,7 +528,7 @@ caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
   const script = new URL('./coverage.mts', import.meta.url).pathname;
   const env = isolatedEnvironment({ BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' });
   const output = execFileSync(process.execPath, [
-    script, '--items', 'packages/ts/tests/coverage_constraints_and_relations.mjs', '--database', 'sqlite',
+    script, '--items', 'packages/ts/tests/coverage_performance_gate_sqlite.mjs', '--database', 'sqlite',
   ], { cwd: root, env, encoding: 'utf8' });
   const parsed: unknown = JSON.parse(output);
   assert.ok(Array.isArray(parsed));
@@ -1070,6 +1044,28 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
 });
 
 // Requirements: FCV-4.
+// Requirements: FCV-14.
+caseTest('a native command on its own case database runs with no bench DSN and reads no state', PROCESS, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
+  const fileOf = (database: string) => `packages/ts/tests/${database}.mjs`;
+  const manifest = (fields: { case_database?: true; dsn_env?: string }): SampleManifest => ({
+    features: [{ id: 'sample', status: 'partial', parity: parityOf(['typescript']),
+      coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
+        typescript: { part: 'packages/ts', tests: databases.map(fileOf), commands: Object.fromEntries(databases.map(database =>
+          [database, [{ runner: 'node', test: fileOf(database), cases: ['first'], ...fields }]])) },
+      } } }] });
+  try {
+    await mkdir(join(root, 'packages/ts/tests'), { recursive: true });
+    for (const database of databases)
+      await writeFile(join(root, fileOf(database)), `console.log('CASE first [${database}] PASS');\n`);
+    assert.deepEqual(await runSelected(manifest({ case_database: true }), root, ['owner/typescript']), []);
+    for (const fields of [{}, { case_database: true as const, dsn_env: 'ORM_COVERAGE_TEST_SQLITE_DSN' }])
+      assert.match((await runSelected(manifest(fields), root, ['owner/typescript'])).join('\n'), /invalid native test command/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('checker reads physical database state around each native test run', PROCESS, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
   const owner = 'packages/ts/tests/owner.mjs';
@@ -1088,7 +1084,7 @@ caseTest('checker reads physical database state around each native test run', PR
     db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
     db.close();
     // One run of the file prints the case of every database of its item list; each item takes its own line.
-    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); for (const database of ['mysql', 'postgres', 'sqlite']) console.log(`CASE first [${database}] PASS`);\n");
+    await writeFile(join(root, owner), "if (process.argv[2] !== 'first') process.exit(2); for (const database of ['mysql', 'postgres', 'sqlite']) void database, console.log('CASE first PASS');\n");
     // Exercise only the SQLite slot; the other database declarations are checked separately.
     const feature = manifest.features[0];
     feature.coverage.kind = 'database';
@@ -1290,6 +1286,8 @@ caseTest('a coverage process deadline is not shorter than the longest declared t
 caseTest('a process that never ends is stopped at its deadline', PROCESS, async () => {
   const result = await run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 100);
   assert.equal(result.error, 'timeout after 100 ms');
+  assert.ok(result.pid !== undefined, 'the run reports the pid it started');
+  assert.throws(() => process.kill(result.pid as number, 0), { code: 'ESRCH' });
 });
 
 // A go symbol <parent>/<case> names a subtest: go test -run applies each level of a pattern to every test, so the plain

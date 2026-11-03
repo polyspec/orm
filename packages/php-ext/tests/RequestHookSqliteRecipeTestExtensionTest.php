@@ -1,5 +1,7 @@
 <?php
 
+// Requirements: INT-78, PRT-2, PRT-65, DIA-161.
+
 // Recipe conversion of the request hook: FCV-8, FCV-9, FCV-10,
 // FCV-11, FCV-12, FCV-13, FCV-14 (docs/spec/feature-coverage.md).
 

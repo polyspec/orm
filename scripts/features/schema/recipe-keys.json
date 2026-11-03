@@ -20,14 +20,56 @@
   ],
   "step": {
     "dsn.connect": [
+      "config",
       "dsn",
       "expect",
-      "op"
+      "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
     ],
     "keyring.versions": [
       "expect",
       "keyring",
       "op"
+    ],
+    "dbspec.introspect_sqlite": [
+      "expect",
+      "op",
+      "sql"
+    ],
+    "dbspec.apply_fault": [
+      "applied_first",
+      "call",
+      "expect",
+      "fail_catalog_read",
+      "op",
+      "plan",
+      "sql"
+    ],
+    "dbspec.ddl_behavior": [
+      "case",
+      "op",
+      "vectors"
+    ],
+    "dbspec.introspect_shown": [
+      "case",
+      "expect",
+      "op",
+      "vectors"
     ],
     "markdown.builder": [
       "calls",
@@ -109,8 +151,22 @@
     ],
     "ir.validate": [
       "expect",
+      "manifest_hash",
       "op",
       "request"
+    ],
+    "ir.param_uses": [
+      "expect",
+      "input",
+      "op",
+      "schema"
+    ],
+    "planner.columns": [
+      "expect",
+      "input",
+      "names",
+      "op",
+      "schema"
     ],
     "ir.answer": [
       "answer",
@@ -211,6 +267,21 @@
       "op",
       "schema"
     ],
+    "schema.empty": [
+      "expect",
+      "op"
+    ],
+    "schema.exists": [
+      "expect",
+      "op",
+      "schema"
+    ],
+    "schema.installed": [
+      "expect",
+      "op",
+      "schema",
+      "table"
+    ],
     "schema.connect": [
       "expect",
       "op",
@@ -229,14 +300,17 @@
     ],
     "transaction": [
       "audit",
+      "conflicts",
       "connection",
+      "default_retry",
       "expect",
       "fail",
       "isolation",
       "op",
       "read_only",
       "retry",
-      "steps"
+      "steps",
+      "timeout_ms"
     ],
     "model.create": [
       "as",
@@ -246,6 +320,7 @@
       "model",
       "op",
       "restore_or_create",
+      "unconnected",
       "values"
     ],
     "model.creates": [
@@ -317,6 +392,7 @@
       "key",
       "model",
       "op",
+      "unconnected",
       "where"
     ],
     "model.get_by": [
@@ -334,6 +410,7 @@
       "model",
       "op",
       "order",
+      "ordered_text",
       "pick",
       "relations",
       "remove_columns",
@@ -347,10 +424,13 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
+      "group_value",
       "items",
       "joins",
       "key",
+      "key_by",
       "limit",
       "lock",
       "model",
@@ -361,10 +441,13 @@
       "pick",
       "plan",
       "plan_count",
+      "plan_page",
+      "plan_sql",
       "relation",
       "relations",
       "remove_columns",
       "tuples",
+      "unconnected",
       "where"
     ],
     "events.subscribe": [
@@ -387,6 +470,7 @@
       "ref"
     ],
     "utils.run": [
+      "conflict",
       "connection",
       "expect",
       "op",
@@ -400,6 +484,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -521,6 +606,12 @@
       "op",
       "owned"
     ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "external",
+      "op"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -564,6 +655,12 @@
       "options",
       "schema"
     ],
+    "generator.check": [
+      "changed",
+      "document_set",
+      "op",
+      "unchanged"
+    ],
     "dbspec.export_mermaid": [
       "as",
       "document",
@@ -588,6 +685,18 @@
     "hook.records": [
       "expect",
       "op"
+    ],
+    "transaction.attempts": [
+      "expect",
+      "op"
+    ],
+    "transaction.deadlock": [
+      "column",
+      "connections",
+      "expect",
+      "model",
+      "op",
+      "rows"
     ],
     "utils.aes_rotate": [
       "connection",
@@ -637,6 +746,12 @@
       "expect",
       "name",
       "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
     ],
     "utils.was_inserted": [
       "connection",

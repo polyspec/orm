@@ -517,7 +517,6 @@
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
         "packages/php/tests/RuntimeModelTest.php",
@@ -611,76 +610,6 @@
         "packages/rust/build/src/generate.rs",
         "packages/rust/build/tests/generate.rs",
         "packages/rust/tests/tests/integration_program/main.rs"
-      ]
-    },
-    "blind-index-source-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "packages/go/engine/planner/planner.go",
-        "packages/go/engine/planner/blind_index_source_test.go"
-      ]
-    },
-    "blind-index-source-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/php/src/Planner.php",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php"
-      ]
-    },
-    "blind-index-source-php-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "node-modules",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/src/planner.c",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php",
-        "packages/php-ext/tests/BlindIndexSourceNativeTest.php"
-      ]
-    },
-    "blind-index-source-ts-check": {
-      "scope": "owner",
-      "needs": [
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/ts/src/engine/planner.ts",
-        "packages/ts/tests/engine_features.mjs"
-      ]
-    },
-    "blind-index-source-python-check": {
-      "scope": "owner",
-      "needs": [
-        "python",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/python/src/polyspec/orm/engine/planner.py",
-        "packages/python/tests/test_blind_index_source.py"
-      ]
-    },
-    "blind-index-source-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "packages/rust/orm/src/engine/planner.rs",
-        "packages/rust/orm/src/engine/mod.rs",
-        "packages/rust/orm/tests/unit/blind_index_source.rs"
       ]
     },
     "nowait-restore-check": {
@@ -981,8 +910,7 @@
       "scope": "owner",
       "needs": [
         "go",
-        "rust",
-        "databases"
+        "rust"
       ],
       "inputs": [
         "packages/rust/tests/tests/integration/coverage_group_rows_db.rs"
@@ -1177,7 +1105,6 @@
         "packages/rust/orm/src/markdown.rs",
         "packages/rust/orm/tests/unit/coverage_planner.rs",
         "packages/rust/tests/tests/planner_compile_none.rs",
-        "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/rust/orm/tests/unit/markdown_column_function.rs",
         "packages/ts/src/engine/params.ts",
         "packages/ts/src/engine/planner.ts",
@@ -1237,8 +1164,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/rust/orm/src/engine/planner.rs",
-        "packages/rust/orm/tests/unit/upsert_conflict.rs"
+        "packages/rust/orm/src/engine/planner.rs"
       ]
     },
     "scalar-subquery-column-check": {
@@ -1368,7 +1294,6 @@
         "packages/rust/tests/tests/planner_compile_none.rs",
         "packages/rust/orm/src/testing/ir_request.rs",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
-        "packages/rust/orm/tests/unit/param_uses.rs",
         "packages/ts/src/engine/*.ts",
         "packages/ts/src/ir.ts",
         "packages/ts/tests/plan-cache-in.mjs",
@@ -1468,15 +1393,6 @@
       "scope": "suite",
       "needs": [
         "rust",
-        "databases"
-      ]
-    },
-    "aes-rotation-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
         "databases"
       ]
     },
@@ -2305,7 +2221,7 @@
         "packages/python/src/polyspec/orm/dbspec/introspect.py",
         "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
         "packages/python/tests/test_dbspec_introspect_query_count.py",
-        "packages/python/tests/test_introspect_messages.py",
+        "packages/python/tests/test_dbspec_introspect_messages_none.py",
         "packages/rust/orm/src/dbspec.rs",
         "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
         "packages/ts/src/dbspec/introspect.ts",
@@ -2832,12 +2748,20 @@
         "packages/php-ext/tests/DbspecDialectRefusalRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DbspecLoadSetRecipeTestExtensionTest.php",
         "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php",
         "tests/dbspec/limits.json",
         "tests/dbspec/rules.json",
         "tests/dbspec/dialect-refusal.json",
         "tests/dbspec/load-set.json",
         "tests/planner/default-select-set.json",
-        "tests/planner/default-select-set.dbs"
+        "tests/planner/default-select-set.dbs",
+        "tests/planner/runtime-model.json",
+        "tests/planner/runtime-model.dbs",
+        "tests/dbspec/runtime-model.json",
+        "tests/dbspec/runtime-model-shop.dbs",
+        "tests/dbspec/runtime-model-accounts.dbs",
+        "tests/dbspec/runtime-model-members.dbs"
       ]
     },
     "model-types-php-extension-check": {
@@ -2949,7 +2873,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php",
         "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]
@@ -3298,18 +3222,23 @@
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
         "packages/php/src/Dbspec/PlanApply.php",
-        "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
+        "packages/php-ext/tests/DbspecReleaseHooksTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/DbspecApplyCleanupTest.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
         "packages/php/tests/bootstrap.php",
         "packages/php/tests/FailingPdo.php",
         "packages/python/src/polyspec/orm/dbspec/apply.py",
-        "packages/python/tests/test_dbspec_verify_errors.py",
+        "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
         "packages/rust/orm/src/dbspec/apply.rs",
         "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/ts/src/dbspec/apply.ts",
-        "packages/ts/tests/dbspec-apply-verify-errors.mjs"
+        "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+        "tests/dbspec/apply-verification-errors.json",
+        "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+        "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+        "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+        "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go"
       ]
     },
     "dbspec-apply-ts-check": {
@@ -3847,7 +3776,6 @@
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
         "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
@@ -3918,13 +3846,9 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
-        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-        "packages/php-ext/tests/CoverageStatementEventsTest.php",
         "packages/php-ext/tests/QueryCancellationNativeTest.php",
         "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
-        "packages/php/tests/CoverageTransactionsTest.php",
-        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/php/models.txt"
       ]
     },
@@ -3977,9 +3901,7 @@
       ],
       "inputs": [
         "Makefile",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
         "packages/php-ext/tests/AuditNativeMethodsTest.php",
-        "packages/php/tests/CoverageRequestHookTest.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/coverage_cases.php",
@@ -4013,23 +3935,6 @@
         "packages/php/tests/WarningStreamProtocol.php"
       ]
     },
-    "cpx5-duplicate-relation-helper-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/tests/Cpx5DuplicateRelationCases.php",
-        "packages/php/tests/Cpx5DuplicateRelationTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php"
-      ]
-    },
     "temp-sqlite-fixture-rust-helper-check": {
       "scope": "owner",
       "needs": [
@@ -4039,9 +3944,7 @@
         "Makefile",
         "packages/rust/tests/Cargo.toml",
         "packages/rust/tests/tests/common/temp_sqlite.rs",
-        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
-        "packages/rust/tests/tests/integration/main.rs",
-        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+        "packages/rust/tests/tests/refusal_before_request.rs"
       ]
     },
     "native-api-equivalence-check": {
@@ -4096,7 +3999,6 @@
         "packages/python/tests/test_ir_validate_none.py",
         "packages/python/tests/recipe.py",
         "packages/rust/tests/tests/ir_validate_none.rs",
-        "packages/rust/orm/tests/ir_manifest_hash.rs",
         "packages/rust/orm/src/testing/ir_request.rs"
       ]
     },
@@ -4114,6 +4016,62 @@
         "config/parity.json",
         "contracts/fixtures/**",
         "packages/**"
+      ]
+    },
+    "conformance-generated-methods-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "tests/conformance/vectors.postgres.json",
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/internal/conformance/**",
+        "packages/ts/testing/conformance/runner_typescript.mts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/testing/conformance/runner_python.py",
+        "packages/php/testing/conformance/runner.php",
+        "packages/rust/tests/src/conformance.rs",
+        "Makefile"
+      ]
+    },
+    "conformance-fixed-clock-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/check/recipe_vectors.mts",
+        "tests/conformance/check/recipe_vectors.test.mts",
+        "tests/conformance/check/fixed_clock.json",
+        "contracts/fixtures/conformance_verification/**",
+        "tests/conformance/vectors.json",
+        "tests/conformance/vectors.postgres.json",
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/internal/conformance/**",
+        "packages/ts/testing/conformance/runner_typescript.mts",
+        "packages/ts/tests/recipe.mjs",
+        "packages/python/testing/conformance/runner_python.py",
+        "packages/php/testing/conformance/runner.php",
+        "packages/rust/tests/src/conformance.rs",
+        "Makefile"
       ]
     },
     "conformance-refusal-check": {
@@ -4232,63 +4190,6 @@
         "packages/go/orm/sqlite_version_test.go",
         "packages/go/orm/db.go",
         "packages/go/orm/sqlite/sqlite.go"
-      ]
-    },
-    "schema-exists-sqlite-go-check": {
-      "scope": "owner",
-      "needs": [
-        "go"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/go/orm/utils.go",
-        "packages/go/orm/schema_exists_underscore_test.go"
-      ]
-    },
-    "schema-exists-sqlite-php-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/php/src/SchemaUtils.php",
-        "packages/php/tests/SchemaExistsSqliteTest.php"
-      ]
-    },
-    "schema-exists-sqlite-typescript-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/ts/src/utils.ts",
-        "packages/ts/tests/model.mjs"
-      ]
-    },
-    "schema-exists-sqlite-rust-check": {
-      "scope": "owner",
-      "needs": [
-        "go",
-        "rust",
-        "node-modules"
-      ],
-      "inputs": [
-        "Makefile",
-        "packages/rust/orm/src/utils.rs",
-        "packages/rust/orm/tests/schema_exists_underscore.rs"
-      ]
-    },
-    "aes-json-php-extension-check": {
-      "scope": "suite",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
       ]
     },
     "feature-coverage/go/mysql": {
@@ -4611,9 +4512,12 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/go/orm/recipe_model_queries_test.go",
         "packages/go/internal/recipe/recipe.go",
-        "packages/go/internal/recipe/database.go"
+        "packages/go/internal/recipe/database.go",
+        "packages/go/orm/recipe_model_queries_chain_test.go"
       ]
     },
     "model-queries-check/rust": {
@@ -4624,11 +4528,16 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/rust/tests/tests/model_queries_mysql.rs",
         "packages/rust/tests/tests/model_queries_postgres.rs",
         "packages/rust/tests/tests/model_queries_sqlite.rs",
         "packages/rust/tests/src/recipe.rs",
-        "packages/rust/tests/Cargo.toml"
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/tests/tests/model_queries_chain_mysql.rs",
+        "packages/rust/tests/tests/model_queries_chain_postgres.rs",
+        "packages/rust/tests/tests/model_queries_chain_sqlite.rs"
       ]
     },
     "model-queries-check/typescript": {
@@ -4639,10 +4548,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/ts/tests/model_queries-mysql.test.mjs",
         "packages/ts/tests/model_queries-postgres.test.mjs",
         "packages/ts/tests/model_queries-sqlite.test.mjs",
-        "packages/ts/tests/recipe.mjs"
+        "packages/ts/tests/recipe.mjs",
+        "packages/ts/tests/model_queries_chain-mysql.test.mjs",
+        "packages/ts/tests/model_queries_chain-postgres.test.mjs",
+        "packages/ts/tests/model_queries_chain-sqlite.test.mjs"
       ]
     },
     "model-queries-check/python": {
@@ -4653,10 +4567,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/python/tests/test_model_queries_mysql.py",
         "packages/python/tests/test_model_queries_postgres.py",
         "packages/python/tests/test_model_queries_sqlite.py",
-        "packages/python/tests/recipe.py"
+        "packages/python/tests/recipe.py",
+        "packages/python/tests/test_model_queries_chain_mysql.py",
+        "packages/python/tests/test_model_queries_chain_postgres.py",
+        "packages/python/tests/test_model_queries_chain_sqlite.py"
       ]
     },
     "model-queries-check/php": {
@@ -4668,10 +4587,13 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
         "packages/php/tests/RecipeCases.php",
-        "packages/php/tests/bootstrap.php"
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "model-queries-check/php-extension": {
@@ -4684,11 +4606,15 @@
       ],
       "inputs": [
         "contracts/fixtures/model_queries/**",
+        "contracts/fixtures/model_queries_chain/**",
+        "contracts/fixtures/model_chain/**",
         "packages/php-ext/tests/ModelQueriesRecipeTestExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/ModelQueriesRecipeTest.php",
         "packages/php/tests/Recipe.php",
-        "packages/php/tests/RecipeCases.php"
+        "packages/php/tests/RecipeCases.php",
+        "packages/php-ext/tests/ModelQueriesChainRecipeTestExtensionTest.php",
+        "packages/php/tests/ModelQueriesChainRecipeTest.php"
       ]
     },
     "constraints-and-relations-check/go": {

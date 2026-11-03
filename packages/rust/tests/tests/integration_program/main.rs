@@ -783,20 +783,6 @@ async fn read_only_sqlite(t: &Target) {
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
 // Requirements: DBS-108, INT-58, SCH-7.
-async fn schema_empty_case(t: &Target) {
-    let db = &t.db;
-    assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);
-    if let Pool::Postgres(p) = db.pool() {
-        sqlx::raw_sql("CREATE SCHEMA unowned_empty").execute(p).await.unwrap();
-        let with_schema = db.utils().schema().empty().await;
-        sqlx::raw_sql("DROP SCHEMA unowned_empty").execute(p).await.unwrap();
-        assert!(!with_schema.unwrap(), "postgres: schema().empty() with an empty schema other than public");
-        assert!(db.utils().schema().empty().await.unwrap(), "postgres: schema().empty() after the empty schema is dropped");
-    }
-    bench_set::install(db).await.unwrap();
-    assert!(!db.utils().schema().empty().await.unwrap(), "{}: schema().empty() with the installed tables", t.driver);
-}
-
 /// Inserts and reads more values than SQLite binds in one statement: the
 /// inserts and the root IN list are split, duplicate IN values are read once,
 /// and a shape that a merge would change is rejected.
@@ -823,39 +809,6 @@ async fn bind_limit_splitting_case(t: &Target) {
 }
 
 // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
-async fn aes_rotation_case(t: &Target) {
-    let db = &t.db;
-    let f = seed(db).await;
-    let b = Author::new().connect(db).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
-    let mut b = b.set_aes_hex_email("person@example.com").set_aes_hex_phone("01012345678");
-    b.update(false).await.unwrap();
-    let found = Author::new().connect(db).aes_hex_email("person@example.com").get_count().await.unwrap();
-    assert_eq!(found, 1, "blind index condition");
-    let keyring = AesKeyring::new([(1, "test-aes-key".to_owned()), (2, "next-aes-key".to_owned())].into_iter().collect(), 2).unwrap();
-    let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 4, [(1, 4)].into_iter().collect()), "status");
-    assert_eq!(db.utils().aes().rotate(&Author::new(), &keyring).await.unwrap(), 4, "rotated");
-    let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 0, [(2, 4)].into_iter().collect()), "after rotation");
-    let current = model::connect(
-        &t.dsn,
-        2,
-        polyspec_orm::Config {
-            aes_key: "next-aes-key".into(),
-            aes_version: 2,
-            aes_keys: [(2, "next-aes-key".to_owned())].into_iter().collect(),
-            blind_index_key: "test-blind-key".into(),
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
-    let rotated = Author::new().connect(&current).get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap().expect("a row");
-    assert_eq!(rotated.get_aes_hex_email().unwrap(), Some("person@example.com"));
-    assert_eq!(rotated.get_aes_hex_phone().unwrap(), Some("01012345678"));
-    current.close().await;
-}
-
 /// A jsontext column reads back the ordered-json value of a write with its
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
 /// from a JSON literal null.
@@ -964,18 +917,6 @@ async fn installed_section(driver: &str, body: impl AsyncFn(&Target)) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn schema_empty() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
-        let t = Target::empty(driver).await;
-        schema_empty_case(&t).await;
-        t.finish().await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn conditions() {
     check_bench_set();
     for driver in DRIVERS {
@@ -1021,16 +962,6 @@ async fn transactions() {
     for driver in DRIVERS {
         let case = polyspec_orm_testcase::start(format!("transactions/{driver}"), polyspec_orm_testcase::DATABASE);
         installed_section(driver, transactions_case).await;
-        drop(case);
-    }
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn aes_rotation() {
-    check_bench_set();
-    for driver in DRIVERS {
-        let case = polyspec_orm_testcase::start(format!("aes_rotation/{driver}"), polyspec_orm_testcase::DATABASE);
-        installed_section(driver, aes_rotation_case).await;
         drop(case);
     }
 }

@@ -95,62 +95,6 @@ final class SchemaSetTest extends TestCase
         return '';
     }
 
-    /**
-     * The connection opened with the bench helper installs the bench set (installBench) and the decimal set (decimal
-     * twice, and the second install changes nothing), and uses the models of both sets inside and outside a
-     * transaction.
-     */
-    private static function severalSchemas(string $dsn): void
-    {
-        $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
-        try {
-            \Polyspec\Orm\Tests\installBench($db);
-            foreach (
-                [
-                \Polyspec\Orm\Tests\SchemaSetDecimal\schema(),
-                \Polyspec\Orm\Tests\SchemaSetDecimal\schema()
-                ] as $schema
-            ) {
-                $db->utils()->schema()->install($schema);
-            }
-            (new User())($db)->setName('core')->create();
-            (new DecimalCase())($db)->setSeq(1)->setAmount('48.0450')->create();
-            $db->transaction(function (): void {
-                (new User())->setName('core-tx')->create();
-                (new DecimalCase())->setSeq(2)->setAmount('1.5000')->create();
-            }, retry: 0);
-            $users = (new User())($db)->getCount();
-            self::check($users === 2, "core rows $users");
-            $amount = (new DecimalCase())($db)->addAllColumns()->getBySeq(1)->getAmount();
-            self::check($amount === '48.0450', "decimal amount $amount");
-            $decimals = (new DecimalCase())($db)->getCount();
-            self::check($decimals === 2, "decimal rows $decimals");
-        } finally {
-            $db->close();
-        }
-    }
-
-    /**
-     * The decimal set installs on $dsn, and two amounts at the edges of decimal(13,4) are stored and read back exactly.
-     */
-    private static function decimalDocumentRoundTrip(string $dsn): void
-    {
-        $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
-        try {
-            $decimal->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-            (new DecimalCase())($decimal)->setSeq(1)->setAmount('48.0450')->create();
-            (new DecimalCase())($decimal)->setSeq(2)->setAmount('123456789.1234')->create();
-            $rows = (new DecimalCase())($decimal)->getCount();
-            self::check($rows === 2, "decimal rows $rows");
-            $first = (new DecimalCase())($decimal)->addAllColumns()->getBySeq(1)->getAmount();
-            self::check($first === '48.0450', "decimal amount $first");
-            $last = (new DecimalCase())($decimal)->addAllColumns()->getBySeq(2)->getAmount();
-            self::check($last === '123456789.1234', "decimal amount $last");
-        } finally {
-            $decimal->close();
-        }
-    }
-
     /** Registers a subscriber that counts the statements the connection sends into $n, and returns that connection. */
     private static function counted(Db $db, int &$n): Db
     {
@@ -161,133 +105,36 @@ final class SchemaSetTest extends TestCase
     }
 
     /**
-     * A request for a set that is not registered on the connection fails before it runs with
-     * SCHEMA_HASH_MISMATCH, even if the table exists. A raw connection registers no set, and a connection opened with
-     * the bench helper does not register the decimal set that another connection installed. A connection opened with
-     * the decimal helper uses that set.
+     * Generated code of a manifest text edited under its declared hash fails with SCHEMA_HASH_MISMATCH when it is loaded
+     * (DBS-120). The connect and install of such a text are cases of the statement_events recipe.
      */
-    private static function unregisteredSchema(string $dsn): void
-    {
-        $runs = 0;
-        $raw = self::counted(Orm::connect($dsn, new Config()), $runs);
-        try {
-            self::check(
-                self::code(fn() => (new User())($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH,
-                'bench read on a raw connection'
-            );
-        } finally {
-            $raw->close();
-        }
-        $core = self::counted(\Polyspec\Orm\Tests\Model\connect($dsn, new Config()), $runs);
-        try {
-            $installer = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
-            try {
-                $installer->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-                (new DecimalCase())($installer)->setSeq(1)->setAmount('1.0000')->create();
-            } finally {
-                $installer->close();
-            }
-            self::check(
-                self::code(fn() => (new DecimalCase())($core)->getCount()) === Code::SCHEMA_HASH_MISMATCH,
-                'decimal read on the bench connection'
-            );
-            self::check(
-                self::code(
-                    fn() => (new DecimalCase())($core)->setSeq(2)->setAmount('2.0000')->create()
-                ) === Code::SCHEMA_HASH_MISMATCH,
-                'decimal write on the bench connection'
-            );
-            self::check($runs === 0, "unregistered requests ran $runs statements");
-        } finally {
-            $core->close();
-        }
-        $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
-        try {
-            $rows = (new DecimalCase())($decimal)->getCount();
-            self::check($rows === 1, "decimal rows through the decimal helper $rows");
-        } finally {
-            $decimal->close();
-        }
-    }
-
-    /**
-     * The connect and install of a schema whose manifest text does not hash to the declared manifestHash
-     * are CONFIG before any statement and do not change the tables. Generated code
-     * in such text fails with SCHEMA_HASH_MISMATCH when it is loaded.
-     */
-    private static function editedManifest(string $dsn): void
+    private static function editedManifest(): void
     {
         static $edits = 0;
-        $edited = new Schema(
-            str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalModel->manifestText),
-            self::$decimalModel->manifestHash
+        // The generated code of the edited text declares the hash of the real decimal set.
+        $editedText = str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalDocuments[0]);
+        $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $editedText]));
+        $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
+        $dir = self::$work . "/edited-$edits";
+        generateModels(
+            ['decimal_schema.dbs' => $editedText],
+            self::$work . "/edited-$edits-source",
+            $dir,
+            $namespace
         );
-        self::check($edited->manifestText !== self::$decimalModel->manifestText, 'edited manifest differs');
-        self::check(
-            self::code(fn() => Orm::connectSchema($dsn, $edited, new Config())) === Code::CONFIG,
-            'connect with an edited manifest'
-        );
-        $runs = 0;
-        $db = self::counted(\Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config()), $runs);
-        try {
-            self::check(
-                self::code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG,
-                'install of an edited manifest'
+        foreach (glob("$dir/*.php") as $file) {
+            file_put_contents(
+                $file,
+                str_replace(
+                    $editedModel->manifestHash,
+                    self::$decimalModel->manifestHash,
+                    (string) file_get_contents($file)
+                )
             );
-            self::check($runs === 0, "the edited install ran $runs statements");
-            $db->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
-            self::check((new DecimalCase())($db)->getCount() === 0, 'decimal read');
-            // The generated code of the edited text declares the hash of the real decimal set.
-            $editedText = str_replace('decimal(13,4)', 'decimal(14,4)', self::$decimalDocuments[0]);
-            $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $editedText]));
-            $namespace = 'SchemaSetEdited' . (++$edits) . '\\Orm';
-            $dir = self::$work . "/edited-$edits";
-            generateModels(
-                ['decimal_schema.dbs' => $editedText],
-                self::$work . "/edited-$edits-source",
-                $dir,
-                $namespace
-            );
-            foreach (glob("$dir/*.php") as $file) {
-                file_put_contents(
-                    $file,
-                    str_replace(
-                        $editedModel->manifestHash,
-                        self::$decimalModel->manifestHash,
-                        (string) file_get_contents($file)
-                    )
-                );
-            }
-            self::check(self::code(function () use ($dir): void {
-                require "$dir/bootstrap.php";
-            }) === Code::SCHEMA_HASH_MISMATCH, 'loading generated code of an edited manifest');
-            [$driver] = Orm::parseDsn($dsn);
-            $type = match ($driver) {
-                'mysql' => $db->pdo()
-                    ->query(
-                        "SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND "
-                        . "TABLE_NAME = 'decimal_case' AND COLUMN_NAME = 'amount'"
-                    )
-                    ->fetchColumn(),
-                'postgres' => $db->pdo()
-                    ->query(
-                        "SELECT numeric_precision || ',' || numeric_scale FROM information_schema.columns WHERE "
-                        . "table_name = 'decimal_case' AND column_name = 'amount'"
-                    )
-                    ->fetchColumn(),
-                default => $db->pdo()
-                    ->query("SELECT sql FROM sqlite_master WHERE name = 'decimal_case'")
-                    ->fetchColumn(),
-            };
-            $unchanged = match ($driver) {
-                'mysql' => $type === 'decimal(13,4)',
-                'postgres' => $type === '13,4',
-                default => is_string($type) && str_contains($type, '"amount"') && !str_contains($type, '14'),
-            };
-            self::check($unchanged, 'decimal_case.amount is unchanged: ' . var_export($type, true));
-        } finally {
-            $db->close();
         }
+        self::check(self::code(function () use ($dir): void {
+            require "$dir/bootstrap.php";
+        }) === Code::SCHEMA_HASH_MISMATCH, 'loading generated code of an edited manifest');
     }
 
     /**
@@ -544,53 +391,10 @@ final class SchemaSetTest extends TestCase
         self::fixture();
     }
 
-    /**
-     * @return iterable<string, array{string}> the decimal document of contracts/fixtures/decimal_schema.dbs, its one
-     *   case
-     */
-    public static function decimalDocumentCase(): iterable
+    // Requirements: DBS-120.
+    public function testEditedManifest(): void
     {
-        yield 'decimal_schema.dbs' => ['decimal_schema.dbs'];
-    }
-
-    // The decimal document runs on every driver, in a case database of its own per driver, removed when it ends, also
-    // when it fails. The unit binds this method, so the decimal document is its only data set.
-    // Requirements: SCH-7, DBS-108.
-    #[DataProvider('decimalDocumentCase')]
-    public function testDecimalDocument(string $document): void
-    {
-        self::check($document === 'decimal_schema.dbs', "decimal document $document");
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            with_case_database($driver, static function (string $step): void {
-            }, static fn(string $dsn) => self::decimalDocumentRoundTrip($dsn));
-        }
-    }
-
-    // Requirements: DBS-108, SCH-7.
-    #[DataProvider('drivers')]
-    public function testSeveralSchemas(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::severalSchemas($dsn));
-    }
-
-    // Requirements: DBS-119.
-    #[DataProvider('drivers')]
-    public function testUnregisteredSchema(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::unregisteredSchema($dsn));
-    }
-
-    // Requirements: DBS-120, SCH-7, SCH-11.
-    #[DataProvider('drivers')]
-    public function testEditedManifest(string $driver): void
-    {
-        // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
-        with_case_database($driver, static function (string $step): void {
-        }, static fn(string $dsn) => self::editedManifest($dsn));
+        self::editedManifest();
     }
 
     /** @return iterable<string, array{array<string, mixed>}> the cases of changed_database.json by their ids */

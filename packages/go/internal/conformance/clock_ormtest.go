@@ -49,6 +49,7 @@ func init() {
 				return nil, err
 			}
 			return map[string]any{
+				"at6_fixed":    at6.Format("2006-01-02 15:04:05.000000") == "2026-06-01 12:34:56.999999",
 				"p0_truncated": at0.Equal(at6.Truncate(time.Second)),
 				"p3_truncated": at3.Equal(at6.Truncate(time.Millisecond)),
 			}, nil

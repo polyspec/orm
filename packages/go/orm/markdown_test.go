@@ -11,37 +11,6 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-func TestParseMarkdownDSN(t *testing.T) {
-	// Requirements: PRT-63.
-	testcase.Start(t, testcase.Compute)
-	got, err := parseDSN("markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := markdownDSN{address: "127.0.0.1:4100", corpus: "tracker", token: "0123456789abcdef0123456789abcdef"}
-	if got.driver != "markdown" || got.markdown != want || got.location.String() != "UTC" {
-		t.Fatalf("parseDSN() = %+v; want driver markdown and %+v", got, want)
-	}
-	for _, input := range []string{
-		"markdown://127.0.0.1:4100/tracker",
-		"markdown://127.0.0.1:4100/tracker?token=",
-		"markdown://127.0.0.1:4100/tracker?token=a&token=b",
-		"markdown://127.0.0.1:4100/tracker?token=a&mode=ro",
-		"markdown://127.0.0.1/tracker?token=a",
-		"markdown://127.0.0.1:0/tracker?token=a",
-		"markdown://127.0.0.1:port/tracker?token=a",
-		"markdown://localhost:4100/tracker?token=a",
-		"markdown://10.0.0.1:4100/tracker?token=a",
-		"markdown://user@127.0.0.1:4100/tracker?token=a",
-		"markdown://127.0.0.1:4100/?token=a",
-		"markdown://127.0.0.1:4100/a/b?token=a",
-	} {
-		if _, err := parseDSN(input, 0); ErrorCode(err) != CodeConfig {
-			t.Fatalf("parseDSN(%q) = %v; want CONFIG", input, err)
-		}
-	}
-}
-
 // markdownTestServer receives one connection's messages in place of the flowmark server, records them, and writes the script's replies in order.
 type markdownTestServer struct {
 	ln               net.Listener
@@ -123,24 +92,6 @@ func TestMarkdownSessionMessages(t *testing.T) {
 	}
 	if got := <-s.receivedMessages; !reflect.DeepEqual(got, want) {
 		t.Fatalf("messages:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-	}
-}
-
-// TestMarkdownConnectRefused checks that the CONFIG the server answered to connect is an error of Connect.
-func TestMarkdownConnectRefused(t *testing.T) {
-	// Requirements: PRT-64.
-	testcase.Start(t, testcase.Compute)
-	s := startMarkdownTestServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
-	db, err := Connect(s.dsn(), Config{})
-	if err == nil {
-		testcase.Close(t, db)
-	}
-	var e *Error
-	if !errors.As(err, &e) || e.Code != CodeConfig || e.Msg != "connect: the token is not the corpus's token" {
-		t.Fatalf("Connect error = %v; want the server's CONFIG", err)
-	}
-	if got := <-s.receivedMessages; !reflect.DeepEqual(got, []string{connectLine}) {
-		t.Fatalf("messages = %q", got)
 	}
 }
 

@@ -6971,10 +6971,6 @@
     "exported": true,
     "signature": "receiver=*AccountProjectModel func() map[string]any"
   },
-  "packages/go/model/account_project.go::AccountProjectModel.TupleAccountSeqWithProjectSeq": {
-    "exported": true,
-    "signature": "receiver=*AccountProjectModel func(v0 []AccountProjectAccountSeqWithProjectSeq) *AccountProjectModel"
-  },
   "packages/go/model/account_project.go::AccountProjectModel.Update": {
     "exported": true,
     "signature": "receiver=*AccountProjectModel func(optimistic ...bool) (*AccountProjectModel, error)"

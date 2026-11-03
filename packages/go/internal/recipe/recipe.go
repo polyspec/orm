@@ -5,12 +5,16 @@
 package recipe
 
 import (
+	"bufio"
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,6 +31,7 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
 	"github.com/polyspec/orm/packages/go/orm"
+	_ "modernc.org/sqlite"
 )
 
 // None is the database part of a recipe without a database (FCV-3).
@@ -44,6 +49,9 @@ type recipeCase struct {
 
 type step struct {
 	Op      string                     `json:"op"`
+	GenSet  string                     `json:"document_set"`
+	Same    []string                   `json:"unchanged"`
+	Diff    []string                   `json:"changed"`
 	Keys    []collectionKey            `json:"keys"`
 	Styles  []string                   `json:"styles"`
 	Raw     json.RawMessage            `json:"raw"`
@@ -55,14 +63,21 @@ type step struct {
 	Answer  json.RawMessage            `json:"answer"`
 	Answers map[string]json.RawMessage `json:"answers"`
 	DSN     string                     `json:"dsn"`
+	Config  dsnConfig                  `json:"config"`
 	Schema  string                     `json:"schema"`
 	Input   json.RawMessage            `json:"input"`
-	Lines   []string                   `json:"lines"`
-	Plan    json.RawMessage            `json:"plan"`
-	Plans   []json.RawMessage          `json:"plans"`
-	Source  json.RawMessage            `json:"source"`
-	Target  json.RawMessage            `json:"target"`
-	Dialect string                     `json:"dialect"`
+	// AssembleTypes adds the output types of a compiled plan step to what a planner.compile step compares.
+	AssembleTypes bool `json:"assemble_types"`
+	// Names are the output names of a planner.columns step.
+	Names []string `json:"names"`
+	// ManifestHash is the hash an ir.validate request holds in place of the hash of the schema of the recipe.
+	ManifestHash string            `json:"manifest_hash"`
+	Lines        []string          `json:"lines"`
+	Plan         json.RawMessage   `json:"plan"`
+	Plans        []json.RawMessage `json:"plans"`
+	Source       json.RawMessage   `json:"source"`
+	Target       json.RawMessage   `json:"target"`
+	Dialect      string            `json:"dialect"`
 	// Documents and Document name the .dbs files of the dbspec ops, relative to the recipe file; Text is the lines of a document text.
 	Documents []string  `json:"documents"`
 	Document  string    `json:"document"`
@@ -79,6 +94,10 @@ type step struct {
 	// Name, Mermaid and SkeletonOf are the fields of dbspec.import_mermaid: the name of the imported document, its Mermaid
 	// text or a ref to an export, and the .dbs file whose skeleton the import must equal (FCV-4).
 	Name        string                     `json:"name"`
+	Corpus      string                     `json:"corpus"`
+	Token       string                     `json:"token"`
+	Reply       string                     `json:"reply"`
+	Received    string                     `json:"received"`
 	Mermaid     json.RawMessage            `json:"mermaid"`
 	SkeletonOf  string                     `json:"skeleton_of"`
 	Expect      map[string]json.RawMessage `json:"expect"`
@@ -89,6 +108,15 @@ type step struct {
 	Params      []json.RawMessage          `json:"params"`
 	Begin       json.RawMessage            `json:"begin"`
 	ProcessZone string                     `json:"process_zone"`
+	// SQL is the statements of dbspec.introspect_sqlite or dbspec.apply_fault.
+	SQL []string `json:"sql"`
+	// Call, AppliedFirst and FailCatalogRead are the fields of dbspec.apply_fault.
+	Call            string `json:"call"`
+	AppliedFirst    bool   `json:"applied_first"`
+	FailCatalogRead int    `json:"fail_catalog_read"`
+	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
+	Vectors string `json:"vectors"`
+	Case    string `json:"case"`
 	// Keyring is the keyring of keyring.versions, Calls the builder calls of markdown.builder (FCV-4).
 	Keyring *aesKeyringSpec `json:"keyring"`
 	Calls   []string        `json:"calls"`
@@ -229,12 +257,18 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	switch s.Op {
 	case "planner.compile":
 		return checkPlanner(o.dir, s, database)
+	case "ir.param_uses":
+		return checkParamUses(o.dir, s, database)
+	case "planner.columns":
+		return checkPlannerColumns(o.dir, s, database)
 	case "generator.generate":
 		return checkGenerator(t, o.dir, s, database)
+	case "generator.check":
+		return checkGeneratedFiles(o.dir, s)
 	case "dbspec.parse", "dbspec.parse_plan", "dbspec.emit_plan", "dbspec.diff", "dbspec.plan_steps", "dbspec.add_tables_steps", "dbspec.chain", "dbspec.compare":
 		return dbspecStep(s, bound, database)
 	case "dbspec.parse_emit", "dbspec.manifest", "dbspec.render", "dbspec.analyze", "dbspec.parse_positions", "dbspec.format",
-		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.read_file", "dbspec.read_bytes":
+		"dbspec.parse_set", "dbspec.set", "dbspec.load_set", "dbspec.runtime_model", "dbspec.read_file", "dbspec.read_bytes":
 		return checkDBSpec(s, o.dir, database)
 	case "dbspec.export_mermaid", "dbspec.import_mermaid":
 		got, err := mermaidStep(s, bound, o.dir)
@@ -251,7 +285,7 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		return checkMermaid(expect, got)
 	}
 	if s.Op == "ir.validate" {
-		return checkValidate(s.Expect[database], validate(model, s.Request))
+		return checkValidate(s.Expect[database], validate(model, s.Request, s.ManifestHash))
 	}
 	if s.Op == "ir.answer" {
 		return checkAnswer(t, s, database, o.irAnswer)
@@ -270,6 +304,15 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	}
 	if s.Op == "keyring.versions" {
 		return checkKeyring(s, database)
+	}
+	if s.Op == "dbspec.introspect_shown" {
+		return checkIntrospectShown(t, o.dir, s, database)
+	}
+	if s.Op == "dbspec.apply_fault" {
+		return checkApplyFault(t, s, bound, database)
+	}
+	if s.Op == "dbspec.introspect_sqlite" {
+		return checkIntrospectSQLite(t, s, database)
 	}
 	var r result
 	switch s.Op {
@@ -306,7 +349,10 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 		r.cell, r.err = orm.BlindIndex(value, key(s))
 	// dsn.connect (FCV-4): the DSN text of the step opened with Connect; a DSN that is refused never touches a database.
 	case "dsn.connect":
-		r.cell, r.err = connectDriver(s.DSN)
+		r.cell, r.err = connectDriver(s.DSN, s.Config)
+	// markdown.connect (FCV-4, PRT-64): Connect on a markdown DSN, whose listener answers the first line with the reply.
+	case "markdown.connect":
+		r.err = markdownConnect(s)
 	default:
 		return fmt.Errorf("OP_UNKNOWN %s", s.Op)
 	}
@@ -323,10 +369,80 @@ func run(t *testing.T, s step, bound map[string]result, database string, model *
 	return check(expect, r, s.Styles)
 }
 
+// dsnConfig is the config field of dsn.connect (FCV-4; CFG-4, CFG-5, CFG-6).
+type dsnConfig struct {
+	PoolSize           int  `json:"pool_size"`
+	PoolIdleSize       int  `json:"pool_idle_size"`
+	PoolLifetimeMs     int  `json:"pool_lifetime_ms"`
+	StatementTimeoutMs int  `json:"statement_timeout_ms"`
+	TLSVersion         bool `json:"tls_version"`
+}
+
+// sqliteFileName opens a SQLite DSN with the query on a new file called name, and returns the names in its directory
+// other than the journals of that file (dsn.sqlite_file, CFG-26).
+func sqliteFileName(name, query string) (string, error) {
+	directory, err := os.MkdirTemp("", "orm-recipe-sqlite-name-")
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = os.RemoveAll(directory) }()
+	_, refused := connectDriver("sqlite://"+filepath.Join(directory, name)+"?"+query, dsnConfig{})
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return "", err
+	}
+	if refused != nil {
+		if len(entries) != 0 {
+			return "", fmt.Errorf("a refused DSN left %d files in the directory: %v", len(entries), entries)
+		}
+		return "", refused
+	}
+	names := []string{}
+	for _, entry := range entries {
+		if !slices.Contains([]string{name + "-journal", name + "-shm", name + "-wal"}, entry.Name()) {
+			names = append(names, entry.Name())
+		}
+	}
+	return strings.Join(names, ","), nil
+}
+
+// markdownConnect runs the markdown.connect op: it returns the outcome of the connection, or an error with no code when the
+// listener did not receive the line of the step.
+func markdownConnect(s step) error {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = listener.Close() }()
+	received := make(chan string, 1)
+	go func() {
+		defer close(received)
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		line, _ := bufio.NewReader(conn).ReadString('\n')
+		_, _ = fmt.Fprintln(conn, s.Reply)
+		received <- strings.TrimRight(line, "\n")
+	}()
+	port := listener.Addr().(*net.TCPAddr).Port
+	_, connected := connectDriver(fmt.Sprintf("markdown://127.0.0.1:%d/%s?token=%s", port, s.Corpus, s.Token), dsnConfig{})
+	if got := <-received; got != s.Received {
+		return fmt.Errorf("the listener received %q, want %q", got, s.Received)
+	}
+	return connected
+}
+
 // connectDriver opens the DSN with Connect, runs SELECT 1 through the statement runner (INT-150), closes the connection
 // and returns its driver: the one implementation of dsn.connect (FCV-4).
-func connectDriver(dsn string) (string, error) {
-	db, err := orm.Connect(dsn, orm.Config{})
+func connectDriver(dsn string, config dsnConfig) (string, error) {
+	db, err := orm.Connect(dsn, orm.Config{
+		PoolSize:           config.PoolSize,
+		PoolIdleSize:       config.PoolIdleSize,
+		PoolLifetimeMs:     config.PoolLifetimeMs,
+		StatementTimeoutMs: config.StatementTimeoutMs,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -345,6 +461,23 @@ func connectDriver(dsn string) (string, error) {
 		}
 		if fmt.Sprint(cell) != "1" {
 			return fmt.Errorf("SELECT 1 on the connection of %s returned %v", driver, res.Rows)
+		}
+		if !config.TLSVersion {
+			return nil
+		}
+		status, err := f.Run(orm.KindUtility, nil, "SHOW SESSION STATUS LIKE 'Ssl_version'")
+		if err != nil {
+			return err
+		}
+		if len(status.Rows) != 1 || len(status.Rows[0]) != 2 {
+			return fmt.Errorf("Ssl_version on the connection of %s returned %v", driver, status.Rows)
+		}
+		version := status.Rows[0][1]
+		if text, isBytes := version.([]byte); isBytes {
+			version = string(text)
+		}
+		if got := fmt.Sprint(version); got != "TLSv1.2" && got != "TLSv1.3" {
+			return fmt.Errorf("the connection has Ssl_version %q, want TLSv1.2 or TLSv1.3", got)
 		}
 		return nil
 	})
@@ -365,8 +498,11 @@ func key(s step) string {
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value        json.RawMessage `json:"value"`
+		Error        string          `json:"error"`
+		MessageHolds string          `json:"message_holds"`
+		BytesPrefix  string          `json:"bytes_prefix_hex"`
+		BytesLength  int             `json:"bytes_length"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -375,10 +511,21 @@ func check(raw json.RawMessage, r result, styles []string) error {
 		if got := orm.ErrorCode(r.err); got != outcome.Error {
 			return fmt.Errorf("error %q (%w), want %s", got, r.err, outcome.Error)
 		}
+		if !strings.Contains(r.err.Error(), outcome.MessageHolds) {
+			return fmt.Errorf("error %q, want a message that holds %q", r.err, outcome.MessageHolds)
+		}
 		return nil
 	}
 	if r.err != nil {
 		return fmt.Errorf("unexpected error %w", r.err)
+	}
+	if outcome.BytesPrefix != "" {
+		// An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+		cell, isBytes := r.cell.([]byte)
+		if !isBytes || len(cell) != outcome.BytesLength || !strings.HasPrefix(hex.EncodeToString(cell), outcome.BytesPrefix) {
+			return fmt.Errorf("cell %#v, want bytes of length %d with the prefix %s", r.cell, outcome.BytesLength, outcome.BytesPrefix)
+		}
+		return nil
 	}
 	want, err := wrapper(outcome.Value)
 	if err != nil {
@@ -947,7 +1094,7 @@ func sameFloat(a, b string) bool {
 
 // validate passes a request of an ir.validate step to the validator of the protocol, with the manifest_hash of the schema
 // added (the request holds none), as the native vector test did. Its literal numbers are kept as their JSON text.
-func validate(m *runtimemodel.Model, raw json.RawMessage) error {
+func validate(m *runtimemodel.Model, raw json.RawMessage, manifestHash string) error {
 	if m == nil {
 		return fmt.Errorf("ir.validate needs the schema key of the recipe")
 	}
@@ -958,7 +1105,10 @@ func validate(m *runtimemodel.Model, raw json.RawMessage) error {
 	if _, ok := request["manifest_hash"]; ok {
 		return fmt.Errorf("request already holds manifest_hash")
 	}
-	hash, err := json.Marshal(m.ManifestHash)
+	if manifestHash == "" {
+		manifestHash = m.ManifestHash
+	}
+	hash, err := json.Marshal(manifestHash)
 	if err != nil {
 		return err
 	}
@@ -1056,6 +1206,8 @@ type plannerStatement struct {
 	SQL    string        `json:"sql"`
 	Slots  []plannerSlot `json:"slots"`
 	Tables []string      `json:"tables"`
+	// AssembleTypes is the type of each output column of the step, by name, when the step asks for it.
+	AssembleTypes map[string]string `json:"assemble_types,omitempty"`
 }
 
 // plannerSlot is the source and type of one bind slot. A param slot carries the request value's number, a parent slot
@@ -1071,11 +1223,132 @@ type plannerSlot struct {
 	// NotNull marks a param slot that assigns a non-null column.
 	NotNull  bool     `json:"not_null,omitempty"`
 	KeyTypes []string `json:"key_types,omitempty"`
+	// Name is the audit record table of an audit slot (PRT-32).
+	Name string `json:"name,omitempty"`
 }
 
 // checkPlanner compiles the request of a planner.compile step with the engine of each dialect, against the manifest of the
 // schema that the step names relative to dir, and compares the plans with the expect of database: {value: {mysql, postgres,
 // sqlite}} with the statements of each dialect, or {error: CODE}, which every dialect must fail with.
+// plannerRequest is the model of the schema of a planner step and the JSON of its input with the manifest_hash of that schema.
+func plannerRequest(dir string, s step) (*runtimemodel.Model, []byte, error) {
+	m, err := runtimemodel.LoadFiles(filepath.Join(dir, s.Schema))
+	if err != nil {
+		return nil, nil, err
+	}
+	var input map[string]json.RawMessage
+	if err := json.Unmarshal(s.Input, &input); err != nil {
+		return nil, nil, err
+	}
+	hash, err := json.Marshal(m.ManifestHash)
+	if err != nil {
+		return nil, nil, err
+	}
+	input["manifest_hash"] = hash
+	request, err := json.Marshal(input)
+	return m, request, err
+}
+
+// checkParamUses states the uses of each parameter of a validated request, the slot form that a markdown connection
+// reads for it (DIA-31, PRT-67): {uses: [[{type} or {type, assign, column, length, null, precision, scale}]]}.
+func checkParamUses(dir string, s step, database string) error {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+		return err
+	}
+	m, body, err := plannerRequest(dir, s)
+	if err != nil {
+		return err
+	}
+	request, err := ir.Decode(m, body)
+	if err != nil {
+		return err
+	}
+	uses, err := ir.ParamUses(m, request)
+	if err != nil {
+		return err
+	}
+	list := []any{}
+	for _, parameter := range uses {
+		entries := []any{}
+		for _, use := range parameter {
+			entry := map[string]any{"type": use.Type}
+			if f := use.Column; f != nil {
+				entry["column"], entry["length"], entry["null"], entry["precision"], entry["scale"] = f.Name, f.Length, f.Null, f.Precision, f.Scale
+				if use.Assign {
+					entry["assign"] = true
+				}
+			}
+			entries = append(entries, entry)
+		}
+		list = append(list, entries)
+	}
+	return sameJSON("ir.param_uses", map[string]any{"uses": list}, outcome.Value)
+}
+
+// checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan
+// of each dialect: their type and whether they are hidden (PRT-69, DIA-33).
+func checkPlannerColumns(dir string, s step, database string) error {
+	var outcome struct {
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &outcome); err != nil {
+		return err
+	}
+	m, request, err := plannerRequest(dir, s)
+	if err != nil {
+		return err
+	}
+	for _, dialect := range plannerDialects {
+		e, err := engine.New(m, dialect)
+		if err != nil {
+			return err
+		}
+		out, err := e.Compile(request)
+		if err != nil {
+			return fmt.Errorf("%s: %w", dialect, err)
+		}
+		var compiled plan.Plan
+		if err := json.Unmarshal(out, &compiled); err != nil {
+			return err
+		}
+		assemble := compiled.Steps[0].Assemble
+		got := []any{}
+		for _, name := range s.Names {
+			for _, column := range assemble.Columns {
+				if column.Name == name {
+					got = append(got, map[string]any{"name": name, "type": column.Type, "hidden": column.Hidden})
+				}
+			}
+		}
+		if err := sameJSON("planner.columns "+dialect, got, outcome.Value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sameJSON compares a value with the JSON of an expect, whatever the order of their keys.
+func sameJSON(what string, got any, want json.RawMessage) error {
+	body, err := json.Marshal(got)
+	if err != nil {
+		return err
+	}
+	var actual, expected any
+	if err := json.Unmarshal(body, &actual); err != nil {
+		return err
+	}
+	if err := json.Unmarshal(want, &expected); err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		return fmt.Errorf("%s: got %s, want %s", what, body, want)
+	}
+	return nil
+}
+
 func checkPlanner(dir string, s step, database string) error {
 	if database != None {
 		return fmt.Errorf("planner.compile runs without a database")
@@ -1141,6 +1414,14 @@ func checkPlanner(dir string, s step, database string) error {
 			return err
 		}
 		statements := plannerStatements(compiled)
+		if s.AssembleTypes {
+			for i, step := range compiled.Steps {
+				statements[i].AssembleTypes = map[string]string{}
+				for _, column := range step.Assemble.Columns {
+					statements[i].AssembleTypes[column.Name] = column.Type
+				}
+			}
+		}
 		got[dialect] = statements
 	}
 	body, err := json.Marshal(got)
@@ -1174,6 +1455,9 @@ func plannerStatements(compiled plan.Plan) []plannerStatement {
 				s.KeyTypes = slot.KeyTypes
 			default:
 				s.Type = slot.ColType
+			}
+			if slot.From == "audit" {
+				s.Name = slot.Name
 			}
 			if slot.ColType == "datetime" || slot.ColType == "time" {
 				precision := slot.Precision
@@ -1554,15 +1838,50 @@ func checkBuilder(t *testing.T, s step, database string, fn MarkdownBuilder) err
 		return fmt.Errorf("markdown.builder needs WithMarkdownBuilder")
 	}
 	var want struct {
-		Error           string `json:"error"`
-		MessageContains string `json:"message_contains"`
+		Error   string `json:"error"`
+		Message string `json:"message"`
 	}
 	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
 		return err
 	}
 	code, message := fn(t, s.Calls)
-	if code != want.Error || !strings.Contains(message, want.MessageContains) {
-		return fmt.Errorf("the terminal returned %q %q, want %q with %q", code, message, want.Error, want.MessageContains)
+	if code != want.Error || message != want.Message {
+		return fmt.Errorf("the terminal returned %q %q, want %q %q", code, message, want.Error, want.Message)
+	}
+	return nil
+}
+
+// checkIntrospectSQLite runs one dbspec.introspect_sqlite step: the statements on a memory SQLite connection of its own, then the
+// public Introspect, whose unsupported objects it compares with the expect of database (DIA-191).
+func checkIntrospectSQLite(t *testing.T, s step, database string) error {
+	var want struct {
+		Unsupported []dbspec.Unsupported `json:"unsupported"`
+	}
+	if err := json.Unmarshal(s.Expect[database], &want); err != nil {
+		return err
+	}
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close the memory SQLite connection: %v", err)
+		}
+	}()
+	db.SetMaxOpenConns(1)
+	ctx := context.Background()
+	for _, statement := range s.SQL {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	_, unsupported, err := dbspec.Introspect(ctx, db, dbspec.DialectSQLite, "introspected")
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(unsupported, want.Unsupported) {
+		return fmt.Errorf("unsupported objects = %+v, want %+v", unsupported, want.Unsupported)
 	}
 	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: CFG-1, CFG-2, CFG-10, CFG-12, CFG-19, CFG-20.
+// Requirements: CFG-1, CFG-2, CFG-10, CFG-12, CFG-19, CFG-20, CFG-37.
 func TestParseDSN(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	tests := []struct {
@@ -30,18 +30,6 @@ func TestParseDSN(t *testing.T) {
 				t.Fatalf("parseDSN() = %+v, %v; want %s %s %s", got, err, tt.driver, tt.native, tt.zone)
 			}
 		})
-	}
-}
-
-// TestSQLiteDSNRequiresAbsolutePath checks the local-file boundary without opening a database.
-// Requirements: CFG-26.
-func TestSQLiteDSNRequiresAbsolutePath(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	if _, err := parseDSN("sqlite://relative.sqlite", 0); err == nil {
-		t.Fatal("SQLite accepted a relative database path")
-	}
-	if _, err := parseDSN("sqlite:///tmp/orm-example.sqlite", 0); err != nil {
-		t.Fatalf("SQLite rejected an absolute database path: %v", err)
 	}
 }
 

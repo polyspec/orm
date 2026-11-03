@@ -43,38 +43,6 @@ async fn invalid_aes_configuration_fails_before_connection() {
     }
 }
 
-#[tokio::test]
-// The test of COD-8 (docs/spec).
-async fn aes_write_uses_key_of_current_version() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));
-    std::fs::create_dir_all(&tmp).unwrap();
-    let dsn = format!("sqlite://{}", tmp.join("aes-keys.sqlite").display());
-    let config = polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
-    let writer = Db::connect(&dsn, 2, config).await.unwrap();
-    writer.utils().schema().install(&SCHEMA).await.unwrap();
-    let mut row = connected(&writer);
-    row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
-    polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("create with aes_keys and aes_version: {e}"));
-    let reader = Db::connect_schema(&dsn, &SCHEMA, 2, polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() })
-        .await
-        .unwrap();
-    let mut q = connected(&reader);
-    q.core_mut().add_all_columns();
-    let rows = polyspec_orm::model::gets(&q).await.unwrap().into_vec();
-    match &rows[0].values["config"] {
-        Val::Ordered(v) => assert_eq!(v.compact(), r#"{"b":1,"a":[]}"#),
-        other => panic!("config is {other:?}"),
-    }
-    assert_eq!(rows[0].values["aes_key_version"].as_i64().unwrap(), 2, "stored version");
-    let conflict = polyspec_orm::Config { aes_key: "other-key".into(), aes_version: 1, aes_keys: keys(&[(1, "config-key-one")]), ..Default::default() };
-    match Db::connect(&dsn, 2, conflict).await {
-        Err(e) => assert!(e.code() == "CONFIG" && e.to_string().contains("aes_key"), "error {e}"),
-        Ok(_) => panic!("aes_key that differs from aes_keys[aes_version] was accepted"),
-    }
-    std::fs::remove_dir_all(&tmp).unwrap();
-}
-
 /// A row of one AES cell without its version decodes with the INTERNAL code under the assemble `asm`.
 fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);

@@ -367,7 +367,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const paths = list ? args.slice(1) : args;
   const changed = paths.length ? paths : changedPaths(root);
   const manifest = readFeatures(root);
-  const change = changed.includes('contracts/features.json') ? manifestChanges(headManifest(root), manifest) : undefined;
+  const change = changed.includes('contracts/features.json') ? manifestChanges(headManifest(root), parseFeatures(readFileSync(resolve(root, 'contracts/features.json'), 'utf8'), 'contracts/features.json')) : undefined;
   const owners = await selectOwners(manifest, root, changed, change);
   const helpers = await selectHelpers(manifest, root, changed, change);
   const declarations = readCheckInputs(root);

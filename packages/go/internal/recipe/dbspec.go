@@ -228,20 +228,25 @@ func checkDBSpec(s step, dir, database string) error {
 				Name     string `json:"name"`
 				External bool   `json:"external"`
 			} `json:"documents"`
-			Error string `json:"error"`
+			Error        string `json:"error"`
+			ManifestHash string `json:"manifest_hash"`
+			Rule         string `json:"rule"`
 		}
 		if err := json.Unmarshal(raw, &want); err != nil {
 			return err
 		}
 		model, invalid := runtimemodel.LoadSet(linesText(s.Owned), linesText(s.External))
 		if invalid != nil {
-			if invalid.Code() != want.Error {
+			if invalid.Code() != want.Error || (want.Rule != "" && !strings.Contains(invalid.Message(), want.Rule)) {
 				return fmt.Errorf("%v, want %+v", invalid, want)
 			}
 			return nil
 		}
 		if want.Error != "" {
 			return fmt.Errorf("the set loaded, want %s", want.Error)
+		}
+		if want.ManifestHash != "" && model.ManifestHash != want.ManifestHash {
+			return fmt.Errorf("manifest hash %s, want %s", model.ManifestHash, want.ManifestHash)
 		}
 		if len(model.Documents) != len(want.Documents) {
 			return fmt.Errorf("%d documents, want %d", len(model.Documents), len(want.Documents))
@@ -251,6 +256,35 @@ func checkDBSpec(s step, dir, database string) error {
 				return fmt.Errorf("documents[%d] = %s external %v, want %s external %v", i, d.Name, d.External, w.Name, w.External)
 			}
 		}
+	case "dbspec.runtime_model":
+		var want runtimeModelView
+		if err := json.Unmarshal(raw, &want); err != nil {
+			return err
+		}
+		read := func(paths []string) ([]string, error) {
+			texts := make([]string, len(paths))
+			for i, path := range paths {
+				text, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+				if err != nil {
+					return nil, err
+				}
+				texts[i] = string(text)
+			}
+			return texts, nil
+		}
+		owned, err := read(s.Documents)
+		if err != nil {
+			return err
+		}
+		external, err := read(s.External)
+		if err != nil {
+			return err
+		}
+		model, diagnostics := runtimemodel.LoadDocumentSet(owned, external)
+		if len(diagnostics) > 0 {
+			return errors.New(runtimemodel.DiagnosticsError(diagnostics))
+		}
+		return checkRuntimeModel(model, want)
 	case "dbspec.parse_set":
 		var want struct {
 			Documents []struct {
@@ -651,6 +685,96 @@ func sameDiagnostics(want []setDiagnostic, got []dbspec.Diagnostic) error {
 	for i := range want {
 		if string(got[i].Rule) != want[i].Rule || got[i].Line != want[i].Line || got[i].Column != want[i].Column {
 			return fmt.Errorf("diagnostics %v, want %v", got, want)
+		}
+	}
+	return nil
+}
+
+// runtimeModelView is the expect of a dbspec.runtime_model step (FCV-4): the entity names in order and, for the entities and
+// fields it names, the values it names.
+type runtimeModelView struct {
+	Entities []string `json:"entities"`
+	// ManifestText is the lines of the manifest text and ManifestHash its hash, when the expect names them.
+	ManifestText []string                  `json:"manifest_text"`
+	ManifestHash string                    `json:"manifest_hash"`
+	Models       map[string]map[string]any `json:"models"`
+}
+
+// checkRuntimeModel compares the runtime model with the values that want names.
+func checkRuntimeModel(m *runtimemodel.Model, want runtimeModelView) error {
+	if !slices.Equal(m.Order, want.Entities) {
+		return fmt.Errorf("entities %v, want %v", m.Order, want.Entities)
+	}
+	if want.ManifestText != nil && m.ManifestText != strings.Join(want.ManifestText, "\n")+"\n" {
+		return fmt.Errorf("manifest text %q, want %q", m.ManifestText, want.ManifestText)
+	}
+	if want.ManifestHash != "" && m.ManifestHash != want.ManifestHash {
+		return fmt.Errorf("manifest hash %s, want %s", m.ManifestHash, want.ManifestHash)
+	}
+	for name, values := range want.Models {
+		e := m.Entities[name]
+		if e == nil {
+			return fmt.Errorf("no entity %s", name)
+		}
+		column, record := "", ""
+		if e.Audit != nil {
+			column, record = e.Audit.Column, e.Audit.Record
+		}
+		got := map[string]any{"table": e.Table, "primary_key": e.PK, "identity": e.Identity, "updated": e.Updated,
+			"soft_delete": e.SoftDelete, "aes_version": e.AESVersion, "audit_column": column, "audit_record": record}
+		keys := []string{}
+		for _, u := range e.Uniques {
+			keys = append(keys, u.Name)
+		}
+		for name := range e.Indexes {
+			keys = append(keys, name)
+		}
+		slices.Sort(keys)
+		got["key_names"] = keys
+		fields := map[string]any{}
+		for _, f := range e.Fields {
+			fields[f.Name] = map[string]any{"type": f.Type, "nullable": f.Null, "default": f.Default, "default_now": f.DefaultNow, "select_explicit": f.SelectExplicit,
+				"codec": f.Codec, "blind_index": f.BlindIndex, "primary_key": f.PrimaryKey, "foreign_key": f.ForeignKey}
+		}
+		got["fields"] = fields
+		body, err := json.Marshal(got)
+		if err != nil {
+			return err
+		}
+		var actual map[string]any
+		if err := json.Unmarshal(body, &actual); err != nil {
+			return err
+		}
+		if err := namedValuesEqual(name, actual, values); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// namedValuesEqual compares the keys that want names, an object key by key and any other value as a whole; a nil list and an
+// empty list are the same list.
+func namedValuesEqual(path string, got, want map[string]any) error {
+	for key, w := range want {
+		g, ok := got[key]
+		if !ok {
+			return fmt.Errorf("%s has no %s", path, key)
+		}
+		if nested, ok := w.(map[string]any); ok {
+			inner, ok := g.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s.%s = %v, want an object", path, key, g)
+			}
+			if err := namedValuesEqual(path+"."+key, inner, nested); err != nil {
+				return err
+			}
+			continue
+		}
+		if list, ok := w.([]any); ok && len(list) == 0 && g == nil {
+			continue
+		}
+		if !reflect.DeepEqual(g, w) {
+			return fmt.Errorf("%s.%s = %v, want %v", path, key, g, w)
 		}
 	}
 	return nil

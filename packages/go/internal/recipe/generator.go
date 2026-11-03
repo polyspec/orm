@@ -8,6 +8,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -337,4 +338,87 @@ func camel(table string) string {
 		b.WriteString(string(runes))
 	}
 	return b.String()
+}
+
+// checkGeneratedFiles runs one generator.check step (FCV-4, DBS-175) through orm-gen gen --check of this module.
+func checkGeneratedFiles(dir string, s step) error {
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		return errors.New("generator.check: no source path")
+	}
+	module := filepath.Join(filepath.Dir(source), "..", "..")
+	set, err := filepath.Abs(filepath.Join(dir, s.GenSet))
+	if err != nil {
+		return err
+	}
+	work, err := os.MkdirTemp("", "orm-recipe-generator-check-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(work) }()
+	out := filepath.Join(work, "model")
+	gen := func(extra ...string) (string, int, error) {
+		args := append([]string{"run", "./cmd/orm-gen", "gen", "--lang", "go", "--set", set, "--out", out}, extra...)
+		command := exec.Command("go", args...)
+		command.Dir = module
+		// go run writes its own exit line to stderr, so the lines of the check are its stdout.
+		output, err := command.Output()
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			return string(output), exit.ExitCode(), nil
+		}
+		return string(output), 0, err
+	}
+	expect := func(lines []string, file string) error {
+		output, code, err := gen("--check")
+		if err != nil {
+			return err
+		}
+		want := ""
+		wantCode := 0
+		for _, line := range lines {
+			want += strings.ReplaceAll(line, "<file>", file) + "\n"
+			wantCode = 1
+		}
+		if output != want || code != wantCode {
+			return fmt.Errorf("generator.check: got exit %d %q, want exit %d %q", code, output, wantCode, want)
+		}
+		return nil
+	}
+	if output, code, err := gen(); err != nil || code != 0 {
+		return fmt.Errorf("generator.check: generate exit %d: %s: %w", code, output, err)
+	}
+	if err := expect(s.Same, ""); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		file := filepath.Join(out, entry.Name())
+		text, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || len(text) == 0 {
+			continue
+		}
+		text[0] ^= 1
+		if err := os.WriteFile(file, text, 0o600); err != nil {
+			return err
+		}
+		if err := expect(s.Diff, file); err != nil {
+			return err
+		}
+		after, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		if string(after) != string(text) {
+			return fmt.Errorf("generator.check: the check wrote %s", file)
+		}
+		return nil
+	}
+	return fmt.Errorf("generator.check: %s holds no generated file", out)
 }

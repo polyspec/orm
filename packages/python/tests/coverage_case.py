@@ -1,6 +1,7 @@
 # The shared base of the Python feature coverage tests (scripts/features/coverage.mts). The checker runs
 # `<python> -m <module> <case id>...`, and the standard output must be `CASE <id> [<database>] PASS` lines; coverage_main
 # runs exactly the requested test methods and CoverageCase.each_item prints those lines.
+import contextlib
 import io
 import os
 import sys
@@ -126,13 +127,13 @@ def feature_items(test: str):
     return items or [None]
 
 
-def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict]]:
-    """Runs statements on the database of a DSN through its native driver, outside the client under test, and
-    returns the rows of each statement as dicts in column order."""
+@contextlib.contextmanager
+def native_session(driver: str, dsn: str):
+    """Opens one connection on the database of a DSN through its native driver, outside the client under test, and
+    yields a function that runs a statement and returns its rows as dicts in column order."""
     from urllib.parse import parse_qsl, unquote, urlsplit
 
     url = urlsplit(dsn)
-    results = []
     if driver == "sqlite":
         import sqlite3
 
@@ -141,13 +142,10 @@ def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict
         # The foreign keys are enforced, as by node:sqlite, which the TypeScript runner uses.
         connection.execute("PRAGMA foreign_keys = ON")
         try:
-            for sql in statements:
-                results.append(
-                    [dict(row) for row in connection.execute(sql).fetchall()]
-                )
+            yield lambda sql: [dict(row) for row in connection.execute(sql).fetchall()]
         finally:
             connection.close()
-        return results
+        return
     parameters = dict(parse_qsl(url.query))
     if driver == "mysql":
         import pymysql
@@ -163,14 +161,17 @@ def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict
             autocommit=True,
             cursorclass=pymysql.cursors.DictCursor,
         )
+
+        def run_mysql(sql: str) -> list[dict]:
+            with connection.cursor() as cursor:
+                cursor.execute(sql)
+                return list(cursor.fetchall())
+
         try:
-            for sql in statements:
-                with connection.cursor() as cursor:
-                    cursor.execute(sql)
-                    results.append(list(cursor.fetchall()))
+            yield run_mysql
         finally:
             connection.close()
-        return results
+        return
     import psycopg
     from psycopg.rows import dict_row
 
@@ -183,13 +184,22 @@ def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict
         autocommit=True,
         row_factory=dict_row,
     )
+
+    def run_postgres(sql: str) -> list[dict]:
+        cursor = connection.execute(sql)
+        return list(cursor.fetchall()) if cursor.description else []
+
     try:
-        for sql in statements:
-            cursor = connection.execute(sql)
-            results.append(list(cursor.fetchall()) if cursor.description else [])
+        yield run_postgres
     finally:
         connection.close()
-    return results
+
+
+def native_query(driver: str, dsn: str, statements: list[str]) -> list[list[dict]]:
+    """Runs statements on the database of a DSN through its native driver, outside the client under test, and
+    returns the rows of each statement as dicts in column order."""
+    with native_session(driver, dsn) as run:
+        return [run(sql) for sql in statements]
 
 
 def table_exists(driver: str, dsn: str, table: str) -> bool:

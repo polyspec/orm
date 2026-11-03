@@ -2,7 +2,10 @@
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "SCH-12",
-    "DBS-156"
+    "DBS-156",
+    "DBS-100",
+    "DBS-103",
+    "DBS-99"
   ],
   "cases": [
     {
@@ -46,6 +49,117 @@
                   "external": true
                 }
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-reads-back-to-its-hash",
+      "requirements": [
+        "SCH-12",
+        "DBS-100",
+        "DBS-103"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 shop",
+            "",
+            "use core { account }",
+            "",
+            "table item {",
+            "  seq i64",
+            "  account_seq i64",
+            "  primary key (seq)",
+            "  index ix_item_account (account_seq)",
+            "  foreign key fk_item_account (account_seq) references account (seq) on delete restrict on update restrict",
+            "}"
+          ],
+          "external": [
+            "dbspec 1 core",
+            "",
+            "table account {",
+            "  seq i64",
+            "  primary key (seq)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "documents": [
+                {
+                  "name": "shop",
+                  "external": false
+                },
+                {
+                  "name": "core",
+                  "external": true
+                }
+              ],
+              "manifest_hash": "sha256:cac363fbc8f61f25ea189bb7e6a4b99a83c177e0bcdf8662461a465fb18ae7f1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-of-two-documents-reads-back",
+      "requirements": [
+        "SCH-12",
+        "DBS-100",
+        "DBS-103"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 accounts",
+            "",
+            "table tenant {",
+            "  id i64 identity",
+            "  name varchar(50)",
+            "  primary key (id)",
+            "}",
+            "dbspec 1 members",
+            "",
+            "use accounts { tenant }",
+            "",
+            "table member_row {",
+            "  id i64 identity",
+            "  tenant_id i64",
+            "  note text",
+            "  secret bytes null",
+            "  aes_key_version i32",
+            "  updated_at datetime(6) default now",
+            "  deleted_at datetime(6) null",
+            "  primary key (id)",
+            "  index ix_member_tenant (tenant_id)",
+            "  foreign key fk_member_tenant (tenant_id) references tenant (id) on delete restrict on update restrict",
+            "  settings {",
+            "    entity member",
+            "    updated updated_at",
+            "    soft_delete deleted_at",
+            "    select explicit aes_key_version",
+            "    codec secret ordered_json aes",
+            "    aes_version aes_key_version",
+            "  }",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "documents": [
+                {
+                  "name": "accounts",
+                  "external": false
+                },
+                {
+                  "name": "members",
+                  "external": false
+                }
+              ],
+              "manifest_hash": "sha256:2e217b76a2ae17adcc3afdae1ff64e41f32244e575f06d51c507fcf5ba65f652"
             }
           }
         }
@@ -103,7 +217,8 @@
           ],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID"
+              "error": "SCHEMA_INVALID",
+              "rule": "header"
             }
           }
         }
@@ -124,7 +239,8 @@
           "external": [],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID"
+              "error": "SCHEMA_INVALID",
+              "rule": "header"
             }
           }
         }
@@ -157,7 +273,8 @@
           ],
           "expect": {
             "none": {
-              "error": "SCHEMA_INVALID"
+              "error": "SCHEMA_INVALID",
+              "rule": "header"
             }
           }
         }
@@ -182,6 +299,60 @@
           "expect": {
             "none": {
               "error": "SCHEMA_INVALID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "manifest-text-with-a-repeated-document",
+      "requirements": [
+        "SCH-12",
+        "DBS-99"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [
+            "dbspec 1 accounts",
+            "",
+            "table tenant {",
+            "  id i64 identity",
+            "  name varchar(50)",
+            "  primary key (id)",
+            "}",
+            "dbspec 1 accounts",
+            "",
+            "table tenant {",
+            "  id i64 identity",
+            "  name varchar(50)",
+            "  primary key (id)",
+            "}"
+          ],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID",
+              "rule": "name.duplicate"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "empty-manifest-text",
+      "requirements": [
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.load_set",
+          "owned": [],
+          "external": [],
+          "expect": {
+            "none": {
+              "error": "SCHEMA_INVALID",
+              "rule": "header"
             }
           }
         }

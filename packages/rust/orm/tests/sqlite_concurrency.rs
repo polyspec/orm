@@ -92,18 +92,6 @@ async fn count(db: &Db) -> i64 {
 }
 
 #[tokio::test]
-// Requirements: CFG-19.
-async fn dsn_rejects_txlock() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
-    let path = std::env::temp_dir().join(format!("orm-rust-sqlite-txlock-{}.sqlite", std::process::id()));
-    for mode in ["immediate", "deferred"] {
-        let result = Db::connect(&format!("sqlite://{}?_txlock={mode}", path.display()), 1, polyspec_orm::Config::default()).await;
-        assert_eq!(result.err().map(|e| e.code().to_owned()).as_deref(), Some(polyspec_orm::codes::CONFIG), "_txlock={mode}");
-    }
-    assert!(!path.exists(), "a rejected DSN created the database file");
-}
-
-#[tokio::test]
 async fn writers_on_several_connections() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("connections").await;

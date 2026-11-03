@@ -2,7 +2,6 @@
 //! the connect and control messages sent to a fake server that records messages in place of a markdown DSN and the flowmark server,
 //! the interpretation of error lines, and the SQL-only surface that the markdown connection rejects. These are the same cases as Go's markdown_test.go.
 
-use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::{AesKeyring, Config, Core, Db, Isolation, Model, Schema, Val};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
@@ -35,35 +34,6 @@ impl Model for MarkdownUnsupportedModel {
     }
     fn value(&self, _: &str) -> Option<Val> {
         panic!("an unsupported Markdown AES operation must return before reading the model")
-    }
-}
-
-#[test]
-fn parse_markdown_dsn() {
-    // Requirements: PRT-63.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let parsed = parse_dsn(&format!("markdown://127.0.0.1:4100/tracker?token={TOKEN}")).unwrap();
-    assert_eq!(parsed.driver(), "markdown");
-    let ConnectOptions::Markdown(dsn) = &parsed.options else { panic!("markdown:// selected another database") };
-    assert_eq!((dsn.address.as_str(), dsn.corpus.as_str(), dsn.token.as_str()), ("127.0.0.1:4100", "tracker", TOKEN));
-    for input in [
-        "markdown://127.0.0.1:4100/tracker",
-        "markdown://127.0.0.1:4100/tracker?token=",
-        "markdown://127.0.0.1:4100/tracker?token=a&token=b",
-        "markdown://127.0.0.1:4100/tracker?token=a&mode=ro",
-        "markdown://127.0.0.1/tracker?token=a",
-        "markdown://127.0.0.1:0/tracker?token=a",
-        "markdown://127.0.0.1:port/tracker?token=a",
-        "markdown://localhost:4100/tracker?token=a",
-        "markdown://10.0.0.1:4100/tracker?token=a",
-        "markdown://user@127.0.0.1:4100/tracker?token=a",
-        "markdown://127.0.0.1:4100/?token=a",
-        "markdown://127.0.0.1:4100/a/b?token=a",
-    ] {
-        match parse_dsn(input) {
-            Err(error) => assert_eq!(error.code(), "CONFIG", "{input}: {error}"),
-            Ok(_) => panic!("{input} was accepted; want CONFIG"),
-        }
     }
 }
 
@@ -136,23 +106,6 @@ async fn markdown_session_messages() {
         r#"{"op":"commit"}"#,
     ];
     assert_eq!(server.received_messages.await.unwrap(), want);
-}
-
-/// Checks that the CONFIG the server answers to connect is connect's error.
-#[tokio::test]
-async fn markdown_connect_refused() {
-    // Requirements: PRT-64.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = start_markdown_test_server(&[r#"{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}"#]).await;
-    let error = match Db::connect(&server.dsn(), 1, Config::default()).await {
-        Ok(db) => {
-            db.close().await;
-            panic!("connect succeeded; want the server's CONFIG")
-        }
-        Err(error) => error,
-    };
-    assert_eq!((error.code(), error.to_string().as_str()), ("CONFIG", "CONFIG: connect: the token is not the corpus's token"));
-    assert_eq!(server.received_messages.await.unwrap(), [CONNECT_LINE]);
 }
 
 /// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md

@@ -34,13 +34,10 @@ type showCreateColumn struct {
 }
 
 type showCreateCase struct {
-	ID          string   `json:"id"`
-	Create      []string `json:"create"`
-	Name        string   `json:"name"`
-	Expected    string   `json:"expected"`
-	Checks      []string `json:"checks"`
-	Unsupported []string `json:"unsupported"`
-	Error       string   `json:"error"`
+	ID       string   `json:"id"`
+	Create   []string `json:"create"`
+	Name     string   `json:"name"`
+	Expected string   `json:"expected"`
 }
 
 // TestMySQLShownCheckVectors checks that mysqlShownCheck reads every case of tests/dbspec/show-create.json

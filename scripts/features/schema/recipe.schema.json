@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "orm recipe",
-  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects exactly mysql, postgres and sqlite; a recipe without one expects exactly none.",
+  "description": "The recipe format of docs/spec/feature-coverage.md (FCV-2 to FCV-4). A recipe with a fixture expects the databases that run the step: mysql, postgres and sqlite, or those of its only; a recipe without one expects exactly none.",
   "type": "object",
   "required": [
     "$schema",
@@ -80,7 +80,8 @@
                         "not": {
                           "enum": [
                             "model.connect",
-                            "sql.exec"
+                            "sql.exec",
+                            "dbspec.ddl_behavior"
                           ]
                         }
                       }
@@ -652,6 +653,23 @@
     "outcome": {
       "oneOf": [
         {
+          "description": "The form of an envelope with a random nonce: bytes of that length that start with that lowercase hex.",
+          "type": "object",
+          "required": [
+            "bytes_prefix_hex",
+            "bytes_length"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes_prefix_hex": {
+              "type": "string"
+            },
+            "bytes_length": {
+              "type": "integer"
+            }
+          }
+        },
+        {
           "type": "object",
           "required": [
             "value"
@@ -673,6 +691,14 @@
             "error": {
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cause": {
+              "type": "string",
+              "minLength": 1
             },
             "message_suffix": {
               "description": "The text that the message of the error ends with.",
@@ -719,15 +745,11 @@
       ]
     },
     "expect": {
-      "description": "The outcome of each database: exactly mysql, postgres and sqlite, or exactly none; the root selects which.",
+      "description": "The outcome of each database: the databases that run the step, or exactly none; the root selects which, and scripts/features/recipes.test.mts checks that the names are exactly those databases (FCV-4, FCV-10).",
       "oneOf": [
         {
           "type": "object",
-          "required": [
-            "mysql",
-            "postgres",
-            "sqlite"
-          ],
+          "minProperties": 1,
           "additionalProperties": false,
           "properties": {
             "mysql": {
@@ -764,7 +786,13 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "dsn.sqlite_file",
+            "markdown.connect",
             "keyring.versions",
+            "dbspec.introspect_sqlite",
+            "dbspec.apply_fault",
+            "dbspec.ddl_behavior",
+            "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
             "codec.decode",
@@ -777,6 +805,8 @@
             "query.search",
             "query.search_chain",
             "ir.validate",
+            "ir.param_uses",
+            "planner.columns",
             "ir.answer",
             "markdown.send",
             "model.assign",
@@ -791,6 +821,9 @@
             "catalog.delete_row",
             "schema.install",
             "schema.register",
+            "schema.empty",
+            "schema.exists",
+            "schema.installed",
             "schema.connect",
             "schema.add_tables_and_columns",
             "statements.count",
@@ -830,6 +863,7 @@
             "dbspec.parse_set",
             "dbspec.set",
             "dbspec.load_set",
+            "dbspec.runtime_model",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -839,16 +873,20 @@
             "catalog.row_cells",
             "model.read_bind_cell",
             "generator.generate",
+            "generator.check",
             "dbspec.export_mermaid",
             "dbspec.import_mermaid",
             "hook.install",
             "hook.records",
+            "transaction.attempts",
+            "transaction.deadlock",
             "utils.aes_rotate",
             "model.restore",
             "model.chain",
             "utils.lock",
             "utils.set_local",
             "utils.local",
+            "db.notify",
             "utils.was_inserted",
             "utils.backend_waiting_for_lock",
             "utils.groups"
@@ -860,7 +898,25 @@
           "$ref": "#/$defs/ops/dsn.connect"
         },
         {
+          "$ref": "#/$defs/ops/dsn.sqlite_file"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.connect"
+        },
+        {
           "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply_fault"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_shown"
         },
         {
           "$ref": "#/$defs/ops/markdown.builder"
@@ -906,6 +962,12 @@
         },
         {
           "$ref": "#/$defs/ops/ir.validate"
+        },
+        {
+          "$ref": "#/$defs/ops/ir.param_uses"
+        },
+        {
+          "$ref": "#/$defs/ops/planner.columns"
         },
         {
           "$ref": "#/$defs/ops/ir.answer"
@@ -975,6 +1037,15 @@
         },
         {
           "$ref": "#/$defs/ops/schema.register"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.empty"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.exists"
+        },
+        {
+          "$ref": "#/$defs/ops/schema.installed"
         },
         {
           "$ref": "#/$defs/ops/schema.connect"
@@ -1058,6 +1129,9 @@
           "$ref": "#/$defs/ops/dbspec.load_set"
         },
         {
+          "$ref": "#/$defs/ops/dbspec.runtime_model"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.read_file"
         },
         {
@@ -1085,6 +1159,9 @@
           "$ref": "#/$defs/ops/generator.generate"
         },
         {
+          "$ref": "#/$defs/ops/generator.check"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.export_mermaid"
         },
         {
@@ -1095,6 +1172,12 @@
         },
         {
           "$ref": "#/$defs/ops/hook.records"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.attempts"
+        },
+        {
+          "$ref": "#/$defs/ops/transaction.deadlock"
         },
         {
           "$ref": "#/$defs/ops/utils.aes_rotate"
@@ -1110,6 +1193,9 @@
         },
         {
           "$ref": "#/$defs/ops/utils.set_local"
+        },
+        {
+          "$ref": "#/$defs/ops/db.notify"
         },
         {
           "$ref": "#/$defs/ops/utils.local"
@@ -1234,6 +1320,116 @@
           }
         }
       },
+      "schema.empty": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.empty"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.exists": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.exists"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "schema.installed": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "table",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "schema.installed"
+          },
+          "schema": {
+            "description": "The schema name, or one for each database. The text $database is the name of the case database.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mysql",
+                  "postgres",
+                  "sqlite"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mysql": {
+                    "type": "string"
+                  },
+                  "postgres": {
+                    "type": "string"
+                  },
+                  "sqlite": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "table": {
+            "type": "string"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "schema.connect": {
         "type": "object",
         "required": [
@@ -1352,6 +1548,137 @@
           "read_only": {
             "description": "A read-only transaction; a nested transaction that names it is refused with CONFIG.",
             "type": "boolean"
+          },
+          "timeout_ms": {
+            "description": "The timeout of the transaction (INT-42); a nested transaction that names it is refused with CONFIG.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "default_retry": {
+            "description": "The transaction names no retry and takes the default of INT-43; without it and without retry the helper passes a retry of 0.",
+            "const": true
+          },
+          "conflicts": {
+            "description": "The first attempts that end with the public transaction conflict (INT-48) after their steps.",
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "transaction.attempts": {
+        "type": "object",
+        "required": [
+          "op",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.attempts",
+            "description": "The runs of the callback of the transaction step that ended last, whatever its outcome."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "transaction.deadlock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connections",
+          "model",
+          "rows",
+          "column",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "transaction.deadlock",
+            "description": "Two execution flows at read_committed with a retry of 3: flow i writes flow-<i> to column of rows[i], holds it until the other flow holds its row, then writes rows[1-i] (PLN-24)."
+          },
+          "connections": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/name"
+            }
+          },
+          "model": {
+            "$ref": "#/$defs/model"
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/$defs/columnValues"
+            }
+          },
+          "column": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "description": "attempts counts the callback runs of both flows, deadlocks the first attempts that ended with DEADLOCK, and same_flow holds when both rows hold the name of one flow.",
+            "type": "object",
+            "required": [
+              "mysql",
+              "postgres",
+              "sqlite"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "mysql": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "postgres": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              },
+              "sqlite": {
+                "$ref": "#/$defs/outcomes/deadlock"
+              }
+            }
+          }
+        }
+      },
+      "markdown.connect": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "reply", "received", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.connect" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "reply": { "type": "string", "description": "The line that a listener answers the first message with." },
+          "received": { "type": "string", "description": "The line that the listener must have received." },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "dsn.sqlite_file": {
+        "type": "object",
+        "required": [
+          "op",
+          "name",
+          "query",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dsn.sqlite_file"
+          },
+          "name": {
+            "type": "string",
+            "description": "The file name of the SQLite DSN in a new directory (CFG-26)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The query of the SQLite DSN."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },
@@ -1371,8 +1698,253 @@
             "type": "string",
             "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)."
           },
+          "query": {
+            "type": "string",
+            "description": "The parameters that dsn.connect adds to the DSN of the case database (FCV-4)."
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "description": "The connection configuration of dsn.connect, by the name of each field in Rust (CFG-4, CFG-5, CFG-6).",
+            "properties": {
+              "pool_size": { "type": "integer" },
+              "pool_idle_size": { "type": "integer" },
+              "pool_lifetime_ms": { "type": "integer" },
+              "statement_timeout_ms": { "type": "integer" },
+              "tls_version": { "const": true, "description": "The connection also reads its Ssl_version, which is TLSv1.2 or TLSv1.3 (CFG-16)." }
+            }
+          },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.apply_fault": {
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "type": "object",
+        "required": [
+          "op",
+          "plan",
+          "call",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply_fault"
+          },
+          "plan": {
+            "$ref": "#/$defs/ref"
+          },
+          "call": {
+            "enum": [
+              "apply",
+              "rollback"
+            ]
+          },
+          "applied_first": {
+            "const": true
+          },
+          "sql": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fail_catalog_read": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "verify",
+                      "drift"
+                    ]
+                  },
+                  "history_state": {
+                    "type": "string"
+                  },
+                  "absent_events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.ddl_behavior": {
+        "description": "On one native connection of the case database: the connection rules, the statements of the case for the database, then its behavior steps (DIA-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          }
+        }
+      },
+      "dbspec.introspect_shown": {
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_shown"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "checks",
+                      "unsupported"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "checks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "unsupported": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.introspect_sqlite": {
+        "type": "object",
+        "required": [
+          "op",
+          "sql",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_sqlite"
+          },
+          "sql": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "unsupported"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "unsupported": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "table",
+                        "name",
+                        "reason"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -1471,14 +2043,14 @@
                 "type": "object",
                 "required": [
                   "error",
-                  "message_contains"
+                  "message"
                 ],
                 "additionalProperties": false,
                 "properties": {
                   "error": {
                     "type": "string"
                   },
-                  "message_contains": {
+                  "message": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -1825,6 +2397,10 @@
             "type": "string",
             "pattern": "\\.dbs$",
             "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "assemble_types": {
+            "type": "boolean",
+            "description": "Adds the type of each output column of a plan step, by name, to the statements that the step compares."
           },
           "input": {
             "type": "object",
@@ -2337,6 +2913,68 @@
           }
         }
       },
+      "ir.param_uses": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "ir.param_uses"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "planner.columns": {
+        "type": "object",
+        "required": [
+          "op",
+          "schema",
+          "input",
+          "names",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "planner.columns"
+          },
+          "schema": {
+            "type": "string",
+            "pattern": "\\.dbs$",
+            "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "input": {
+            "type": "object",
+            "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The output names of the first statement whose columns the expect states."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "ir.validate": {
         "type": "object",
         "required": [
@@ -2348,6 +2986,10 @@
         "properties": {
           "op": {
             "const": "ir.validate"
+          },
+          "manifest_hash": {
+            "type": "string",
+            "description": "The hash the request holds in place of the hash of the schema of the recipe: a request of another manifest."
           },
           "request": {
             "type": "object",
@@ -2966,14 +3608,39 @@
         "type": "object",
         "required": [
           "op",
-          "connection",
           "model",
           "values"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "connection"
+            ],
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/name"
+              }
+            }
+          },
+          {
+            "required": [
+              "unconnected"
+            ],
+            "properties": {
+              "unconnected": {
+                "const": true
+              }
+            }
+          }
         ],
         "additionalProperties": false,
         "properties": {
           "op": {
             "const": "model.create"
+          },
+          "unconnected": {
+            "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+            "const": true
           },
           "connection": {
             "$ref": "#/$defs/name"
@@ -3612,6 +4279,33 @@
             "type": "object",
             "required": [
               "op",
+              "unconnected",
+              "model"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "op": {
+                "const": "model.count"
+              },
+              "unconnected": {
+                "description": "The model is built with no connection: it runs in the active transaction of the flow, or is refused with CONFIG (PLN-16).",
+                "const": true
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "where": {
+                "$ref": "#/$defs/predicate"
+              },
+              "expect": {
+                "$ref": "#/$defs/expect"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
               "connection",
               "model",
               "expect"
@@ -3698,7 +4392,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3741,7 +4439,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -3783,7 +4485,11 @@
             ],
             "additionalProperties": false,
             "properties": {
-              "op": {
+                            "ordered_text": {
+                "description": "The result is the text of the ordered-json value that the row holds in this column (DIA-26).",
+                "$ref": "#/$defs/name"
+              },
+"op": {
                 "const": "model.get_by"
               },
               "connection": {
@@ -4096,6 +4802,14 @@
                   "$ref": "#/$defs/name"
                 }
               },
+              "key_by": {
+                "description": "The column that keys the collection of the result (PRT-35).",
+                "$ref": "#/$defs/name"
+              },
+              "group_value": {
+                "description": "The result is Value of this name on the first group row of the count aggregate (INT-31).",
+                "$ref": "#/$defs/name"
+              },
               "order": {
                 "$ref": "#/$defs/orderList"
               },
@@ -4151,6 +4865,33 @@
               },
               "plan": {
                 "description": "The page is read by getPagePlanSteps (DSL-159): the role and tables of each step, with the counts of plan_count.",
+                "const": true
+              },
+              "plan_page": {
+                "description": "The page and size that plan passes as they are, refused values included, in place of those of limit; limit then belongs to the chain unless page is set.",
+                "type": "object",
+                "required": [
+                  "page",
+                  "per_page"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "page": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "per_page": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "plan_sql": {
+                "description": "Each step of plan also holds sql, the text of its statement.",
+                "const": true
+              },
+              "unconnected": {
+                "description": "The chain is built without connecting its model: connection then names nothing that runs.",
                 "const": true
               },
               "plan_count": {
@@ -4280,6 +5021,11 @@
           },
           "connection": {
             "$ref": "#/$defs/name"
+          },
+          "conflict": {
+            "description": "After its statements the function fails with the retryable DEADLOCK error of this message (INT-48).",
+            "type": "string",
+            "minLength": 1
           },
           "statements": {
             "type": "array",
@@ -4887,6 +5633,12 @@
                       }
                     }
                   },
+                  "rule": {
+                    "type": "string"
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
                   "error": {
                     "type": "string"
                   }
@@ -5105,6 +5857,78 @@
                     }
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.runtime_model": {
+        "type": "object",
+        "required": [
+          "op",
+          "documents",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.runtime_model"
+          },
+          "documents": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The documents of one set, relative to the recipe file."
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The external documents of the set, relative to the recipe file."
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "entities"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "manifest_text": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
+                  "entities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The entity names, in the order of DBS-111."
+                  },
+                  "models": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    },
+                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, select_explicit, codec, blind_index, primary_key and foreign_key."
+                  }
+                }
               }
             }
           }
@@ -5465,6 +6289,39 @@
             "minProperties": 1,
             "additionalProperties": {
               "$ref": "#/$defs/outcomes/value"
+            }
+          }
+        }
+      },
+      "generator.check": {
+        "type": "object",
+        "required": [
+          "op",
+          "document_set",
+          "unchanged",
+          "changed"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "generator.check"
+          },
+          "document_set": {
+            "type": "string",
+            "description": "The dbspec-set.json of the generation, relative to the recipe file."
+          },
+          "unchanged": {
+            "description": "The lines of the check of the files as generated.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "changed": {
+            "description": "The lines of the check after one byte of one generated file changed; <file> is that file as the runtime names it.",
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         }
@@ -6116,6 +6973,31 @@
           }
         }
       },
+      "db.notify": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "channel",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "db.notify"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "channel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload": {
+            "type": "string"
+          }
+        }
+      },
       "utils.set_local": {
         "type": "object",
         "required": [
@@ -6238,6 +7120,28 @@
       }
     },
     "outcomes": {
+      "deadlock": {
+        "type": "object",
+        "required": [
+          "attempts",
+          "deadlocks",
+          "same_flow"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "deadlocks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "same_flow": {
+            "type": "boolean"
+          }
+        }
+      },
       "count": {
         "oneOf": [
           {
@@ -6759,6 +7663,19 @@
       },
       "additionalProperties": {
         "oneOf": [
+          {
+            "description": "The styled value of its value (a column with a codec of a styled value).",
+            "type": "object",
+            "required": [
+              "styled"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "styled": {
+                "$ref": "#/$defs/value"
+              }
+            }
+          },
           {
             "$ref": "#/$defs/argument"
           },
@@ -7503,6 +8420,19 @@
         },
         "where": {
           "$ref": "#/$defs/predicate"
+        },
+        "columns": {
+          "$ref": "#/$defs/columnChoice"
+        },
+        "add_columns": {
+          "$ref": "#/$defs/columnList"
+        },
+        "order": {
+          "$ref": "#/$defs/orderList"
+        },
+        "force_index": {
+          "description": "The index that the joined table is read through (DSL-90).",
+          "$ref": "#/$defs/name"
         }
       }
     },
@@ -7581,7 +8511,9 @@
     "lockMode": {
       "enum": [
         "share",
-        "update"
+        "share_nowait",
+        "update",
+        "update_nowait"
       ]
     },
     "compileValue": {

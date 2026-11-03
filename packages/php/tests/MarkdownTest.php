@@ -6,8 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 /*
  * markdown IR executor unit case (docs/spec/protocol.md §5): the markdown DSN, the connect the client sends,
- * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown
- * connection refuses, and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
+ * the reading of control messages and error lines, the connect the server refuses, and the SQL-only surface that a markdown
+ * connection refuses.
  * The size of a class is Large, that of the largest case (a child process).
  * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
  * answers.
@@ -98,43 +98,6 @@ function markdown_test_server_received_messages(array $server): array
 #[Large]
 class MarkdownTest extends TestCase
 {
-    // Requirements: PRT-63.
-    public function testParseDsn(): void
-    {
-        $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
-        self::assertFalse(
-            $got !== ['127.0.0.1:4100', 'tracker', MARKDOWN_TOKEN],
-            'parseMarkdownDsn() = ' . json_encode($got)
-        );
-        foreach (
-            [
-            'markdown://127.0.0.1:4100/tracker',
-            'markdown://127.0.0.1:4100/tracker?token=',
-            'markdown://127.0.0.1:4100/tracker?token=a&token=b',
-            'markdown://127.0.0.1:4100/tracker?token=a&mode=ro',
-            'markdown://127.0.0.1/tracker?token=a',
-            'markdown://127.0.0.1:0/tracker?token=a',
-            'markdown://127.0.0.1:port/tracker?token=a',
-            'markdown://localhost:4100/tracker?token=a',
-            'markdown://10.0.0.1:4100/tracker?token=a',
-            'markdown://user@127.0.0.1:4100/tracker?token=a',
-            'markdown://127.0.0.1:4100/?token=a',
-            'markdown://127.0.0.1:4100/a/b?token=a',
-            ] as $input
-        ) {
-            $e = markdown_error(static fn() => Orm::parseMarkdownDsn($input));
-            self::assertFalse(
-                $e?->code_ !== Code::CONFIG,
-                "parseMarkdownDsn($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
-            );
-            $e = markdown_error(static fn() => Orm::connect($input, new Config()));
-            self::assertFalse(
-                $e?->code_ !== Code::CONFIG,
-                "connect($input) = " . ($e?->getMessage() ?? 'no error') . '; want CONFIG'
-            );
-        }
-    }
-
     // Requirements: PRT-64.
     public function testSessionMessages(): void
     {
@@ -170,23 +133,6 @@ class MarkdownTest extends TestCase
         self::assertFalse(
             ($got = markdown_test_server_received_messages($server)) !== $want,
             "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want)
-        );
-    }
-
-    // Requirements: PRT-64.
-    public function testConnectRefused(): void
-    {
-        $server = start_markdown_test_server(
-            ['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']
-        );
-        $e = markdown_error(static fn() => Orm::connect($server[2], new Config())->close());
-        self::assertFalse(
-            $e?->code_ !== Code::CONFIG || $e->getMessage() !== "CONFIG: connect: the token is not the corpus's token",
-            'connect error = ' . ($e?->getMessage() ?? 'none') . "; want the server's CONFIG"
-        );
-        self::assertFalse(
-            ($got = markdown_test_server_received_messages($server)) !== [MARKDOWN_CONNECT_LINE],
-            'messages = ' . json_encode($got)
         );
     }
 
@@ -320,106 +266,6 @@ class MarkdownTest extends TestCase
                     "{$c['name']}: " . ($e?->getMessage() ?? '') . '; want it bound'
                 );
             }
-        }
-    }
-
-    // Requirements: DIA-31, PRT-67.
-    public function testParamUses(): void
-    {
-        $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params
-
-        table owners {
-          id varchar(16)
-          name varchar(32)
-          primary key (id)
-        }
-
-        table notes {
-          id i64 identity
-          owner varchar(16)
-          title varchar(64)
-          born date null
-          at datetime(3)
-          version datetime(6) null
-          primary key (id)
-          index ix_notes_owner (owner)
-          foreign key fk_notes_owner (owner) references owners (id)
-        }
-        ']));
-        $validator = new Validator($model);
-        /** Each use of paramUses reduced to [type, column name]. */
-        $usesOf = static fn(array $uses): array => array_map(
-            static fn(array $list): array => array_map(
-                static fn(array $u): array => [$u['type'], $u['column']['name'] ?? ''],
-                $list
-            ),
-            $uses,
-        );
-        $base = ['ir_version' => 1, 'manifest_hash' => $model->manifestHash];
-        $requests = [
-            'read' => [$base + ['kind' => 'all', 'entity' => 'notes',
-                'where' => ['items' => [
-                    ['pred' => ['column' => 'title', 'op' => 'eq', 'p' => 0]],
-                    ['pred' => ['conn' => 'and', 'column' => 'born', 'op' => 'between', 'ps' => [1, 2]]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'year'], 'p' => 3]],
-                    [
-                        'pred' => [
-                            'conn' => 'and',
-                            'column' => 'at',
-                            'op' => 'gt',
-                            'value' => ['name' => 'days_ago', 'ps' => [4]]
-                        ]
-                    ],
-                    ['pred' => ['conn' => 'and', 'column' => 'title', 'op' => 'contains', 'p' => 5]],
-                    ['pred' => ['conn' => 'and', 'column' => 'at', 'op' => 'eq', 'fn' => ['name' => 'date'], 'p' => 6]],
-                    [
-                        'pred' => [
-                            'conn' => 'and',
-                            'column' => 'at',
-                            'op' => 'lt',
-                            'value' => ['name' => 'seconds_later', 'ps' => [7]]
-                        ]
-                    ],
-                ]],
-                'relations' => [['rel' => 'owner_model', 'kind' => 'one', 'keys' => [
-                    ['left' => 'owner', 'right' => 'id']
-                ],
-                    'query' => ['entity' => 'owners', 'if_parent' => ['column' => 'title', 'p' => 8]]]],
-                'n_params' => 9], [
-                [['varchar', 'title']],
-                [['date', 'born']],
-                [['date', 'born']],
-                [['i64', '']],
-                [['i32', '']],
-                [['text', '']],
-                [['date', '']],
-                [['f64', '']],
-                [['varchar', 'title']],
-            ]],
-            'insert' => [$base + ['kind' => 'insert', 'entity' => 'notes',
-                'set' => [
-                    ['column' => 'owner', 'p' => 0],
-                    ['column' => 'title', 'p' => 1],
-                    ['column' => 'at', 'p' => 2]
-                ],
-                'rows' => [[3, 4, 5], [6, 7, 8]], 'n_params' => 9], [
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
-            ]],
-            'update' => [$base + ['kind' => 'update', 'entity' => 'notes',
-                'where' => ['items' => [['pred' => ['column' => 'id', 'op' => 'eq', 'p' => 0]]]],
-                'set' => [['column' => 'title', 'p' => 1]],
-                'optimistic' => ['column' => 'version', 'p' => 2], 'n_params' => 3], [
-                [['i64', 'id']], [['varchar', 'title']], [['datetime', 'version']],
-            ]],
-        ];
-        foreach ($requests as $name => [$request, $want]) {
-            $validator->validate($request);
-            self::assertFalse(
-                ($got = $usesOf($validator->paramUses($request))) !== $want,
-                "$name uses = " . json_encode($got) . "\nwant " . json_encode($want)
-            );
         }
     }
 }
