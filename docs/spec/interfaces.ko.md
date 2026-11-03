@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 8e1d72beaa1e2fc4852817d5bbb6ef44c4fedaba012e9d8abfb47529cb9d2b6c -->
+<!-- source-sha256: c28eee5c66bba37af7dd25e8faadd58993d4cbe5d8edb51a0ab17a77062b0463 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -567,7 +567,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
 - **INT-122** `polyspec-orm-build` Rust 도구는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
-- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
+- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다. 할당이 없는 insert는 기본값만으로 행을 쓰고 생성된 키를 돌려주며, 모든 dialect에서 같다.
 - **INT-124** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘으면 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** `polyspec-orm-build` crate의 Rust `tool_db` 범위가 있는 질의는 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** `polyspec-orm-build` crate의 Rust `tool_db` 질의 결과는 statement 열을 순서대로 네이티브 타입과 함께 나열하며 중복 이름을 포함하고, 행이 없어도 그 열을 유지한다.

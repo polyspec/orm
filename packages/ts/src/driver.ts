@@ -367,7 +367,8 @@ async function mysqlControl(connection: MySqlConnection, sql: string, params: re
   const [value, fields] = await connection.query({ sql, rowsAsArray: true }, [...params]);
   const columns = (fields ?? []).map(mysqlColumn);
   if (Array.isArray(value)) return { rows: arrayRows(value), affected: 0, insertId: null, columns };
-  return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null, columns };
+  const result = value as { affectedRows: number; insertId: number };
+  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null, columns };
 }
 
 /** Streams the rows of one MySQL statement. A row that sink refuses ends the statement; the connection is then discarded by its caller. */

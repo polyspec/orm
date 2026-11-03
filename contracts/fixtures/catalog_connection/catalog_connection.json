@@ -14988,6 +14988,771 @@
           }
         }
       ]
+    },
+    {
+      "id": "generated_key_lifecycle",
+      "requirements": [
+        "DBS-113",
+        "INT-34"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE key_lifecycle (seq BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, n BIGINT NOT NULL DEFAULT 7 UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE key_lifecycle (seq BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, n BIGINT NOT NULL DEFAULT 7 UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)",
+            "sqlite": "CREATE TABLE key_lifecycle (seq INTEGER PRIMARY KEY AUTOINCREMENT, n BIGINT NOT NULL DEFAULT 7 UNIQUE, g BIGINT GENERATED ALWAYS AS (n + 1) STORED)"
+          },
+          "reason": "an identity key beside a column default and a generated column"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "key_lifecycle",
+          "as": "key",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true,
+              "nullable": [
+                false,
+                false,
+                true
+              ],
+              "generated": [
+                false,
+                false,
+                true
+              ],
+              "automatic_keys": [
+                true,
+                false,
+                false
+              ],
+              "defaults": [
+                false,
+                true,
+                false
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true,
+              "nullable": [
+                false,
+                false,
+                true
+              ],
+              "generated": [
+                true,
+                false,
+                true
+              ],
+              "automatic_keys": [
+                true,
+                false,
+                false
+              ],
+              "defaults": [
+                false,
+                true,
+                false
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true,
+              "nullable": [
+                false,
+                false,
+                true
+              ],
+              "generated": [
+                false,
+                false,
+                true
+              ],
+              "automatic_keys": [
+                true,
+                false,
+                false
+              ],
+              "defaults": [
+                false,
+                true,
+                false
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "10"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "key_lifecycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "20"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "30"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "key"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "int": "20"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "DUPLICATE_KEY"
+            },
+            "postgres": {
+              "error": "DUPLICATE_KEY"
+            },
+            "sqlite": {
+              "error": "DUPLICATE_KEY"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "key_lifecycle",
+          "limit": 10,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "n",
+            "g"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n",
+                "g"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "10"
+                  },
+                  {
+                    "int": "11"
+                  }
+                ],
+                [
+                  {
+                    "int": "2"
+                  },
+                  {
+                    "int": "20"
+                  },
+                  {
+                    "int": "21"
+                  }
+                ],
+                [
+                  {
+                    "int": "3"
+                  },
+                  {
+                    "int": "30"
+                  },
+                  {
+                    "int": "31"
+                  }
+                ],
+                [
+                  {
+                    "int": "4"
+                  },
+                  {
+                    "int": "7"
+                  },
+                  {
+                    "int": "8"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": {
+            "mysql": "CREATE TABLE key_expression (seq VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE) ENGINE=InnoDB",
+            "postgres": "CREATE TABLE key_expression (seq VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE)",
+            "sqlite": "CREATE TABLE key_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower('KEY-1')), n BIGINT NOT NULL UNIQUE)"
+          },
+          "reason": "an expression default of a key, for a value of the wrong type beside it"
+        },
+        {
+          "op": "catalog.describe_table",
+          "table": "key_expression",
+          "as": "expression",
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "primary_key": [
+                "seq"
+              ],
+              "reliable_row_identity": true
+            }
+          }
+        },
+        {
+          "op": "catalog.insert_row",
+          "metadata": {
+            "ref": "expression"
+          },
+          "values": [
+            [
+              "n",
+              {
+                "text": "3"
+              }
+            ]
+          ],
+          "expect": {
+            "mysql": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "postgres": {
+              "error": "ROW_WRITE_MISMATCH"
+            },
+            "sqlite": {
+              "error": "ROW_WRITE_MISMATCH"
+            }
+          }
+        },
+        {
+          "op": "catalog.table_page",
+          "table": "key_expression",
+          "limit": 2,
+          "offset": 0,
+          "columns": [
+            "seq",
+            "n"
+          ],
+          "expect": {
+            "mysql": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "postgres": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            },
+            "sqlite": {
+              "columns": [
+                "seq",
+                "n"
+              ],
+              "order_by": [
+                "seq"
+              ],
+              "has_more": false,
+              "rows": []
+            }
+          }
+        }
+      ]
     }
   ]
 }

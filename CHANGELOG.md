@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
 - CR15-F: the shared row mutation outcomes (conflict, unique, coercion, generated column, schema change, foreign key, insert forms) are the recipe case `row_mutation_lifecycle`; the Rust test keeps only the phases, cancellation and dropped commit of INT-106a.
 - Tests: the finalization of a chain is held by the `dbspec_apply` recipe in every runtime, with a new case for a plan that hides nothing: its finalize event comes while the row is `applied`, no statement runs and the row becomes `done`; the Go `TestFinalizeMarksPlanDone` is gone.
 - Docs: FCV-2 states each public-surface unit of `interface_contract` with its own native reason, in the form the native-binding rule reads.
