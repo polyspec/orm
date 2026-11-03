@@ -188,7 +188,7 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   assert.ok(owner);
   assert.equal(testDirectoryOf('php-extension'), 'packages/php-ext');
   assert.deepEqual(checkSampleCoverage(manifest, reports), []);
-  owner.tests = ['packages/php/tests/CoverageCatalogConnectionTest.php'];
+  owner.tests = ['packages/php/tests/CatalogConnectionRecipeTest.php'];
   assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
   const extensionTest = ownerTests['php-extension'];
   assert.ok(extensionTest);

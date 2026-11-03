@@ -2251,6 +2251,11 @@
             "description": "The database must refuse the statement; the step fails when it succeeds. A driver error of any code passes.",
             "const": true
           },
+          "refused_message": {
+            "description": "With refused: the text that the error message of the driver holds, compared in lower case, so that a refusal for another reason fails the step.",
+            "type": "string",
+            "minLength": 1
+          },
           "sql": {
             "$ref": "#/$defs/sql"
           },
@@ -2482,6 +2487,10 @@
                 "items": {
                   "$ref": "#/$defs/name"
                 }
+              },
+              "column_name": {
+                "description": "The name that replaces the name of the first column of the descriptor of the page.",
+                "type": "string"
               }
             }
           },
@@ -5378,6 +5387,10 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_suffix": {
+                "description": "The text that the error message ends with.",
+                "type": "string"
               }
             }
           }

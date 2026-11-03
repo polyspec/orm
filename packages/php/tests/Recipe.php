@@ -14,6 +14,7 @@ use Polyspec\OrderedJson\Value as OrderedJson;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogColumn;
 use Polyspec\Orm\CatalogGridCell;
 use Polyspec\Orm\CatalogResult;
 use Polyspec\Orm\CatalogTablePage;
@@ -2027,6 +2028,34 @@ final class Recipe
                         $s['page_with']['order_by'],
                         $page->hasMore,
                     );
+                    if (isset($s['page_with']['column_name'])) {
+                        $columns = $page->metadata->columns;
+                        $first = $columns[0];
+                        $columns[0] = new CatalogColumn(
+                            $s['page_with']['column_name'],
+                            $first->nativeType,
+                            $first->nullable,
+                            $first->generated,
+                            $first->automaticKey,
+                            $first->defaultExpression,
+                            $first->expressionDefault,
+                            $first->checkPrecision,
+                        );
+                        $page = new CatalogTablePage(
+                            new CatalogTableMetadata(
+                                $page->metadata->table,
+                                $page->metadata->kind,
+                                $columns,
+                                $page->metadata->primaryKey,
+                                $page->metadata->reliableRowIdentity,
+                            ),
+                            $page->result,
+                            $page->limit,
+                            $page->offset,
+                            $page->orderBy,
+                            $page->hasMore,
+                        );
+                    }
                 }
                 $snapshot = $catalog->rowSnapshotFromPage($page, $s['index']);
                 $types = array_map(static fn ($column): ?string => $column->nativeType, $snapshot->metadata->columns);
@@ -2159,8 +2188,11 @@ final class Recipe
                     }
                     try {
                         $pdo->exec($statement);
-                    } catch (\PDOException) {
-                        // Any driver error of the refused statement passes.
+                    } catch (\PDOException $error) {
+                        // Any driver error of the refused statement passes, unless the step names its text.
+                        if (isset($s['refused_message'])) {
+                            Assert::assertStringContainsString($s['refused_message'], strtolower($error->getMessage()));
+                        }
                         return [];
                     }
                     throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");

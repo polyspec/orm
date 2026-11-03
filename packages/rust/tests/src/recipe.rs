@@ -2529,6 +2529,9 @@ mod database {
                         let Bound::Page(page, _) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                         let mut page = page.clone();
                         page.order_by = strings(&with["order_by"]).map_err(fault)?;
+                        if let Some(name) = with["column_name"].as_str() {
+                            page.metadata.columns[0].name = name.to_owned();
+                        }
                         Some(page)
                     }
                     None => None,
@@ -2587,8 +2590,14 @@ mod database {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
                     if step["refused"].as_bool() == Some(true) {
-                        if done.is_ok() {
-                            return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}")));
+                        match done {
+                            Ok(_) => return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}"))),
+                            Err(error) => {
+                                let text = step["refused_message"].as_str().unwrap_or_default();
+                                if !error.to_lowercase().contains(text) {
+                                    return Err(fault(format!("the database refused the statement for another reason: {error}")));
+                                }
+                            }
                         }
                     } else {
                         done.map_err(Failure::Call)?;

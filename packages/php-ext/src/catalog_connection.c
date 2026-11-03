@@ -635,6 +635,24 @@ static void cat_check_name(zend_string *name)
     }
 }
 
+/* Throws ROW_SNAPSHOT_INVALID for a name of a descriptor that is not valid, with the TABLE_REFERENCE_INVALID of that name as its
+ * message and its previous (INT-109), as the PHP library does. */
+static void cat_throw_descriptor_name(void)
+{
+    zval cause;
+    zend_string *reason = zend_string_init("expected 1..1024 UTF-8 bytes without NUL", sizeof("expected 1..1024 UTF-8 bytes without NUL") - 1, 0);
+    bool built = orm_exception_object(NULL, "TABLE_REFERENCE_INVALID", reason, &cause);
+    zend_string_release(reason);
+    if (!built) {
+        return;
+    }
+    zend_string *message = zend_string_init(
+        "invalid original row or descriptor: TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL",
+        sizeof("invalid original row or descriptor: TABLE_REFERENCE_INVALID: expected 1..1024 UTF-8 bytes without NUL") - 1, 0);
+    orm_throw_exception_previous("ROW_SNAPSHOT_INVALID", message, Z_OBJ(cause));
+    zend_string_release(message);
+}
+
 /* The text of a metadata value, or TABLE_METADATA_INVALID (Catalog::text). */
 static zend_string *cat_text(zval *v)
 {
@@ -1514,7 +1532,7 @@ static bool cat_descriptor_keys(zval *metadata, zval *out)
         zval crv, *name = catalog_prop(column, "name", &crv);
         if (!cat_name_ok(Z_STR_P(name))) {
             zval_ptr_dtor(out);
-            db_throw_orm("ROW_SNAPSHOT_INVALID", "invalid original row or descriptor: expected 1..1024 UTF-8 bytes without NUL");
+            cat_throw_descriptor_name();
             return false;
         }
     } ZEND_HASH_FOREACH_END();
@@ -4536,7 +4554,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, rowSnapshotFromPage)
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
     if (ns == NULL || tname == NULL || Z_TYPE_P(ns) != IS_STRING || Z_TYPE_P(tname) != IS_STRING
         || !cat_name_ok(Z_STR_P(ns)) || !cat_name_ok(Z_STR_P(tname))) {
-        db_throw_orm("ROW_SNAPSHOT_INVALID", "invalid original row or descriptor: expected 1..1024 UTF-8 bytes without NUL");
+        cat_throw_descriptor_name();
         return;
     }
     if (limit < 1 || limit > 1000 || offset < 0 || offset > 1000000) {

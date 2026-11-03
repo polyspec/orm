@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The last catalog_connection coverage tests of the six runtimes are gone: the recipe cases temporal_precision_limit, row_character_capacity, descriptor_column_name, missing_row_conflict, catalog_close_twice and deferred_foreign_key_at_commit hold what they asserted on the three databases. A descriptor with an invalid column name now fails with ROW_SNAPSHOT_INVALID and the cause in its message in Python and the PHP extension, and a second close of a TypeScript catalog does nothing.
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.

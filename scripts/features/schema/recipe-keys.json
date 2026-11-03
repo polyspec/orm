@@ -73,6 +73,7 @@
       "op",
       "reason",
       "refused",
+      "refused_message",
       "sql"
     ],
     "query.search": [
