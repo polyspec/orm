@@ -321,13 +321,16 @@
           },
           "expect": {
             "mysql": {
-              "error": "FOREIGN_KEY"
+              "error": "FOREIGN_KEY",
+              "driver_cause": true
             },
             "postgres": {
-              "error": "FOREIGN_KEY"
+              "error": "FOREIGN_KEY",
+              "driver_cause": true
             },
             "sqlite": {
-              "error": "FOREIGN_KEY"
+              "error": "FOREIGN_KEY",
+              "driver_cause": true
             }
           }
         },
@@ -443,13 +446,19 @@
           },
           "expect": {
             "mysql": {
-              "error": "CONSTRAINT"
+              "error": "CONSTRAINT",
+              "message_holds": "ck_author_counts",
+              "driver_cause": true
             },
             "postgres": {
-              "error": "CONSTRAINT"
+              "error": "CONSTRAINT",
+              "message_holds": "ck_author_counts",
+              "driver_cause": true
             },
             "sqlite": {
-              "error": "CONSTRAINT"
+              "error": "CONSTRAINT",
+              "message_holds": "ck_author_counts",
+              "driver_cause": true
             }
           }
         },
@@ -469,13 +478,19 @@
           },
           "expect": {
             "mysql": {
-              "error": "DUPLICATE_KEY"
+              "error": "DUPLICATE_KEY",
+              "message_holds": "uq_author_uuid",
+              "driver_cause": true
             },
             "postgres": {
-              "error": "DUPLICATE_KEY"
+              "error": "DUPLICATE_KEY",
+              "message_holds": "uq_author_uuid",
+              "driver_cause": true
             },
             "sqlite": {
-              "error": "DUPLICATE_KEY"
+              "error": "DUPLICATE_KEY",
+              "message_holds": "(SQLITE_CONSTRAINT_UNIQUE)",
+              "driver_cause": true
             }
           }
         },

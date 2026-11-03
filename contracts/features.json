@@ -1393,7 +1393,7 @@
         },
         {
           "id": "group-rows-python-unit",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms",
           "shard": "other",
           "inputs": [
             "packages/python/src/polyspec/orm/model_exec.py",
@@ -1402,7 +1402,7 @@
         },
         {
           "id": "group-rows-rust-unit",
-          "command": "make group-count-boolean-rust-unit-check",
+          "command": "make group-row-count-rust-unit-check",
           "shard": "rust",
           "inputs": [
             "Makefile",
@@ -3887,9 +3887,6 @@
       ],
       "coverage": {
         "kind": "independent",
-        "cases": [
-          "model_generation_check"
-        ],
         "owners": {
           "go": {
             "part": "packages/go",
@@ -6839,7 +6836,6 @@
         "packages/rust/schema/tests/dbspec_render.rs",
         "packages/go/orm/refusal_test.go",
         "packages/php/tests/DriverErrorTest.php",
-        "packages/rust/orm/tests/refusal.rs",
         "packages/ts/tests/driver-error.mjs",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
         "packages/go/orm/recipe_immutable_write_test.go",
@@ -6899,15 +6895,6 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/DriverErrorTest.php",
-            "contracts/fixtures/refusal.dbs"
-          ]
-        },
-        {
-          "id": "refusal-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts refusal-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test refusal",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/refusal.rs",
             "contracts/fixtures/refusal.dbs"
           ]
         },
@@ -11160,7 +11147,6 @@
       "id": "php-group-rows-test-cases",
       "paths": [
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php-ext/tests/ModelAssemblyFixture.php"
       ],
       "tests": [

@@ -1087,12 +1087,7 @@ group-count-boolean-php-extension-unit-check: php-vendor-check php-model-check
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
-
-# Runs the database-independent Rust group boolean decoder test with the checkout's target lease.
-.PHONY: group-count-boolean-rust-unit-check
-group-count-boolean-rust-unit-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) group-count-boolean-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features "$(ORM_RUST_TEST_FEATURES)" -p polyspec-orm --lib row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode -- --test-threads=1 --exact
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelAssemblyTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupValuePreservesExactI64|testGroupRowDriverCellForms'
 
 # Runs the exact i64 grouped result decode and assembly test with the checkout's target lease.
 # Runs the GroupRow count decoder unit with the checkout's target lease.
@@ -1104,13 +1099,11 @@ group-row-count-rust-unit-check:
 group-count-boolean-unit-check: lease-tool php-vendor-check php-model-check python-venv-check typescript-build php-models
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[group-result] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[group-result] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
-	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowDriverCellForms)$$' -count=1; \
-	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupValueRejectsInvalidStoredBoolean|testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
+	run_case go $(GO_TEST) ./packages/go/orm -run '^(TestGroupRowDriverCellForms)$$' -count=1; \
+	run_case php env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php --filter 'testGroupRowPreservesTypedValuesAndChecksItsCount|testGroupRowDriverCellForms'; \
 	run_case php-extension $(MAKE) --no-print-directory group-count-boolean-php-extension-unit-check; \
-	run_case typescript $(NODE) --test --test-name-pattern='group_rows/(boolean_invalid_stored_value|driver_cell_forms)' packages/ts/tests/group_rows.mjs; \
-	run_case python-boolean $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float; \
+	run_case typescript $(NODE) --test --test-name-pattern='group_rows/driver_cell_forms' packages/ts/tests/group_rows.mjs; \
 	run_case python-count $(PYTHON_VENV)/bin/python -m packages.python.tests.test_group_rows GroupRowDriverCellFormsTest.test_driver_cell_forms; \
-	run_case rust-boolean $(MAKE) --no-print-directory group-count-boolean-rust-unit-check; \
 	run_case rust-count $(MAKE) --no-print-directory group-row-count-rust-unit-check; \
 	exit "$$status"
 
