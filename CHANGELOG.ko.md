@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3af5e557d79603a6900c46732548078374578acdcc2188b4668cb82d17d95777 -->
+<!-- source-sha256: ce7508f88ff1dbdddccf5cfe064d835f508d7ad91b262c28c6c341c3756b3a68 -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,9 @@
 - request_hook, statement_events, 문 실행기의 Python coverage 파일을 없앴다: 그 case는 recipe이고 recipe는 database를 자기 run에서 받으므로(FCV-9) `ORM_FEATURE_DATABASE`와 `ORM_FEATURE_DSN`을 읽는 곳이 그 파일들에서 사라졌다. Python performance gate는 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽는다.
 - request_hook recipe는 각 runtime의 native test가 지키던 내용을 담는다: hook이 걸린 handle은 연결의 subscriber를 공유하고 원래 handle은 hook 없이 남으며, hook은 바인딩된 parameter를 읽고, 계획된 read는 hook이 더한 값을 바인딩하고, 잘못된 parameter 번호와 key 없는 restore는 문을 실행하지 않으며, handle 없는 자식은 부모의 scope로 읽고, restore key를 다시 쓰는 세 사례가 있다. `as`를 받는 `hook.install`과 hook action `assign_first`, `rewrite`, `invalid_param`, `record_param`은 여섯 runtime 모두에 있다.
 - 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
+- 키 접두 메서드, 스캔한 체인 메서드, 사용하는 외부 테이블, lint 억제 부재, 생성 코드의 manifest hash는 여섯 runtime 모두에서 `generator` recipe의 사례이며 그 native 테스트는 삭제되었다. 생성기의 명령줄, 생성된 멤버의 타입, 생성된 module의 로드는 native로 남고 그 이유는 docs/spec/feature-coverage.md에 있다.
+- recipe `schema_install`은 install이 밝히는 차이를 담는다. 모든 op의 outcome이 `message_suffix`를 받고, `install_external_drift`는 메시지가 `column user.coverage_missing does not exist`로 끝나기를 기대한다. `coverageItemsOf`를 읽던 `CoverageSchemaInstallNativeTest`의 세 시험은 지웠고, 그 recipe와 `SchemaSetTest`가 담는다. (#T334-3-4-15)
+- `planSteps`와 `render`의 모르는 dialect 거부는 recipe `tests/dbspec/dialect-refusal.json`의 두 case로 Go, PHP, PHP extension, TypeScript, Python에서 돈다. Rust는 dialect를 enum 타입으로 받으므로 compile fixture를 유지한다.
 - markdown 답의 정수는 소수부와 지수가 없는 JSON number다(PRT-69). 정수 열의 `3.0`은 `CODEC_DECODE`다.
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
