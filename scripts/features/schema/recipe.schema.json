@@ -4415,6 +4415,28 @@
                 },
                 "description": "Other document sets that the generation uses, relative to the recipe file."
               },
+              "before": {
+                "type": "object",
+                "description": "Another set's output that the generation follows: the .dbs manifest schema, relative to the recipe file, generated first into output, with the scan of the source directory scan.",
+                "required": [
+                  "schema",
+                  "output",
+                  "scan"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "schema": {
+                    "type": "string",
+                    "pattern": "\\.dbs$"
+                  },
+                  "output": {
+                    "type": "string"
+                  },
+                  "scan": {
+                    "type": "string"
+                  }
+                }
+              },
               "sources": {
                 "type": "object",
                 "description": "The scanned sources of each runtime language, each a tree of path to text.",

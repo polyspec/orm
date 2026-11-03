@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The eight cases of the generator scan recipe run in all six runtimes: `generator.generate` is implemented by every recipe runner, each case holds the sources of each language in the forms that its native test used, and the option `before` generates another set first, so the imported-set case needs no native test (T334-3-22-2). The TypeScript test of a non-model call no longer names column methods, which DSL-154 declares for every column.
 - The generator refusals of the scan have codes of docs/spec/errors.yaml: `GENERATOR_SCAN_UNATTACHED` for a getter call that nothing attaches (DSL-44) and `GENERATOR_SCAN_PARSE` for a source that does not parse (DSL-152). TypeScript, PHP and Python raise them as their coded errors, Go returns `generator.ScanRefusedError`, and the Rust generator, which returns text, starts its message with the code. A refused Rust generation no longer leaves the output directory and its manifest behind (T334-3-22-1-1).
 - `make client-db-go-check` runs the Go packages that `go-test-check` does not run, and leaves `TestMarkdownConformance` to `markdown-conformance-check/go`, so it no longer fails on tests whose runners and servers another target provides (T334-3-27).
 - The Go test table of the described catalog read expects `CATALOG_VALUE` for a zoned value, the rule of INT-103 that T334-3-3-8 implemented (T334-3-3-16).

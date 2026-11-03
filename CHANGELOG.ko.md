@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- generator scan recipe의 사례 8개가 여섯 runtime 모두에서 돈다: 모든 recipe runner가 `generator.generate`를 구현하고, 각 사례는 언어마다 native 시험이 쓰던 형식의 source를 담으며, 옵션 `before`가 다른 set을 먼저 생성하므로 imported-set 사례에 native 시험이 필요 없다(T334-3-22-2). model이 아닌 호출의 TypeScript 시험은 DSL-154가 모든 column에 선언하는 column method를 더 이상 적지 않는다.
 - scan의 generator 거부는 docs/spec/errors.yaml의 code를 가진다: 아무것도 붙이지 않는 getter 호출은 `GENERATOR_SCAN_UNATTACHED`(DSL-44), parse되지 않는 source는 `GENERATOR_SCAN_PARSE`(DSL-152)이다. TypeScript, PHP, Python은 code 있는 오류로 올리고, Go는 `generator.ScanRefusedError`를 돌려주며, text를 돌려주는 Rust generator는 message를 그 code로 시작한다. 거부된 Rust 생성은 더 이상 출력 디렉터리와 manifest를 남기지 않는다(T334-3-22-1-1).
 - `make client-db-go-check`는 `go-test-check`가 돌리지 않는 Go package를 돌리고 `TestMarkdownConformance`는 `markdown-conformance-check/go`에 맡기므로, 다른 target이 runner와 server를 주는 시험에서 더는 실패하지 않는다(T334-3-27).
 - described catalog read의 Go 시험 표는 시간대를 따르는 값에 `CATALOG_VALUE`를 기대한다. T334-3-3-8이 구현한 INT-103의 규칙이다(T334-3-3-16).

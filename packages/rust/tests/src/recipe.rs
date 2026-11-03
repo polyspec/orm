@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use crate::markdown;
+use crate::recipe_generator;
 use polyspec_orm::codec;
 use polyspec_orm::dbspec::{self, Dialect, Document, Position};
 use polyspec_orm::dbspec::{export_mermaid, import_mermaid, Unsupported};
@@ -168,6 +169,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     match step["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
+        "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)

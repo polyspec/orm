@@ -20,6 +20,7 @@ import { decodeRequest, validate } from '../dist/engine/validate.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
+import { checkGenerator } from './recipe_generator.mjs';
 import { modelOps } from './recipe_model.mjs';
 import { classesFromModel } from './registered_models.mjs';
 import { nativeQuery, within } from './coverage_case.mjs';
@@ -58,6 +59,7 @@ export function runRecipe(path, database) {
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database);
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
+          else if (step.op === 'generator.generate') checkGenerator(step, dir, database);
           else if (dbspecFileOps.includes(step.op)) await checkDbspecFiles(step, dir, database);
           else if (mermaidOps.includes(step.op)) checkMermaid(step, mermaidStep(step, bound, dir), database);
           else if (step.op === 'markdown.send') await withProcessZone(step.process_zone, () => checkSend(step, member(member(member(wrapped, 'cases').array[caseIndex], 'steps').array[index], 'expect')));

@@ -64,6 +64,7 @@ from polyspec.orm.styled_value import StyledValue
 from . import chain_answer, testcase
 from .case_database import case_database
 from .coverage_case import native_query
+from .recipe_generator import check_generator
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
 from .markdown_conformance import same
@@ -132,6 +133,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "generator.generate":
+                    check_generator(step, ROOT / Path(path).parent, database)
                     continue
                 if step["op"] in _DBSPEC_OPS:
                     _dbspec(step, bound, database)

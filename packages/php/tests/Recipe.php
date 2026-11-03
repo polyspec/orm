@@ -128,6 +128,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.generate') {
+                    RecipeGenerator::check($step, dirname(__DIR__, 3) . '/' . dirname($path), $database);
+                    continue;
+                }
                 if (in_array($step['op'], self::DBSPEC_OPS, true)) {
                     self::dbspecStep($step, $bound, $database);
                     continue;

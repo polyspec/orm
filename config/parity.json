@@ -379,7 +379,8 @@
         "packages/php/tests/CatalogPostgresTemporalPdo.php",
         "packages/php/tests/CatalogPostgresTemporalCases.php",
         "packages/php/tests/RecipeKeys.php",
-        "packages/php/tests/dbspec_cases.php"
+        "packages/php/tests/dbspec_cases.php",
+        "packages/php/tests/RecipeGenerator.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -671,7 +672,8 @@
         "packages/ts/tests/markdown-read-db.mjs",
         "packages/ts/tests/recipe.mjs",
         "packages/ts/tests/recipe_model.mjs",
-        "packages/ts/tests/recipe_keys.mjs"
+        "packages/ts/tests/recipe_keys.mjs",
+        "packages/ts/tests/recipe_generator.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -935,7 +937,8 @@
         "packages/python/tests/recipe.py",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/recipe_model.py",
-        "packages/python/tests/recipe_keys.py"
+        "packages/python/tests/recipe_keys.py",
+        "packages/python/tests/recipe_generator.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -1013,6 +1016,7 @@
         "packages/rust/tests/tests/common/temp_sqlite.rs",
         "packages/rust/tests/src/lib.rs",
         "packages/rust/tests/src/recipe.rs",
+        "packages/rust/tests/src/recipe_generator.rs",
         "packages/rust/tests/tests/common/or_panic.rs",
         "packages/rust/tests/tests/model_writes/dispatch.rs",
         "packages/rust/tests/tests/fulltext_search/chain.rs",

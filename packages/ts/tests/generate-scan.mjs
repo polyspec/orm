@@ -43,18 +43,18 @@ async function generate(source) {
 async function nonModelCall() {
   const { members } = await generate(`
 class Settings {
-  name(value: string): string { return value; }
-  isClose(): boolean { return false; }
-  check(): boolean { return this.isClose() && this.name('x') !== ''; }
+  label(value: string): string { return value; }
+  isShut(): boolean { return false; }
+  check(): boolean { return this.isShut() && this.label('x') !== ''; }
 }
-const other = { readCount: (n: number) => n, aliasGhost: () => 0, getGhost: () => 0 };
-other.readCount(1);
+const other = { readTotal: (n: number) => n, aliasGhost: () => 0, getGhost: () => 0 };
+other.readTotal(1);
 other.aliasGhost();
 other.getGhost();
 export { Settings };
 `);
   for (const model of ['Author', 'User', 'Service']) {
-    for (const name of ['name', 'isClose', 'readCount', 'aliasGhost', 'getGhost']) check(!members(model).includes(name), `${model} declares ${name}`);
+    for (const name of ['label', 'isShut', 'readTotal', 'aliasGhost', 'getGhost']) check(!members(model).includes(name), `${model} declares ${name}`);
   }
 }
 

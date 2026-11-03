@@ -40,6 +40,7 @@ require_once __DIR__ . '/GroupRowsModelFixture.php';
 require_once __DIR__ . '/GroupRowsCases.php';
 require_once __DIR__ . '/RecipeModel.php';
 require_once __DIR__ . '/RecipeKeys.php';
+require_once __DIR__ . '/RecipeGenerator.php';
 require_once __DIR__ . '/Recipe.php';
 require_once __DIR__ . '/RecipeRecording.php';
 require_once __DIR__ . '/RecipeSubscription.php';
