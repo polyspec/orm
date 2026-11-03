@@ -330,6 +330,8 @@
           "model": "ChunkPair",
           "columns": [
             "tenant_id",
+            "enabled",
+            "label",
             "batch_no"
           ],
           "where": {
@@ -349,10 +351,14 @@
               "json": [
                 {
                   "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
                   "batch_no": 1
                 },
                 {
                   "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
                   "batch_no": 2
                 }
               ]
@@ -361,10 +367,14 @@
               "json": [
                 {
                   "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
                   "batch_no": 1
                 },
                 {
                   "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
                   "batch_no": 2
                 }
               ]
@@ -373,10 +383,14 @@
               "json": [
                 {
                   "tenant_id": 0,
+                  "enabled": false,
+                  "label": "",
                   "batch_no": 1
                 },
                 {
                   "tenant_id": 0,
+                  "enabled": true,
+                  "label": "",
                   "batch_no": 2
                 }
               ]
