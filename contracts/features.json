@@ -4497,7 +4497,7 @@
         "packages/go/model/decimal_field_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/python/tests/test_model_fields.py",
-        "packages/python/tests/test_runtime_model_selected_set.py",
+        "packages/python/tests/test_default_select_set_none.py",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",

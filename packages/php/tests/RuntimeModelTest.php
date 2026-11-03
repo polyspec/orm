@@ -149,33 +149,6 @@ DBSPEC;
         self::assertTrue($author['columns']['json_setting']['codec'] === ['ordered_json'], 'ordered_json codec');
     }
 
-    // Requirements: DBS-68, DBS-114.
-    // Requirements: PRT-9.
-    public function testDefaultSelectSetExcludesOnlySelectExplicit(): void
-    {
-        $bench = self::bench();
-        $selected = [];
-        foreach ($bench->entities['author']['columns'] as $name => $c) {
-            if ($c['select']) {
-                $selected[] = $name;
-            }
-        }
-        $explicit = [
-            'description',
-            'email_blind_index',
-            'phone_blind_index',
-            'ip',
-            'gz_extend',
-            'json_setting',
-            'jsons_tags',
-            'base64_extra',
-            'serialize_data',
-            'aes_key_version'
-        ];
-        $want = array_values(array_diff(array_keys($bench->entities['author']['columns']), $explicit));
-        self::assertTrue($selected === $want, 'selected ' . implode(',', $selected));
-    }
-
     // Requirements: DSL-160.
     public function testNewOutputNameRejectsAStoredColumn(): void
     {

@@ -288,6 +288,10 @@
         {
           "glob": "packages/go/engine/dbspec/stress_test.go",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
+        },
+        {
+          "glob": "packages/go/engine/planner/runtime_model_test.go",
+          "reason": "test: reads the internal plan of the Go planner, its assemble columns and slots, which no public call returns"
         }
       ]
     },
@@ -28294,6 +28298,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/generate.rs",
           "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
+          "id": "runtime_model_names_entities_and_reads_settings"
         }
       ]
     },
@@ -31256,41 +31265,41 @@
     },
     {
       "id": "runtime-model-default-select-set",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PRT-9",
         "DBS-68"
       ],
+      "file": "tests/planner/default-select-set.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/planner/runtime_model_test.go",
-          "id": "TestDefaultSelectSetLeavesOutOnlySelectExplicit"
+          "test": "packages/go/orm/recipe_default_select_set_test.go",
+          "symbol": "TestRecipeDefaultSelectSetNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testDefaultSelectSetExcludesOnlySelectExplicit"
+          "test": "packages/php/tests/DefaultSelectSetRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DefaultSelectSetRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testNativeDefaultSelectSetExcludesOnlySelectExplicit"
+          "test": "packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DefaultSelectSetRecipeTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/engine_features.mjs",
-          "id": "engine"
+          "test": "packages/ts/tests/default_select_set-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_runtime_model_selected_set.py",
-          "id": "test_default_select_set_excludes_only_select_explicit"
+          "test": "packages/python/tests/test_default_select_set_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_runtime.rs",
-          "id": "runtime_model_of_bench"
+          "test": "packages/rust/tests/tests/default_select_set_none.rs",
+          "symbol": "default_select_set_none"
         }
       ]
     },
