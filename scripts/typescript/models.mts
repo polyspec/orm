@@ -11,7 +11,7 @@ export interface GeneratedModels {
 }
 
 const clientScans = [
-  'testing/conformance/runner_typescript.mts', 'tests/chain-types.mjs', 'tests/connection_utc.mjs', 'tests/coverage_catalog_connection.mjs',
+  'testing/conformance/runner_typescript.mts', 'tests/chain-types.mjs', 'tests/connection_utc.mjs',
   'tests/coverage_composite_keys.mjs', 'tests/coverage_constraints_and_relations.mjs',
   'tests/coverage_hot_path_read_correctness.mjs', 'tests/coverage_model_queries.mjs', 'tests/coverage_model_writes.mjs',
   'tests/coverage_performance_gate.mjs', 'tests/cpx5_duplicate_relation.mjs',

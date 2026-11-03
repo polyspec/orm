@@ -861,12 +861,17 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
     let result = select(&ex, &m.core().conn, &mut request).await?;
     let columns = &result.plan.steps[0].assemble.as_ref().ok_or_else(|| Error::internal("group count has no assemble"))?.columns;
     let rows = result.rows();
+    let entity = m.core().ent.entity_schema()?;
     let mut groups = Vec::with_capacity(rows.len());
     for row in rows {
         let mut values = Vec::with_capacity(columns.len());
         for column in columns {
             if !column.hidden {
-                values.push((column.name.clone(), row.vals().get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?));
+                let value = row.vals().get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?;
+                if matches!(value, Val::Null) && column.column == column.name && entity.field(&column.column).is_some_and(|field| !field.nullable) {
+                    return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name) });
+                }
+                values.push((column.name.clone(), value));
             }
         }
         groups.push(GroupRow::new(values)?);

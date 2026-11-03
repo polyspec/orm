@@ -79,6 +79,7 @@ final class ModelAssemblyTest extends TestCase
     }
 
     // Requirements: INT-68, INT-69, INT-70, INT-71.
+    // The iterator of the extension is a surface of PHP, which no recipe reads (FCV-2).
     public function testGroupRowsUseAKeyPreservingSnapshotIterator(): void
     {
         $first = new GroupRow([['name', 'one'], ['row_count', 1]]);

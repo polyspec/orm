@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 2445366fe438ed74793aebc808a2383ee9d03a98576928f4d20932221d5436fc -->
+<!-- source-sha256: 6e3406a73dba1ba111dcfbcd44130856db2ddb30c9ffefdcb05923e31eb24743 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -93,7 +93,7 @@ classDiagram
 
 종단 작업은 저장된 요청을 바꾸지 않으므로 종단 작업을 반복해도 같은 SQL 문장을 만든다.
 
-- **INT-88** 생성된 모델의 query base(Go `Core`, PHP `Model`, TypeScript `Core`, Python `Core`)는 요청마다 builder 호출이 기록한 첫 오류를 보관한다. 종단 작업은 어떤 statement도 보내기 전에 그 오류를 반환한다.
+- **INT-88** 생성된 모델의 query base(Go `Core`, PHP `Model`, TypeScript `Core`, Python `Core`)는 요청마다 builder 호출이 기록한 첫 오류를 보관한다. 종단 작업은 어떤 statement도 보내기 전에 그 오류를 반환한다. 빈 목록(DSL-47) 같은 condition 값의 거부도 그런 오류이며, chain 호출은 그것을 던지지 않고 기록한다.
 
 ## 5. 공개 API — IF-09 ~ IF-12
 
@@ -197,6 +197,8 @@ classDiagram
 - **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청과 bind된 매개변수 값을 계획 직전에 hook에 전달한다. bind된 매개변수 값은 읽기 전용이고, hook은 제공된 매개변수 추가 수단으로만 매개변수를 덧붙인다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
 - **INT-79** `stats()`는 연결 풀의 개수를 돌려준다: 최대 열린 연결 수, 열린 연결 수, 사용 중인 연결 수, 유휴 연결 수(Go `DBStats`, PHP `Stats`, TypeScript `PoolStats`, Python `DbStats`).
 - **INT-150** 문 실행기는 모든 runtime에서 하나의 모양을 가진 public API다: `utils().run(fn)`이 유일한 public 문 실행기다. 이 함수는 연결의 transaction frame으로 `fn`을 호출한다. 활성 transaction이 없으면 transaction을 열고, 있으면 그에 참여한다. 연 transaction은 `transaction`과 같이 끝내며 재시도하지 않는다. frame의 `run(kind, tables, sql, params)`(TypeScript `TxFrame.run`과 같은 순서와 의미, 모든 runtime 동일, `params`는 선택)는 종류 `kind`의 statement 하나를 실행하고, `tables` 목록(없으면 빈 목록)을 건드리며, statement event 하나를 기록(INT-77)하고 행을 포함한 statement 결과를 돌려준다. frame은 활성 transaction을 쓰며 새로 열지 않는다. 텍스트가 아닌 statement는 `CONFIG`로 실패하고, 그 밖의 오류는 statement의 database 오류 코드다. Python도 `utils().run(fn)`으로 같은 frame을 받으며, `active_frame()`은 열린 transaction frame 또는 없음을 계속 돌려준다. 판정(T345): frame 호출의 의미와 인자 이름은 모든 runtime이 공유한다. 공개 frame 호출이 아직 없는 runtime은 TypeScript의 위치 인자 순서 `(kind, tables, sql, params)`를 쓴다. Python의 공개 `TxFrame.run`은 시그니처를 유지하며, 매개변수 `values`는 `params`와 다른 기록된 차이이고 이름을 바꾸지 않는다. runtime은 이 규칙에 나열하고 사유를 적은 예외로만 실행기를 뺄 수 있다. 선언된 예외는 없으므로 모든 runtime이 구현한다.
+- **INT-150a** Go, PHP, PHP extension, TypeScript, Python은 transaction이 끝난 뒤 쓰는 frame에 `CONFIG`로 실패하고 statement를 보내지 않는다. Rust frame은 그것을 빌린 callback보다 오래 살 수 없으므로 compiler가 그 사용을 거부한다.
+- **INT-150b** PHP, PHP extension, TypeScript, Python은 텍스트가 아닌 statement에 `CONFIG`로 실패하고 statement를 보내지 않는다. Go와 Rust의 `run`은 statement를 text로 받으므로 compiler가 그 사용을 거부한다.
 - **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.
 
 데이터를 바꾸는 유틸리티는 활성 트랜잭션이 없으면 트랜잭션을 열고, 같은 연결의 활성 트랜잭션이 있으면 그 트랜잭션에 참여한다.
@@ -534,6 +536,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-103** 시간 그리드 셀은 값의 dbspec 텍스트 형식을 가진다: `Date`는 `YYYY-MM-DD`, `Time`은 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 각각 소수 자릿수를 갖는다. 기술된 테이블의 읽기는 열이 선언한 정밀도 p를 정확히 쓴다. 선언이 없는 읽기 전용 그리드 조회는 여섯 자리를 쓰며, SQLite에서는 저장된 텍스트와 각 값의 저장 클래스를 그대로 둔다. MySQL `TIMESTAMP`와 PostgreSQL `timestamptz`, `timetz`는 미지원이며 `CATALOG_VALUE`로 실패하고, 그 NULL은 null 셀이다. MySQL `YEAR`는 orm이 시간 의미를 선언하지 않는 정수값 type이므로, 그리드 읽기는 `CATALOG_VALUE`로 실패한다. 00:00:00부터 23:59:59.999999 밖의 시각, 0001-01-01부터 9999-12-31 밖의 날짜(MySQL 영날짜 0000-00-00 포함), PostgreSQL infinity는 `GRID_TEMPORAL_VALUE`로 실패하며, 기술된 테이블의 SQLite 텍스트가 dbspec 형식이 아니면 `GRID_TEMPORAL_VALUE`로 실패한다. 자릿수를 고정하는 datetime 열의 SQLite CHECK는 SQLite 고유의 시간 검사이므로, 그것을 읽는 사례는 SQLite에서만 실행되며 recipe catalog_connection-sqlite-only에 있다. CHECK가 없는 SQLite DATETIME이나 TIME 열은 precision 0이다: 소수부가 없는 텍스트는 dbspec 텍스트로 읽히고, 0이 아닌 소수부는 `GRID_TEMPORAL_PRECISION`으로 실패한다. TIMESTAMP로 선언한 SQLite 열은 dbspec 시간 열이 아니므로 읽기는 저장된 텍스트를 검사 없이 돌려준다.
 - **INT-157** `polyspec/orm` PHP client의 MySQL catalog는 PostgreSQL, SQLite처럼 연결 하나, PDO만 쥔다. pdo_mysql은 열의 UNSIGNED flag도 charset도 알려 주지 않으므로 grid query는 둘을 그 연결에서 서버로부터 읽는다. 같은 query를 `WHERE FALSE` 아래 둔 임시 표의 열 타입이며, 이 표에는 행이 없고, 식과 별칭을 포함한 모든 결과 열에 타입이 붙는다. READ ONLY transaction이 이 문장을 거부하므로 문장은 읽기 transaction 사이에 실행되고, 서버는 그동안 쓰기를 하는 stored function을 거부한다. `CREATE TEMPORARY TABLES` 권한이 없는 사용자처럼 서버가 문장을 거부하면 각 cell은 값을 따르며 값을 보존한다. signed 64-bit 범위를 넘는 숫자는 unsigned cell, UTF-8이 아닌 bytes는 binary cell이다. 예산으로 멈춘 query는 그 멈춤과 함께 닫히는 연결로 종료한다.
 - **INT-158** `polyspec/orm-php-ext` package의 PHP extension은 MySQL catalog를 INT-157의 PDO 연결 하나로 유지하며, 열 타입, 서버가 문장을 거부할 때의 cell, 예산 멈춤도 같다.
+- **INT-159** Go는 `limit(offset, count)`에서 부호 있는 offset을 받으며, PHP, PHP extension, TypeScript, Python도 같다. 음수 offset은 코드 `CONFIG`인 INT-88의 builder 오류다. Rust의 offset은 unsigned라 compiler가 거부한다.
 - **INT-152** SQLite에서 기술된 테이블의 그리드 셀은 저장된 값의 저장 클래스를 유지한다: INTEGER 또는 REAL 열에 저장된 텍스트는 텍스트 셀이다. INT-98은 타입이 정해진 읽기에 적용되며, 그리드 셀에는 적용되지 않는다.
 - **INT-153** `read_only_query`는 temporal 값을 그 temporal grid cell(INT-103)의 텍스트로 돌려준다: UTC의 `HH:MM:SS`, `YYYY-MM-DD` 또는 `YYYY-MM-DD HH:MM:SS`이며, 조회에는 선언된 정밀도가 없으므로 MySQL과 PostgreSQL에서는 소수 6자리다; SQLite에서는 저장된 텍스트다.
 - **INT-104** 읽기 전용 그리드 조회와 일반 읽기 전용 조회는 모든 데이터베이스에서 데이터베이스가 강제하는 읽기 전용 범위 안에서 실행되며, 일반 읽기 전용 조회의 쓰는 문은 `QUERY_READ_ONLY`로 실패하며, 데이터베이스의 읽기 전용 범위가 거부하는 쓰기, 예컨대 쓰는 루틴을 그리드 조회에서 호출하는 것도 `QUERY_READ_ONLY`로 실패한다.
@@ -541,7 +544,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-106** 네이티브 update는 새 트랜잭션에서 원본 행을 키로 잠그고, descriptor와 원본 행을 비교하며, 커밋 전에 기록 후 값이 정확한지 검증한다. 검증이 실패하거나 커밋 전에 취소되면 롤백한다. InnoDB가 아닌 MySQL 테이블과 트리거가 있는 MySQL 테이블은 거부된다.
 - **INT-107** 행 기준(baseline)은 정확한 타입 값을 비교한다: 부동소수 비트, decimal scale, 이진 바이트, 생성 열의 원본 값. 이 중 하나라도 다르면 충돌이다.
 - **INT-108** 행 기준은 검사를 마친 불변 행 하나를 캡처한다. 캡처 대상은 제약 순서의 신뢰할 수 있는 NOT NULL 선언 기본 키 값과 descriptor 및 타입 셀의 값 민감 SHA-256 리비전이다. 이후 페이지가 바뀌어도 캡처된 셀은 바뀌지 않는다.
-- **INT-109** 행 기준은 뷰, 신뢰할 수 없는 식별자, 잘못된 projection이나 키, 잘못된 decimal, NOT NULL 열의 NULL, 페이지 한도에서 거부된다. 바뀐 descriptor, 없거나 바뀐 행, 모호한 식별자는 서로 다른 충돌이다.
+- **INT-109** 행 기준은 뷰, 신뢰할 수 없는 식별자, 잘못된 projection이나 키, 잘못된 decimal, NOT NULL 열의 NULL, 페이지 한도에서 거부된다. 잘못된 열 이름을 가진 descriptor는 `ROW_SNAPSHOT_INVALID`로 실패하며, 그 메시지는 그 이름의 `TABLE_REFERENCE_INVALID` 실패로 끝난다. 바뀐 descriptor, 없거나 바뀐 행, 모호한 식별자는 서로 다른 충돌이다.
 - **INT-110** 같은 잠금 안에서 네이티브 쓰기 후, 요청한 정확한 값과 건드리지 않은 일반 열을 비교한다. 생성 열은 다시 계산될 수 있다. 강제 변환이나 요청하지 않은 일반 열의 변경은 롤백을 요구하며 결코 성공이 아니다.
 - **INT-111** 행 update 검증은 쓰기 전에 중복, 알 수 없는, 생성 열 대상의 할당, 잘못된 NULL, 과대 값을 거부한다.
 - **INT-112** MySQL `SYSTEM VIEW` 카탈로그 관계는 뷰로 분류되며, 테이블이나 쓰기 가능한 행 식별자로 분류되지 않는다.
@@ -550,7 +553,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-115** 명시된 행 또는 바이트 예산을 넘는 결과를 낸 조회는 부분 성공으로 자르지 않고 `CATALOG_LIMIT`으로 거부된다. 바이트 예산은 결과의 모든 cell을 합산한다: text, decimal, temporal cell은 UTF-8 바이트 수, binary cell은 길이, 그 밖의 cell은 NULL을 포함해 8바이트이다.
 - **INT-116** `polyspec-orm-build` Rust 도구는 타입 있는 바인드의 값을 데이터베이스에서 보존한다. 타입 있는 NULL은 빈 텍스트나 0이 아니라 선택된 네이티브 바인드 종류를 쓴다.
 - **INT-117** 타입 있는 카탈로그 쓰기는 값이 열의 선언된 소수 자릿수를 가질 때 쓴 셀을 다시 읽는다. 기록 후 검증이나 충돌이 거부한 쓰기는 롤백한다.
-- **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다.
+- **INT-118** 명시적인 PostgreSQL 제약 또는 트랜잭션 거부는 확인 응답 누락과 구분되며, `ROW_COMMIT_REJECTED`를 보고하기 전에 롤백 확인이 필요하다. 확인되지 않은 커밋 오류는 불확실하며 자동으로 재시도하지 않는다. MySQL에는 지연 외래 키가 없으므로(DIA-76) 외래 키 위반은 그 문장에서 `FOREIGN_KEY`로 실패한다.
 - **INT-119** 트리거가 없다는 판단은 검증된 직접 계정 권한이 있을 때만 유효하다. 역할로만 받은 권한과 활성화된 부분 수집는 보이는 것으로 가정하지 않고 거부한다.
 - **INT-120** `polyspec-orm-build` 네이티브 도구는 65535개를 넘는 파라미터 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록을 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부한다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.

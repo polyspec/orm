@@ -626,7 +626,11 @@
         },
         {
           "type": "object",
-          "minProperties": 1,
+          "required": [
+            "mysql",
+            "postgres",
+            "sqlite"
+          ],
           "additionalProperties": false,
           "properties": {
             "mysql": {
@@ -746,6 +750,8 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "keyring.versions",
+            "markdown.builder",
             "model.connect",
             "codec.decode",
             "codec.encode",
@@ -788,6 +794,7 @@
             "events.fail_subscriber",
             "events.stop_failing",
             "events.unsubscribe",
+            "utils.run",
             "events.captured",
             "planner.compile",
             "dbspec.parse",
@@ -833,6 +840,12 @@
           "$ref": "#/$defs/ops/dsn.connect"
         },
         {
+          "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.builder"
+        },
+        {
           "$ref": "#/$defs/ops/model.connect"
         },
         {
@@ -864,6 +877,9 @@
         },
         {
           "$ref": "#/$defs/ops/query.search"
+        },
+        {
+          "$ref": "#/$defs/ops/query.search_chain"
         },
         {
           "$ref": "#/$defs/ops/ir.validate"
@@ -978,6 +994,9 @@
         },
         {
           "$ref": "#/$defs/ops/events.unsubscribe"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.run"
         },
         {
           "$ref": "#/$defs/ops/events.captured"
@@ -1270,7 +1289,13 @@
           },
           "audit": {
             "description": "The audit values of the transaction, column names of the audit record table and their values; an empty object is an audit transaction with no value of its own (CFG-8, DSL-126).",
-            "$ref": "#/$defs/columnValues"
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/$defs/name"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/value"
+            }
           },
           "retry": {
             "type": "integer",
@@ -1305,6 +1330,118 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "keyring.versions": {
+        "type": "object",
+        "required": [
+          "op",
+          "keyring",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "keyring.versions"
+          },
+          "keyring": {
+            "$ref": "#/$defs/aesKeyring"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "current",
+                      "versions"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "current": {
+                        "type": "integer"
+                      },
+                      "versions": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "markdown.builder": {
+        "type": "object",
+        "required": [
+          "op",
+          "calls",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "markdown.builder"
+          },
+          "calls": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "limit_zero_count",
+                "limit_negative_offset",
+                "empty_i64_list",
+                "empty_varchar_list"
+              ]
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "error",
+                  "message_contains"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "type": "string"
+                  },
+                  "message_contains": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -2274,6 +2411,11 @@
             "description": "The database must refuse the statement; the step fails when it succeeds. A driver error of any code passes.",
             "const": true
           },
+          "refused_message": {
+            "description": "With refused: the text that the error message of the driver holds, compared in lower case, so that a refusal for another reason fails the step.",
+            "type": "string",
+            "minLength": 1
+          },
           "sql": {
             "$ref": "#/$defs/sql"
           },
@@ -2505,6 +2647,10 @@
                 "items": {
                   "$ref": "#/$defs/name"
                 }
+              },
+              "column_name": {
+                "description": "The name that replaces the name of the first column of the descriptor of the page.",
+                "type": "string"
               }
             }
           },
@@ -3896,6 +4042,59 @@
           },
           "ref": {
             "$ref": "#/$defs/name"
+          }
+        }
+      },
+      "utils.run": {
+        "type": "object",
+        "required": [
+          "op",
+          "statements"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.run"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "statements": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "tables",
+                "sql"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tables": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/name"
+                  }
+                },
+                "sql": {
+                  "$ref": "#/$defs/sql"
+                },
+                "params": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/value"
+                  }
+                }
+              }
+            }
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },
@@ -5437,7 +5636,14 @@
             "$ref": "#/$defs/model"
           },
           "values": {
-            "$ref": "#/$defs/columnValues"
+            "description": "The values of the restore; an empty object is the restore without key values, which IR_INVALID refuses.",
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/$defs/name"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/argument"
+            }
           },
           "expect": {
             "type": "object",
@@ -5916,6 +6122,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_suffix": {
+                "description": "The text that the message of the error ends with.",
+                "type": "string",
+                "minLength": 1
               }
             }
           },
@@ -6003,6 +6214,11 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_suffix": {
+                "description": "The text that the message of the error ends with.",
+                "type": "string",
+                "minLength": 1
               }
             }
           }
@@ -6086,6 +6302,10 @@
               "error": {
                 "type": "string",
                 "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "message_suffix": {
+                "description": "The text that the error message ends with.",
+                "type": "string"
               }
             }
           }

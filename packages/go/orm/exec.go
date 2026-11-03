@@ -415,11 +415,11 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 		return err
 	}
 	ctx := ex.context()
+	start := time.Now()
 	stmt, err := ex.stmt(ctx, st.SQL)
 	if err != nil {
-		return err
+		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	start := time.Now()
 	if err := d.takeStatementFault(); err != nil {
 		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
@@ -873,11 +873,11 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	stmt, err := ex.stmt(ctx, sqlText)
 	if err != nil {
-		return nil, err
+		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
-	start := time.Now()
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
@@ -1165,12 +1165,12 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
 	stmt, err := ex.stmt(ctx, st.SQL)
 	if err != nil {
-		return nil, err
+		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	var v cell
-	start := time.Now()
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
@@ -1296,11 +1296,11 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 	if err != nil {
 		return nil, 0, err
 	}
+	start := time.Now()
 	stmt, err := ex.stmt(ctx, st.SQL)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	start := time.Now()
 	if err := d.takeStatementFault(); err != nil {
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}

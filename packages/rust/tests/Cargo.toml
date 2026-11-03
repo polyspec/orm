@@ -35,6 +35,11 @@ harness = false
 
 # Each case of the read answer recipe, tests/ir/answers.json, is the trial ir_answers::<case id> (FCV-3).
 [[test]]
+name = "collection_none"
+path = "tests/collection_none.rs"
+harness = false
+
+[[test]]
 name = "ir_answers"
 path = "tests/ir_answers.rs"
 harness = false
@@ -115,6 +120,27 @@ harness = false
 [[test]]
 name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_mysql"
+path = "tests/statement_runner_mysql.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_postgres::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_postgres"
+path = "tests/statement_runner_postgres.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_sqlite::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_sqlite"
+path = "tests/statement_runner_sqlite.rs"
 harness = false
 
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
@@ -346,6 +372,13 @@ harness = false
 [[test]]
 name = "model_writes_sqlite"
 path = "tests/model_writes_sqlite.rs"
+harness = false
+
+# Each case of the public interface recipe, contracts/fixtures/public_interface/public_interface.json, is the trial
+# public_interface_none::<case id> (FCV-3).
+[[test]]
+name = "public_interface_none"
+path = "tests/public_interface_none.rs"
 harness = false
 
 # Each case of the refused DSN recipe, contracts/fixtures/dsn_reject/dsn_reject.json, is the trial dsn_reject_none::<case id> (FCV-3).
