@@ -1277,7 +1277,7 @@
         },
         {
           "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
-          "reason": "test: calls the private validate for the cause its parser failure keeps; read_statements and read_only_grid_shapes hold the shapes"
+          "reason": "test: calls the private validate for the cause its tokenizer failure keeps; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",

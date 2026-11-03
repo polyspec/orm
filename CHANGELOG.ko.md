@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 53d0aa0d8c8fbb9ba8bdc26ae6079a76aa4568642cdc801e3b4f46343b555011 -->
+<!-- source-sha256: 5ea7b9deb975ac318dd460998a3312e21ac3931be4dcffddfa31203166c2015d -->
 # 변경 이력
 
 ## Unreleased
 
+- described table 읽기는 유효한 UTF-8이 아닌 값을 여섯 runtime 모두에서 그 byte로 돌려주며, TypeScript는 그런 읽기의 응답 전체를 한 번의 실행에서 가져옵니다.
+- 읽기 전용 query의 유효한 UTF-8이 아닌 값은 SQLite text를 포함해 여섯 runtime 모두에서 그 byte이고, grid 질의에서는 binary cell입니다.
+- 길이나 중첩과 관계없이 읽기 전용 query는 여섯 runtime 모두에서 응답하며, Rust도 다른 runtime처럼 token으로 query를 읽습니다.
 - CR15-F: 생성 키는 recipe case `generated_keys`와 `generated_key_lifecycle`이 맡는다. 가짜 driver로 이를 반복하던 TypeScript와 Python native를 지우고, Rust 시험은 INT-123a의 phase, 취소, join된 insert만 남긴다.
 - CR15-F: 행을 읽다 실패한 TypeScript의 SQLite 문장을 reset한다. cache에 reset 없이 남으면 다음 실행이 무엇을 bind하든 같은 오류를 보고했다.
 - CR15-F: 할당이 없는 insert가 생성 키를 돌려준다. TypeScript는 MySQL에서 bind 없는 문장의 insert id를 유지하고, PHP와 확장은 PostgreSQL에서 그 문장에 cursor를 선언하지 않는다.
