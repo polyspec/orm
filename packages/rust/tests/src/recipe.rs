@@ -227,6 +227,8 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
+        "ir.param_uses" => return ir_param_uses(step, database, dir),
+        "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
@@ -297,6 +299,16 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
             Err((got, _)) if got == code => Ok(()),
             Err((got, message)) => Err(format!("error {got} ({message}), want {code}")),
             Ok(_) => Err(format!("error none, want {code}")),
+        };
+    }
+    if let Some(prefix) = expect["bytes_prefix_hex"].as_str() {
+        // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        let length = expect["bytes_length"].as_u64().and_then(|n| usize::try_from(n).ok());
+        return match outcome {
+            Ok(Produced::Written(Param::Bytes(bytes))) if Some(bytes.len()) == length && hex_text(&bytes).starts_with(prefix) => Ok(()),
+            Ok(Produced::Written(Param::Bytes(bytes))) => Err(format!("cell {}, want {length:?} bytes with the prefix {prefix}", hex_text(&bytes))),
+            Err((_, message)) => Err(format!("unexpected error {message}")),
+            Ok(_) => Err(format!("a cell of bytes, want the prefix {prefix}")),
         };
     }
     let want = &expect["value"];
@@ -376,6 +388,42 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     Ok(())
 }
 
+/// The ir.param_uses op (FCV-4): the uses of each parameter of a validated request (DIA-31, PRT-67).
+fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    engine::validate(&manifest, &input).map_err(|error| error.to_string())?;
+    let got = json!({"uses": polyspec_orm::testing::param_uses(&manifest, &input).map_err(|error| error.to_string())?});
+    if got != step["expect"][database]["value"] {
+        return Err(format!("ir.param_uses: got {got}, want {}", step["expect"][database]["value"]));
+    }
+    Ok(())
+}
+
+/// The planner.columns op (FCV-4): the output columns that `names` select from the first statement of the plan of each dialect,
+/// with their type and whether they are hidden (PRT-69, DIA-33).
+fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    let names: Vec<&str> = step["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
+    for (name, dialect) in PLAN_DIALECTS {
+        let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
+        let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
+        let mut got = Vec::new();
+        for wanted in &names {
+            for column in &assemble.columns {
+                if column.name == *wanted {
+                    got.push(json!({"name": wanted, "type": column.typ, "hidden": column.hidden}));
+                }
+            }
+        }
+        if Value::Array(got.clone()) != step["expect"][database]["value"] {
+            return Err(format!("planner.columns {name}: got {got:?}, want {}", step["expect"][database]["value"]));
+        }
+    }
+    Ok(())
+}
+
 /// The ir.validate op (FCV-4): the step builds its request from its JSON with the manifest hash of the bench schema, then validates
 /// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
 /// true}} for an accepted request.
@@ -385,7 +433,8 @@ fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
         return Err("the request already holds manifest_hash".to_owned());
     }
     let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
-    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], &manifest.manifest_hash));
+    let manifest_hash = step["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
+    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], manifest_hash));
     let got: Result<(), String> = match built {
         Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
         Err(payload) => {
@@ -2716,6 +2765,9 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
+                        if let Some(message) = step["conflict"].as_str() {
+                            return Err(polyspec_orm::transaction_conflict(message));
+                        }
                         Ok(last)
                     })
                     .await
@@ -3853,6 +3905,12 @@ mod tables {
             if let Some(mode) = q["lock"].as_str() {
                 core.lock(leaked(mode));
             }
+            if let Some(name) = q["force_index"].as_str() {
+                core.force_index(name);
+            }
+            if let Some(column) = q["key_by"].as_str() {
+                core.key_name(column);
+            }
             Ok(())
         }
 
@@ -4000,10 +4058,18 @@ mod tables {
     fn set_value(row: &mut TableRow, column: &str, raw: &Value) -> Result<(), String> {
         let entity = fields_of(row.core.entity()).map_err(orm)?;
         let field = entity.field(column);
+        if let Some(inner) = raw.get("styled") {
+            let value = bind_json(&param(inner)?);
+            row.core.set_json(column, value.clone());
+            row.values.insert(column.to_owned(), Val::Json(value));
+            row.core.mark_field_ready(column);
+            return Ok(());
+        }
         if raw.get("object").is_some() {
             let value = object_of(raw)?;
             if field.is_some_and(|field| field.codec.first().is_some_and(|stage| stage == "ordered_json")) {
-                let ordered = polyspec_orm::ordered_json::parse(&value.to_string()).map_err(|e| e.to_string())?;
+                // The text of the wrapper keeps the member order, a repeated member and the number text (DIA-26).
+                let ordered = polyspec_orm::ordered_json::parse(&super::json_text(raw)?).map_err(|e| e.to_string())?;
                 row.core.set_ordered(column, ordered.clone());
                 row.values.insert(column.to_owned(), Val::Ordered(ordered));
             } else {
@@ -4145,6 +4211,12 @@ mod tables {
                 return Ok(json!({ "json": list }));
             }
             let root = TableRow::from_core(core);
+            if let Some(name) = step["group_value"].as_str() {
+                let groups = gets_count(&root).await.map_err(orm)?;
+                let row = groups.iter().next().ok_or_else(|| format!("group_value {name}: the aggregate has no group row"))?;
+                row.value(name).map_err(orm)?;
+                return Ok(json!({ "json": row.to_array().map_err(orm)?[name].clone() }));
+            }
             if let Some(aggregate) = step.get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
                     Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),
@@ -4459,6 +4531,12 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
+                    if let Some(column) = step["ordered_text"].as_str() {
+                        return match row.value(column) {
+                            Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
+                            _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
+                        };
+                    }
                     let fields = json!({ "json": row_json(&row, &step["pick"])? });
                     if let Some(name) = step["as"].as_str() {
                         self.rows.insert(name.to_owned(), row);

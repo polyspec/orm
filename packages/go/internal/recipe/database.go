@@ -88,6 +88,8 @@ type databaseStep struct {
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`
 	Statements      []frameStatement `json:"statements"`
+	// Conflict is the message of the retryable error that the function of utils.run returns after its statements (INT-48).
+	Conflict string `json:"conflict"`
 	// The model op fields (FCV-4): the connection name, the model name, the pool size, and the arguments of the model ops.
 	Connection  string          `json:"connection"`
 	Model       string          `json:"model"`

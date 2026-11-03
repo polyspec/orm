@@ -17,6 +17,7 @@ import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { Slots, connect as connectSlots } from '../dist/models/bind_fixture/models.js';
 import { decodeRequest, validate } from '../dist/engine/validate.js';
+import { paramUses } from '../dist/engine/params.js';
 import { Engine } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { checkKeys } from './recipe_keys.mjs';
@@ -67,6 +68,8 @@ export function runRecipe(path, database) {
         try {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
+          else if (step.op === 'ir.param_uses') checkParamUses(step, dirname(path), database);
+          else if (step.op === 'planner.columns') checkPlannerColumns(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
           else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'collection.key') checkCollectionKey(step, database);
@@ -167,6 +170,12 @@ function run(step, bound, database) {
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
+  if (expect.bytes_prefix_hex !== undefined) {
+    // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+    const cell = Buffer.from(result.value);
+    if (cell.length !== expect.bytes_length || !cell.toString('hex').startsWith(expect.bytes_prefix_hex)) throw new Error(`cell ${cell.toString('hex')}, want ${expect.bytes_length} bytes with the prefix ${expect.bytes_prefix_hex}`);
+    return;
+  }
   if (!result.decoded) return compareCell(expect.value, result.value);
   if (result.value.kind === 'sql-null') {
     if (!('null' in expect.value)) throw new Error(`SQL NULL, want ${JSON.stringify(expect.value)}`);
@@ -924,7 +933,7 @@ function checkValidate(step, text, schema, database) {
   try {
     const request = decodeRequest(text);
     if ('manifest_hash' in request) throw new Error('request already holds manifest_hash');
-    validate(schema.model, { ...request, manifest_hash: schema.hash });
+    validate(schema.model, { ...request, manifest_hash: step.manifest_hash ?? schema.hash });
   } catch (error) {
     got = error.code ?? String(error);
   }
@@ -950,6 +959,31 @@ function plannerSlot(slot) {
   if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
   if (slot.not_null === true) out.not_null = true;
   return out;
+}
+
+// checkParamUses states the uses of each parameter of a validated request (DIA-31, PRT-67).
+function checkParamUses(step, recipeDir, database) {
+  const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
+  const request = { ...structuredClone(step.input), manifest_hash: hash };
+  validate(model, request);
+  const uses = paramUses(model, request).map(list => list.map(use => use.column === undefined
+    ? { type: use.type }
+    : { type: use.type, ...(use.assign === true ? { assign: true } : {}), column: use.column.name, length: use.column.length, null: use.column.nullable, precision: use.column.precision, scale: use.column.scale }));
+  if (!isDeepStrictEqual({ uses }, step.expect[database].value)) throw new Error(`ir.param_uses: got ${JSON.stringify(uses)}, want ${JSON.stringify(step.expect[database].value)}`);
+}
+
+// checkPlannerColumns states the output columns that the names of the step select from the first statement of the plan of each
+// dialect: their type and whether they are hidden (PRT-69, DIA-33).
+function checkPlannerColumns(step, recipeDir, database) {
+  const { model, hash } = validationModel(resolve(root, recipeDir, step.schema));
+  const request = { ...structuredClone(step.input), manifest_hash: hash };
+  for (const dialect of plannerDialects) {
+    const { assemble } = new Engine(model, dialect).compile(request).steps[0];
+    const got = step.names.flatMap(name => assemble.columns.flatMap(column => column.name === name
+      ? [{ name, type: column.type, hidden: column.hidden === true }]
+      : []));
+    if (!isDeepStrictEqual(got, step.expect[database].value)) throw new Error(`planner.columns ${dialect}: got ${JSON.stringify(got)}, want ${JSON.stringify(step.expect[database].value)}`);
+  }
 }
 
 // checkPlanner compiles the request of a planner.compile step with the client engine of each dialect, against the manifest of
@@ -1303,8 +1337,9 @@ function chainValue(raw, context) {
 }
 /** The value of a column for a wrapper: an object is the styled value of its codec. */
 function columnValue(m, column, raw, context) {
+  if ('styled' in raw) return StyledValue.value(chainValue(raw.styled, context));
   if (!('object' in raw)) return chainValue(raw, context);
-  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.codec ?? [], new Map());
+  return styledArgument(raw, m[CORE].ent.entity.fields.find(field => field.name === column)?.stages ?? [], new Map());
 }
 /** The public function of a function call (F5). */
 function chainFunc({ fn, args = [] }) {
@@ -1457,6 +1492,8 @@ class ChainBuild {
       else m.limit(q.limit.offset ?? 0, q.limit.count);
     }
     if (q.lock !== undefined) m[CORE].lock = q.lock;
+    if (q.force_index !== undefined) m[CORE].index = q.force_index;
+    if (q.key_by !== undefined) m[CORE].keyName = q.key_by;
   }
 
   /** The child model of a relation. */
@@ -1583,6 +1620,11 @@ const TABLE_OPS = {
     }
     if (s.aggregate?.agg === 'sum') return { json: await m.getSum() };
     if (s.aggregate?.agg === 'avg') return { json: await m.getAvg() };
+    if (s.group_value !== undefined) {
+      const [row] = await m.getsCount();
+      if (row === undefined) throw new Error(`group_value ${s.group_value}: the aggregate has no group row`);
+      return { json: plainJson(row.value(s.group_value)) };
+    }
     if (s.aggregate !== undefined) return { json: plainJson((await m.getsCount()).toArray()) };
     if (s.page === true) {
       const count = typeof s.limit === 'number' ? s.limit : s.limit?.count;
@@ -1603,6 +1645,7 @@ const TABLE_OPS = {
   },
   async 'model.get_by'(s, context) {
     const row = await chainBuilt(s, context).get();
+    if (s.ordered_text !== undefined && row !== null) return { json: row[CORE].values.get(s.ordered_text).payload().raw };
     return { bind: row ?? undefined, json: rowJson(row, s.pick) };
   },
   'model.create': (s, context) => chainWrite(s, context, m => (s.restore_or_create === true ? m.restoreOrCreate() : m.create())),
@@ -1820,6 +1863,7 @@ Object.assign(OPS, {
       for (const statement of s.statements) {
         last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
       }
+      if (s.conflict !== undefined) throw new OrmError('DEADLOCK', s.conflict);
       return last;
     });
     return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
