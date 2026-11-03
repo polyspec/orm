@@ -340,6 +340,7 @@ struct FaultConnection {
     fail_at: usize,
     reads: usize,
     fail: HashMap<String, (String, Option<i64>)>,
+    no_row: Vec<String>,
 }
 
 /// An error of a SQLite result code, as the driver returns it.
@@ -436,6 +437,9 @@ impl dbspec::ApplyConnection for FaultConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[dbspec::CatalogValue]) -> Result<Vec<Vec<dbspec::CatalogValue>>, sqlx::Error> {
         use dbspec::ApplyConnection as _;
+        if self.no_row.iter().any(|no_row| no_row == query) {
+            return Ok(Vec::new());
+        }
         self.inner.query_bound(query, args).await
     }
 }
@@ -457,7 +461,7 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new() };
+        let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
         if step["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
@@ -470,6 +474,9 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
         if let Some(read) = step["fail_catalog_read"].as_u64() {
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
+        }
+        if let Some(queries) = step["no_row_queries"].as_array() {
+            fault.no_row = queries.iter().filter_map(Value::as_str).map(str::to_owned).collect();
         }
         if let Some(failing) = step["fail_statements"].as_array() {
             for f in failing {

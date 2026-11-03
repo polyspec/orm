@@ -120,15 +120,6 @@ class DbspecApplyCleanupTest extends TestCase
         }
     }
 
-    // apply/effect-row
-    public function testEffectRow(): void
-    {
-        $effect = self::effect(...);
-        $tablesQuery = self::tablesQuery();
-        $pdo = dbspec_failing_pdo('apply_cleanup_php', [], [$tablesQuery => 'SELECT 1 WHERE 0']);
-        want_message(static fn() => $effect($pdo), "$tablesQuery returned no row");
-    }
-
     // apply/effect-close
     public function testEffectClose(): void
     {

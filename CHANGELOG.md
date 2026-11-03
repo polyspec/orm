@@ -8,6 +8,7 @@
 - Tests: `make repo-check` passes again: the check `schema-set.mjs` reports through `caseTest`, the `param-uses-typescript` row runs the tracked `coverage_planner.mjs`, the two conformance targets of T334-3-5 are in `CHECK_TARGETS` and the `conformance` CI group, and two failure messages state their fix (#T334-3-18).
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
 - A process deadline reports a process that has ended, and its case holds that the pid is gone (#T334-3-4-22)
+- An effect query without a row is `<query> returned no row` in every runtime (Rust said `returned 0 rows; want one`), and the `dbspec.apply_fault` recipe holds it; the native tests are gone (#T334-3-18).
 - The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.
 - `docs/spec/interfaces.md` states the savepoint of the `transaction_send` form of the Rust crate as INT-46a, and the native transactions coverage of Go, PHP and Rust is gone; the recipe `transactions` holds it.
 - The recipe `transactions` holds what the native transaction tests held: a model on no connection, the four row locks, every isolation level, a read-only write, `timeoutMs`, retry attempts, the default retry, a retry of 0, a real two-flow deadlock and the SQLite busy writer.

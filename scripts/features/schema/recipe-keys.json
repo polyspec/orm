@@ -57,6 +57,7 @@
       "expect",
       "fail_catalog_read",
       "fail_statements",
+      "no_row_queries",
       "op",
       "plan",
       "sql",

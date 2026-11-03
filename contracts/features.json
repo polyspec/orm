@@ -5330,8 +5330,6 @@
         "packages/go/engine/runtimemodel/runtimemodel_test.go",
         "packages/go/engine/dbspec/vector_loaders_test.go",
         "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-        "packages/ts/tests/dbspec-apply-cleanup.mjs",
         "packages/ts/tests/dbspec-unicode.mjs",
         "packages/php/tests/DbspecUnicodeTest.php",
         "packages/go/engine/dbspec/show_create_test.go",
@@ -5536,7 +5534,6 @@
             "packages/rust/schema/tests/dbspec_render.rs",
             "packages/rust/schema/tests/dbspec_runtime.rs",
             "packages/rust/schema/tests/dbspec_model.rs",
-            "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
             "contracts/fixtures/bench/bench.dbs",
             "packages/rust/schema/tests/common/vector_file.rs",
             "tests/dbspec/ddl.json",
@@ -5577,7 +5574,6 @@
             "packages/ts/tests/dbspec-plan-comparisons.mjs",
             "packages/ts/tests/dbspec-add-tables-steps.mjs",
             "packages/ts/tests/plan_case.mjs",
-            "packages/ts/tests/dbspec-apply-cleanup.mjs",
             "packages/ts/tests/dbspec-unicode.mjs",
             "packages/ts/src/dbspec/unicode_word.ts",
             "packages/ts/tests/dbspec-show-create.mjs",
@@ -5873,8 +5869,7 @@
               "packages/rust/tests/tests/schema_definition_none.rs"
             ],
             "inputs": [
-              "tests/dbspec/schema-definition.json",
-              "packages/rust/orm/tests/dbspec_apply_cleanup.rs"
+              "tests/dbspec/schema-definition.json"
             ],
             "commands": {
               "none": [
@@ -5909,8 +5904,7 @@
               "packages/ts/tests/recipe_schema_definition.mjs"
             ],
             "inputs": [
-              "tests/dbspec/schema-definition.json",
-              "packages/ts/tests/dbspec-apply-cleanup.mjs"
+              "tests/dbspec/schema-definition.json"
             ],
             "commands": {
               "none": [

@@ -117,6 +117,8 @@ type step struct {
 		Message      string `json:"message"`
 		SQLiteResult int    `json:"sqlite_result"`
 	} `json:"fail_statements"`
+	// NoRowQueries are the queries of dbspec.apply_fault that return no row in the call.
+	NoRowQueries []string `json:"no_row_queries"`
 	// StopOnApplied is the message of the error of the first applied event of dbspec.apply_fault.
 	StopOnApplied string `json:"stop_on_applied"`
 	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
