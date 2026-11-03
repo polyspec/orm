@@ -41,6 +41,7 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Schema;
 use Polyspec\Orm\StatementEvent;
 use Polyspec\Orm\StyledValue;
+use Polyspec\Orm\TxFrame;
 use Polyspec\Orm\Validator;
 use RuntimeException;
 
@@ -485,11 +486,24 @@ final class Recipe
         throw new \RuntimeException('the listener received no request message');
     }
 
-    /** Opens a DSN with Orm::connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4). */
+    /**
+     * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+     * driver: the one implementation of dsn.connect (FCV-4).
+     */
     private static function connectDriver(string $dsn): string
     {
         $db = Orm::connect($dsn, new Config());
         try {
+            $rows = $db->utils()->run(
+                static fn (TxFrame $frame): array => $frame->run(
+                    StatementEvent::UTILITY,
+                    [],
+                    'SELECT 1',
+                ),
+            );
+            Assert::assertCount(1, $rows, 'SELECT 1 on the connection returns one row');
+            Assert::assertCount(1, $rows[0], 'SELECT 1 on the connection returns one column');
+            Assert::assertSame(1, (int) $rows[0][0], 'SELECT 1 on the connection returns 1');
             return $db->driver();
         } finally {
             $db->close();
