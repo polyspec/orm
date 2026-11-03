@@ -96,17 +96,19 @@ impl<'d> Scope<'d> {
 /// when it was found and is valid; a missing or invalid one is already reported.
 /// `literals` receives the canonical literal texts of each check that types.
 pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut Vec<Diag>, literals: &mut Vec<CheckLiterals>) {
-    let Syntax { document, unresolved, typeless, failed_keys, header_failed, defaults, .. } = parsed;
+    let Syntax { document, failed_uses, unresolved, typeless, failed_keys, header_failed, defaults, .. } = parsed;
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
     let typeless = (0..document.tables.len())
         .map(|i| typeless.get(i).map(|names| names.iter().map(|(name, null)| (name.as_str(), *null)).collect()).unwrap_or_default())
         .collect();
     let mut scope = Scope { tables: HashMap::new(), document, failed, typeless, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
+    scope.unresolved.extend(failed_uses.iter().map(String::as_str));
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
         if !seen_documents.insert(line.document.text.as_str()) {
             diags.push(err(line.document.pos, "name.duplicate", format!("document '{}' is used twice", line.document.text)));
+            continue;
         }
         let Some(other) = found else {
             scope.unresolved.extend(line.tables.iter().map(|n| n.text.as_str()));
