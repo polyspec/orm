@@ -57,7 +57,7 @@ export function runRecipe(path, database) {
           if (step.op === 'ir.validate') checkValidate(step, requestText(literal, caseIndex, index), schema, database);
           else if (step.op === 'planner.compile') checkPlanner(step, dirname(path), database);
           else if (dbspecOps.includes(step.op)) checkDbspec(step, bound, database);
-          else if (step.op === 'ir.answer') await checkAnswer(step, database);
+          else if (step.op === 'ir.answer') await checkAnswer(step, database, answerText(literal, caseIndex, index));
           else if (step.op === 'dsn.connect') await checkDsnConnect(step, database);
           else if (step.op === 'keyring.versions') checkKeyring(step, database);
           else if (step.op === 'markdown.builder') await checkBuilder(step, database);
@@ -860,6 +860,13 @@ function validationModel(schemaPath) {
 }
 
 // requestText is the request of the step as its ordered-json text, so a number keeps its literal (0.0 is not 0).
+// answerText is the answer of an ir.answer step as its recipe writes it, so that a number keeps its form on the wire: JSON.parse
+// would make 3.0 the 3 of an integer. A step of answers has none.
+function answerText(literal, caseIndex, stepIndex) {
+  const answer = literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('answer');
+  return answer === undefined ? undefined : stringifyJson(answer);
+}
+
 function requestText(literal, caseIndex, stepIndex) {
   return stringifyJson(literal.get('cases').items[caseIndex].get('steps').items[stepIndex].get('request'));
 }
@@ -1098,7 +1105,7 @@ function requestParams(sent) {
 // checkAnswer runs the chain of an ir.answer step on a connection to a listener that answers with the answer or answers of the step,
 // normalizes its result, and compares it with the value of the expect of database. An OrmError from the chain is {error: CODE}.
 // An expect of {params} compares the params of the request that the listener received instead (PRT-66).
-async function checkAnswer(step, database) {
+async function checkAnswer(step, database, answer) {
   const expect = step.expect?.[database];
   if (expect === undefined) throw new Error(`ir.answer has no expect for ${database}`);
   if (expect.value === undefined && expect.params === undefined) throw new Error(`ir.answer expect for ${database} has neither value nor params`);
@@ -1106,7 +1113,7 @@ async function checkAnswer(step, database) {
   if (chain === undefined) throw new Error(`chain ${step.chain} is no markdown conformance case`);
   if (expect.params !== undefined && step.answers !== undefined) throw new Error('a params expect needs one answer, not answers');
   const sent = [];
-  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(step.answer), sent);
+  const server = step.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(step.answers) : await startMarkdownTestServerWithAnswer(answer, sent);
   const db = await connect(server.dsn);
   let got;
   let failed = false;
@@ -1687,6 +1694,17 @@ Object.assign(OPS, {
   async 'events.unsubscribe'(s, context) {
     refOf(s.ref, context).stop();
     return {};
+  },
+  // utils.run (FCV-4, INT-150): one Utils.run whose function runs the statements in order on its frame; the value is the rows of the last.
+  async 'utils.run'(s, context) {
+    const result = await connectionOf(s, context).utils().run(async frame => {
+      let last = { rows: [] };
+      for (const statement of s.statements) {
+        last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
+      }
+      return last;
+    });
+    return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
   },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);

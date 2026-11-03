@@ -155,6 +155,35 @@
       ]
     },
     {
+      "id": "row_count_refuses_whole_float_on_the_wire",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 3.0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "row_count_refuses_beyond_safe",
       "requirements": [
         "INT-68",

@@ -377,6 +377,12 @@
       "op",
       "ref"
     ],
+    "utils.run": [
+      "connection",
+      "expect",
+      "op",
+      "statements"
+    ],
     "events.captured": [
       "compare",
       "expect",

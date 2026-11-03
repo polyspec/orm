@@ -99,4 +99,32 @@ trait StatementRunnerCases
             $db->close();
         }
     }
+
+    /** A frame used after its transaction ended fails with CONFIG and sends no statement. */
+    private static function frameAfterItsTransactionEndedFailsWithConfig(string $dsn): void
+    {
+        $db = Orm::connect($dsn, new Config());
+        try {
+            $kept = null;
+            $db->utils()->run(function (TxFrame $frame) use (&$kept): void {
+                $kept = $frame;
+            });
+            $statements = 0;
+            $stop = $db->subscribe(static function () use (&$statements): void {
+                $statements++;
+            });
+            $failure = null;
+            try {
+                $kept->run(StatementEvent::UTILITY, [], 'SELECT 1');
+            } catch (OrmException $e) {
+                $failure = $e;
+            }
+            $stop();
+            Assert::assertNotNull($failure, 'a frame after its transaction ended ran a statement');
+            Assert::assertSame(Code::CONFIG, $failure->code_, 'a frame after its transaction ended did not fail with CONFIG');
+            Assert::assertSame(0, $statements, 'a frame after its transaction ended sent a statement');
+        } finally {
+            $db->close();
+        }
+    }
 }

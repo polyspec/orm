@@ -2564,6 +2564,35 @@ mod database {
                 subscription.unsubscribe();
                 Output::fields(json!({}))
             }
+            // utils.run (FCV-4, INT-150): one Utils::run whose function runs the statements in order on its frame; the value is
+            // the rows of the last.
+            "utils.run" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let mut statements = Vec::new();
+                for statement in step["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
+                    let kind = statement["kind"].as_str().ok_or_else(|| fault("a statement of utils.run names no kind".into()))?;
+                    let tables: Vec<&str> = statement["tables"].as_array().map(|names| names.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+                    let sql = sql_field(&statement["sql"], context).map_err(fault)?;
+                    let mut params = Vec::new();
+                    for raw in statement["params"].as_array().map(Vec::as_slice).unwrap_or_default() {
+                        params.push(super::tables::param(raw).map_err(fault)?);
+                    }
+                    statements.push((kind, tables, sql, params));
+                }
+                let rows = db
+                    .utils()
+                    .run(async |frame| {
+                        let mut last = Vec::new();
+                        for (kind, tables, sql, params) in &statements {
+                            last = frame.run(kind, tables, sql, params).await?;
+                        }
+                        Ok(last)
+                    })
+                    .await
+                    .map_err(orm)?;
+                let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
+                Output::fields(json!({ "value": { "array": rows } }))
+            }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
@@ -3094,7 +3123,7 @@ mod statement {
     use std::collections::HashMap;
     use std::sync::Mutex;
 
-    use polyspec_orm::{Param, StatementEvent};
+    use polyspec_orm::{Param, StatementEvent, Val};
     use serde_json::{json, Value};
 
     /// The events that a recording subscriber received: each with whether it names a table, and its wrapper.
@@ -3108,6 +3137,17 @@ mod statement {
         /// The recorded events; with `tables_only`, the ones that name a table.
         pub(super) fn captured(&self, tables_only: bool) -> Vec<Value> {
             self.records.iter().filter(|(named, _)| !tables_only || *named).map(|(_, e)| e.clone()).collect()
+        }
+    }
+
+    /// The recipe wrapper of one cell of a statement result of the frame (INT-150).
+    pub(super) fn cell_wrapper(cell: &Val) -> Value {
+        match cell {
+            Val::Null => json!({ "null": true }),
+            Val::I64(n) => json!({ "int": n.to_string() }),
+            Val::F64(f) => json!({ "float": f.to_string() }),
+            Val::Str(text) => json!({ "text": text }),
+            other => panic!("the statement recipe has no wrapper for the cell {other:?}"),
         }
     }
 
@@ -4232,7 +4272,7 @@ mod tables {
     }
 
     /// The recipe value of a column: the parameter of its wrapper.
-    fn param(wrapper: &Value) -> Result<Param, String> {
+    pub(super) fn param(wrapper: &Value) -> Result<Param, String> {
         let (kind, body) = super::kind(wrapper)?;
         Ok(match kind {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
