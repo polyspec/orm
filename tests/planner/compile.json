@@ -48,7 +48,13 @@
   "DIA-16",
   "COD-4",
   "DIA-33",
-  "PRT-69"
+  "PRT-69",
+  "DSL-67",
+  "DSL-159",
+  "PRT-9",
+  "PRT-38",
+  "PRT-40",
+  "PRT-78"
  ],
  "cases": [
   {
@@ -12851,6 +12857,241 @@
           "tables": [
            "author",
            "user"
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "planner_page_steps",
+   "requirements": [
+    "DSL-67",
+    "DSL-159",
+    "PRT-9",
+    "PRT-14",
+    "PRT-31",
+    "PRT-38",
+    "PRT-40",
+    "PRT-78",
+    "DIA-1",
+    "DIA-2",
+    "DIA-3"
+   ],
+   "steps": [
+    {
+     "op": "planner.compile",
+     "schema": "../../contracts/fixtures/complex_query/complex_query.dbs",
+     "input": {
+      "entity": "product",
+      "ir_version": 1,
+      "kind": "paginate",
+      "limit": {
+       "count_p": 2,
+       "offset_p": 1
+      },
+      "n_params": 3,
+      "order": [
+       {
+        "column": "seq",
+        "desc": true
+       }
+      ],
+      "relations": [
+       {
+        "keys": [
+         {
+          "left": "seq",
+          "right": "product_seq"
+         }
+        ],
+        "kind": "many",
+        "query": {
+         "entity": "product_review"
+        },
+        "rel": "reviews"
+       }
+      ],
+      "where": {
+       "items": [
+        {
+         "pred": {
+          "column": "service_seq",
+          "op": "eq",
+          "p": 0
+         }
+        }
+       ]
+      }
+     },
+     "expect": {
+      "none": {
+       "value": {
+        "mysql": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`short_description` AS `a__short_description`, `a`.`content` AS `a__content`, `a`.`service_seq` AS `a__service_seq`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`is_allday` AS `a__is_allday`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`product_brand_seq` AS `a__product_brand_seq`, `a`.`like_count` AS `a__like_count` FROM `product` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM `product` AS `a` WHERE `a`.`service_seq` = ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`product_seq` AS `a__product_seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`is_close` AS `a__is_close`, `a`.`content` AS `a__content` FROM `product_review` AS `a` WHERE `a`.`product_seq` IN (?)",
+          "tables": [
+           "product_review"
+          ]
+         }
+        ],
+        "postgres": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 ORDER BY \"a\".\"seq\" DESC LIMIT $2 OFFSET $3",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = $1",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN ($1)",
+          "tables": [
+           "product_review"
+          ]
+         }
+        ],
+        "sqlite": [
+         {
+          "role": "main",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 2,
+            "type": "i64"
+           },
+           {
+            "from": "param",
+            "param": 1,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"short_description\" AS \"a__short_description\", \"a\".\"content\" AS \"a__content\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"product_brand_seq\" AS \"a__product_brand_seq\", \"a\".\"like_count\" AS \"a__like_count\" FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ? ORDER BY \"a\".\"seq\" DESC LIMIT ? OFFSET ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "count",
+          "slots": [
+           {
+            "from": "param",
+            "param": 0,
+            "type": "i64"
+           }
+          ],
+          "sql": "SELECT COUNT(*) FROM \"product\" AS \"a\" WHERE \"a\".\"service_seq\" = ?",
+          "tables": [
+           "product"
+          ]
+         },
+         {
+          "role": "relation",
+          "slots": [
+           {
+            "from": "parent",
+            "key_types": [
+             "i64"
+            ]
+           }
+          ],
+          "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"product_seq\" AS \"a__product_seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"content\" AS \"a__content\" FROM \"product_review\" AS \"a\" WHERE \"a\".\"product_seq\" IN (?)",
+          "tables": [
+           "product_review"
           ]
          }
         ]

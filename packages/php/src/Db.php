@@ -11,7 +11,6 @@ namespace Polyspec\Orm;
 final class Db
 {
     public const DRIVERS = ['mysql', 'postgres', 'sqlite'];
-    public const SECRET = '$SECRET';
     public const NOW = '$NOW';
     /** A table that stands in for the SQLite row lock. The row lock statement points at it. */
     private const ROW_LOCK_TABLE = 'orm__row_lock';
@@ -1743,13 +1742,6 @@ final class Db
                         $this->typed = true;
                     }
                     $out[] = $v;
-                    break;
-                case 'secret':
-                    if (($b['name'] ?? '') !== 'aes' || $cfg->aesKey === '') {
-                        throw new OrmException(Code::CONFIG, "secret {$b['name']} is not configured");
-                    }
-                    $this->masks[count($out)] = self::SECRET;
-                    $out[] = $cfg->aesKey;
                     break;
                 case 'config':
                     if (($b['name'] ?? '') !== 'aes_version') {

@@ -119,6 +119,14 @@ type step struct {
 	Call            string `json:"call"`
 	AppliedFirst    bool   `json:"applied_first"`
 	FailCatalogRead int    `json:"fail_catalog_read"`
+	// FailStatements are the statements of dbspec.apply_fault that fail in the call.
+	FailStatements []struct {
+		Statement    string `json:"statement"`
+		Message      string `json:"message"`
+		SQLiteResult int    `json:"sqlite_result"`
+	} `json:"fail_statements"`
+	// StopOnApplied is the message of the error of the first applied event of dbspec.apply_fault.
+	StopOnApplied string `json:"stop_on_applied"`
 	// Vectors is the file of dbspec.introspect_shown, relative to the recipe, and Case the id of its case.
 	Vectors string `json:"vectors"`
 	Case    string `json:"case"`

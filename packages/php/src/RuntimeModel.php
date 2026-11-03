@@ -75,9 +75,10 @@ final class RuntimeModel
     public static function parseSet(array $owned, array $external): array
     {
         $labels = [...array_keys($owned), ...array_keys($external)];
+        $results = Dbspec::parseSet(array_values($owned), array_values($external));
         $documents = [];
         $errors = [];
-        foreach (Dbspec::parseSet(array_values($owned), array_values($external)) as $i => $result) {
+        foreach ($results as $i => $result) {
             foreach ($result->diagnostics as $d) {
                 $errors[] = "{$labels[$i]}:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
             }
@@ -99,14 +100,22 @@ final class RuntimeModel
      */
     public static function loadSet(string $manifestText, string $externalText): array
     {
-        $external = $externalText === '' ? [] : array_combine(
-            array_map(
-                static fn(string $label): string => "external $label",
-                array_keys(self::splitManifest($externalText))
-            ),
-            self::splitManifest($externalText),
-        );
-        return self::parseSet(self::splitManifest($manifestText), $external);
+        $external = $externalText === '' ? [] : self::splitManifest($externalText);
+        $results = Dbspec::parseSet(array_values(self::splitManifest($manifestText)), array_values($external));
+        $documents = [];
+        $errors = [];
+        foreach ($results as $result) {
+            foreach ($result->diagnostics as $d) {
+                $errors[] = "{$d->line}:{$d->column} {$d->rule}: document {$result->name}: {$d->message}";
+            }
+            if ($result->document !== null) {
+                $documents[] = $result->document;
+            }
+        }
+        if ($errors !== []) {
+            throw new OrmException(Code::SCHEMA_INVALID, implode('; ', $errors));
+        }
+        return $documents;
     }
 
     /**
@@ -118,7 +127,7 @@ final class RuntimeModel
     public static function splitManifest(string $text): array
     {
         if (!str_starts_with($text, 'dbspec 1 ')) {
-            throw new OrmException(Code::SCHEMA_INVALID, 'manifest text does not start with a dbspec header');
+            throw new OrmException(Code::SCHEMA_INVALID, '1:1 header: manifest text does not start with a dbspec header');
         }
         $out = [];
         foreach (preg_split('/(?<=\n)(?=dbspec 1 )/', $text) as $document) {
@@ -208,10 +217,10 @@ final class RuntimeModel
         $result = Dbspec::manifest($documents);
         if ($result->manifest === null) {
             $lines = array_map(
-                static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}",
+                static fn($d): string => "{$d->line}:{$d->column} {$d->rule}: {$d->message}",
                 $result->diagnostics
             );
-            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
+            throw new OrmException(Code::SCHEMA_INVALID, implode('; ', $lines));
         }
         usort($documents, static fn(Document $a, Document $b): int => strcmp($a->name, $b->name));
         // The tables that owned documents use from each external document

@@ -152,18 +152,22 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.deepEqual(files.flatMap(file => expectFaults(JSON.parse(readFileSync(resolve(root, file), 'utf8')) as Json).map(fault => `${file}: ${fault}`)), []);
 });
 
-caseTest('every recipe of the parity suites names the recipe schema and is valid against it', COMPUTE, () => {
-  const parity = readParityConfig(resolve(root, 'config/parity.json'));
-  const files = (parity.suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
-  assert.ok(files.length > 0, 'config/parity.json names no suite file');
-  for (const file of files) {
-    const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
-    const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
-    if (typeof named !== 'string' || !named.endsWith('/recipe.schema.json')) continue;
+// One subtest per recipe, so that a run reports every invalid recipe and not the first.
+const suiteFiles = (readParityConfig(resolve(root, 'config/parity.json')).suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
+
+caseTest('config/parity.json names the suite files', COMPUTE, () => {
+  assert.ok(suiteFiles.length > 0, 'config/parity.json names no suite file');
+});
+
+for (const file of suiteFiles) {
+  const value: unknown = JSON.parse(readFileSync(resolve(root, file), 'utf8'));
+  const named = value !== null && typeof value === 'object' && '$schema' in value ? value.$schema : undefined;
+  if (typeof named !== 'string' || !named.endsWith('/recipe.schema.json')) continue;
+  caseTest(`the recipe ${file} names the recipe schema and is valid against it`, COMPUTE, () => {
     assert.equal(resolve(root, dirname(file), named), schema, `${file} names another recipe schema`);
     assert.deepEqual(refused(value, file), [], file);
-  }
-});
+  });
+}
 
 // Requirements: FCV-12.
 caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {

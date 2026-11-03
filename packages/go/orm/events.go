@@ -32,8 +32,7 @@ const (
 // database (docs/operations/usage.md, statement events).
 type StatementEvent struct {
 	SQL string
-	// Binds are the bound values; secret and clock slots are replaced by
-	// Secret and NowBind.
+	// Binds are the bound values; clock slots are replaced by NowBind.
 	Binds []any
 	Kind  string
 	// Tables are the tables the statement names, sorted; transaction control
