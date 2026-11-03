@@ -17969,7 +17969,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFault"
+          "id": "RollbackTest::testFaultEntry"
         }
       ],
       "owner": {
@@ -25737,83 +25737,33 @@
       ]
     },
     {
-      "id": "transaction-failure-rollback-fault",
+      "id": "transaction-forms-rollback-fault",
       "kind": "feature",
       "requirements": [
-        "INT-72"
+        "INT-72a"
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultSQLite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultMySQL"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_test.go",
-          "id": "TestRollbackFaultPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/TransactionFailureTest.php",
-          "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFault"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
-          "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/transaction-failure.mjs",
-          "id": "transaction-failure/rollback-fault-consumption"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/rollback.mjs",
-          "id": "rollback/rollback_fault/postgres"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_fault_reports_the_next_failed_rollback"
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "transaction_forms_rollback_fault_sqlite"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_sqlite"
+          "id": "transaction_forms_rollback_fault_mysql"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_postgres"
+          "id": "transaction_forms_rollback_fault_postgres"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "transaction-failure-savepoint-end",
@@ -41982,6 +41932,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42041,6 +41992,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",
@@ -42100,6 +42052,7 @@
         "INT-46",
         "INT-48",
         "INT-49",
+        "INT-72",
         "PLN-13",
         "PLN-16",
         "PLN-17",

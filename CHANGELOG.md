@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The natives of the rollback fault are gone from all runtimes: the case of the recipe transactions states them, with the new expect key `keeps_callback` for the callback error that a ROLLBACK keeps. `packages/ts/tests/rollback.mjs` and `packages/go/orm/rollback_fault_test.go` are removed, and the two Rust forms stay native as INT-72a.
 - The constraint errors and the immutable write are held by the recipes in Rust, Go and Python too: the recipes compare the check name, the unique key, the SQLite code name and the driver cause, and `refusal.rs` is gone (#T334-3-18).
 - - The compile case of an output name conflict holds the exact text of the error in every dialect, by the optional message of a planner.compile expect (#T334-3-6-2)
 - The catalog natives a recipe cannot reach stay as internal tests, and generated_identity_sqlite, read_only_grid_shapes and temporal_text_row_cycle_sqlite hold the random key, the refused grid write and the temporal row cycle.

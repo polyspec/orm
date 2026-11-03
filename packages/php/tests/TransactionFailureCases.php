@@ -12,7 +12,6 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\Testing\Faults;
 use RuntimeException;
 
 trait TransactionFailureCases
@@ -83,50 +82,6 @@ trait TransactionFailureCases
                 $pdo->query('SELECT value FROM transaction_unwind')->fetchAll(PDO::FETCH_COLUMN),
                 'the same PDO connection works for the next transaction'
             );
-        } finally {
-            $db->close();
-        }
-    }
-
-    // Requirements: INT-72.
-    public function testRollbackFaultIsConsumedAfterTransactionRollback(): void
-    {
-        require_once dirname(__DIR__) . '/testing/Faults.php';
-        $pdo = new ModelTestFailingPdo('sqlite::memory:');
-        $pdo->exec('CREATE TABLE transaction_failure_rollback_fault (label TEXT NOT NULL)');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        try {
-            Faults::failNextRollback($db);
-            $db->transaction(static function () use ($pdo): void {
-                $pdo->exec("INSERT INTO transaction_failure_rollback_fault VALUES ('committed')");
-            }, retry: 0);
-
-            $callback = new RuntimeException('rollback fault callback failed');
-            $failing = static function () use ($pdo, $callback): never {
-                $pdo->exec("INSERT INTO transaction_failure_rollback_fault VALUES ('rolled back')");
-                throw $callback;
-            };
-            try {
-                $db->transaction($failing, retry: 0);
-                self::fail('a failed rollback with an armed fault must report ROLLBACK');
-            } catch (OrmException $error) {
-                self::assertSame(Code::ROLLBACK, $error->code_);
-                self::assertSame($callback, $error->getPrevious());
-                self::assertSame(Code::FAULT, $error->rollback?->code_);
-            }
-            self::assertSame(['committed'], $pdo->query(
-                'SELECT label FROM transaction_failure_rollback_fault ORDER BY label'
-            )->fetchAll(PDO::FETCH_COLUMN));
-
-            try {
-                $db->transaction($failing, retry: 0);
-                self::fail('the consumed rollback fault must not affect the next transaction');
-            } catch (RuntimeException $error) {
-                self::assertSame($callback, $error);
-            }
-            self::assertSame(['committed'], $pdo->query(
-                'SELECT label FROM transaction_failure_rollback_fault ORDER BY label'
-            )->fetchAll(PDO::FETCH_COLUMN));
         } finally {
             $db->close();
         }

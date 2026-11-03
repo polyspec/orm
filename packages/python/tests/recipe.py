@@ -3859,6 +3859,10 @@ def _run_database_step(step: dict, context: dict) -> None:
                 raise AssertionError(
                     f"error {str(error)!r} keeps the rollback error {rollback!r}, want code {expected['rollback']}"
                 ) from error
+        if expected.get("keeps_callback") is True and not isinstance(error.cause, CallbackError):
+            raise AssertionError(
+                f"error {str(error)!r} does not keep the error of the callback"
+            ) from error
         if expected.get("driver_cause") is True and error.__cause__ is None:
             raise AssertionError(
                 f"error {str(error)!r} has no driver cause"

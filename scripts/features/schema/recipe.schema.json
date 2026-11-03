@@ -719,6 +719,10 @@
               "type": "string",
               "pattern": "^[A-Z][A-Z0-9_]*$"
             },
+            "keeps_callback": {
+              "description": "A ROLLBACK error keeps the error that the callback of its transaction returned (CFG-15).",
+              "const": true
+            },
             "driver_cause": {
               "description": "The error keeps the error of the driver as its cause (Go errors.Unwrap, PHP getPrevious, TypeScript cause, Python __cause__, Rust source).",
               "const": true

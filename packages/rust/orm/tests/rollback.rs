@@ -72,32 +72,15 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
 }
 
-/// The rollback fault of the test entry point. A committed transaction leaves the fault in place,
-/// and the next transaction whose callback fails is rolled back, and that rollback reports FAULT
-/// and the transaction returns a ROLLBACK carrying the callback error and the fault.
-/// The fault is consumed: afterwards, the transaction returns only the callback error.
-/// `transaction_send` and `transaction_once` also consume the configured fault in the same way
-/// , and the connection handles later requests.
-async fn rollback_fault(driver: &str, dsn: &str) {
+/// The rollback fault of the test entry point on the two forms of this crate. A committed transaction
+/// leaves the fault in place; `transaction_send` and `transaction_once` then report it with the callback
+/// error as `transaction` does (INT-72), and consume it.
+async fn transaction_forms_rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     polyspec_orm::testing::fail_next_rollback(&db);
     db.transaction(async || create("committed").await).retry(0).await.or_panic(|e| format!("{driver}: a committed transaction with an armed fault: {e}"));
-    let failing = async || -> polyspec_orm::Result<()> {
-        create("rolled back").await?;
-        Err(fault_callback())
-    };
-    let error = db.transaction(failing).retry(0).await.expect_err("transaction");
-    check_fault(driver, &error, "transaction");
     let count = async || polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap();
-    assert_eq!(count().await, 1, "{driver}: the faulted rollback keeps only the committed row");
-    let again = db.transaction(failing).retry(0).await.expect_err("transaction");
-    assert!(
-        matches!(again, polyspec_orm::Error::Config(_)) && again.to_string() == fault_callback().to_string(),
-        "{driver}: the transaction after the consumed fault = {again}"
-    );
-    assert_eq!(count().await, 1, "{driver}: the second rollback keeps only the committed row");
 
-    polyspec_orm::testing::fail_next_rollback(&db);
     let error = db
         .transaction_send(|| async {
             create("rolled back").await?;
@@ -133,7 +116,7 @@ async fn bounded(driver: &str, case: &str) {
     let dsn = database.dsn().to_owned();
     let run = async {
         match case {
-            "rollback_fault" => rollback_fault(driver, &dsn).await,
+            "transaction_forms_rollback_fault" => transaction_forms_rollback_fault(driver, &dsn).await,
             other => unreachable!("unknown case {other}"),
         }
     };
@@ -141,24 +124,24 @@ async fn bounded(driver: &str, case: &str) {
 }
 
 #[tokio::test]
-// Requirements: INT-72.
-async fn rollback_fault_sqlite() {
+// Requirements: INT-72a.
+async fn transaction_forms_rollback_fault_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("sqlite", "rollback_fault").await;
+    bounded("sqlite", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::test]
-// Requirements: INT-72.
-async fn rollback_fault_mysql() {
+// Requirements: INT-72a.
+async fn transaction_forms_rollback_fault_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("mysql", "rollback_fault").await;
+    bounded("mysql", "transaction_forms_rollback_fault").await;
 }
 
 #[tokio::test]
-// Requirements: INT-72.
-async fn rollback_fault_postgres() {
+// Requirements: INT-72a.
+async fn transaction_forms_rollback_fault_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    bounded("postgres", "rollback_fault").await;
+    bounded("postgres", "transaction_forms_rollback_fault").await;
 }
 
 /// The test entry point exists only when feature `test-faults` is enabled, and no

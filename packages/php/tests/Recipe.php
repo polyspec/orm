@@ -2479,6 +2479,9 @@ final class Recipe
             if (isset($expected['message_holds'])) {
                 Assert::assertStringContainsString($expected['message_holds'], $error->getMessage(), 'the error message');
             }
+            if (($expected['keeps_callback'] ?? false) === true) {
+                Assert::assertInstanceOf(CallbackFailed::class, $error->getPrevious(), 'the error of the callback');
+            }
             if (isset($expected['rollback'])) {
                 Assert::assertSame($expected['rollback'], $error->rollback?->code_, 'the rollback error');
                 Assert::assertStringContainsString($error->rollback->getMessage(), $error->getMessage(), 'the error message');
