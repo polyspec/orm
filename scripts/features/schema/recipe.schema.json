@@ -887,6 +887,8 @@
             "catalog.connect",
             "catalog.close",
             "catalog.reconnect",
+            "sql.hold_connection",
+            "sql.release_connection",
             "catalog.revision",
             "catalog.revision_compare",
             "catalog.row_cells",
@@ -1195,6 +1197,12 @@
         },
         {
           "$ref": "#/$defs/ops/catalog.reconnect"
+        },
+        {
+          "$ref": "#/$defs/ops/sql.hold_connection"
+        },
+        {
+          "$ref": "#/$defs/ops/sql.release_connection"
         },
         {
           "$ref": "#/$defs/ops/catalog.revision"
@@ -6639,6 +6647,46 @@
             "description": "The prefix of the user of the new connection: the prefix and the last 28 characters of the name of the case database, on the DSN of the case without a password.",
             "type": "string",
             "minLength": 1
+          },
+          "refused_message": {
+            "description": "The server must refuse the connection: the text that the error message of the driver holds, compared in lower case. The connection of the case stays.",
+            "type": "string",
+            "minLength": 1
+          },
+          "refused_code": {
+            "description": "With refused_message: the code of the error of that refusal.",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          }
+        }
+      },
+      "sql.hold_connection": {
+        "type": "object",
+        "required": [
+          "op",
+          "user_from_database"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "sql.hold_connection"
+          },
+          "user_from_database": {
+            "description": "The user whose place the native connection holds, named as catalog.reconnect names it. The connection stays open until sql.release_connection.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "sql.release_connection": {
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "sql.release_connection"
           }
         }
       },

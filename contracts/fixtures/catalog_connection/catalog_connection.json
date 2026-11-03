@@ -9056,6 +9056,11 @@
         },
         {
           "op": "sql.exec",
+          "reason": "a rerun finds the user of a run that failed",
+          "sql": "CALL one_connection_user('drop')"
+        },
+        {
+          "op": "sql.exec",
           "reason": "creates that user",
           "sql": "CALL one_connection_user('create')"
         },
@@ -9069,7 +9074,8 @@
           "max_rows": 3,
           "expect": {
             "mysql": {
-              "error": "CATALOG_LIMIT"
+              "error": "CATALOG_LIMIT",
+              "message_suffix": "result has more than 3 rows"
             }
           }
         },
@@ -9082,6 +9088,74 @@
                 [
                   {
                     "text": "answers"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "catalog.close"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "drops that user",
+          "sql": "CALL one_connection_user('drop')"
+        }
+      ]
+    },
+    {
+      "id": "plain_connect_on_a_held_place_is_refused_once",
+      "requirements": [
+        "CFG-1",
+        "CFG-35"
+      ],
+      "only": [
+        "mysql"
+      ],
+      "steps": [
+        {
+          "op": "sql.exec",
+          "reason": "a user of this case that the server allows one connection, so the connection of a kill is refused; its name is in the database of the case, as runners on one server share users",
+          "sql": "CREATE PROCEDURE one_connection_user(IN verb VARCHAR(16)) BEGIN DECLARE name VARCHAR(40) DEFAULT CONCAT('o1_', RIGHT(DATABASE(), 28)); IF verb = 'create' THEN SET @statement = CONCAT('CREATE USER IF NOT EXISTS ''', name, '''@''%'' WITH MAX_USER_CONNECTIONS 1'); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; SET @statement = CONCAT('GRANT SELECT ON `', DATABASE(), '`.* TO ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; ELSE SET @statement = CONCAT('DROP USER IF EXISTS ''', name, '''@''%'''); PREPARE s FROM @statement; EXECUTE s; DEALLOCATE PREPARE s; END IF; END"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a rerun finds the user of a run that failed",
+          "sql": "CALL one_connection_user('drop')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "creates that user",
+          "sql": "CALL one_connection_user('create')"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "the refusals that the server has counted for that name until now",
+          "sql": "CREATE TABLE refusals_before AS SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226"
+        },
+        {
+          "op": "sql.hold_connection",
+          "user_from_database": "o1_"
+        },
+        {
+          "op": "catalog.reconnect",
+          "user_from_database": "o1_",
+          "refused_code": "DRIVER",
+          "refused_message": "max_user_connections"
+        },
+        {
+          "op": "sql.release_connection"
+        },
+        {
+          "op": "catalog.read_only_query",
+          "sql": "SELECT CAST(refused.n - before_it.n AS CHAR) AS refusals FROM (SELECT COALESCE(SUM(SUM_ERROR_RAISED), 0) AS n FROM performance_schema.events_errors_summary_by_user_by_error WHERE USER = CONCAT('o1_', RIGHT(DATABASE(), 28)) AND ERROR_NUMBER = 1226) refused CROSS JOIN refusals_before before_it",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "1"
                   }
                 ]
               ]
