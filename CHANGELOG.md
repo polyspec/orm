@@ -12,7 +12,6 @@
 - A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.
 - A value of a read-only query that is not valid UTF-8 is its bytes in all six runtimes, and a binary cell in a grid query, including a SQLite text.
 - A read-only query of any length or nesting answers in all six runtimes, and Rust reads a query by its tokens as the others do.
-- Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - CR15-F: generated keys are held by the recipe cases `generated_keys` and `generated_key_lifecycle`; the TypeScript and Python natives that repeated them over fake drivers are removed, and the Rust test keeps the phases, cancellation and joined inserts of INT-123a.
 - CR15-F: a SQLite statement of TypeScript that failed while reading its rows is reset; left unreset in the cache, its next run reported the same error whatever it bound.
 - CR15-F: An insert with no assignment returns its generated key: TypeScript on MySQL kept the insert id of a statement without binds, and PHP and the extension on PostgreSQL no longer declare a cursor for it.
@@ -20,11 +19,9 @@
 - Recipe runs record the keys they read in each runtime, and a key that a run leaves unread fails the case by name.
 - Every message of the dbspec rule `type` has the words DBS-162 states, in all six runtimes: Go, PHP, the PHP extension and Rust no longer word a parameter error their own way, and the generator cases hold each whole message. Targets of CHECK_TARGETS with no make rule are gone, and `catalog-rust` no longer names test files that do not exist (#T334-3-12-6)
 - `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
-- Tests: the MySQL session settings of CFG-3 are the case `mysql_session_settings` of the `dsn_connection` recipe in every runtime, through the new `session_read` key of `dsn.connect`; the `sql_mode` natives and `tests/dsn/mysql-session.json` are gone.
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
-- The native tests of `orm-gen gen --check` in Go, PHP and TypeScript are gone: the case `check_reports_differences_without_writing` of the recipe `generator` holds them, and `go-model-check`, `php-model-check` and `ts-model-check` hold the generated models; `ts-model-check` holds each of the five TypeScript model sets, and its scan list names the sources that call models.
 - The connection pool of CFG-4 and CFG-5 on MySQL and PostgreSQL runs as the new recipe `connection_pool` in Go, TypeScript, Python and Rust, through the new op `pool.transactions` and `pool_idle_size` of `model.connect`; the native tests keep the SQLite pool and the lifetime expiry, which `docs/spec/feature-coverage.md` lists (#T334-3-12-2)
 - The pool statistics of INT-79 run as the case `stats_report_the_pool_of_the_connection` of the recipe utils in all six runtimes, through the new op `utils.stats` (#T334-3-12-2)
 - The Go lane and the parity roots no longer name `packages/go/complexquery`, which has no Go file left (#T334-3-12-2)
