@@ -2264,6 +2264,11 @@ static bool cat_grid_pdo_cell(zval *v, const char *dialect, const char *native, 
     } else if (strcmp(dialect, "postgres") == 0 && strcmp(native, "NUMERIC") == 0) {
         ZVAL_STRING(&kind, "decimal");
         ok = cat_grid_text(v, &value);
+        /* PostgreSQL writes NaN and the infinities of numeric as text. */
+        if (ok && (strcmp(Z_STRVAL(value), "NaN") == 0 || strstr(Z_STRVAL(value), "Infinity") != NULL)) {
+            cat_refuse("PostgreSQL numeric is not finite");
+            ok = false;
+        }
     } else if (strcmp(dialect, "postgres") == 0 && (strcmp(native, "TIMESTAMPTZ") == 0 || strcmp(native, "TIMETZ") == 0)) {
         cat_refuse("PostgreSQL timestamptz and timetz are unsupported");
         ok = false;
@@ -3036,6 +3041,12 @@ static bool cat_commit(zval *db, zval *pdo)
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;
+        /* The connection is gone with the commit, so the next call opens a new one (INT-118). */
+        zval rv_commit_state, *commit_state = catalog_prop(db, "state", &rv_commit_state);
+        zval rv_commit_owner, *commit_owner = zend_read_property(Z_OBJCE_P(commit_state), Z_OBJ_P(commit_state), "catalogOwner", sizeof("catalogOwner") - 1, 1, &rv_commit_owner);
+        if (Z_TYPE_P(commit_owner) == IS_OBJECT) {
+            init_bool(commit_owner, "streamLeft", true);
+        }
         ZVAL_UNDEF(&rb_mapped);
         if (pdo_call(db, "driverError", &rb_mapped, 1, &rb_native, NULL)) {
             if (pdo_call(&rb_mapped, "getMessage", &rb_message, 0, NULL, NULL)) {

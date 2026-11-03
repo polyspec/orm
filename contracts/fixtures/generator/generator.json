@@ -879,7 +879,119 @@
           "unchanged": [],
           "changed": [
             "differs: <file>"
+          ],
+          "removed": [
+            "missing: <file>"
           ]
+        }
+      ]
+    },
+    {
+      "id": "a_set_file_with_errors_prints_every_error_and_writes_nothing",
+      "requirements": [
+        "DBS-14",
+        "DBS-15",
+        "DBS-17",
+        "DBS-19",
+        "DBS-25",
+        "DBS-26",
+        "DBS-27"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "a.dbs": "dbspec 1 a\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"gone.dbs\", \"a.dbs\", \"a.dbs\", \"/abs.dbs\"]}"
+          },
+          "parts": [
+            "set.file: ",
+            "gone.dbs",
+            "set.path: ",
+            "/abs.dbs",
+            "set.duplicate: ",
+            "a.dbs"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "files_without_the_signature_print_every_diagnostic_and_write_nothing",
+      "requirements": [
+        "DBS-4",
+        "DBS-18",
+        "DBS-27",
+        "DBS-155"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "dbschema.dbs": {
+              "path": "../../../tests/dbspec/files/dbschema.dbs"
+            },
+            "empty.dbs": {
+              "path": "../../../tests/dbspec/files/empty.dbs"
+            },
+            "invalid-utf8.dbs": {
+              "path": "../../../tests/dbspec/files/invalid-utf8.dbs"
+            },
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"dbschema.dbs\", \"empty.dbs\", \"invalid-utf8.dbs\"]}"
+          },
+          "parts": [
+            "dbschema.dbs",
+            "1:1",
+            "signature",
+            "dbschema.dbs is not a dbspec document",
+            "empty.dbs",
+            "1:1",
+            "signature",
+            "empty.dbs is not a dbspec document",
+            "invalid-utf8.dbs",
+            "3:8",
+            "encoding",
+            "invalid-utf8.dbs is not valid UTF-8"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_document_with_a_diagnostic_prints_it_and_writes_nothing",
+      "requirements": [
+        "DBS-27",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag tinyint\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: "
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a_check_whose_generation_fails_reports_it_and_writes_nothing",
+      "requirements": [
+        "DBS-27",
+        "DBS-175",
+        "SCH-12"
+      ],
+      "steps": [
+        {
+          "op": "generator.refused",
+          "files": {
+            "shop.dbs": "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  flag tinyint\n  primary key (id)\n}\n",
+            "dbspec-set.json": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+          },
+          "parts": [
+            "5:8 type: document shop: "
+          ],
+          "check": true
         }
       ]
     }

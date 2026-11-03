@@ -101,15 +101,43 @@ export function checkGeneratedFiles(step, dir) {
   });
   try {
     assert.equal(gen().code, 0, 'the generation');
-    expect(step.unchanged, '');
     const name = readdirSync(out).sort().find(entry => readFileSync(join(out, entry)).length > 0);
     assert.ok(name, `${out} holds no generated file`);
+    // A file that the generation does not write is not compared.
+    writeFileSync(join(out, 'zz_notes.ts'), '// notes\n');
+    expect(step.unchanged, '');
     const file = join(out, name);
     const text = readFileSync(file);
     text[0] ^= 1;
     writeFileSync(file, text);
     expect(step.changed, file);
     assert.deepEqual(readFileSync(file), text, 'the check wrote the file');
+    rmSync(file);
+    expect(step.removed, file);
+    assert.ok(!existsSync(file), 'the check wrote the file');
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+// checkRefusedGeneration runs one generator.refused step (FCV-4, DBS-27) through orm-gen gen of this client.
+export function checkRefusedGeneration(step, dir) {
+  const client = resolve(import.meta.dirname, '..');
+  const work = mkdtempSync(join(tmpdir(), 'orm-recipe-generator-refused-'));
+  const out = join(work, 'model');
+  try {
+    for (const [name, entry] of Object.entries(step.files))
+      writeFileSync(join(work, name), typeof entry === 'string' ? entry : readFileSync(resolve(dir, entry.path)));
+    const args = ['dist/bin/orm-gen.js', 'gen', '--set', join(work, 'dbspec-set.json'), '--out', out, ...(step.check ? ['--check'] : [])];
+    const done = spawnSync(process.execPath, args, { cwd: client, encoding: 'utf8' });
+    assert.deepEqual([done.status, done.stdout], [1, ''], done.stderr);
+    let from = 0;
+    for (const part of step.parts) {
+      const at = done.stderr.indexOf(part, from);
+      assert.notEqual(at, -1, `the output lacks ${part} in order: ${done.stderr}`);
+      from = at + part.length;
+    }
+    assert.ok(!existsSync(out), 'the generation wrote the output');
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

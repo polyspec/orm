@@ -23,8 +23,8 @@ class GeneratorTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function testNone(array $case): void
+    public function testNone(string $id): void
     {
-        $this->runCase($case, Recipe::NONE);
+        $this->runCase($id, Recipe::NONE);
     }
 }

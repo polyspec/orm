@@ -4,6 +4,7 @@
 #include "Zend/zend_closures.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
+#include "codec.h"
 #include "model_dsl.h"
 #include "model_native_methods.h"
 
@@ -208,6 +209,54 @@ fail:
     zval_ptr_dtor(out);ZVAL_UNDEF(out);return false;
 }
 
+/* Refuses a condition value of an ip column here, since a dialect that encodes it in SQL would read it as NULL (COD-38). */
+static bool host_value_valid(zval *columns,zend_string *column,zval *value)
+{
+    zval *meta=columns&&column?zend_hash_find(Z_ARRVAL_P(columns),column):NULL,*codec=meta?at(meta,"codec"):NULL,*stage;
+    bool has_ip=false;
+    if(!codec||Z_TYPE_P(codec)!=IS_ARRAY)return true;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(codec),stage){if(Z_TYPE_P(stage)==IS_STRING&&zend_string_equals_literal(Z_STR_P(stage),"ip"))has_ip=true;}ZEND_HASH_FOREACH_END();
+    if(!has_ip)return true;
+    if(Z_TYPE_P(value)==IS_ARRAY){
+        zval *item;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(value),item){if(!host_value_valid(columns,column,item))return false;}ZEND_HASH_FOREACH_END();
+        return true;
+    }
+    if(Z_TYPE_P(value)==IS_NULL)return true;
+    zval styles,checked;array_init(&styles);add_next_index_string(&styles,"ip");ZVAL_UNDEF(&checked);
+    zend_string *empty_key=zend_string_init("",0,0);
+    bool valid=codec_host_encode(value,Z_ARRVAL(styles),empty_key,&checked);
+    zend_string_release(empty_key);zval_ptr_dtor(&styles);
+    if(valid)zval_ptr_dtor(&checked);
+    return valid;
+}
+
+static bool predicate_host_input_valid(zval *model,zval *pred)
+{
+    zval *kind=at(pred,"kind"),*value=at(pred,"value");
+    if(!value||(kind&&is_str(kind,"fulltext")))return true;
+    zval meta;ZVAL_UNDEF(&meta);if(!get_meta(Z_OBJ_P(model),&meta))return false;
+    zval *columns=at(&meta,"columns");bool valid=true;
+    if(columns&&Z_TYPE_P(columns)==IS_ARRAY){
+        if(kind&&is_str(kind,"tuple")){
+            zval *cols=at(pred,"cols"),*row;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(value),row){
+                zval *column;zend_ulong index;
+                ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(cols),index,column){
+                    zval *cell=zend_hash_index_find(Z_ARRVAL_P(row),index);
+                    if(cell&&Z_TYPE_P(column)==IS_STRING&&!host_value_valid(columns,Z_STR_P(column),cell)){valid=false;break;}
+                }ZEND_HASH_FOREACH_END();
+                if(!valid)break;
+            }ZEND_HASH_FOREACH_END();
+        }else{
+            zval *column=at(pred,"column");
+            if(column&&Z_TYPE_P(column)==IS_STRING)valid=host_value_valid(columns,Z_STR_P(column),value);
+        }
+    }
+    zval_ptr_dtor(&meta);
+    return valid;
+}
+
 /* An OrmException of a condition value is the error of the builder call: the model records the first one and the terminal
    returns it before it sends a statement (INT-88). Any other pending exception stays pending. */
 static bool keep_builder_error(model_state *s)
@@ -227,7 +276,7 @@ bool model_dsl_where_chain(zval *model,zend_string *conn,zval *keys,zval *args)
         zval *key=zend_hash_index_find(Z_ARRVAL_P(keys),i),*value=zend_hash_index_find(Z_ARRVAL_P(args),arg_index++);
         if(!value){zend_string *m=strpprintf(0,"the condition expects %u values",key_count);model_native_fail(s,ZSTR_VAL(m));zend_string_release(m);return true;}
         zval rest;array_init(&rest);for(uint32_t j=arg_index;j<zend_hash_num_elements(Z_ARRVAL_P(args));j++){zval *rest_value=zend_hash_index_find(Z_ARRVAL_P(args),j);if(rest_value){zval copy;ZVAL_COPY(&copy,rest_value);add_next_index_zval(&rest,&copy);}}
-        zval pred;zend_long extra=0;bool valid=predicate_build(model,key,value,&rest,key_count==1,&pred,&extra);zval_ptr_dtor(&rest);if(!valid)return keep_builder_error(s);arg_index+=(uint32_t)extra;
+        zval pred;zend_long extra=0;bool valid=predicate_build(model,key,value,&rest,key_count==1,&pred,&extra);zval_ptr_dtor(&rest);if(!valid)return keep_builder_error(s);if(!predicate_host_input_valid(model,&pred)){zval_ptr_dtor(&pred);return keep_builder_error(s);}arg_index+=(uint32_t)extra;
         zval node;array_init(&node);add_assoc_zval(&node,"pred",&pred);zval *kc=at(key,"conn");zend_string *use=i==0?conn:(kc&&Z_TYPE_P(kc)==IS_STRING?Z_STR_P(kc):ZSTR_EMPTY_ALLOC());if(!add_item(s,use,&node)){if(EG(exception)==NULL)model_native_fail(s,"failed to append condition");return false;}
     }
     if(arg_index!=zend_hash_num_elements(Z_ARRVAL_P(args))){zend_string *m=strpprintf(0,"the condition expects %u values, got %u",key_count,zend_hash_num_elements(Z_ARRVAL_P(args)));model_native_fail(s,ZSTR_VAL(m));zend_string_release(m);}return true;
