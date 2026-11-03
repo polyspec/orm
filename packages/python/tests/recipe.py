@@ -1440,6 +1440,15 @@ def _run(step: dict, bound: dict, database: str) -> None:
         return
     if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
+    if "bytes_prefix_hex" in expect:
+        # An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        if (
+            not isinstance(result, bytes)
+            or len(result) != expect["bytes_length"]
+            or not result.hex().startswith(expect["bytes_prefix_hex"])
+        ):
+            raise AssertionError(f"cell {result!r}, want {expect}")
+        return
     want = expect["value"]
     if not decoded:
         _compare_cell(want, result)

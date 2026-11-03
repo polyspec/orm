@@ -8307,7 +8307,6 @@
       ],
       "tests": [
         "packages/go/orm/codec_test.go",
-        "packages/go/orm/hostcodec_test.go",
         "packages/go/orm/aes_rotation_test.go",
         "packages/go/orm/aes_json_test.go",
         "packages/go/orm/aes_keys_test.go",
@@ -8315,7 +8314,6 @@
         "packages/rust/orm/tests/aes_json.rs",
         "packages/rust/orm/tests/aes_keys.rs",
         "packages/ts/tests/model.mjs",
-        "packages/php/tests/HostcodecTest.php",
         "packages/ts/tests/codec_case.mjs",
         "packages/go/orm/fuzz_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
@@ -8347,7 +8345,6 @@
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/AesJsonTestExtensionTest.php",
         "packages/php-ext/tests/AesVersionCodesTestExtensionTest.php",
-        "packages/php-ext/tests/HostcodecTestExtensionTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php",
         "packages/go/orm/recipe_codec_test.go",
         "packages/php/tests/CodecRecipeTest.php",
@@ -8387,7 +8384,6 @@
             "packages/go/internal/recipe/recipe.go",
             "tests/codec/codec.json",
             "packages/go/orm/coverage_authenticated_encryption_test.go",
-            "packages/go/orm/hostcodec_test.go",
             "contracts/fixtures/authenticated_encryption.json"
           ]
         },
@@ -8397,14 +8393,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/model/model_test.go"
-          ]
-        },
-        {
-          "id": "encryption-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/HostcodecTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/HostcodecTest.php"
           ]
         },
         {

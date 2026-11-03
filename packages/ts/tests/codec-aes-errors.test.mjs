@@ -1,3 +1,5 @@
+// The failures that a recipe cannot inject: a native decipher that throws at each phase keeps its error (FCV-2).
+// Requirement: COD-6 (docs/spec).
 import assert from 'node:assert/strict';
 import { Decipheriv } from 'node:crypto';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
@@ -5,48 +7,15 @@ import { CodecError, hostDecode, hostEncode } from '../dist/index.js';
 
 const key = 'codec-aes-errors-key';
 const authMessage = 'Unsupported state or unable to authenticate data';
-const prefixLength = Buffer.from('ORM-AES2\0').length;
 
 function envelope(plaintext = 'authenticated plaintext') {
   return Buffer.from(hostEncode(plaintext, ['aes'], key));
-}
-
-function tamper(source, index) {
-  const result = Buffer.from(source);
-  result[index] ^= 1;
-  return result;
 }
 
 function expectAuthenticationFailure(value, decodeKey = key) {
   assert.throws(() => hostDecode(value, ['aes'], decodeKey), error =>
     error instanceof CodecError && error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: aes: authentication failed');
 }
-
-// Requirement: COD-6 (docs/spec).
-caseTest('codec/aes_tamper_rejected', COMPUTE, () => {
-  const valid = envelope();
-  expectAuthenticationFailure(tamper(valid, valid.length - 1));
-  expectAuthenticationFailure(tamper(valid, prefixLength + 12));
-  expectAuthenticationFailure(tamper(valid, prefixLength));
-});
-
-// Requirement: COD-6 (docs/spec).
-caseTest('codec/aes_wrong_key_rejected', COMPUTE, () => {
-  expectAuthenticationFailure(envelope(), 'another-key');
-});
-
-// Requirement: COD-5 (docs/spec).
-caseTest('codec/aes_round_trip', COMPUTE, () => {
-  for (const plaintext of ['', 'plain text', '인증된 UTF-8 🔐']) {
-    assert.equal(hostDecode(envelope(plaintext), ['aes'], key), plaintext);
-  }
-});
-
-caseTest('AES empty keys and malformed envelopes retain their error codes', COMPUTE, () => {
-  assert.throws(() => hostDecode(envelope(), ['aes'], ''), error => error?.code === 'CONFIG');
-  assert.throws(() => hostDecode('not an AES envelope', ['aes'], key), error => error?.code === 'CODEC_DECODE');
-  assert.throws(() => hostDecode(Buffer.from('ORM-AES2\0short'), ['aes'], key), error => error?.code === 'CODEC_DECODE');
-});
 
 function withMethod(method, implementation, body) {
   const descriptor = Object.getOwnPropertyDescriptor(Decipheriv.prototype, method);

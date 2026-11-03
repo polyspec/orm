@@ -282,6 +282,16 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
             Ok(_) => Err(format!("error none, want {code}")),
         };
     }
+    if let Some(prefix) = expect["bytes_prefix_hex"].as_str() {
+        // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        let length = expect["bytes_length"].as_u64().and_then(|n| usize::try_from(n).ok());
+        return match outcome {
+            Ok(Produced::Written(Param::Bytes(bytes))) if Some(bytes.len()) == length && hex_text(&bytes).starts_with(prefix) => Ok(()),
+            Ok(Produced::Written(Param::Bytes(bytes))) => Err(format!("cell {}, want {length:?} bytes with the prefix {prefix}", hex_text(&bytes))),
+            Err((_, message)) => Err(format!("unexpected error {message}")),
+            Ok(_) => Err(format!("a cell of bytes, want the prefix {prefix}")),
+        };
+    }
     let want = &expect["value"];
     match outcome {
         Err((_, message)) => Err(format!("unexpected error {message}")),

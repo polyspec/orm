@@ -652,6 +652,23 @@
     "outcome": {
       "oneOf": [
         {
+          "description": "The form of an envelope with a random nonce: bytes of that length that start with that lowercase hex.",
+          "type": "object",
+          "required": [
+            "bytes_prefix_hex",
+            "bytes_length"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "bytes_prefix_hex": {
+              "type": "string"
+            },
+            "bytes_length": {
+              "type": "integer"
+            }
+          }
+        },
+        {
           "type": "object",
           "required": [
             "value"

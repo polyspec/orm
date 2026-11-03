@@ -711,6 +711,10 @@
       },
       "internal": [
         {
+          "glob": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "reason": "test: injects a failure into each phase of the native decipher of Node, checks that the error keeps its identity and that no plaintext returns; a recipe cannot inject it, and the codes of the shared failures are recipe cases of tests/codec/codec.json"
+        },
+        {
           "glob": "packages/ts/tests/paginate-order.mjs",
           "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
         },
@@ -848,6 +852,10 @@
       "name": "python",
       "runner": "python",
       "internal": [
+        {
+          "glob": "packages/python/tests/coverage_authenticated_encryption.py",
+          "reason": "harness: the feature coverage entry of authenticated_encryption, which T334-3-12-5 removes; its cases are recipe cases of tests/codec/codec.json"
+        },
         {
           "glob": "packages/python/tests/chain_answer.py",
           "reason": "harness: the chain runner and the answer listener of the markdown conformance chains that the ir.answer op of tests/ir/answers.json (FCV-4) runs; the cases are bound by the suite unit ir-answers, and the module holds no test of its own"
@@ -8400,6 +8408,7 @@
         "COD-3",
         "COD-4",
         "COD-5",
+        "COD-6",
         "COD-8",
         "COD-9",
         "COD-10",
@@ -27075,38 +27084,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesEnvelopeDecrypt"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESReadsSharedFixedVector"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_bench_salt"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesEnvelopeDecrypt"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_bench_salt\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_bench_salt\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_envelope_decrypt"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_bench_salt"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_envelope_decrypt"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_bench_salt"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_envelope_decrypt"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_bench_salt"
         }
       ]
     },
@@ -27119,53 +27123,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESUsesAuthenticatedVersionTwoEnvelope"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesRoundTrip"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_envelope_form"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesRoundTrip"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_envelope_form\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_envelope_form\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_round_trip"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_envelope_form"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_round_trip"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_envelope_form"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_round_trip"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_round_trip"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/HostcodecTest.php",
-          "id": "HostcodecTest::testHostcodec"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/HostcodecTestExtensionTest.php",
-          "id": "HostcodecTestExtensionTest::testHostcodec"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_envelope_form"
         }
       ]
     },
@@ -27178,38 +27162,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesTamperRejected"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_invalid_tag"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesTamperRejected"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_invalid_tag\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_invalid_tag\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_tamper_rejected"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_invalid_tag"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_tamper_rejected"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_invalid_tag"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_tamper_rejected"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_tamper_rejected"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_invalid_tag"
         }
       ]
     },
@@ -27222,43 +27201,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageAesWrongKeyRejected"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestHostAESDecodesByStoredVersion"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/aes_envelope_without_hex"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testAesWrongKeyRejected"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"aes_envelope_without_hex\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"aes_envelope_without_hex\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
-          "id": "aes_wrong_key_rejected"
+          "test": "packages/ts/tests/codec-none.test.mjs",
+          "id": "aes_envelope_without_hex"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_wrong_key_rejected"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "aes_envelope_without_hex"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::aes_wrong_key_rejected"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "codec/aes_wrong_key_rejected"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::aes_envelope_without_hex"
         }
       ]
     },
@@ -27271,38 +27240,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
-          "id": "TestCoverageBlindIndexVector"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/hostcodec_test.go",
-          "id": "TestBlindIndexIsStableAndKeyed"
+          "test": "packages/go/orm/recipe_codec_test.go",
+          "id": "TestRecipeCodecNone/blind_index_vector"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
-          "id": "CoverageAuthenticatedEncryptionTest::testBlindIndexVector"
+          "test": "packages/php/tests/CodecRecipeTest.php",
+          "id": "CodecRecipeTest::testNone with data set \"blind_index_vector\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
-          "id": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+          "test": "packages/php-ext/tests/CodecRecipeTestExtensionTest.php",
+          "id": "CodecRecipeTestExtensionTest::testNone with data set \"blind_index_vector\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "test": "packages/ts/tests/codec-none.test.mjs",
           "id": "blind_index_vector"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_blind_index_vector"
+          "test": "packages/python/tests/test_codec_none.py",
+          "id": "blind_index_vector"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
-          "id": "authenticated_encryption::blind_index_vector"
+          "test": "packages/rust/tests/tests/codec_none.rs",
+          "id": "codec_none::blind_index_vector"
         }
       ]
     },

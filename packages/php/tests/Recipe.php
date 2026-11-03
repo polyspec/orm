@@ -1429,6 +1429,13 @@ final class Recipe
         if ($result['error'] !== null) {
             Assert::fail("unexpected error {$result['error']->getMessage()}");
         }
+        if (isset($expect['bytes_prefix_hex'])) {
+            // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+            Assert::assertInstanceOf(Bytes::class, $result['value']);
+            Assert::assertSame($expect['bytes_length'], strlen($result['value']->bytes));
+            Assert::assertStringStartsWith($expect['bytes_prefix_hex'], bin2hex($result['value']->bytes));
+            return;
+        }
         $want = $expect['value'];
         if (!$result['decoded']) {
             self::compareCell($want, $result['value']);

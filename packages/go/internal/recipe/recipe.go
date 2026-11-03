@@ -333,8 +333,10 @@ func key(s step) string {
 // check compares r with the outcome {value} or {error} of an expect.
 func check(raw json.RawMessage, r result, styles []string) error {
 	var outcome struct {
-		Value json.RawMessage `json:"value"`
-		Error string          `json:"error"`
+		Value       json.RawMessage `json:"value"`
+		Error       string          `json:"error"`
+		BytesPrefix string          `json:"bytes_prefix_hex"`
+		BytesLength int             `json:"bytes_length"`
 	}
 	if err := json.Unmarshal(raw, &outcome); err != nil {
 		return err
@@ -347,6 +349,14 @@ func check(raw json.RawMessage, r result, styles []string) error {
 	}
 	if r.err != nil {
 		return fmt.Errorf("unexpected error %w", r.err)
+	}
+	if outcome.BytesPrefix != "" {
+		// An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+		cell, isBytes := r.cell.([]byte)
+		if !isBytes || len(cell) != outcome.BytesLength || !strings.HasPrefix(hex.EncodeToString(cell), outcome.BytesPrefix) {
+			return fmt.Errorf("cell %#v, want bytes of length %d with the prefix %s", r.cell, outcome.BytesLength, outcome.BytesPrefix)
+		}
+		return nil
 	}
 	want, err := wrapper(outcome.Value)
 	if err != nil {

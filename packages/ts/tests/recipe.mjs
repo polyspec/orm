@@ -155,6 +155,12 @@ function run(step, bound, database) {
     return;
   }
   if (result.error !== undefined) throw new Error(`unexpected error ${result.error}`);
+  if (expect.bytes_prefix_hex !== undefined) {
+    // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+    const cell = Buffer.from(result.value);
+    if (cell.length !== expect.bytes_length || !cell.toString('hex').startsWith(expect.bytes_prefix_hex)) throw new Error(`cell ${cell.toString('hex')}, want ${expect.bytes_length} bytes with the prefix ${expect.bytes_prefix_hex}`);
+    return;
+  }
   if (!result.decoded) return compareCell(expect.value, result.value);
   if (result.value.kind === 'sql-null') {
     if (!('null' in expect.value)) throw new Error(`SQL NULL, want ${JSON.stringify(expect.value)}`);
