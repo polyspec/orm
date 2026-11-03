@@ -2012,8 +2012,16 @@ final class Catalog
             if ($dialect === 'sqlite' && in_array(strtoupper($column->nativeType), ['TIME', 'DATETIME'], true)) {
                 $kind = strtoupper($column->nativeType) === 'TIME' ? 'time' : 'datetime';
                 foreach ($rows as $r => $row) {
-                    if (!is_string($row[$i])) {
+                    if ($row[$i] === null) {
                         continue;
+                    }
+                    // SQLite keeps a number in a temporal column, and a number is not in the dbspec form (INT-103).
+                    if (!is_string($row[$i])) {
+                        throw new OrmException(
+                            Code::GRID_TEMPORAL_VALUE,
+                            'unsupported grid value: stored value of column "' . $column->name . '" is not a dbspec '
+                            . $kind
+                        );
                     }
                     // A CHECK fixes the precision of the value; without one the column has precision 0 (Go's rule), so
                     // a non-zero fraction digit is refused as GRID_TEMPORAL_PRECISION.
