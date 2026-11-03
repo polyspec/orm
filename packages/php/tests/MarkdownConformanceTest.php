@@ -369,6 +369,8 @@ class MarkdownConformanceTest extends TestCase
                 return [
                     'length' => count($rows),
                     'keys' => $rows->keys(),
+                    'values' => array_map($id, $rows->all()),
+                    'entries' => array_map(static fn (array $entry) => [$entry[0], $id($entry[1])], $rows->entries()),
                     'first' => $id($rows->first()),
                     'get' => $id($rows->get(1)),
                     'get_text' => $id($rows->get('1')),

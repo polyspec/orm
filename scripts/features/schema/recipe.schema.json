@@ -814,6 +814,7 @@
             "codec.host_decode",
             "codec.blind_index",
             "collection.key",
+            "collection.connect",
             "sql.exec",
             "session.end",
             "fault.next_rollback",
@@ -984,6 +985,9 @@
         },
         {
           "$ref": "#/$defs/ops/collection.key"
+        },
+        {
+          "$ref": "#/$defs/ops/collection.connect"
         },
         {
           "$ref": "#/$defs/ops/sql.exec"
@@ -2495,6 +2499,31 @@
           },
           "key": {
             "type": "string"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "collection.connect": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "row",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "collection.connect"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "row": {
+            "description": "The bound collection that connect rebinds (INT-85).",
+            "$ref": "#/$defs/name"
           },
           "expect": {
             "$ref": "#/$defs/expect"

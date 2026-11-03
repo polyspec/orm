@@ -153,7 +153,10 @@
   "PLN-42",
   "PLN-43",
   "DBS-118",
-  "PLN-35"
+  "PLN-35",
+  "INT-85",
+  "PLN-6",
+  "INT-37"
  ],
  "fixture": "contracts/fixtures/conformance_verification/dbspec-set.json",
  "seed": {
@@ -14703,6 +14706,407 @@
                "text": "user"
               }
              ]
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "collection_connect_reaches_every_model",
+   "requirements": [
+    "INT-85",
+    "INT-37",
+    "PLN-6"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "other"
+    },
+    {
+     "op": "model.creates",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "rows": [
+      {
+       "tenant_id": {
+        "int": "9061"
+       },
+       "account_id": {
+        "int": "1"
+       },
+       "name": {
+        "text": "a"
+       }
+      },
+      {
+       "tenant_id": {
+        "int": "9061"
+       },
+       "account_id": {
+        "int": "2"
+       },
+       "name": {
+        "text": "b"
+       }
+      }
+     ],
+     "batch": 2,
+     "expect": {
+      "mysql": {
+       "json": 2
+      },
+      "postgres": {
+       "json": 2
+      },
+      "sqlite": {
+       "json": 2
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "CompositeAccount",
+     "where": {
+      "tenant_id": {
+       "array": [
+        {
+         "int": "9061"
+        }
+       ]
+      }
+     },
+     "order": [
+      {
+       "column": "account_id",
+       "dir": "asc"
+      }
+     ],
+     "as": "rows"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "on_db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "other",
+     "as": "on_other"
+    },
+    {
+     "op": "collection.connect",
+     "connection": "other",
+     "row": "rows",
+     "expect": {
+      "mysql": {
+       "value": {
+        "bool": true
+       }
+      },
+      "postgres": {
+       "value": {
+        "bool": true
+       }
+      },
+      "sqlite": {
+       "value": {
+        "bool": true
+       }
+      }
+     }
+    },
+    {
+     "op": "model.delete",
+     "row": "rows"
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_db",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": []
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": []
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": []
+       }
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "on_other",
+     "compare": "shape",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "utility"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "orm__row_lock"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "begin"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "delete"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "composite_account"
+              }
+             ]
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "kind",
+            {
+             "text": "commit"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": []
             }
            ]
           ]

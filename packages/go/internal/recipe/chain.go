@@ -23,6 +23,7 @@ var chainOps = map[string]bool{
 	"model.query": true, "model.count": true, "model.get_by": true, "model.create": true, "model.creates": true,
 	"model.save": true, "model.duplicate_create": true, "model.update": true, "model.delete": true, "model.restore": true,
 	"model.chain": true,
+	"collection.connect": true,
 }
 
 // chainQuery holds the fields of a query at any depth: a step, a join, a relation or a subquery.
@@ -929,6 +930,13 @@ func chainOp(raw json.RawMessage, c *databaseContext) (outcome, error) {
 		}
 	}
 	switch s.Op {
+	case "collection.connect":
+		// connect of a bound collection (INT-85): true when it returns that collection.
+		rows, ok := c.bound[refName(s.Row)].api.(*orm.Collection[*tableRow])
+		if !ok {
+			return outcome{}, fmt.Errorf("collection.connect: %s is not a bound collection", refName(s.Row))
+		}
+		return boolOutcome(rows.Connect(db) == rows), nil
 	case "model.chain":
 		core, err := chainBuilt(s, db, c)
 		if err != nil {

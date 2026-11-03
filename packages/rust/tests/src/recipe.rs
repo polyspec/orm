@@ -3106,6 +3106,7 @@ mod database {
         "utils.set_local",
         "utils.local",
         "utils.was_inserted",
+        "collection.connect",
         "utils.backend_waiting_for_lock",
         "utils.groups",
     ];
@@ -5679,6 +5680,13 @@ mod tables {
                     Ok(json!({}))
                 }
                 "utils.local" => Ok(json!({ "json": db.utils().local(step["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
+                "collection.connect" => {
+                    let name = row_name(step)?.to_owned();
+                    let rows = self.collections.remove(&name).ok_or_else(|| format!("collection.connect: {name} is not a bound collection"))?;
+                    self.collections.insert(name, rows.connect(&db));
+                    Ok(json!({ "value": { "bool": true } }))
+                }
                 "utils.was_inserted" => {
                     let sequence = step["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
                     let inserted = db.utils().was_inserted(step["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
