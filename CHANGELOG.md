@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust retry after a schema change parses the statement with the types the server infers and binds each value as that type, so a parameter whose column changed type holds as in the other clients.
 - A Go statement on the pool outside a transaction takes the same retry as a model statement after a schema change, so `Aes().Status` holds through it.
 - An integer of a markdown answer is a JSON number with no fraction or exponent (PRT-69): `3.0` in an integer column is `CODEC_DECODE`
 - A `sql` field of a recipe is a text or an object with all three databases, as FCV-4 states: a partial map made a missing database run nothing, which FCV-10 forbids. The fulltext index steps are a text with `only`. (#T334-3-4-14)

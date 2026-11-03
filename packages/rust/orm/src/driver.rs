@@ -477,9 +477,45 @@ async fn begin_again(connection: &mut sqlx::PgConnection) -> Result<()> {
     Ok(())
 }
 
+/// Ends that transaction. The connection forgets the statement that ran with the inferred types, so the next run declares the types
+/// of its model again.
 async fn commit_again(connection: &mut sqlx::PgConnection) -> Result<()> {
+    sqlx::Connection::clear_cached_statements(&mut *connection).await?;
     sqlx::raw_sql("COMMIT").execute(connection).await?;
     Ok(())
+}
+
+/// The binding of each parameter when the statement runs again. Each binding declares its type from the model, and a Parse with the
+/// declared type of a column that the schema change gave another type would fail again, so the statement is parsed with the types
+/// that the server infers and each value is bound as that type (CFG-28). sqlx sends every value in binary format, so a value cannot
+/// stay text with an undeclared type. A type without a binding of its own keeps the binding of the model.
+async fn inferred_types(sql: &str, declared: &[&str], connection: &mut sqlx::PgConnection) -> Result<Vec<String>> {
+    use sqlx::{SqlSafeStr, Statement, TypeInfo};
+    let statement = (&mut *connection).prepare_with(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str(), &[]).await?;
+    let inferred = match statement.parameters() {
+        Some(sqlx::Either::Left(inferred)) if inferred.len() == declared.len() => inferred,
+        _ => return Ok(declared.iter().map(|&ty| ty.to_owned()).collect()),
+    };
+    Ok(declared
+        .iter()
+        .zip(inferred)
+        .map(|(&ty, info)| {
+            match info.name() {
+                "INT2" => "i16",
+                "INT4" => "i32",
+                "INT8" => "i64",
+                "FLOAT8" => "f64",
+                "NUMERIC" => "decimal",
+                "BOOL" => "bool",
+                "VARCHAR" => "varchar",
+                "TEXT" => "text",
+                "TIMESTAMP" => "datetime",
+                "DATE" => "date",
+                _ => ty,
+            }
+            .to_owned()
+        })
+        .collect())
 }
 
 pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<Vec<PgRow>> {
@@ -487,7 +523,9 @@ pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], poo
     let result = match pg_query(sql, args, types)?.fetch_all(&mut *connection).await {
         Err(error) if stale_plan(&error) => {
             begin_again(&mut connection).await?;
-            let rows = pg_query(sql, args, types)?.fetch_all(&mut *connection).await?;
+            let inferred = inferred_types(sql, types, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
+            let rows = pg_query(sql, args, &inferred)?.fetch_all(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok(rows)
         }
@@ -509,7 +547,9 @@ pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool
     let result = match pg_query(sql, args, types)?.execute(&mut *connection).await {
         Err(error) if stale_plan(&error) => {
             begin_again(&mut connection).await?;
-            let done = pg_query(sql, args, types)?.execute(&mut *connection).await?;
+            let inferred = inferred_types(sql, types, &mut connection).await?;
+            let inferred: Vec<&str> = inferred.iter().map(String::as_str).collect();
+            let done = pg_query(sql, args, &inferred)?.execute(&mut *connection).await?;
             commit_again(&mut connection).await?;
             Ok((0, done.rows_affected()))
         }

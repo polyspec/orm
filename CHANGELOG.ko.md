@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 008121b01665345abe9f56e98eb0f503b0fdf55655b7b0a626efc33d5f28f05a -->
+<!-- source-sha256: 30df1c01f816029e9c750681e7b41fb8dd9500760779dc1bbd7b8c03d514e1ef -->
 # 변경 이력
 
 ## Unreleased
 
+- schema 변경 뒤 Rust 재시도는 서버가 추론한 타입으로 문을 parse하고 각 값을 그 타입으로 bind하므로, 컬럼 타입이 바뀐 parameter가 다른 클라이언트처럼 유지된다.
 - 트랜잭션 밖에서 pool로 실행되는 Go 문은 schema 변경 뒤 model 문과 같은 재시도를 하므로 `Aes().Status`가 그 뒤에도 유지된다.
 - schema 변경 이전의 model 문은 Go, Rust, TypeScript, Python에서 트랜잭션 밖이면 `DEALLOCATE ALL`로 시작하는 트랜잭션 하나 안에서 한 번 더 실행된다. 결과 타입이 바뀐 경우와 parameter가 옛 타입을 유지하는 경우 모두 해당하며 CFG-28이 이를 명시한다. Rust catalog의 `query`도 같은 방식으로 재시도하고, `current_namespace`와 `describe_table`은 읽기 전용 session에서 실행된다.
 - 결과 읽기를 멈춘 클라이언트가 더는 ProxySQL을 중단시키지 못한다. 시험 서버는 `mysql-threshold_resultset_size`를 65536으로 정하고, CFG-34와 CFG-35는 ProxySQL 설정을 사용자에게 명시하며, `catalog_read_budgets`는 예산으로 멈춘 문이 사라졌음을 다른 연결에서 읽는다. Rust catalog는 멈춘 읽기의 socket을 즉시 닫는다.
