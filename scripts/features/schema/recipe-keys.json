@@ -20,9 +20,26 @@
   ],
   "step": {
     "dsn.connect": [
+      "config",
       "dsn",
       "expect",
-      "op"
+      "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
+    ],
+    "markdown.connect": [
+      "corpus",
+      "expect",
+      "op",
+      "received",
+      "reply",
+      "token"
     ],
     "keyring.versions": [
       "expect",
@@ -439,6 +456,7 @@
       "ref"
     ],
     "planner.compile": [
+      "assemble_types",
       "expect",
       "input",
       "op",
@@ -559,6 +577,11 @@
       "external",
       "op",
       "owned"
+    ],
+    "dbspec.runtime_model": [
+      "documents",
+      "expect",
+      "op"
     ],
     "dbspec.read_file": [
       "expect",

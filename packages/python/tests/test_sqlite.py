@@ -579,23 +579,5 @@ class SqliteAuditTest(unittest.TestCase):
             self.db.audit_source = None
 
 
-def bench_shared():
-    """The schema value of the external document bench_shared.dbs, as the set that owns it generates it."""
-    from polyspec.orm import Schema
-    from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
-
-    path = Path(__file__).resolve().parents[3] / "contracts" / "fixtures" / "bench" / "bench_shared.dbs"
-    text, diagnostics = read_dbspec_file(str(path))
-    if text is None:
-        raise AssertionError(f"{path}: {diagnostics}")
-    document, _positions, diagnostics = parse_dbspec(text, {})
-    if document is None:
-        raise AssertionError(f"{path}: {diagnostics}")
-    manifest, diagnostics = dbspec_manifest([document])
-    if manifest is None:
-        raise AssertionError(f"{path}: {diagnostics}")
-    return Schema(manifest.manifest_text, manifest.manifest_hash)
-
-
 if __name__ == "__main__":
     testcase.main()

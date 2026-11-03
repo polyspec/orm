@@ -41,7 +41,7 @@ caseTest('the Rust pool size of the integration program is read from its declara
   assert.equal(rustTargetPoolSize(root), 4);
 });
 
-caseTest('model_writes declares the repeated member name case on every owner and the Rust skip list (T343-2)', COMPUTE, () => {
+caseTest('model_writes declares the repeated member name case on every owner (T343-2)', COMPUTE, () => {
   const manifest = readFeatures(root);
   const feature = manifest.features.find(item => item.id === 'model_writes');
   assert.ok(feature, 'model_writes is in contracts/features.json');
@@ -52,7 +52,6 @@ caseTest('model_writes declares the repeated member name case on every owner and
   assert.ok(JSON.stringify(recipe).includes(`"id":"${repeatedMemberCase}"`), 'the case is a case of the recipe');
   const owners: readonly Language[] = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
   assert.deepEqual(Object.keys(coverage.owners).sort(), owners);
-  const skipped = rustDatabaseCoverageSkipArguments(manifest, root);
   for (const language of owners) {
     const part: CoverageOwner | undefined = coverage.owners[language];
     assert.ok(part, `${language} is an owner`);
@@ -62,11 +61,7 @@ caseTest('model_writes declares the repeated member name case on every owner and
       const command: NativeCommand | undefined = commands?.[0];
       assert.ok(command, `${language} ${database} command`);
       assert.ok(command.cases.includes(repeatedMemberCase), `${language} ${database} runs the case`);
-      if (language === 'rust') {
-        const symbol = command.symbols?.[repeatedMemberCase];
-        assert.equal(symbol, `model_writes_chain_${database}::${repeatedMemberCase}`, `rust ${database} symbol`);
-        assert.ok(skipped.includes(symbol ?? ''), `the generic Rust run skips the case on ${database}`);
-      }
+      assert.equal(command.recipe, 'contracts/fixtures/model_writes_chain/model_writes_chain.json', `${language} ${database} names the recipe`);
     }
   }
 });
@@ -94,4 +89,9 @@ caseTest('the Go lane leaves the markdown conformance test to the target that pa
   const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
   assert.match(makefile, /^\tFLOWMARK=\$\(FLOWMARK\) \$\(GO_TEST\) \.\/packages\/go\/markdownmodel -run '\^TestMarkdownConformance\$\$' -count=1$/m);
   assert.equal(GO_LANE_SKIP, '^TestMarkdownConformance$');
+});
+
+caseTest('the feature matrix owns the program of a Rust recipe owner, one per database (FCV-12)', COMPUTE, () => {
+  const skipped = rustDatabaseCoverageSkipArguments(readFeatures(root), root);
+  for (const database of ['mysql', 'postgres', 'sqlite']) assert.ok(skipped.includes(`model_writes_chain_${database}`), database);
 });

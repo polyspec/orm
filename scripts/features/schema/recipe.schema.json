@@ -789,6 +789,8 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "dsn.sqlite_file",
+            "markdown.connect",
             "keyring.versions",
             "markdown.builder",
             "model.connect",
@@ -860,6 +862,7 @@
             "dbspec.parse_set",
             "dbspec.set",
             "dbspec.load_set",
+            "dbspec.runtime_model",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -891,6 +894,12 @@
       "oneOf": [
         {
           "$ref": "#/$defs/ops/dsn.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/dsn.sqlite_file"
+        },
+        {
+          "$ref": "#/$defs/ops/markdown.connect"
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
@@ -1104,6 +1113,9 @@
         },
         {
           "$ref": "#/$defs/ops/dbspec.load_set"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.runtime_model"
         },
         {
           "$ref": "#/$defs/ops/dbspec.read_file"
@@ -1614,6 +1626,45 @@
           }
         }
       },
+      "markdown.connect": {
+        "type": "object",
+        "required": ["op", "corpus", "token", "reply", "received", "expect"],
+        "additionalProperties": false,
+        "properties": {
+          "op": { "const": "markdown.connect" },
+          "corpus": { "type": "string", "description": "The corpus of the markdown DSN." },
+          "token": { "type": "string", "description": "The token of the markdown DSN." },
+          "reply": { "type": "string", "description": "The line that a listener answers the first message with." },
+          "received": { "type": "string", "description": "The line that the listener must have received." },
+          "expect": { "$ref": "#/$defs/expect" }
+        }
+      },
+      "dsn.sqlite_file": {
+        "type": "object",
+        "required": [
+          "op",
+          "name",
+          "query",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dsn.sqlite_file"
+          },
+          "name": {
+            "type": "string",
+            "description": "The file name of the SQLite DSN in a new directory (CFG-26)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The query of the SQLite DSN."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "dsn.connect": {
         "type": "object",
         "required": [
@@ -1629,6 +1680,26 @@
           "dsn": {
             "type": "string",
             "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The parameters that dsn.connect adds to the DSN of the case database (FCV-4)."
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "description": "The connection configuration of dsn.connect, by the name of each field in Rust (CFG-4, CFG-5, CFG-6).",
+            "properties": {
+              "pool_size": { "type": "integer" },
+              "pool_idle_size": { "type": "integer" },
+              "pool_lifetime_ms": { "type": "integer" },
+              "statement_timeout_ms": { "type": "integer" },
+              "tls_version": { "const": true, "description": "The connection also reads its Ssl_version, which is TLSv1.2 or TLSv1.3 (CFG-16)." }
+            }
           },
           "expect": {
             "$ref": "#/$defs/expect"
@@ -1730,14 +1801,14 @@
                 "type": "object",
                 "required": [
                   "error",
-                  "message_contains"
+                  "message"
                 ],
                 "additionalProperties": false,
                 "properties": {
                   "error": {
                     "type": "string"
                   },
-                  "message_contains": {
+                  "message": {
                     "type": "string",
                     "minLength": 1
                   }
@@ -2084,6 +2155,10 @@
             "type": "string",
             "pattern": "\\.dbs$",
             "description": "The schema manifest of the request, relative to the recipe file."
+          },
+          "assemble_types": {
+            "type": "boolean",
+            "description": "Adds the type of each output column of a plan step, by name, to the statements that the step compares."
           },
           "input": {
             "type": "object",
@@ -5289,6 +5364,9 @@
                       }
                     }
                   },
+                  "manifest_hash": {
+                    "type": "string"
+                  },
                   "error": {
                     "type": "string"
                   }
@@ -5507,6 +5585,61 @@
                     }
                   }
                 ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.runtime_model": {
+        "type": "object",
+        "required": [
+          "op",
+          "documents",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.runtime_model"
+          },
+          "documents": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "\\.dbs$"
+            },
+            "description": "The documents of one set, relative to the recipe file."
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "entities"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "entities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The entity names, in the order of DBS-111."
+                  },
+                  "models": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    },
+                    "description": "The values to compare, by entity name: the keys it names of table, primary_key, identity, updated, soft_delete, aes_version, audit_column, audit_record, key_names and fields, and of a field type, nullable, default, default_now, codec, blind_index, primary_key and foreign_key."
+                  }
+                }
               }
             }
           }

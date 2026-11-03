@@ -1,37 +1,11 @@
-//! A SQLite DSN with a query creates the file from the path alone. A query placed in the file name
-//! the opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md
-//! "Probe environment").
+//! tests/dsn/sqlite-paths.json on the Rust client. A SQLite DSN with a query creates the file from the path
+//! alone: the case `sqlite_file_name_is_the_path` of contracts/fixtures/dsn_connection.
 
 #[macro_use]
 #[path = "common/json_trials.rs"]
 mod json_trials;
 
 use polyspec_orm_testcase::Trial;
-
-// Requirements: CFG-26.
-async fn sqlite_file_name_is_the_path() {
-    let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-name-{}", std::process::id()));
-    assert!(!directory.exists(), "{} already exists", directory.display());
-    std::fs::create_dir(&directory).expect("temporary directory");
-    let dsn = format!("sqlite://{}/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00", directory.display());
-    let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await;
-    let mut names: Vec<String> = Vec::new();
-    let opened = match db {
-        Ok(db) => {
-            db.close().await;
-            names = std::fs::read_dir(&directory).expect("read directory").map(|e| e.expect("entry").file_name().to_string_lossy().into_owned()).collect();
-            Ok(())
-        }
-        Err(e) => Err(e.to_string()),
-    };
-    std::fs::remove_dir_all(&directory).expect("remove temporary directory");
-    opened.expect("connect");
-    let allowed = ["named.sqlite", "named.sqlite-journal", "named.sqlite-shm", "named.sqlite-wal"];
-    assert!(names.iter().any(|n| n == "named.sqlite"), "files {names:?}: named.sqlite is missing");
-    for name in &names {
-        assert!(allowed.contains(&name.as_str()), "files {names:?}: {name} is not named by the path");
-    }
-}
 
 /// tests/dsn/sqlite-paths.json: a DSN path opens the percent-decoded file, and an invalid
 /// path is CONFIG (docs/spec/config.md "Runtime connection"). Each case is trial `sqlite_path_cases::<id>`, and
@@ -81,7 +55,5 @@ async fn sqlite_path_case(index: usize, case: &serde_json::Value) {
 }
 
 fn main() {
-    let mut trials = vec![polyspec_orm_testcase::async_trial("sqlite_file_name_is_the_path", polyspec_orm_testcase::DATABASE, sqlite_file_name_is_the_path)];
-    trials.extend(sqlite_path_cases());
-    polyspec_orm_testcase::run(trials);
+    polyspec_orm_testcase::run(sqlite_path_cases());
 }

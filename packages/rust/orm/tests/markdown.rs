@@ -138,23 +138,6 @@ async fn markdown_session_messages() {
     assert_eq!(server.received_messages.await.unwrap(), want);
 }
 
-/// Checks that the CONFIG the server answers to connect is connect's error.
-#[tokio::test]
-async fn markdown_connect_refused() {
-    // Requirements: PRT-64.
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = start_markdown_test_server(&[r#"{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}"#]).await;
-    let error = match Db::connect(&server.dsn(), 1, Config::default()).await {
-        Ok(db) => {
-            db.close().await;
-            panic!("connect succeeded; want the server's CONFIG")
-        }
-        Err(error) => error,
-    };
-    assert_eq!((error.code(), error.to_string().as_str()), ("CONFIG", "CONFIG: connect: the token is not the corpus's token"));
-    assert_eq!(server.received_messages.await.unwrap(), [CONNECT_LINE]);
-}
-
 /// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md
 /// "Markdown IR executor").
 #[tokio::test]

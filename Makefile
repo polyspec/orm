@@ -6,7 +6,7 @@
 .PHONY: feature-coverage/go/mysql feature-coverage/go/postgres feature-coverage/go/sqlite feature-coverage/php/mysql feature-coverage/php/postgres feature-coverage/php/sqlite feature-coverage/php-extension/mysql feature-coverage/php-extension/postgres feature-coverage/php-extension/sqlite feature-coverage/typescript/mysql feature-coverage/typescript/postgres feature-coverage/typescript/sqlite feature-coverage/python/mysql feature-coverage/python/postgres feature-coverage/python/sqlite feature-coverage/rust/mysql feature-coverage/rust/postgres feature-coverage/rust/sqlite feature-performance-check
 # It is an independent part of the target that does not stop at a failure (scripts/check/run.mts runs it with make -k).
 .PHONY: comment-language-check/unit comment-language-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model php-gen-unit-check client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
-.PHONY: aes-json-php-extension-check aes-rotation-php-extension-check php-ext-memory-check
+.PHONY: aes-json-php-extension-check php-ext-memory-check
 .PHONY: request-hook-php-extension-check
 .PHONY: t182-php-extension-model-check t182-php-extension-schema-check
 .PHONY: rust-causes-check rust-closed-executor-check
@@ -264,7 +264,7 @@ CI_TARGETS_clients_db = example-check
 CI_TARGETS_performance = perf-check
 CI_TARGETS_client_db_go = client-db-go-check dialect-facts-check go-test-check group-rows-db-go catalog-connection-check/go dsn-connection-check/go statement-events-check/go model-queries-check/go constraints-and-relations-check/go request-hook-check/go parameter-chunking-check/go aes-rotation-check/go audit-triggers-check/go conformance-verification-check/go complex-query-check/go
 CI_TARGETS_client_db_php = client-db-php-check php-query-cancellation-check group-rows-db-php connection-utc-php-check pgsql-pdo-adapter-php-check catalog-connection-check/php dsn-connection-check/php statement-events-check/php model-queries-check/php constraints-and-relations-check/php request-hook-check/php parameter-chunking-check/php aes-rotation-check/php audit-triggers-check/php conformance-verification-check/php complex-query-check/php
-CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check group-rows-db-php-extension connection-utc-php-extension-check connection-timeout-php-extension-check connection-statement-timeout-php-extension-check aes-json-php-extension-check aes-rotation-php-extension-check listen-notify-php-extension-check pgsql-pdo-adapter-php-extension-check catalog-connection-check/php-extension dsn-connection-check/php-extension statement-events-check/php-extension model-queries-check/php-extension constraints-and-relations-check/php-extension php-ext-memory-check request-hook-check/php-extension parameter-chunking-check/php-extension aes-rotation-check/php-extension audit-triggers-check/php-extension conformance-verification-check/php-extension complex-query-check/php-extension
+CI_TARGETS_client_db_php_extension = client-db-php-extension-check mysql-tls-php-extension-check mysql-session-php-extension-check php-query-cancellation-extension-check group-rows-db-php-extension connection-utc-php-extension-check connection-timeout-php-extension-check connection-statement-timeout-php-extension-check aes-json-php-extension-check listen-notify-php-extension-check pgsql-pdo-adapter-php-extension-check catalog-connection-check/php-extension dsn-connection-check/php-extension statement-events-check/php-extension model-queries-check/php-extension constraints-and-relations-check/php-extension php-ext-memory-check request-hook-check/php-extension parameter-chunking-check/php-extension aes-rotation-check/php-extension audit-triggers-check/php-extension conformance-verification-check/php-extension complex-query-check/php-extension
 CI_TARGETS_client_db_typescript = client-db-typescript-check group-rows-db-typescript connection-statement-timeout-typescript-check connection-pool-resource-bounds-typescript-check connection-utc-typescript-check catalog-connection-check/typescript dsn-connection-check/typescript statement-events-check/typescript model-queries-check/typescript constraints-and-relations-check/typescript request-hook-check/typescript parameter-chunking-check/typescript aes-rotation-check/typescript audit-triggers-check/typescript conformance-verification-check/typescript complex-query-check/typescript
 CI_TARGETS_client_db_python = client-db-python-check group-rows-db-python catalog-connection-check/python dsn-connection-check/python statement-events-check/python model-queries-check/python constraints-and-relations-check/python request-hook-check/python parameter-chunking-check/python aes-rotation-check/python audit-triggers-check/python conformance-verification-check/python complex-query-check/python
 CI_TARGETS_client_db_rust = client-db-rust-check rust-driver-check group-rows-db-rust connection-utc-rust-check catalog-connection-check/rust dsn-connection-check/rust statement-events-check/rust model-queries-check/rust constraints-and-relations-check/rust request-hook-check/rust parameter-chunking-check/rust aes-rotation-check/rust audit-triggers-check/rust conformance-verification-check/rust complex-query-check/rust
@@ -1008,7 +1008,7 @@ php-codec-causes-check: php-models build-php-ext
 dbspec-php-extension-check/%: RUN_DIR = $(if $(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR),$(abspath .runtime/run)/dbspec-php-extension-check-$$PPID)
 dbspec-php-extension-check/analyze: DBSPEC_PHP_EXTENSION_CHILD_RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-analyze-$$PPID
 .PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/planner dbspec-php-extension-check/executor
-DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/dialect-refusal dbspec-php-extension-check/load-set dbspec-php-extension-check/default-select-set dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/planner dbspec-php-extension-check/executor
+DBSPEC_PHP_EXTENSION_PARTS = dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/sets dbspec-php-extension-check/render dbspec-php-extension-check/graph dbspec-php-extension-check/behaviour dbspec-php-extension-check/schema-definition dbspec-php-extension-check/limits dbspec-php-extension-check/rules-recipe dbspec-php-extension-check/dialect-refusal dbspec-php-extension-check/load-set dbspec-php-extension-check/default-select-set dbspec-php-extension-check/runtime-model-plans dbspec-php-extension-check/runtime-model-entities dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/plan-apply dbspec-php-extension-check/show-create dbspec-php-extension-check/set dbspec-php-extension-check/set-parse dbspec-php-extension-check/codec dbspec-php-extension-check/code-catalog dbspec-php-extension-check/aes dbspec-php-extension-check/planner dbspec-php-extension-check/executor
 .PHONY: dbspec-php-extension-check
 dbspec-php-extension-check:
 	@set -eu; \
@@ -1207,6 +1207,14 @@ dbspec-php-extension-check/load-set: php-vendor-check dbspec-php-extension-check
 dbspec-php-extension-check/default-select-set: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DefaultSelectSetRecipeTestExtensionTest.php
 
+# dbspec-php-extension-check/runtime-model-plans runs RuntimeModelPlansRecipeTestExtensionTest with the extension: the cases of tests/planner/runtime-model.json.
+dbspec-php-extension-check/runtime-model-plans: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php
+
+# dbspec-php-extension-check/runtime-model-entities runs RuntimeModelEntitiesRecipeTestExtensionTest with the extension: the cases of tests/dbspec/runtime-model.json.
+dbspec-php-extension-check/runtime-model-entities: php-vendor-check dbspec-php-extension-check/prepare
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/RuntimeModelEntitiesRecipeTestExtensionTest.php
+
 # dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases and of the limit errors, the analyze steps of the recipes (hashes.json, sets.json) run in their own recipe tests; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	@set -eu; \
@@ -1273,7 +1281,7 @@ mysql-tls-php-extension-check: php-vendor-check orm-install-php-extension-tools
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/MysqlTlsNativeTest.php
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DsnConnectionRecipeTestExtensionTest.php --filter mysql_tls
 
 # Runs the native PHP extension MySQL session initialization case against the declared sql_mode vector.
 mysql-session-php-extension-check: RUN_DIR = $(abspath .runtime/run)/mysql-session-php-extension-check-$$PPID
@@ -1831,12 +1839,6 @@ aes-json-php-extension-check: php-vendor-check php-models orm-install-php-extens
 	@set -eu; run_dir="$(abspath .runtime/run)/aes-json-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
 	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist --filter testAesJsonColumn packages/php/tests/AesJsonTest.php
-
-# Runs only the three-dialect AES rotation case with the PHP extension loaded and the PHP library excluded.
-aes-rotation-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
-	@set -eu; run_dir="$(abspath .runtime/run)/aes-rotation-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
-	$(call php_ext_build,"$$run_dir/php-extension/polyspec_orm.so",release); \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php/phpunit.xml.dist --filter testAesRotation packages/php/tests/ModelTest.php
 
 # The php-ext unit tests that run before the AES rotation stress test, the stress test and root_in_chunking, in one process at the
 # memory_limit of the gate (the php default, 128M). The stress test exhausts it after these classes (T334-3-4-7).
@@ -3151,9 +3153,8 @@ complex-query-check/php-extension: lease-tool php-vendor-check build-php-ext
 .PHONY: complex-query-check
 complex-query-check: complex-query-check/go complex-query-check/rust complex-query-check/typescript complex-query-check/python complex-query-check/php complex-query-check/php-extension
 
-# bind-check runs the shared cases of tests/bind/vectors.json in the five clients (tests/bind/README.md): the bind
-# cases check a parameter against the logical type of its slot, and the message cases write it as an IR executor
-# message value. Each runner compares its answers with the file, so the clients agree when every runner passes; the
+# bind-check runs the cases of tests/bind/vectors.json that no recipe holds in the five clients (tests/bind/README.md):
+# each checks a parameter against the logical type of its slot. Each runner compares its answers with the file; the
 # runners are independent parts, so one that fails leaves the others to run (make -k).
 .PHONY: bind-check bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
 bind-check: bind-check/go bind-check/rust bind-check/typescript bind-check/python bind-check/php
@@ -3168,7 +3169,7 @@ bind-check/typescript: lease-tool orm-codes-typescript
 bind-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.testcase packages.python.tests.test_markdown.BindVectors
 bind-check/php: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBind(Message)?Vectors' packages/php/tests/MarkdownTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testBindVectors' packages/php/tests/MarkdownTest.php
 
 # ir-answers-check runs the read answer recipe, tests/ir/answers.json, in each runtime (FCV-3, FCV-4): each part runs the entry of
 # its runtime that calls the recipe helper, without a database; the ir.answer steps run each chain on a listener that answers with

@@ -613,6 +613,18 @@ name = "default_select_set_none"
 path = "tests/default_select_set_none.rs"
 harness = false
 
+# Each case of The plans of the runtime model, tests/planner/runtime-model.json, is the trial runtime_model_plans_none::<case id> (FCV-3).
+[[test]]
+name = "runtime_model_plans_none"
+path = "tests/runtime_model_plans_none.rs"
+harness = false
+
+# Each case of The entities of the runtime model, tests/dbspec/runtime-model.json, is the trial runtime_model_entities_none::<case id> (FCV-3).
+[[test]]
+name = "runtime_model_entities_none"
+path = "tests/runtime_model_entities_none.rs"
+harness = false
+
 # Each case of The load of a document set, tests/dbspec/load-set.json, is the trial dbspec_load_set_none::<case id> (FCV-3).
 [[test]]
 name = "dbspec_load_set_none"
