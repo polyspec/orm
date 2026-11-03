@@ -3,7 +3,6 @@
 
 pub mod bench_dsn;
 pub mod bench_stats;
-pub mod feature_database;
 pub mod mermaid_skeleton;
 pub mod model_connect;
 pub mod model_core_methods;

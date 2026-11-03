@@ -4306,7 +4306,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model",
               "expect"
             ],
@@ -4339,7 +4338,6 @@
             "type": "object",
             "required": [
               "op",
-              "connection",
               "model"
             ],
             "additionalProperties": false,
