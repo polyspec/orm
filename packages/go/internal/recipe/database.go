@@ -54,6 +54,9 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
+	Vectors        string          `json:"vectors"`
+	Case           string          `json:"case"`
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
 	Config         dsnConfig       `json:"config"`
@@ -915,6 +918,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return nil
 		}, options...)
 		if err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
+	case "dbspec.ddl_behavior":
+		if err := ddlBehavior(s, c); err != nil {
 			return outcome{}, err
 		}
 		return okOutcome(), nil

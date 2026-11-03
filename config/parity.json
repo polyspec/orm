@@ -2582,6 +2582,26 @@
     },
     {
       "files": [
+        "packages/php-ext/tests/DbspecReleaseHooksTest.php"
+      ],
+      "reason": "harness: checks that the release build of the PHP extension holds the Dbspec class and omits the private test hooks; it tests the build, not ORM client behavior.",
+      "units": [
+        {
+          "id": "php-extension-release-omits-private-hooks",
+          "requirements": [
+            "PRT-18"
+          ],
+          "bindings": [
+            {
+              "test": "packages/php-ext/tests/DbspecReleaseHooksTest.php",
+              "id": "testReleaseExtensionOmitsPrivateHooks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "files": [
         "packages/php/tests/ExtensionRunGuardTest.php"
       ],
       "reason": "harness: verifies the extension run guard of the PHP test bootstrap, which fails a run of ORM_PHP_MODE=extension that loaded a file of packages/php/src holding a class the extension declares; it tests the test harness rather than client behavior, in php -n child runs.",
@@ -3188,62 +3208,42 @@
     },
     {
       "id": "dbspec-apply-verification-errors",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "PLN-92",
         "PLN-93",
         "PLN-96"
       ],
+      "file": "tests/dbspec/apply-verification-errors.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestSettledVerifyPreservesIntrospectionErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/settled-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/rollback-introspection-error"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
-          "id": "apply/post-forward-introspection-error"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "symbol": "TestRecipeDbspecApplyVerificationErrorsNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testVerifyErrorsAreNotDriftAndPreserveCause"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecApplyVerificationErrorsRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
-          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift"
+          "test": "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecApplyVerificationErrorsRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_settled_introspection_error_and_real_drift"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_rollback_preserves_introspection_error"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_verify_errors.py",
-          "id": "test_post_forward_introspection_error_does_not_report_success"
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_verify_errors_separately_from_drift"
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "symbol": "dbspec_apply_verification_errors_none"
         }
       ]
     },
@@ -3590,41 +3590,119 @@
       ]
     },
     {
-      "id": "dbspec-render-physical",
-      "kind": "feature",
+      "id": "dbspec-render-physical-mysql",
+      "kind": "suite",
       "requirements": [
         "DIA-113"
       ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-render-physical.mjs",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_render_physical.py",
-          "id": "types-and-defaults"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_render_physical.rs",
-          "id": "render_physical"
-        },
-        {
           "implementation": "go",
-          "test": "packages/go/orm/dbspec_render_physical_test.go",
-          "id": "TestDBSpecRenderPhysical"
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalMysql"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecRenderTest.php",
-          "id": "DbspecRenderTest::testBehaviourPhysical"
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
-          "id": "DbspecRenderTestExtensionTest::testBehaviourPhysical"
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-mysql.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_mysql.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_mysql.rs",
+          "symbol": "dbspec_render_physical_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_postgres.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_postgres.rs",
+          "symbol": "dbspec_render_physical_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-render-physical-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DIA-113"
+      ],
+      "file": "tests/dbspec/render-physical.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_render_physical_test.go",
+          "symbol": "TestRecipeDbspecRenderPhysicalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecRenderPhysicalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecRenderPhysicalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecRenderPhysicalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecRenderPhysicalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_render_physical-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_render_physical_sqlite.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_render_physical_sqlite.rs",
+          "symbol": "dbspec_render_physical_sqlite"
         }
       ]
     },
@@ -12204,7 +12282,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
@@ -12216,8 +12294,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/schema/tests/dbspec_show_create.rs",
-          "symbol": "show_create_vectors"
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -12973,7 +13051,7 @@
       ]
     },
     {
-      "id": "dbspec-show-create-check-body",
+      "id": "dbspec-show-create-reader-text",
       "kind": "feature",
       "requirements": [
         "DIA-84"
@@ -12981,68 +13059,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/show_create_introspect_test.go",
-          "id": "TestMySQLIntrospectionOfShownChecks"
+          "test": "packages/go/engine/dbspec/show_create_test.go",
+          "id": "TestMySQLShownCheckVectors"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::testIntrospect"
+          "test": "packages/php/tests/DbspecShowCreateTest.php",
+          "id": "DbspecShowCreateTest::testShowCreate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
-          "id": "DbspecShowCreateIntrospectTestExtensionTest::testIntrospect"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
-          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+          "id": "DbspecShowCreateIntrospectTestExtensionTest::testNone"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-with-parentheses"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/two-checks-target-ascii"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/literal-ends-with-backslash"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-show-create-introspect.mjs",
-          "id": "introspection/name-without-check"
+          "test": "packages/ts/tests/dbspec-show-create.mjs",
+          "id": "non-ascii-literal"
         },
         {
           "implementation": "python",
@@ -13050,44 +13083,48 @@
           "id": "non-ascii-literal"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-quote"
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
+          "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-show-create-check-body",
+      "kind": "suite",
+      "requirements": [
+        "DIA-84"
+      ],
+      "file": "tests/dbspec/show-create-introspect.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_show_create_introspect_test.go",
+          "symbol": "TestRecipeDbspecShowCreateIntrospectNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecShowCreateIntrospectTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecShowCreateIntrospectTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecShowCreateIntrospectTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_show_create_introspect-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-backslash"
+          "test": "packages/python/tests/test_dbspec_show_create_introspect_none.py"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-with-parentheses"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-non-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "two-checks-target-ascii"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "literal-ends-with-backslash"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "non-ascii-literal-with-quote"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_show_create.py",
-          "id": "name-without-check"
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_show_create_introspect_none.rs",
+          "symbol": "dbspec_show_create_introspect_none"
         }
       ]
     },
@@ -17699,40 +17736,40 @@
     },
     {
       "id": "dbspec-introspect-messages",
-      "kind": "feature",
+      "kind": "suite",
       "requirements": [
         "DIA-191"
       ],
+      "file": "tests/dbspec/introspect-messages.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestSQLiteUnsupportedColumnReasonQuotesMissingCheck"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "dbspec.introspect.sqlite-empty-check-reason"
+          "test": "packages/go/orm/recipe_dbspec_introspect_messages_test.go",
+          "symbol": "TestRecipeDbspecIntrospectMessagesNone"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php/tests/DbspecIntrospectMessagesRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecIntrospectMessagesRecipeTest::testNone"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck"
+          "test": "packages/php-ext/tests/DbspecIntrospectMessagesRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecIntrospectMessagesRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_introspect_messages-none.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_introspect_messages.py",
-          "id": "test_a_column_without_check_is_quoted_as_the_empty_string"
+          "test": "packages/python/tests/test_dbspec_introspect_messages_none.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_unsupported_column_reason_quotes_missing_check"
+          "test": "packages/rust/tests/tests/dbspec_introspect_messages_none.rs",
+          "symbol": "dbspec_introspect_messages_none"
         }
       ]
     },
@@ -18711,62 +18748,122 @@
       ]
     },
     {
-      "id": "dbspec-set-decimal",
-      "kind": "feature",
+      "id": "dbspec-set-decimal-mysql",
+      "kind": "suite",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalMysql"
+        },
+        {
           "implementation": "php",
-          "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::testDecimalDocument"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-decimal.mjs",
-          "id": "decimal_schema.dbs"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/sqlite"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/mysql"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/decimalmodel/schema_set_test.go",
-          "id": "TestDecimalDocument/postgres"
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testMysql"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DecimalModelDbNativeTest.php",
-          "id": "DecimalModelDbNativeTest::testNativeRoundTrip"
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-mysql.test.mjs"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/decimal_model_db.py",
-          "id": "test_round_trip"
+          "test": "packages/python/tests/test_set_decimal_mysql.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_mysql"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_mysql.rs",
+          "symbol": "dbspec_set_decimal_mysql"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-postgres",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-postgres.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_postgres.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_postgres"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_postgres.rs",
+          "symbol": "dbspec_set_decimal_postgres"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-set-decimal-sqlite",
+      "kind": "suite",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "file": "tests/dbspec/set-decimal.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dbspec_set_decimal_test.go",
+          "symbol": "TestRecipeDbspecSetDecimalSqlite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecSetDecimalRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\DbspecSetDecimalRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecSetDecimalRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\DbspecSetDecimalRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_set_decimal-sqlite.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_set_decimal_sqlite.py"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/decimal_physical.rs",
-          "id": "decimal_sqlite"
+          "test": "packages/rust/tests/tests/dbspec_set_decimal_sqlite.rs",
+          "symbol": "dbspec_set_decimal_sqlite"
         }
       ]
     },

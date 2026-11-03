@@ -80,7 +80,8 @@
                         "not": {
                           "enum": [
                             "model.connect",
-                            "sql.exec"
+                            "sql.exec",
+                            "dbspec.ddl_behavior"
                           ]
                         }
                       }
@@ -780,6 +781,10 @@
             "dsn.sqlite_file",
             "markdown.connect",
             "keyring.versions",
+            "dbspec.introspect_sqlite",
+            "dbspec.apply_fault",
+            "dbspec.ddl_behavior",
+            "dbspec.introspect_shown",
             "markdown.builder",
             "model.connect",
             "codec.decode",
@@ -889,6 +894,18 @@
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_sqlite"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.apply_fault"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.ddl_behavior"
+        },
+        {
+          "$ref": "#/$defs/ops/dbspec.introspect_shown"
         },
         {
           "$ref": "#/$defs/ops/markdown.builder"
@@ -1591,6 +1608,231 @@
           },
           "expect": {
             "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "dbspec.apply_fault": {
+        "description": "The public apply or rollback on a memory SQLite connection that the op wraps: after applied_first and sql, the nth read of the SQLite master query in the call fails with an error of the op. The result is the code of the apply error (PLN-92, PLN-93, PLN-96).",
+        "type": "object",
+        "required": [
+          "op",
+          "plan",
+          "call",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.apply_fault"
+          },
+          "plan": {
+            "$ref": "#/$defs/ref"
+          },
+          "call": {
+            "enum": [
+              "apply",
+              "rollback"
+            ]
+          },
+          "applied_first": {
+            "const": true
+          },
+          "sql": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fail_catalog_read": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "verify",
+                      "drift"
+                    ]
+                  },
+                  "history_state": {
+                    "type": "string"
+                  },
+                  "absent_events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dbspec.ddl_behavior": {
+        "description": "On one native connection of the case database: the connection rules, the statements of the case for the database, then its behavior steps (DIA-113).",
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.ddl_behavior"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          }
+        }
+      },
+      "dbspec.introspect_shown": {
+        "type": "object",
+        "required": [
+          "op",
+          "vectors",
+          "case",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_shown"
+          },
+          "vectors": {
+            "type": "string"
+          },
+          "case": {
+            "type": "string"
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "required": [
+                      "checks",
+                      "unsupported"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "checks": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "unsupported": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "error"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "error": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "dbspec.introspect_sqlite": {
+        "type": "object",
+        "required": [
+          "op",
+          "sql",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.introspect_sqlite"
+          },
+          "sql": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "required": [
+                  "unsupported"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "unsupported": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kind",
+                        "table",
+                        "name",
+                        "reason"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

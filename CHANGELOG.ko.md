@@ -1,9 +1,14 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7e84b76b0c1732d28606d8e8e0d63e694e33a154f8acebdb78a28450d4d4f44b -->
+<!-- source-sha256: 930ff806d8b31b9a117ee2f066b9464dc7301af18170aca40bafddfed5f453df -->
 # 변경 이력
 
 ## Unreleased
 
+- apply와 rollback의 검증 오류는 각 runtime의 native 시험 대신 op `dbspec.apply_fault`를 쓰는 recipe `tests/dbspec/apply-verification-errors.json`이며 여섯 runtime에서 돈다. 실제 drift에서 rollback하는 case도 이제 모든 runtime에서 돈다(PLN-92, PLN-93, PLN-96).
+- `contracts/fixtures/dbspec-set.json`의 decimal document set은 각 runtime의 native 시험 대신 recipe `tests/dbspec/set-decimal.json`이며, 여섯 runtime과 세 database에서 set을 설치하고 두 금액을 정확히 만들고 읽는다(DBS-108, SCH-7).
+- `tests/dbspec/ddl.json`의 렌더링된 statement를 실제로 실행하는 시험은 각 runtime의 native 시험 대신 op `dbspec.ddl_behavior`를 쓰는 recipe `tests/dbspec/render-physical.json`이며, 여섯 runtime과 세 database에서 돈다(DIA-113).
+- SHOW CREATE TABLE check의 MySQL introspection은 여섯 runtime 모두에서 op `dbspec.introspect_shown`을 쓰는 recipe `tests/dbspec/show-create-introspect.json`이고, 그 recipe가 `tests/dbspec/show-create.json`의 각 case가 기대하는 것을 담는다
+- DIA-191의 SQLite unsupported column 사유는 여섯 runtime 모두에서 op `dbspec.introspect_sqlite`를 쓰는 recipe `tests/dbspec/introspect-messages.json`이고, 각 runtime은 unsupported 객체의 전체 목록을 비교한다. 한 runtime의 시험은 없앴다
 - recipe의 expect는 그 step을 실행하는 database만 정확히 이름 붙이므로, `only`가 있는 사례는 실행되지 않는 database의 결과를 더 이상 적지 않는다(FCV-4, FCV-10).
 - CR32에 tool call을 끝내는 harness를 제외하는 시각을 적음.
 - parameter_chunking의 owner가 model_parameter_after_schema_change를 선언함.
