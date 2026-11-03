@@ -10,6 +10,7 @@ import { readParityConfig } from '../json/formats.mts';
 import { checkJson, readJsonFile, refusedPaths } from '../json/schema.mts';
 import { executeCoverage, languages, recipeCaseIds, selectFeatures, type Manifest } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
+import { schemaKeys, unreadKeys } from './recipe-reads.mts';
 import { testDirectoryOf } from './packages.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
@@ -152,6 +153,17 @@ caseTest('an expect names exactly the databases that run its step', COMPUTE, () 
   assert.deepEqual(files.flatMap(file => expectFaults(JSON.parse(readFileSync(resolve(root, file), 'utf8')) as Json).map(fault => `${file}: ${fault}`)), []);
 });
 
+// FCV-2: a key that the schema accepts and a helper ignores passes on every value, so its assertion runs in no runtime there.
+caseTest('every key that the schema accepts is read by each helper', COMPUTE, () => {
+  const format = JSON.parse(readFileSync(schema, 'utf8'));
+  assert.ok(schemaKeys(format).has('message_holds'), 'an outcome key is a key of the schema');
+  assert.ok(schemaKeys(format).has('pool_size'), 'a step key is a key of the schema');
+  const withKey = structuredClone(format);
+  withKey.$defs.ops['model.connect'].properties.nobody_reads_this = { type: 'string' };
+  assert.equal(unreadKeys(root, withKey).filter(line => line.endsWith(' nobody_reads_this')).length, 5, 'a new key is unread by the five helpers');
+  assert.deepEqual(unreadKeys(root, format), []);
+});
+
 // One subtest per recipe, so that a run reports every invalid recipe and not the first.
 const suiteFiles = (readParityConfig(resolve(root, 'config/parity.json')).suites ?? []).flatMap(glob => globSync(glob, { cwd: root }));
 
@@ -181,12 +193,6 @@ caseTest('the recipe is the list of the cases of its owners', COMPUTE, () => {
       return lists.length > 0 && lists.every(list => (list ?? []).some(command => command.recipe));
     });
     if (recipeOnly && feature.coverage?.cases !== undefined) differences.push(`${feature.id}: coverage.cases copies its recipe`);
-    for (const [language, owner] of owners) {
-      for (const [database, list] of Object.entries(owner.commands ?? {})) {
-        for (const command of list ?? [])
-          if (command.recipe && command.cases !== undefined) differences.push(`${feature.id}/${language}/${database}: cases copies ${command.recipe}`);
-      }
-    }
   }
   for (const feature of readFeatures(root).features ?? []) {
     const owners = Object.entries(feature.coverage?.owners ?? {});

@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: f5c2876ec00adf2a4458741ed24ed0578b903111dc7a8298d692f5d47734bf6a -->
+<!-- source-sha256: b6ad88bcc5478a53bab3017fc0ff7cfce2837742a2910b2d175f1910f259ae9e -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -39,6 +39,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 
 - **CFG-15** 모든 클라이언트는 그렇게 실패한 문에 `CONNECTION_LOST`를 반환하고 그 문을 다시 전송하지 않는다. 연결의 트랜잭션이나 세션 상태가 사라졌기 때문이다.
 - **CFG-38** PHP와 PHP extension은 connection에 session 하나를 둔다. 따라서 첫 statement 전에 server가 그 session을 끝내면 그 statement는 `CONNECTION_LOST`로 실패하고, 한 번만 전송된다.
+- **CFG-39** Go: callback 도중 context가 취소된 transaction은 `CANCELED`만 돌려주고, connection은 그 transaction의 named lock, user variable, SQLite mode를 유지하지 않는다.
 
 ## DSN 매개변수와 MySQL TLS
 
@@ -95,7 +96,7 @@ PgBouncer 설정:
 ProxySQL 설정:
 
 - **CFG-34** `mysql-threshold_resultset_size`: 기본값 4 MiB가 아니라 `65536`. 이 크기 아래에서 ProxySQL은 결과를 클라이언트에 전달하기 전에 buffer에 담고, 이 크기의 8배를 담으면 backend 읽기를 멈춘다. ProxySQL의 worker thread는 이 둘 중 하나가 멈출 때까지 결과의 행 읽기에 머문다. 그래서 기본값에서는 짧은 행의 결과가 thread의 heartbeat 기록을 막고, watchdog은 heartbeat를 `restart_on_missing_heartbeats`(기본값 10)번 놓치면 프로세스 전체를 중단하여 모든 클라이언트의 연결이 끊어진다. 이 크기는 두 기능의 범위도 정한다. 이보다 큰 결과는 query cache에 저장되지 않고, 결과가 클라이언트에 닿기 시작한 문은 실패해도 재시도되지 않는다.
-- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다.
+- **CFG-35** `mysql-kill_backend_connection_when_disconnect`: 기본값 `true`. 예산으로 멈춘 catalog 읽기(INT-115)는 결과의 나머지를 읽지 않고 반환하며 연결을 닫는다. 행을 전달하던 문은 어느 값에서나 닫힌 backend와 함께 끝난다. 긴 scan이나 `SLEEP`처럼 아무것도 전달하지 않는 문은 `false`에서는 끝까지 실행되고 `true`에서는 즉시 kill된다. 중단된 읽기의 socket을 닫을 수 있는 runtime은 kill이 실패하거나 kill이 없을 때 기다리지 않고 닫는다. 서버가 그 thread를 아직 끝내지 않아 `max_user_connections`가 다음 연결을 거부하면 최대 2초까지 다시 시도한다(측정값은 40 ms 이내).
 
 ProxySQL은 기본 multiplexing으로 실행한다. ProxySQL은 클라이언트 연결마다 `time_zone`, `sql_mode`, `max_execution_time`을 기억하고 그 연결에 쓰는 모든 서버 연결에 적용한다. 사용자 변수, `GET_LOCK`, `CREATE TEMPORARY TABLE`을 포함한 문이 실행되면 ProxySQL은 그 클라이언트 연결이 끊어질 때까지 서버 연결 하나에 고정한다. MySQL에서 `utils().setLocal`은 사용자 변수 `` @`orm.<key>` ``를, `utils().lock`은 `GET_LOCK`을 쓰므로 이들을 사용한 연결은 더 이상 multiplexing되지 않는다. 결과는 달라지지 않는다.
 

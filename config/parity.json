@@ -27,7 +27,6 @@
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
-        "packages/go/model/coverage_helpers_test.go",
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
@@ -42,7 +41,7 @@
       ],
       "args": [
         "-tags",
-        "physical,ormtest,markdown,featurecoverage"
+        "physical,ormtest,markdown"
       ],
       "symbols": {
         "extractor": "go",
@@ -298,6 +297,18 @@
         {
           "glob": "packages/go/orm/values_test.go",
           "reason": "test: the private irFunc of every value and column function of Go; what a request carries is the case value_function_parameter_indexes."
+        },
+        {
+          "glob": "packages/go/orm/catalog_auto_identity_test.go",
+          "reason": "harness: the helpers that open a SQLite catalog fixture and compare its rows, used by the internal catalog tests of this directory; the file holds no test"
+        },
+        {
+          "glob": "packages/go/orm/catalog_mutation_test.go",
+          "reason": "test: calls the private catalogSameCell and catalogBytesValue with values no server stores, such as a TIME(7) native type; the cases row_baseline_exact_values and described_temporal_matrix hold what a server can return"
+        },
+        {
+          "glob": "packages/go/orm/catalog_temporal_test.go",
+          "reason": "test: passes a Go time.Time, which a recipe value cannot express, and calls the private bool, zero date and temporal text conversions with values no server returns; temporal_text_row_cycle_sqlite and described_temporal_text hold the public reads"
         }
       ]
     },
@@ -321,7 +332,6 @@
         "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/CollectionWeakTypedKeyCases.php",
         "packages/php/tests/ColumnFunctionMetadataAssertions.php",
-        "packages/php/tests/ComplexQueryDbCase.php",
         "packages/php/tests/CountingPdo.php",
         "packages/php/tests/DatabaseTestAssertions.php",
         "packages/php/tests/DbspecIntrospectQueryCountCases.php",
@@ -333,8 +343,6 @@
         "packages/php/tests/FailingStatement.php",
         "packages/php/tests/FakeSqliteLockStatement.php",
         "packages/php/tests/GroupRowsCases.php",
-        "packages/php/tests/GroupRowsDbCase.php",
-        "packages/php/tests/GroupRowsModelFixture.php",
         "packages/php/tests/ListenNotifyCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/ModelTypesWeakCallerCases.php",
@@ -396,7 +404,6 @@
         "packages/php/tests/was_inserted_child.php",
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
-        "packages/php/tests/GroupRowsDbCases.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php",
         "packages/php/tests/StatementRunnerCases.php",
@@ -423,6 +430,10 @@
         "pattern": "^    public const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "reason": "test: injects a close failure into the private effect query of PlanApply, which holds a PDO statement, and holds the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json; the cleanup errors are cases of tests/dbspec/apply-verification-errors.json"
+        },
         {
           "glob": "packages/php/tests/DbspecCatalogChecksTest.php",
           "reason": "test: directly exercises the @internal Dbspec\\CatalogChecks adapter; accepted and rejected check introspection remains covered across all clients by dbspec-introspect cases"
@@ -568,6 +579,10 @@
           "reason": "test: the native cause that a PHP codec exception chains to; the code of each failure is the case decode_errors of the codec recipe."
         },
         {
+          "glob": "packages/php/tests/CatalogQueryBoundsTest.php",
+          "reason": "test: invokes the private verifyInsertedRow and sameRow by reflection; a server cannot make the returned row differ, and PHP false against 0 reaches no public read"
+        },
+        {
           "glob": "packages/php/tests/CoveragePlannerTest.php",
           "reason": "harness: a post-validation invariant of the planner that no public input reaches, so no recipe can state it; the planner suite target runs this file."
         }
@@ -629,6 +644,14 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+          "reason": "test: reads by reflection that Registry and Schema are classes of the extension, and its own runtime cache; the manifest hash is the case dbspec_manifest_hash of tests/dbspec/schema-definition.json"
+        },
+        {
+          "glob": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
+          "reason": "test: runs DbspecApplyCleanupTest on the extension, the close failure of the private effect query, and the recover and finalize cases until they reach the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json"
+        },
+        {
           "glob": "packages/php-ext/tests/CodecCauseTest.php",
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
@@ -681,7 +704,6 @@
         "packages/ts/tests/coverage_*.mjs",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/decimal_model_db.mjs",
-        "packages/ts/tests/group_rows_db.mjs",
         "packages/ts/tests/statement_events_server_transactions.mjs",
         "packages/ts/tests/dsn_features.mjs",
         "packages/ts/tests/engine_features.mjs"
@@ -933,7 +955,7 @@
         },
         {
           "glob": "packages/python/tests/coverage_case_test.py",
-          "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
+          "reason": "harness: tests the Python feature-coverage runner\u2019s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
         },
         {
           "glob": "packages/python/tests/test_dbspec_introspect_support.py",
@@ -970,6 +992,10 @@
         {
           "glob": "packages/python/tests/test_scalar_subquery_type.py",
           "reason": "test: a column that the planner finds missing after validation is INTERNAL; a request cannot reach it, so no recipe can state it."
+        },
+        {
+          "glob": "packages/python/tests/test_catalog_described_temporal.py",
+          "reason": "test: calls the private temporal conversions and passes a datetime value, which a recipe cannot express; temporal_text_row_cycle_sqlite, described_temporal_matrix and described_temporal_text hold the public reads"
         }
       ],
       "roots": [
@@ -1262,6 +1288,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/mod.rs",
           "reason": "test: the private operator tables of the Rust schema crate; what a request can reach is the case operators_follow_type_and_codec of tests/ir/validate.json."
+        },
+        {
+          "glob": "packages/rust/build/tests/unit/read_only_policy.rs",
+          "reason": "test: calls the private validate for its parser failure cause and its PostgreSQL operand limit; read_statements and read_only_grid_shapes hold the shapes"
         },
         {
           "glob": "packages/rust/orm/tests/unit/coverage_planner.rs",
@@ -3167,33 +3197,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestApplyReportsCleanupErrors"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-cleanup.mjs",
-          "id": "apply/cleanup-errors/release"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_cleanup_errors"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_cleanup_failure_notes"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "id": "TestRecipeDbspecApplyVerificationErrorsNone/cleanup-the-failure-then-every-cleanup-error-in-order"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecApplyCleanupTestExtensionTest.php",
-          "id": "DbspecApplyCleanupTestExtensionTest::testCleanupErrorsRelease"
+          "test": "packages/php-ext/tests/DbspecApplyVerificationErrorsRecipeTestExtensionTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTestExtensionTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ]
     },
@@ -3203,7 +3233,8 @@
       "requirements": [
         "PLN-92",
         "PLN-93",
-        "PLN-96"
+        "PLN-96",
+        "PLN-106"
       ],
       "file": "tests/dbspec/apply-verification-errors.json",
       "cases": "$.cases[*].id",
@@ -5966,7 +5997,7 @@
       "id": "request-hook-root-is-the-connection",
       "kind": "feature",
       "requirements": [
-        "INT-78"
+        "INT-78a"
       ],
       "bindings": [
         {
@@ -5983,23 +6014,17 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RequestHookSqliteRecipeTest.php",
-          "id": "RequestHookSqliteRecipeTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RequestHookSqliteRecipeTestExtensionTest.php",
-          "id": "RequestHookSqliteRecipeTestExtensionTest::testSqlite with data set \"without_hook\""
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::without_hook"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "request_hook",
+        "parts": [
+          "owner/go",
+          "owner/typescript",
+          "owner/python"
+        ]
+      }
     },
     {
       "id": "request-hook-params-are-read-only",
@@ -6035,8 +6060,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/request_hook_sqlite.rs",
-          "id": "request_hook_sqlite::reads_params"
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "compiler_fixtures::int78-bound-param-write-e0594"
         }
       ]
     },
@@ -6158,19 +6183,18 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_handle_abandoned_query",
-          "command": [
-            "env",
-            "BENCH_SQLITE_DSN=${BENCH_SQLITE_DSN}",
-            "BENCH_MYSQL_DSN=${BENCH_MYSQL_DSN}",
-            "BENCH_POSTGRES_DSN=${BENCH_POSTGRES_DSN}",
-            "${ORM_CHECKOUT}/packages/python/.venv/bin/python",
-            "-m",
-            "unittest",
-            "-v",
-            "tests.coverage_transactions.CoverageTest.test_handle_abandoned_query"
-          ]
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "test_abandoned_query_is_canceled_and_rolled_back_postgres"
         },
         {
           "implementation": "typescript",
@@ -6319,45 +6343,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
           "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
-        }
-      ]
-    },
-    {
-      "id": "markdown-session-messages",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownSessionMessages"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testSessionMessages"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-          "id": "MarkdownTestExtensionTest::testSessionMessages"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/session-messages"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_session_messages"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_session_messages"
         }
       ]
     },
@@ -6537,166 +6522,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/planner_compile_none.rs",
           "id": "planner_compile_none::param_uses_optimistic"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-update-match",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/update-match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testUpdateMatchBumpsTheRevision"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_update_match_bumps_the_revision"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_update_match_bumps_the_revision"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-update-mismatch",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/update-mismatch"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testUpdateMismatchChangesNothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_update_mismatch_changes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_update_mismatch_changes_nothing"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-delete-match",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/delete-match"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionDeleteMatchDeletes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMatchDeletes"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testDeleteMatchDeletes"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_delete_match_deletes"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_delete_match_deletes"
-        }
-      ]
-    },
-    {
-      "id": "ts-revision-delete-mismatch",
-      "kind": "feature",
-      "requirements": [
-        "DSL-108",
-        "DSL-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/revision.mjs",
-          "id": "revision/delete-mismatch"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/revision_test.go",
-          "id": "TestRevisionDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::testDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RevisionTestExtensionTest.php",
-          "id": "RevisionTestExtensionTest::testDeleteMismatchChangesNothing"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_revision.py",
-          "id": "test_delete_mismatch_changes_nothing"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/revision.rs",
-          "id": "revision_delete_mismatch_changes_nothing"
         }
       ]
     },
@@ -9550,7 +9375,8 @@
         "INT-99",
         "COD-20",
         "DIA-25",
-        "COD-2"
+        "COD-2",
+        "INT-91"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9711,7 +9537,8 @@
         "INT-99",
         "COD-20",
         "DIA-25",
-        "COD-2"
+        "COD-2",
+        "INT-91"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9872,7 +9699,8 @@
         "INT-99",
         "COD-20",
         "DIA-25",
-        "COD-2"
+        "COD-2",
+        "INT-91"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -10794,8 +10622,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationMysql"
         },
         {
           "implementation": "php",
@@ -11006,8 +10834,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationPostgres"
         },
         {
           "implementation": "php",
@@ -11219,8 +11047,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "symbol": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "symbol": "TestRecipeConformanceVerificationSqlite"
         },
         {
           "implementation": "php",
@@ -12874,8 +12702,13 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "functions"
         },
         {
           "implementation": "rust",
@@ -13367,6 +13200,25 @@
       }
     },
     {
+      "id": "connection-cancelled-transaction-session-state",
+      "kind": "feature",
+      "requirements": [
+        "CFG-39"
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "transactions",
+        "part": "owner/go"
+      },
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/cancelled_session_test.go",
+          "id": "TestCancelledTransactionClearsSessionState"
+        }
+      ]
+    },
+    {
       "id": "connection-transaction-session-state-ends",
       "kind": "feature",
       "requirements": [
@@ -13377,63 +13229,73 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/cancelled_session_test.go",
-          "id": "TestCancelledTransactionClearsSessionState"
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "id": "TestRecipeUtilsMysql/session_state_ends_with_the_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "id": "TestRecipeUtilsPostgres/session_state_ends_with_the_transaction"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_utils_test.go",
+          "id": "TestRecipeUtilsSqlite/session_state_ends_with_the_transaction"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/SessionStateTest.php",
-          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testMysql with data set \"session_state_ends_with_the_transaction\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testPostgres with data set \"session_state_ends_with_the_transaction\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/UtilsRecipeTest.php",
+          "id": "UtilsRecipeTest::testSqlite with data set \"session_state_ends_with_the_transaction\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/SessionStateTestExtensionTest.php",
-          "id": "SessionStateTestExtensionTest::testSessionStateEndsWithTransaction"
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testMysql with data set \"session_state_ends_with_the_transaction\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testPostgres with data set \"session_state_ends_with_the_transaction\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsRecipeTestExtensionTest.php",
+          "id": "UtilsRecipeTestExtensionTest::testSqlite with data set \"session_state_ends_with_the_transaction\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/session_state.mjs",
-          "id": "session-state/ends-with-transaction/sqlite"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/session_state.mjs",
-          "id": "session-state/ends-with-transaction/mysql"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/session_state.mjs",
-          "id": "session-state/ends-with-transaction/postgres"
+          "test": "packages/ts/tests/utils_recipe-mysql.test.mjs",
+          "id": "session_state_ends_with_the_transaction"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/session_state.py",
-          "id": "test_session_state_ends_with_transaction_sqlite"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/session_state.py",
-          "id": "test_session_state_ends_with_transaction_mysql"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/session_state.py",
-          "id": "test_session_state_ends_with_transaction_postgres"
+          "test": "packages/python/tests/test_utils_recipe_mysql.py",
+          "id": "session_state_ends_with_the_transaction"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/session_state.rs",
-          "id": "session_state_ends_with_transaction_sqlite"
+          "test": "packages/rust/tests/tests/utils_recipe_mysql.rs",
+          "id": "utils_recipe_mysql::session_state_ends_with_the_transaction"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/session_state.rs",
-          "id": "session_state_ends_with_transaction_mysql"
+          "test": "packages/rust/tests/tests/utils_recipe_postgres.rs",
+          "id": "utils_recipe_postgres::session_state_ends_with_the_transaction"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/session_state.rs",
-          "id": "session_state_ends_with_transaction_postgres"
+          "test": "packages/rust/tests/tests/utils_recipe_sqlite.rs",
+          "id": "utils_recipe_sqlite::session_state_ends_with_the_transaction"
         }
       ]
     },
@@ -14323,8 +14185,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceMySQL"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationMysql/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14392,8 +14264,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformancePostgres"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationPostgres/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -14461,8 +14343,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceSQLite"
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/time_p3_roundtrip"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/datetime_precision_rejected"
         },
         {
           "implementation": "php",
@@ -15253,33 +15145,33 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/catalog_row_baseline_test.go",
-          "id": "TestCatalogRowBaselineComparesExactTypedValues"
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/row_baseline_exact_values"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testRowBaselineComparesExactValuesIncludingGeneratedOriginals"
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
-          "id": "CatalogConnectionSurfaceTest::testNativeRowBaselineIncludesGeneratedColumnOriginalValues"
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
-          "id": "row baseline compares exact typed values including generated-column originals"
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "row_baseline_exact_values"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_catalog_row_baseline.py",
-          "id": "test_compares_exact_typed_values_and_preserves_generated_original"
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "row_baseline_exact_values"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_baseline_compares_exact_bits_scale_and_binary"
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::row_baseline_exact_values"
         }
       ]
     },
@@ -15418,16 +15310,6 @@
           "id": "row_mutation"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/row_snapshot.rs",
-          "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogChangesRejectsValuesBeyondDeclaredCapacity"
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
@@ -15436,6 +15318,36 @@
           "implementation": "python",
           "test": "packages/python/tests/test_catalog_connection_sqlite.py",
           "id": "row_mutation"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionMysql/row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "row_byte_capacity_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::row_byte_capacity_mysql"
         }
       ]
     },
@@ -15597,11 +15509,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/tool_cells.rs",
           "id": "physical_tool_cells_reject_loss_without_substituting_values"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_cells.rs",
-          "id": "binary_grid_values_remain_distinct_from_text_and_null"
         }
       ],
       "owner": {
@@ -15933,11 +15840,6 @@
           "id": "read_statements"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/unit/read_only_policy.rs",
-          "id": "catalog::read_only::tests::policy_validates_nested_read_shapes_and_rejects_writes"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_catalog_connection_test.go",
           "id": "TestRecipeCatalogConnectionSqlite"
@@ -15946,6 +15848,26 @@
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/read_only_grid_shapes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "read_only_grid_shapes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "read_only_grid_shapes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::read_only_grid_shapes"
         }
       ]
     },
@@ -16062,50 +15984,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/codec_none.rs",
           "id": "codec_none::sql_null_is_not_a_value"
-        }
-      ]
-    },
-    {
-      "id": "group-count-boolean-decode",
-      "kind": "feature",
-      "requirements": [
-        "PRT-36"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupCountRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/group_rows_test.go",
-          "id": "TestGroupColumnValueChecksDeclaredType"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
-          "id": "ModelAssemblyTest::testGroupValueRejectsInvalidStoredBoolean"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows.mjs",
-          "id": "group_rows/boolean_invalid_stored_value"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows.py",
-          "id": "test_group_boolean_rejects_non_boolean_float"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/row.rs",
-          "id": "row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode"
         }
       ]
     },
@@ -16483,38 +16361,6 @@
       ],
       "bindings": [
         {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_mutation_test.go",
-          "id": "TestCatalogBytesValuePreservesNativeTimeAsText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogBytesValuePreservesNativeTimeAsText",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_temporal_test.go",
-          "id": "TestCatalogDescribedTemporalText",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCatalogDescribedTemporalText",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        },
-        {
           "implementation": "php",
           "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
           "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testMysql"
@@ -16545,14 +16391,29 @@
           "id": "catalog_describe_metadata"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionMysql/described_temporal_matrix"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
+          "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-mysql.test.mjs",
+          "id": "described_temporal_matrix"
+        },
+        {
           "implementation": "python",
-          "test": "packages/python/tests/test_catalog_described_temporal.py",
-          "id": "test_described_temporal_text"
+          "test": "packages/python/tests/test_catalog_connection_mysql.py",
+          "id": "described_temporal_matrix"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/src/catalog/temporal.rs",
-          "id": "catalog::temporal::tests::precision_follows_the_native_type_and_dialect_default"
+          "test": "packages/rust/tests/tests/catalog_connection_mysql.rs",
+          "id": "catalog_connection_mysql::described_temporal_matrix"
         }
       ]
     },
@@ -16599,29 +16460,34 @@
           "id": "catalog_connection_sqlite::catalog_read_budgets"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/tool_limits.rs",
-          "id": "physical_tool_queries_reject_budgets_without_partial_success"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testPlainAndGridConsumersShareTheRowLimit"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CatalogQueryBoundsTest.php",
-          "id": "CatalogQueryBoundsTest::testPlainAndGridConsumersShareTheByteLimit"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/grid_cells.rs",
-          "id": "binary_grid_values_remain_distinct_from_text_and_null"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
           "id": "Polyspec\\Orm\\Extension\\Tests\\CatalogConnectionRecipeTestExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/grid_binary_row"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogConnectionRecipeTest.php",
+          "id": "Polyspec\\Orm\\Tests\\CatalogConnectionRecipeTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "grid_binary_row"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "grid_binary_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::grid_binary_row"
         }
       ]
     },
@@ -16634,31 +16500,6 @@
         "DBS-113"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertRequiresIdentityWithoutDatabaseGeneration"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteLiteralDefaultCompositePrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteExpressionDefaultPrimaryKey"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/catalog_auto_identity_test.go",
-          "id": "TestCatalogInsertReturnsSQLiteDefaultOnlyCompositePrimaryKey"
-        },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CatalogConnectionRecipeTestExtensionTest.php",
@@ -16758,6 +16599,26 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
           "id": "catalog_connection_sqlite::generated_keys"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_catalog_connection_test.go",
+          "id": "TestRecipeCatalogConnectionSqlite/generated_identity_sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog_connection-sqlite.test.mjs",
+          "id": "generated_identity_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_connection_sqlite.py",
+          "id": "generated_identity_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/catalog_connection_sqlite.rs",
+          "id": "catalog_connection_sqlite::generated_identity_sqlite"
         }
       ]
     },
@@ -16834,6 +16695,25 @@
         "artifact": "archive",
         "package": "polyspec-orm"
       }
+    },
+    {
+      "id": "py-dbspec-apply-sqlite-lock-faults",
+      "kind": "feature",
+      "requirements": [
+        "PLN-90"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_statement_lock_timeout_is_failed_at_its_step"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound"
+        }
+      ]
     },
     {
       "id": "py-test-driver-cells",
@@ -20956,7 +20836,6 @@
             "Polyspec\\Orm\\Config::keyring",
             "Polyspec\\Orm\\Db::DRIVERS",
             "Polyspec\\Orm\\Db::NOW",
-            "Polyspec\\Orm\\Db::SECRET",
             "Polyspec\\Orm\\Db::driver",
             "Polyspec\\Orm\\Orm",
             "Polyspec\\Orm\\Orm::connect",
@@ -20983,7 +20862,6 @@
             "Polyspec\\Orm\\Config::__construct",
             "Polyspec\\Orm\\Config::keyring",
             "Polyspec\\Orm\\Db::NOW",
-            "Polyspec\\Orm\\Db::SECRET",
             "Polyspec\\Orm\\Db::driver",
             "Polyspec\\Orm\\Orm",
             "Polyspec\\Orm\\Orm::connect",
@@ -21592,8 +21470,7 @@
             "polyspec_orm::db::RequestHook",
             "polyspec_orm::db::RequestParams",
             "polyspec_orm::db::RequestParams::add",
-            "polyspec_orm::db::RequestParams::get",
-            "polyspec_orm::db::SECRET_MASK"
+            "polyspec_orm::db::RequestParams::get"
           ]
         },
         {
@@ -26077,28 +25954,18 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesCheckConstraint"
+          "test": "packages/go/orm/recipe_constraints_and_relations_test.go",
+          "id": "TestRecipeConstraintsAndRelationsMysql/constraint_errors"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_duplicate_unique_key_is_duplicate_key"
+          "test": "packages/python/tests/test_constraints_and_relations_mysql.py",
+          "id": "constraint_errors"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_postgres"
+          "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+          "id": "constraints_and_relations_mysql::constraint_errors"
         },
         {
           "implementation": "php",
@@ -26125,6 +25992,11 @@
       ],
       "bindings": [
         {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+          "id": "immutable_write_sqlite::immutable_write"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_immutable_write_test.go",
           "id": "TestRecipeImmutableWriteSqlite/immutable_write"
@@ -26148,21 +26020,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_immutable_write_sqlite.py",
           "id": "immutable_write"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_sqlite"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "trigger_refused_postgres"
         }
       ]
     },
@@ -26175,23 +26032,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_model_generation_test.go",
-          "id": "TestCoverageModelGenerationCheck"
+          "test": "packages/go/orm/recipe_generator_test.go",
+          "id": "TestRecipeGeneratorNone/check_reports_differences_without_writing"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageModelGenerationTest.php",
-          "id": "CoverageModelGenerationTest::testModelGenerationCheck"
+          "test": "packages/php/tests/GeneratorTest.php",
+          "id": "GeneratorTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+          "id": "GeneratorTestExtensionTest::testNone with data set \"check_reports_differences_without_writing\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_generation.mjs",
-          "id": "model_generation_check"
+          "test": "packages/ts/tests/generator-none.test.mjs",
+          "id": "check_reports_differences_without_writing"
         },
         {
           "implementation": "python",
@@ -26200,8 +26057,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
+          "test": "packages/rust/tests/tests/generator_none.rs",
+          "id": "generator_none::check_reports_differences_without_writing"
         }
       ]
     },
@@ -26231,46 +26088,6 @@
         "INT-91"
       ],
       "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/model_statements"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/transaction_savepoint"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/transaction_rollback"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/savepoint_rollback"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/failed_statement"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/subscriber_error"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/unsubscribe"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/recipe_statement_events_test.go",
-          "id": "TestRecipeStatementEventsSqlite/install"
-        },
         {
           "implementation": "php",
           "test": "packages/php/tests/StatementEventsRecipeTest.php",
@@ -26390,11 +26207,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_statement_events_sqlite.py",
           "id": "install"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_event_placeholders.py",
-          "id": "test_clock_and_secret_binds_are_shown_as_placeholders"
         },
         {
           "implementation": "rust",
@@ -26555,6 +26367,126 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/statement_events-sqlite.test.mjs",
           "id": "install"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/failed_statement"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/install"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/model_statements"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/savepoint_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/transaction_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/transaction_savepoint"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/unsubscribe"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/failed_statement"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/install"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/model_statements"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/savepoint_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/transaction_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/transaction_savepoint"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/unsubscribe"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/failed_statement"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/install"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/model_statements"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/savepoint_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/subscriber_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/transaction_rollback"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/transaction_savepoint"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/unsubscribe"
         }
       ]
     },
@@ -26572,19 +26504,23 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/coverage_conformance_verification_test.go",
-          "id": "TestCoverageConformanceVector",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageConformanceVector",
-            "FEATURE_PACKAGE=./model"
-          ]
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/conditions_values"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/relations"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/functions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_conformance_verification_test.go",
+          "id": "TestRecipeConformanceVerificationSqlite/creates_and_save"
         },
         {
           "implementation": "php-extension",
@@ -26598,8 +26534,23 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "conditions_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "functions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "relations"
         },
         {
           "implementation": "rust",
@@ -26698,11 +26649,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_manifest_hash"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/RegistrySchemaNativeTest.php",
-          "id": "RegistrySchemaNativeTest::testNativeOriginsAndReadonlySchemaRoundTrip"
         }
       ]
     },
@@ -26782,21 +26728,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_analyze_tokens"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
-          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestAnalyzeInvalidByte"
         }
       ]
     },
@@ -26836,11 +26767,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/schema_definition_none.rs",
           "id": "schema_definition_none::dbspec_format"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/analyze_test.go",
-          "id": "TestFormat"
         }
       ]
     },
@@ -28509,56 +28435,6 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/group_rows_db_test.go",
-          "id": "TestGroupRowsDatabase"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/GroupRowsDbTest.php",
-          "id": "GroupRowsDbTest::testGroupRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/GroupRowsDbNativeTest.php",
-          "id": "GroupRowsDbNativeTest::testGroupRows"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/group_rows_db.mjs",
-          "id": "group_rows_database",
-          "command": [
-            "env",
-            "ORM_GROUP_DATABASE=sqlite",
-            "ORM_GROUP_DSN=${BENCH_SQLITE_DSN}",
-            "node",
-            "--conditions=orm-test",
-            "--test",
-            "--test-reporter=${ORM_NODE_REPORTER}",
-            "tests/group_rows_db.mjs"
-          ]
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_group_rows_db.py",
-          "id": "test_group_rows_database"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
-          "id": "coverage_group_rows_db::coverage_group_rows_db",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db"
-          ]
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/orm/recipe_model_queries_chain_test.go",
           "id": "TestRecipeModelQueriesChainSqlite/group_rows_keep_their_types_and_their_null"
         },
@@ -28938,6 +28814,21 @@
       "bindings": [
         {
           "implementation": "go",
+          "test": "packages/go/engine/dbspec/analyze_test.go",
+          "id": "TestAnalyzeInvalidByte"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecAnalyzeTest.php",
+          "id": "DbspecAnalyzeTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecAnalyzeTestExtensionTest.php",
+          "id": "DbspecAnalyzeTestExtensionTest::testFocused with data set \"analyze/invalid-byte-stop-line\""
+        },
+        {
+          "implementation": "go",
           "test": "packages/go/engine/dbspec/rules_test.go",
           "id": "TestEncodingDiagnostics"
         },
@@ -29147,45 +29038,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/model.rs",
           "id": "model::page_order_tests::collection_views_preserve_model_order_and_connect_every_model"
-        }
-      ]
-    },
-    {
-      "id": "get-page-plan-steps",
-      "kind": "feature",
-      "requirements": [
-        "DSL-159"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/complexquery/page_plan_steps_test.go",
-          "id": "TestGetPagePlanSteps"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ComplexQueryDbTest.php",
-          "id": "ComplexQueryDbTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-          "id": "ComplexQueryNativeTest::testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/complex-query-request.mjs",
-          "id": "getPagePlanSteps gives the steps of the plan that getsPage runs"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_complex_query.py",
-          "id": "test_get_page_plan_steps_gives_the_steps_of_the_plan_of_gets_page"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
-          "id": "complex_query_sqlite::page_plan_steps"
         }
       ]
     },
@@ -29569,18 +29421,7 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/catalog_grid_order_test.go",
-          "id": "TestCoverageCatalogGridOrder",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCatalogGridOrder",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCoverageCatalogGridOrder"
         },
         {
           "implementation": "go",
@@ -29712,8 +29553,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/engine/dbspec/apply_test.go",
-          "id": "TestApplyReportsCleanupErrors"
+          "test": "packages/go/orm/recipe_dbspec_apply_verification_errors_test.go",
+          "id": "TestRecipeDbspecApplyVerificationErrorsNone/cleanup-the-failure-then-every-cleanup-error-in-order"
         },
         {
           "implementation": "go",
@@ -29736,8 +29577,8 @@
       "bindings": [
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-apply-cleanup.mjs",
-          "id": "apply/cleanup-errors/release"
+          "test": "packages/ts/tests/dbspec_apply_verification_errors-none.test.mjs",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29755,8 +29596,8 @@
       "bindings": [
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
-          "id": "apply_reports_cleanup_errors"
+          "test": "packages/rust/tests/tests/dbspec_apply_verification_errors_none.rs",
+          "id": "dbspec_apply_verification_errors_none::cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29774,8 +29615,8 @@
       "bindings": [
         {
           "implementation": "python",
-          "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_cleanup_failure_notes"
+          "test": "packages/python/tests/test_dbspec_apply_verification_errors_none.py",
+          "id": "cleanup-the-failure-then-every-cleanup-error-in-order"
         }
       ],
       "owner": {
@@ -29793,13 +29634,8 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::testCleanupErrorsBeginRestore"
+          "test": "packages/php/tests/DbspecApplyVerificationErrorsRecipeTest.php",
+          "id": "DbspecApplyVerificationErrorsRecipeTest::testNone with data set \"cleanup-the-failure-then-every-cleanup-error-in-order\""
         }
       ],
       "owner": {
@@ -29812,7 +29648,13 @@
       "id": "markdown-message-vectors",
       "kind": "suite",
       "requirements": [
-        "PRT-67"
+        "PRT-67",
+        "PRT-64",
+        "DIA-183",
+        "DIA-184",
+        "DIA-185",
+        "DIA-188",
+        "DIA-189"
       ],
       "file": "tests/bind/messages.json",
       "cases": "$.cases[*].id",
@@ -29997,11 +29839,6 @@
       ],
       "bindings": [
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_subscriber_error.py",
-          "id": "test_an_orm_error_of_a_subscriber"
-        },
-        {
           "implementation": "go",
           "test": "packages/go/orm/recipe_statement_events_test.go",
           "id": "TestRecipeStatementEventsMysql/subscriber_error"
@@ -30070,49 +29907,46 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/StatementEventsRecipeTestExtensionTest.php",
           "id": "StatementEventsRecipeTestExtensionTest::testSqlite"
-        }
-      ]
-    },
-    {
-      "id": "markdown-rejected-surfaces",
-      "kind": "feature",
-      "requirements": [
-        "DIA-183",
-        "DIA-184",
-        "DIA-185",
-        "DIA-188",
-        "DIA-189"
-      ],
-      "bindings": [
+        },
         {
           "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownRejectedSurfaces"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testRejectedSurfaces"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/MarkdownTestExtensionTest.php",
-          "id": "MarkdownTestExtensionTest::testRejectedSurfaces"
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsMysql/subscriber_orm_error"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/rejected-surfaces"
+          "test": "packages/ts/tests/statement_events-mysql.test.mjs",
+          "id": "subscriber_orm_error"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_rejected_surfaces"
+          "test": "packages/python/tests/test_statement_events_mysql.py",
+          "id": "subscriber_orm_error"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_rejected_surfaces"
+          "test": "packages/rust/tests/tests/statement_events_mysql.rs",
+          "id": "statement_events_mysql::subscriber_orm_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsPostgres/subscriber_orm_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_postgres.rs",
+          "id": "statement_events_postgres::subscriber_orm_error"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_statement_events_test.go",
+          "id": "TestRecipeStatementEventsSqlite/subscriber_orm_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/statement_events_sqlite.rs",
+          "id": "statement_events_sqlite::subscriber_orm_error"
         }
       ]
     },
@@ -30418,11 +30252,6 @@
         },
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/orm/conversion_error_test.go",
           "id": "TestTimeTextHasExactlyPrecisionDigits"
         },
@@ -30440,36 +30269,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeI16ValuesAndDefaults"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an i16 column reads and writes its whole range"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: an omitted column takes the database default and a required column is checked"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: an omitted column takes the database default and a required column is checked"
         },
         {
           "implementation": "typescript",
@@ -30502,11 +30301,6 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/value_types_test.go",
-          "id": "TestRuntimeValueTypes"
-        },
-        {
-          "implementation": "go",
           "test": "packages/go/model/styled_state_test.go",
           "id": "TestStyledStatesAcrossDatabases"
         },
@@ -30529,21 +30323,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
           "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "sqlite: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "mysql: selected styled SQL NULL survives a database read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
-          "id": "postgres: selected styled SQL NULL survives a database read"
         },
         {
           "implementation": "python",
@@ -36270,7 +36049,6 @@
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Role",
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.SQL",
             "github.com/polyspec/orm/packages/go/orm.QueryPlanStep.Tables",
-            "github.com/polyspec/orm/packages/go/orm.Secret",
             "github.com/polyspec/orm/packages/go/orm.Statement",
             "github.com/polyspec/orm/packages/go/orm.Statement.Binds",
             "github.com/polyspec/orm/packages/go/orm.Statement.SQL"
@@ -43188,6 +42966,11 @@
           "id": "chain_fulltext"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_complex_query.py",
+          "id": "test_public_fulltext_boolean_chain_builds_typed_ir"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
           "id": "fulltext_search_recipe_mysql::chain_fulltext"
@@ -43292,6 +43075,7 @@
         "INT-84",
         "INT-86",
         "INT-90",
+        "PRT-36",
         "PRT-35",
         "PRT-69"
       ],
@@ -43571,6 +43355,25 @@
         "artifact": "archive",
         "package": "polyspec/orm-php-ext"
       }
+    },
+    {
+      "id": "rust-tool-query-budgets-reject-without-partial-success",
+      "kind": "feature",
+      "requirements": [
+        "SCH-3"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/tool_limits.rs",
+          "id": "physical_tool_queries_reject_budgets_without_partial_success"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     }
   ],
   "errors": {
@@ -43595,8 +43398,8 @@
       "clients",
       "planners",
       "runners",
-      "언어",
-      "구현",
+      "\uc5b8\uc5b4",
+      "\uad6c\ud604",
       "client",
       "planner",
       "runner"

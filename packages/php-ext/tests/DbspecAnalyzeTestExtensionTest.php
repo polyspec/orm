@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Extension\Tests;
 use Polyspec\Orm\Tests\DbspecAnalyzeTest;
 
 // The focused syntax analysis case of DbspecAnalyzeTest through the PHP extension.
-// Requirements: DBS-134, DBS-135, DBS-138.
+// Requirements: DBS-134, DBS-135, DBS-138, DBS-144.
 #[\PHPUnit\Framework\Attributes\Small]
 final class DbspecAnalyzeTestExtensionTest extends DbspecAnalyzeTest
 {

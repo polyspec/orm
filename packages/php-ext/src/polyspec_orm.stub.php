@@ -1545,7 +1545,6 @@ final class Markdown
  */
 final class Db
 {
-    public const string SECRET = '$SECRET';
     public const string NOW = '$NOW';
     private readonly DbState $state;
     private array $masks;
@@ -1837,10 +1836,12 @@ final class CatalogGridCell
 /** The catalog connection (SCH-6a): table metadata, pages, read-only queries and row changes on a database of a DSN. */
 final class Catalog
 {
-    private readonly Db $db;
+    private Db $db;
     private readonly string $dialect;
     private readonly string $dsn;
     private bool $closed = false;
+    private int $netWriteTimeout = 0;
+    private bool $streamLeft = false;
 
     public static function connect(string $dsn): Catalog {}
     public function dialect(): string {}

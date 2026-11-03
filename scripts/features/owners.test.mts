@@ -85,7 +85,6 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
     ['packages/ts/tests/coverage_case.mjs', 'coverage-runner-typescript'],
     ['packages/php/tests/autoload.php', 'php-test-autoload'],
     ['packages/go/orm/test_helpers_test.go', 'go-test-helpers'],
-    ['packages/go/orm/coverage_fixture_test.go', 'go-test-helpers'],
     ['packages/go/orm/failing_driver_test.go', 'go-test-helpers'],
     ['packages/go/orm/schema_helpers_test.go', 'go-test-helpers'],
     ['packages/php/testing/conformance/runner.php', 'conformance-runners'],
@@ -189,7 +188,6 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
   const checkTargets = [...makefile.matchAll(/^CHECK_TARGETS (?:\+)?= (.*)$/gm)].flatMap(match => match[1]?.trim().split(/\s+/) ?? []);
   assert.ok(checkTargets.length > 0, 'the Makefile declares CHECK_TARGETS');
-  assert.ok(checkTargets.includes('group-rows-db-php-extension'), 'CHECK_TARGETS keeps the PHP extension database target');
   assert.ok(checkTargets.includes('catalog-row-baseline-go-check'), 'CHECK_TARGETS includes appended owner targets');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);

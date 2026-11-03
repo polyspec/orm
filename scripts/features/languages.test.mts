@@ -68,25 +68,30 @@ caseTest('feature ownership distinguishes declared implementation-internal tests
 
 caseTest('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', COMPUTE, () => {
   const globs = implementationTestGlobs(parity);
-  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/recipe_transactions_test.go', globs), true);
-  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/coverage_statement_events_test.go', globs), true);
-  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/TransactionsRecipeTest.php', globs), true);
+  // A recipe entry comes from its exact binding, not from a glob: its name is the suite's, and config/parity.json binds it.
+  assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/recipe_transactions_test.go', globs), false);
+  assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/recipe_transactions_test.go'));
+  assert.equal(isDeclaredSharedTest('go', 'packages/go/model/coverage_dsn_test.go', globs), true);
+  assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/TransactionsRecipeTest.php', globs), false);
+  assert.ok(boundTestPaths('php', parity).includes('packages/php/tests/TransactionsRecipeTest.php'));
   assert.equal(isDeclaredSharedTest('php', 'packages/php/tests/CallbackFailed.php', globs), false);
-  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/transactions_mysql.rs', globs), true);
+  assert.equal(isDeclaredSharedTest('rust', 'packages/rust/tests/tests/transactions_mysql.rs', globs), false);
+  assert.ok(boundTestPaths('rust', parity).includes('packages/rust/tests/tests/transactions_mysql.rs'));
   assert.equal(isDeclaredSharedTest('rust', 'packages/rust/orm/tests/common/test_support.rs', globs), false);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_transactions.mjs', globs), true);
   assert.equal(isDeclaredSharedTest('typescript', 'packages/ts/tests/coverage_case.mjs', globs), true);
-  assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_transactions.py', globs), true);
+  assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_interface_contract.py', globs), true);
   assert.equal(isDeclaredSharedTest('python', 'packages/python/tests/coverage_case.py', globs), true);
   assert.ok(boundTestPaths('go', parity).includes('packages/go/orm/transaction_api_test.go'));
   const internal = implementationInternalTestPaths(parity);
   const support = implementationSupportGlobs(parity);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/recipe_transactions_test.go', globs, [], internal, support), true);
-  assert.equal(isFeatureTestPath('go', 'packages/go/model/coverage_helpers_test.go', globs, [], internal, support), false);
+  assert.equal(isFeatureTestPath('go', 'packages/go/orm/test_helpers_test.go', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/transaction_api_test.go', globs, ['packages/go/orm/transaction_api_test.go'], internal, support), true);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/mysqlonly/mysqlonly_test.go', globs, [], internal, support), true);
   assert.equal(isFeatureTestPath('php', 'packages/php/tests/PageCacheBoundCases.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP test traits remain support files');
-  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/ValidatorNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), true);
+  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/AesUtilsNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), true);
+  assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/ValidatorNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), false, 'a declared internal test is no feature test');
   assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/bootstrap.php', globs, boundTestPaths('php-extension', parity), internal, support), false);
   assert.equal(isFeatureTestPath('php', 'packages/php/tests/CannedCatalogPdo.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP doubles remain support files');
   assert.equal(isFeatureTestPath('rust', 'packages/rust/orm/tests/common/test_support.rs', globs, [], internal, support), false, 'declared Rust test modules remain support files');
@@ -121,7 +126,7 @@ caseTest('an unlisted test selected by each Kit convention fails feature ownersh
   assert.ok(goProbe, 'the Go probe case is missing');
   const goInventory = implementationTestInventory([goProbe], parity).go;
   assert.ok(goInventory?.includes(goProbe), 'the checker inventory includes a convention-selected test without an explicit parity glob');
-  assert.equal(isFeatureTestPath('go', 'packages/go/model/coverage_helpers_test.go'), false, 'the explicit support glob excludes test helpers');
+  assert.equal(isFeatureTestPath('go', 'packages/go/orm/test_helpers_test.go'), false, 'the explicit support glob excludes test helpers');
 });
 
 caseTest('the feature checker pairs English documents with their Korean twin exactly once', COMPUTE, () => {

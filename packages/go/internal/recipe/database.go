@@ -44,6 +44,8 @@ type databaseFile struct {
 
 type seed struct {
 	Rows json.RawMessage `json:"rows"`
+	// After is a sql.exec step that runs once the rows of the seed are written (FCV-13).
+	After json.RawMessage `json:"after"`
 }
 
 type databaseCase struct {
@@ -56,6 +58,7 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors        string          `json:"vectors"`
 	Case           string          `json:"case"`
@@ -122,11 +125,11 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
-	Lock      string          `json:"lock"`
+	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
-	Sequence int64 `json:"sequence"`
-	Isolation string          `json:"isolation"`
-	ReadOnly  bool            `json:"read_only"`
+	Sequence  int64  `json:"sequence"`
+	Isolation string `json:"isolation"`
+	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
 	TimeoutMs    int  `json:"timeout_ms"`
@@ -134,15 +137,20 @@ type databaseStep struct {
 	DefaultRetry bool `json:"default_retry"`
 	Conflicts    int  `json:"conflicts"`
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
-	Connections []string `json:"connections"`
-	Unconnected bool     `json:"unconnected"`
-	Amount    json.RawMessage `json:"amount"`
+	Connections []string        `json:"connections"`
+	Unconnected bool            `json:"unconnected"`
+	Amount      json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
 	Ref     json.RawMessage `json:"ref"`
 	Row     json.RawMessage `json:"row"`
 	Fail    bool            `json:"fail"`
 	Kind    string          `json:"kind"`
+	// The ORM error of a failing subscriber (INT-96).
+	Refusal *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"refusal"`
 	Compare string          `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
@@ -194,7 +202,7 @@ type outcome struct {
 
 type databaseContext struct {
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts int
+	attempts  int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -383,6 +391,14 @@ func runCase(t *testing.T, path string, f databaseFile, c databaseCase, database
 		}
 		if err := insertSeed(state, s.Rows); err != nil {
 			t.Fatalf("recipe %s case %s on %s: seed: %v", path, c.ID, database, err)
+		}
+	}
+	for _, s := range []*seed{f.Seed, c.Seed} {
+		if s == nil || len(s.After) == 0 {
+			continue
+		}
+		if _, err := runRawStep(s.After, state); err != nil {
+			t.Fatalf("recipe %s case %s on %s: seed after: %v", path, c.ID, database, err)
 		}
 	}
 	step.Step("seed rows inserted")
@@ -678,7 +694,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if err != nil {
 			return outcome{}, err
 		}
-		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, nil, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
+		binds, err := queryBinds(s.Binds, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		result, err := c.catalog.ReadOnlyGridQuery(c.ctx, query, binds, orm.CatalogQueryLimits{MaxRows: s.MaxRows, MaxBytes: s.MaxBytes})
 		if err != nil {
 			return outcome{}, err
 		}
@@ -775,8 +795,17 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		if connection != nil {
 			closeErr = connection.Close()
 		}
-		if _, statErr := os.Stat(path); statErr == nil {
-			return outcome{}, closeFirst(fmt.Errorf("the connection created %s", path), closeErr)
+		var want struct {
+			FileCreated bool `json:"file_created"`
+		}
+		if raw, ok := s.Expect[c.database]; ok {
+			if err := json.Unmarshal(raw, &want); err != nil {
+				return outcome{}, closeFirst(err, closeErr)
+			}
+		}
+		_, statErr := os.Stat(path)
+		if created := statErr == nil; created != want.FileCreated {
+			return outcome{}, closeFirst(fmt.Errorf("file_created of %s is %v, want %v", path, created, want.FileCreated), closeErr)
 		}
 		if err == nil {
 			return outcome{}, closeFirst(fmt.Errorf("the connection to an absent SQLite file succeeded"), closeErr)
@@ -786,7 +815,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
-		catalog, err := orm.ConnectCatalog(c.dsn)
+		dsn := c.dsn
+		if s.UserFromDatabase != "" {
+			match := mysqlCaseDSN.FindStringSubmatch(dsn)
+			name := match[2]
+			if len(name) > 28 {
+				name = name[len(name)-28:]
+			}
+			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		}
+		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil {
 			return outcome{}, err
 		}

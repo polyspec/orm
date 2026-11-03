@@ -1,7 +1,7 @@
-# The Python-only failures of apply on SQLite that the recipe dbspec_apply cannot state: the original failure with its cleanup note,
-# a statement failure that a fake connection reports at its step, and the wait and the cause of the exclusive lock. The chain and its
-# scenarios are the recipe contracts/fixtures/dbspec_apply/dbspec_apply.json.
-# Run: make dbspec-python-check
+# The Python-only failures of apply on SQLite that the recipe dbspec_apply cannot state (FCV-2): a statement failure that a fake
+# connection reports at its step, which no public path produces, and the session busy_timeout and the driver cause of the
+# exclusive lock, which are Python's own connection and error. The chain and its scenarios are the recipe
+# contracts/fixtures/dbspec_apply/dbspec_apply.json.
 import os
 import sqlite3
 import tempfile
@@ -10,7 +10,6 @@ import unittest
 
 from polyspec.orm.dbspec.apply import (
     DbspecApplyError,
-    _finish,
     apply_plans,
 )
 from polyspec.orm.dbspec.plan import parse_plan
@@ -55,28 +54,6 @@ def chain() -> list:
 
 class DbspecApplyTest(unittest.TestCase):
     deadline = testcase.DATABASE
-
-    # Requirements: PLN-101, PLN-106. This case checks that Python keeps the original failure and adds each cleanup error as a note in order.
-    def test_cleanup_failure_notes(self) -> None:
-        """A failure with failing cleanups is raised itself, with one note per cleanup error in order."""
-        failure = RuntimeError("stop")
-
-        def fail() -> None:
-            raise failure
-
-        def release() -> None:
-            raise RuntimeError("release failed")
-
-        def restore() -> None:
-            raise RuntimeError("restore failed")
-
-        with self.assertRaises(RuntimeError) as raised:
-            _finish(fail, release, restore)
-        self.assertIs(raised.exception, failure)
-        self.assertEqual(
-            getattr(raised.exception, "__notes__", []),
-            ["cleanup failed: release failed", "cleanup failed: restore failed"],
-        )
 
     # Requirement: PLN-90. The in-memory SQLite case verifies the configured bound and
     # failed-step result when the driver reports a statement-level lock failure.

@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
+import { GO_TEST_TAGS } from '../../tests/go-test.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent, type ParityConfig } from '../json/formats.mts';
@@ -713,12 +714,15 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
   for (const cwd of new Set(specs.filter(spec => spec.format === 'go').map(spec => spec.cwd))) {
     const binary = resolve(directory, `go-${builds.go.size}.test`);
     const error = await build(`go/${relative(plans.root, cwd)}`, step =>
-      go(['test', '-c', '-tags', 'featurecoverage', '-o', binary, '.'], cwd, step));
+      go(['test', '-c', '-tags', goBuildTags, '-o', binary, '.'], cwd, step));
     builds.go.set(cwd, error ? { error } : { binary });
   }
   builds.cargoReady = buildCargo(plans, directory, builds, build);
   return builds;
 }
+
+// goBuildTags are the build tags of the normal go test, so that the checker reads a test the normal run holds.
+const goBuildTags = GO_TEST_TAGS.join(',');
 
 // buildCargo builds only the Rust test targets selected by the coverage plans.
 // A failure stays as an error in builds.cargo, so this promise is not rejected.

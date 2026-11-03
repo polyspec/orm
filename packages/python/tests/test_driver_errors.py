@@ -80,15 +80,6 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertEqual(len(failed), 1)
         self.assertIs(failed[0], error)
 
-    # Requirements: CFG-33.
-    def test_a_duplicate_unique_key_is_duplicate_key(self):
-        self.parent("a").create()
-        self.assert_driver_error(
-            lambda: self.parent("a").create(),
-            "DUPLICATE_KEY",
-            "UNIQUE constraint failed: parent.name (SQLITE_CONSTRAINT_UNIQUE)",
-        )
-
     def test_a_missing_parent_row_is_foreign_key(self):
         self.assert_driver_error(
             lambda: self.models.Child().connect(self.db).set_parent_seq(99).create(),

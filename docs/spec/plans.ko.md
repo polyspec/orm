@@ -111,7 +111,7 @@ MySQL은 column을 렌더링한 전체 정의의 `MODIFY COLUMN`으로 바꾸고
 
 **non-null column 복원.** column을 다시 non-null로 만드는 rollback statement(지우는 column, plan이 nullable로 바꾼 column, 또는 그런 column을 되돌려 복사하는 SQLite 다시 만들기)는 null 검사를 가진다: table, 적용한 plan에서의 column 이름, source default다. 적용한 plan의 rollback은 어떤 step도 실행하기 전에 그 column이 NULL인 row, 즉 그사이 쓰인 row의 수를 확인한다. source default가 있으면 `UPDATE t SET c = <default> WHERE c IS NULL`로 default를 넣고, 없으면 plan, step, table, column, row 수를 적은 `nulls` error로 멈추며 아무것도 바꾸지 않는다.
 
-**효과.** step의 효과는 `present`나 `absent`와 `table`, `column`(table, column), `index`(table, index), `constraint`(table, constraint), `trigger`(table, trigger), `function`(function), `sequence`(이름의 `sqlite_sequence` row), `rows`(table에 row가 있는지) 중 하나이거나, 다시 실행해도 결과가 같은 statement(`MODIFY COLUMN`과 `ALTER COLUMN`)의 `repeat`이다. rollback statement는 step을 그 효과의 반대로 되돌리고, restore statement는 그 step의 효과를 가진다. `tests/dbspec/plan-cases.json`은 효과를 `repeat`이나 상태, 종류, 이름의 text로 적는다. 예: `present table users`, `absent column users nick`. step의 `restore`는 그것을 고르는 효과 `restore_if`와 함께 적는다.
+**효과.** step의 효과는 `present`나 `absent`와 `table`, `column`(table, column), `index`(table, index), `constraint`(table, constraint), `trigger`(table, trigger), `function`(function), `sequence`(이름의 `sqlite_sequence` row), `rows`(table에 row가 있는지) 중 하나이거나, 다시 실행해도 결과가 같은 statement(`MODIFY COLUMN`과 `ALTER COLUMN`)의 `repeat`이다. rollback statement는 step을 그 효과의 반대로 되돌리고, restore statement는 그 step의 효과를 가진다. `tests/dbspec/plan-cases.json`은 효과를 `repeat`이나 상태, 종류, 이름의 text로 적는다. 예: `present table users`, `absent column users nick`. step의 `restore`는 그것을 고르는 효과 `restore_if`와 함께 적는다. 행을 돌려주지 않는 effect 질의는 message가 `<query> returned no row`인 오류다.
 
 ## Apply
 
