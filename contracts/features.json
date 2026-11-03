@@ -4858,7 +4858,6 @@
         "packages/php/tests/DbspecStressTest.php",
         "packages/rust/schema/tests/dbspec_model.rs",
         "packages/rust/schema/tests/dbspec_render.rs",
-        "packages/rust/schema/tests/dbspec_rules.rs",
         "packages/rust/schema/tests/dbspec_runtime.rs",
         "packages/rust/orm/tests/common/dbspec_probe.rs",
         "packages/rust/orm/tests/dbspec_apply.rs",
@@ -5099,7 +5098,6 @@
           "command": "make dbspec-rust-check",
           "shard": "other",
           "inputs": [
-            "packages/rust/schema/tests/dbspec_rules.rs",
             "packages/rust/schema/tests/dbspec_render.rs",
             "packages/rust/schema/tests/dbspec_runtime.rs",
             "packages/rust/schema/tests/dbspec_model.rs",

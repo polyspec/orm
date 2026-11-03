@@ -1237,6 +1237,10 @@ export class CatalogConnection {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);
       await session.control(readOnly ? BEGIN_SQL[this.dialect].read : BEGIN_SQL[this.dialect].write);
+      // A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the server connection already
+      // holds never reaches the server, so a plan from before the change would fail or keep its old parameter types. The transaction holds
+      // that server connection for the whole session (CFG-28).
+      if (this.dialect === 'postgres') await session.control('DEALLOCATE ALL');
     } catch (error) {
       session.release(true);
       throw driverError(this.dialect, error);

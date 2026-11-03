@@ -2017,6 +2017,12 @@ class DocumentParser:
                 self._at("use", use.doc, f"document {doc.name} uses itself")
                 continue
             target = self._resolve(use.doc)
+            if target is None:
+                # A used document that fails reports one use diagnostic at its name (DBS-149); its tables are the
+                # names of a failed line, whose references report nothing more (DBS-153).
+                for t in use.tables:
+                    doc.failed.add(t.t)
+                continue
             if target is not None:
                 names = set()
                 for name in target.constraints:
@@ -2036,17 +2042,15 @@ class DocumentParser:
                 for t in target.tables:
                     if t.named:
                         used_tables.add(t.name.t)
-            tables = None
-            if target is not None:
-                tables = {t.name.t: t for t in target.tables if t.named}
+            tables = {t.name.t: t for t in target.tables if t.named}
             for t in use.tables:
                 if not well_formed(t.t):
                     continue
                 if t.t in available:
                     self._at("name.duplicate", t, f"table {t.t} is used twice")
                     continue
-                found = tables.get(t.t) if tables is not None else None
-                if tables is not None and found is None:
+                found = tables.get(t.t)
+                if found is None:
                     self._at(
                         "use", t, f"document {use.doc.t} does not define table {t.t}"
                     )
@@ -2224,7 +2228,7 @@ class DocumentParser:
             self._at("key", table.name, f"table {table.name.t} has no primary key")
         for extra in table.pks[1:]:
             self._at("key", extra.kw, "a table has exactly one primary key")
-        for pk in table.pks:
+        for pk in table.pks[:1]:
             self._key_like(table, pk, True)
         for u in table.uniques:
             self._key_like(table, u, False)
@@ -3406,21 +3410,23 @@ class DocumentParser:
         # columns are not checked.
         if recorded is None:
             return
-        allowed = {key.name.t if key is not None else "", s.action.t, s.previous.t}
+        reserved = {key.name.t if key is not None else "", s.action.t, s.previous.t}
+        allowed = set(reserved)
         for c in table.columns:
-            if not well_formed(c.name.t) or not recorded(c.name.t):
+            if not recorded(c.name.t):
                 continue
             allowed.add(c.name.t)
+            if not well_formed(c.name.t):
+                continue
             copy = history.col_map.get(c.name.t)
-            if copy is None:
+            if copy is None or c.name.t in reserved:
                 self._at(
                     "setting",
                     s.into,
                     f"history table {s.into.t} has no column {c.name.t}",
                 )
             elif (
-                copy is not key
-                and c.type is not None
+                c.type is not None
                 and copy.type is not None
                 and not same_type(c.type, copy.type)
             ):
@@ -3917,7 +3923,8 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     lines = [line[:-1] if line.endswith("\r") else line for line in complete]
     parser = DocumentParser(lines, context, parents, complete=encoding is None)
     parser.parse()
-    if not parser.halted:
+    # An encoding error stops parsing, so the rules of the whole document are not read.
+    if not parser.halted and encoding is None:
         parser.validate()
     # A stopping error comes after the diagnostics before it. The rest is in order of line, column, and rule table.
     found = list(parser.diagnostics)

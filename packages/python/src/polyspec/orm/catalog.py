@@ -1570,6 +1570,12 @@ class CatalogConnection:
             if read_only and self._dialect == "sqlite":
                 session.run("PRAGMA query_only=ON")
             session.run(self._begin_sql(read_only))
+            if self._dialect == "postgres":
+                # A catalog session runs after schema changes by design, and through PgBouncer a Parse of a text that the
+                # server connection already holds never reaches the server, so a plan from before the change would fail with
+                # "cached plan must not change result type". The transaction holds that server connection for the whole
+                # session (CFG-28).
+                session.run("DEALLOCATE ALL")
         except BaseException:
             session.close()
             raise
