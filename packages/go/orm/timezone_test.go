@@ -427,16 +427,6 @@ func TestStatementTimeout(t *testing.T) {
 	}
 }
 
-// TestStatementTimeoutRejectsNegative refuses a negative bound before opening a connection.
-// Requirements: CFG-6.
-func TestStatementTimeoutRejectsNegative(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	_, err := orm.Connect("sqlite:///tmp/orm-negative-statement-timeout.sqlite", orm.Config{StatementTimeoutMs: -1})
-	if err == nil || orm.ErrorCode(err) != orm.CodeConfig {
-		t.Fatalf("negative statement timeout: %v", err)
-	}
-}
-
 // lockedRead reads the row of ent with FOR UPDATE in db's transaction. If another connection holds that row,
 // it waits for the lock.
 func lockedRead(db *orm.DB, ent *orm.Entity) error {

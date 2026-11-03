@@ -30,9 +30,18 @@
       "op"
     ],
     "dsn.connect": [
+      "config",
       "dsn",
       "expect",
-      "op"
+      "only",
+      "op",
+      "query"
+    ],
+    "dsn.sqlite_file": [
+      "expect",
+      "name",
+      "op",
+      "query"
     ],
     "model.connect": [
       "aes_keyring",

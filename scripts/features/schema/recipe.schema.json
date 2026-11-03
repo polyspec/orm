@@ -750,6 +750,7 @@
         "op": {
           "enum": [
             "dsn.connect",
+            "dsn.sqlite_file",
             "keyring.versions",
             "markdown.builder",
             "model.connect",
@@ -838,6 +839,9 @@
       "oneOf": [
         {
           "$ref": "#/$defs/ops/dsn.connect"
+        },
+        {
+          "$ref": "#/$defs/ops/dsn.sqlite_file"
         },
         {
           "$ref": "#/$defs/ops/keyring.versions"
@@ -1312,6 +1316,32 @@
           }
         }
       },
+      "dsn.sqlite_file": {
+        "type": "object",
+        "required": [
+          "op",
+          "name",
+          "query",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dsn.sqlite_file"
+          },
+          "name": {
+            "type": "string",
+            "description": "The file name of the SQLite DSN in a new directory (CFG-26)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The query of the SQLite DSN."
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
       "dsn.connect": {
         "type": "object",
         "required": [
@@ -1327,6 +1357,25 @@
           "dsn": {
             "type": "string",
             "description": "The DSN of the case database for case, otherwise the DSN text of the step (FCV-4)."
+          },
+          "query": {
+            "type": "string",
+            "description": "The parameters that dsn.connect adds to the DSN of the case database (FCV-4)."
+          },
+          "only": {
+            "$ref": "#/$defs/only"
+          },
+          "config": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "description": "The connection configuration of dsn.connect, by the name of each field in Rust (CFG-4, CFG-5, CFG-6).",
+            "properties": {
+              "pool_size": { "type": "integer" },
+              "pool_idle_size": { "type": "integer" },
+              "pool_lifetime_ms": { "type": "integer" },
+              "statement_timeout_ms": { "type": "integer" }
+            }
           },
           "expect": {
             "$ref": "#/$defs/expect"

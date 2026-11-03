@@ -1,72 +1,16 @@
-// The DSN parameters of the TypeScript client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the scheme's
-// parameters, and `ssl-mode=VERIFY_IDENTITY` with an absolute path `ssl-ca` is the only MySQL TLS
-// mode; any other parameter or mode is CONFIG. The connection cases use the DSNs of `make orm-test-servers`:
+// The MySQL TLS connection of the TypeScript client (docs/spec/config.md). The refused parameters and modes are cases of
+// contracts/fixtures/dsn_reject. The connection cases use the DSNs of `make orm-test-servers`:
 // ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN
 // are required, and the test fails if any of them is missing.
 // Usage: node packages/ts/tests/mysql_tls.mjs
 import { readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Db } from '../dist/index.js';
-import { parseDsn } from '../dist/driver.js';
-import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 
 // Each case collects its failures and reports them as one error at the end of the case.
 function check(failures) {
   if (failures.length > 0) throw new Error(failures.join('; '));
 }
-
-function refuseDsn(failures, dsn, wanted) {
-  try {
-    parseDsn(dsn);
-    failures.push(`accepted ${dsn}`);
-  } catch (error) {
-    if (error?.code !== 'CONFIG' || !String(error.message).includes(wanted)) failures.push(`${dsn}: ${error?.code} ${error?.message}, expected CONFIG with ${wanted}`);
-  }
-}
-
-// A parameter case is a parse in memory.
-// Requirements: CFG-19, CFG-20.
-caseTest('mysql_tls/parameters', COMPUTE, () => {
-  const failures = [];
-  refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?charset=latin1', 'unknown parameter charset');
-  refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?sslmode=disable', 'unknown parameter sslmode');
-  refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?application_name=orm', 'unknown parameter application_name');
-  refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
-  refuseDsn(failures, 'sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-  const parsed = parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
-  if (parsed.driver !== 'mysql' || parsed.sslCa !== '/tmp/ca.pem') failures.push(`parsed ${JSON.stringify(parsed)}`);
-  for (const dsn of ['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
-    'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC']) {
-    try { parseDsn(dsn); } catch (error) { failures.push(`refused ${dsn}: ${error?.message}`); }
-  }
-  check(failures);
-});
-
-// CFG-18: incomplete, unsupported and relative TLS options are rejected without opening a connection.
-caseTest('mysql_tls/unsupported-parameters', COMPUTE, async () => {
-  const failures = [];
-  for (const mode of ['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', '']) {
-    refuseDsn(failures, `mysql://root@db.local/orm_example?ssl-mode=${mode}&ssl-ca=/tmp/ca.pem`, 'ssl-mode');
-  }
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
-  refuseDsn(failures, 'mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
-  const ca = join(tmpdir(), `orm-missing-ca-${randomUUID()}.pem`);
-  let db;
-  try {
-    db = await Db.connect(`mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=${encodeURIComponent(ca)}`);
-    failures.push('a missing TLS CA file was accepted');
-  } catch (error) {
-    if (error?.code !== 'CONFIG' || !String(error.message).includes('cannot be read')) {
-      failures.push(`an unreadable TLS CA: ${error?.code} ${error?.message}, expected CONFIG before connecting`);
-    }
-  } finally {
-    if (db) await db.close();
-  }
-  check(failures);
-});
 
 async function sslVersion(dsn) {
   const db = await Db.connect(dsn);

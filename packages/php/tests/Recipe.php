@@ -498,9 +498,14 @@ final class Recipe
      * Opens a DSN with Orm::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
      * driver: the one implementation of dsn.connect (FCV-4).
      */
-    private static function connectDriver(string $dsn): string
+    private static function connectDriver(string $dsn, array $config = []): string
     {
-        $db = Orm::connect($dsn, new Config());
+        $db = Orm::connect($dsn, new Config(
+            poolSize: $config['pool_size'] ?? 0,
+            poolIdleSize: $config['pool_idle_size'] ?? 0,
+            poolLifetimeMs: $config['pool_lifetime_ms'] ?? 0,
+            statementTimeoutMs: $config['statement_timeout_ms'] ?? 0,
+        ));
         try {
             $rows = $db->utils()->run(
                 static fn (TxFrame $frame): array => $frame->run(
@@ -518,6 +523,28 @@ final class Recipe
         }
     }
 
+    /**
+     * The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4,
+     * CFG-26).
+     */
+    private static function sqliteFileNames(string $name, string $query): string
+    {
+        $directory = sys_get_temp_dir() . '/orm-recipe-sqlite-name-' . bin2hex(random_bytes(8));
+        if (!mkdir($directory, 0o700)) {
+            throw new RuntimeException("cannot create $directory");
+        }
+        try {
+            self::connectDriver("sqlite://$directory/$name?$query");
+            $names = array_diff(
+                scandir($directory),
+                ['.', '..', "$name-journal", "$name-shm", "$name-wal"],
+            );
+            return implode(',', $names);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($directory));
+        }
+    }
+
     /** The dsn.connect op (FCV-4): the DSN text of the step, checked against the outcome of the expect of database. */
     private static function dsnConnectStep(array $step, string $database): void
     {
@@ -528,7 +555,7 @@ final class Recipe
         $code = null;
         $driver = null;
         try {
-            $driver = self::connectDriver($step['dsn']);
+            $driver = self::connectDriver($step['dsn'], $step['config'] ?? []);
         } catch (OrmException $error) {
             $code = $error->code_;
         }
@@ -2310,8 +2337,16 @@ final class Recipe
                 return self::querySearchChain($s, $context);
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             case 'dsn.connect':
-                $dsn = $s['dsn'] === 'case' ? $context['dsn'] : $s['dsn'];
-                return ['value' => ['text' => self::connectDriver($dsn)]];
+                $dsn = $s['dsn'];
+                if ($dsn === 'case') {
+                    $dsn = $context['dsn'];
+                    if (isset($s['query'])) {
+                        $dsn .= (str_contains($dsn, '?') ? '&' : '?') . $s['query'];
+                    }
+                }
+                return ['value' => ['text' => self::connectDriver($dsn, $s['config'] ?? [])]];
+            case 'dsn.sqlite_file':
+                return ['value' => ['text' => self::sqliteFileNames($s['name'], $s['query'])]];
         }
         if (in_array($s['op'], self::MODEL_OPS, true)) {
             return self::modelOp($s, $context);

@@ -1,0 +1,258 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-34"
+  ],
+  "cases": [
+    {
+      "id": "tls_mode_verify_ca",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_CA&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_required",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=REQUIRED&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_preferred",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=PREFERRED&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_disabled",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=DISABLED&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_lower_case",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=verify_identity&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_empty",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_mode_without_ca",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_relative_ca",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_ca_without_mode",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "tls_unreadable_ca",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Fnonexistent%2Form-missing-ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "negative_pool_size",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_size": -1
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "negative_pool_idle_size",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_idle_size": -1
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "negative_pool_lifetime",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://orm@127.0.0.1:1/orm",
+          "config": {
+            "pool_lifetime_ms": -1
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "negative_statement_timeout",
+      "requirements": [
+        "CFG-34"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-negative-statement-timeout.sqlite",
+          "config": {
+            "statement_timeout_ms": -1
+          },
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

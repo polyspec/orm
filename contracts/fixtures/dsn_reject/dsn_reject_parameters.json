@@ -1,0 +1,110 @@
+{
+  "$schema": "../../../scripts/features/schema/recipe.schema.json",
+  "requirements": [
+    "CFG-35"
+  ],
+  "cases": [
+    {
+      "id": "mysql_charset",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?charset=latin1",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_sslmode",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?sslmode=disable",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_application_name",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?application_name=orm",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "postgres_ssl_mode",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_cache",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "sqlite:///tmp/orm-tls.sqlite?cache=shared",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_bracket_parameter",
+      "requirements": [
+        "CFG-35"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.local/orm_example?ssl-mode%5B%5D=VERIFY_IDENTITY",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

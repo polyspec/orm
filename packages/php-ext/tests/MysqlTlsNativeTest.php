@@ -14,22 +14,6 @@ use RuntimeException;
 
 final class MysqlTlsNativeTest extends TestCase
 {
-    // Requirements: CFG-18.
-    public function testNativeOrmRejectsUnsupportedTlsOptions(): void
-    {
-        self::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());
-        \Polyspec\Orm\Tests\MysqlTlsCases::assertUnsupportedOptions(
-            'mysql://orm@db.local/app',
-            '%2Ftmp%2Fca.pem'
-        );
-
-        self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
-        \Polyspec\Orm\Tests\MysqlTlsCases::assertMissingCaRejected(
-            'mysql://orm@localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=',
-            'a missing native TLS CA file must be CONFIG'
-        );
-    }
-
     // Requirements: CFG-16.
     public function testNativeOrmConnectsWithTlsIdentity(): void
     {

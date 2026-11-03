@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"encoding/json"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,39 +22,6 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
 	if err != nil || parsed.sslCA != "/tmp/ca.pem" || parsed.sslHost != "db.local" || strings.Contains(parsed.native, "ssl") {
 		t.Fatalf("parseDSN() = %+v, %v; want the CA /tmp/ca.pem for db.local and no ssl parameter in the native DSN", parsed, err)
-	}
-}
-
-// TestParseDSNMySQLTLSRejectsUnsupportedOptions checks the TLS parameter restrictions.
-// Requirements: CFG-18.
-func TestParseDSNMySQLTLSRejectsUnsupportedOptions(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for input, wanted := range map[string]string{
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_CA&ssl-ca=/tmp/ca.pem":       "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=REQUIRED&ssl-ca=/tmp/ca.pem":        "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=DISABLED&ssl-ca=/tmp/ca.pem":        "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=verify_identity&ssl-ca=/tmp/ca.pem": "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=&ssl-ca=/tmp/ca.pem":                "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY":                    "ssl-ca",
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem":      "absolute",
-		"mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem":                          "ssl-mode",
-	} {
-		t.Run(input, func(t *testing.T) {
-			assertMySQLTLSConfigError(t, input, wanted)
-		})
-	}
-	ca := url.QueryEscape(filepath.Join(t.TempDir(), "missing-ca.pem"))
-	_, err := Connect("mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca="+ca, Config{})
-	if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), "cannot be read") {
-		t.Fatalf("unreadable TLS CA: got %v, want CONFIG before connecting", err)
-	}
-}
-
-func assertMySQLTLSConfigError(t *testing.T, input, wanted string) {
-	t.Helper()
-	_, err := parseDSN(input, 0)
-	if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), wanted) {
-		t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
 	}
 }
 

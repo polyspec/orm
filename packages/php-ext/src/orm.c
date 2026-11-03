@@ -323,6 +323,11 @@ static bool orm_sqlite_pragma(const orm_query_parameter *parameter, void *contex
             if (!((text[j] >= 'A' && text[j] <= 'Z') || (text[j] >= 'a' && text[j] <= 'z')
                   || (text[j] >= '0' && text[j] <= '9') || text[j] == '_')) valid = false;
         }
+        if (valid && open == sizeof("busy_timeout") - 1 && memcmp(text, "busy_timeout", open) == 0) {
+            for (size_t j = open + 1; valid && j + 1 < len; j++) {
+                if (text[j] < '0' || text[j] > '9') valid = false;
+            }
+        }
         if (!valid) {
             zend_string *bad = zend_string_copy(Z_STR(value));
             zval_ptr_dtor(&value); zval_ptr_dtor(&key);

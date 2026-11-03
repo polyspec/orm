@@ -120,42 +120,9 @@ async fn connections_use_utc() {
     }
 }
 
-/// A timezone parameter that is not UTC fails as CONFIG.
-#[test]
-// Requirements: CFG-2.
-fn non_utc_time_zones_are_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for dsn in [
-        "mysql://root@localhost/orm_example?timezone=%2B09:00",
-        "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
-        "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
-    ] {
-        let err = polyspec_orm::db::parse_dsn(dsn).err().unwrap_or_else(|| panic!("{dsn}: a non-UTC timezone was accepted"));
-        assert_eq!(err.code(), polyspec_orm::codes::CONFIG, "{dsn}: {err}");
-    }
-    for dsn in
-        ["mysql://root@localhost/orm_example", "postgres://root@localhost/orm_example?timezone=UTC", "sqlite:///tmp/orm_example.sqlite?timezone=%2B00:00"]
-    {
-        polyspec_orm::db::parse_dsn(dsn).or_panic(|e| format!("{dsn}: {e}"));
-    }
-}
-
-/// SQLite accepts an absolute local-file path and rejects a relative path.
-#[test]
-// Requirements: CFG-26.
-fn sqlite_dsn_requires_absolute_path() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let error = match polyspec_orm::db::parse_dsn("sqlite://relative.sqlite") {
-        Ok(_) => panic!("relative SQLite path was accepted"),
-        Err(error) => error,
-    };
-    assert_eq!(error.code(), polyspec_orm::codes::CONFIG, "{error}");
-    polyspec_orm::db::parse_dsn("sqlite:///tmp/orm-example.sqlite").expect("absolute local path");
-}
-
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
 #[test]
-// Requirements: CFG-19, CFG-20.
+// Requirements: CFG-19, CFG-20, CFG-35.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
@@ -467,7 +434,7 @@ async fn statement_timeout() {
 
 #[test]
 // Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
-// Requirements: CFG-6.
+// Requirements: CFG-6, CFG-34.
 fn statement_timeout_negative_is_unrepresentable() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;

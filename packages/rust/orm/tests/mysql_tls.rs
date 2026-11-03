@@ -9,7 +9,7 @@ use polyspec_orm::Db;
 
 #[test]
 // Rust passes TLS options through to sqlx, whose accepted parameters differ from the other clients.
-// Requirements: CFG-18.
+// Requirements: CFG-18, CFG-34.
 fn tls_options_follow_sqlx_parameter_support() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for dsn in [

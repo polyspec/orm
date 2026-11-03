@@ -1329,10 +1329,16 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError(f"got {got}, want valid")
 
 
-def _connect_driver(dsn: str) -> str:
+def _connect_driver(dsn: str, config: dict | None = None) -> str:
     """Opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
     driver: the one implementation of dsn.connect (FCV-4)."""
-    db = Db.connect(dsn)
+    names = {
+        "pool_size": "poolSize",
+        "pool_idle_size": "poolIdleSize",
+        "pool_lifetime_ms": "poolLifetimeMs",
+        "statement_timeout_ms": "statementTimeoutMs",
+    }
+    db = Db.connect(dsn, {names[key]: value for key, value in (config or {}).items()})
     try:
         rows = db.utils().run(lambda frame: frame.run("SELECT 1", [], "utility"))["rows"]
         if [[int(cell) for cell in row] for row in rows] != [[1]]:
@@ -1351,7 +1357,7 @@ def _dsn_connect(step: dict, database: str) -> None:
     got = None
     driver = None
     try:
-        driver = _connect_driver(step["dsn"])
+        driver = _connect_driver(step["dsn"], step.get("config"))
     except OrmError as error:
         got = error.code
     if "error" in outcome:
@@ -2000,13 +2006,23 @@ def _op_sql_exec(step: dict, context: dict) -> dict:
 
 def _op_dsn_connect(step: dict, context: dict) -> dict:
     """dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step."""
-    return {
-        "value": {
-            "text": _connect_driver(
-                context["dsn"] if step["dsn"] == "case" else step["dsn"]
-            )
-        }
-    }
+    dsn = step["dsn"]
+    if dsn == "case":
+        dsn = context["dsn"]
+        if "query" in step:
+            dsn += ("&" if "?" in dsn else "?") + step["query"]
+    return {"value": {"text": _connect_driver(dsn, step.get("config"))}}
+
+
+def _op_dsn_sqlite_file(step: dict, _context: dict) -> dict:
+    """dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a
+    file of it."""
+    name = step["name"]
+    with tempfile.TemporaryDirectory(prefix="orm-recipe-sqlite-name-") as directory:
+        _connect_driver(f"sqlite://{directory}/{name}?{step['query']}")
+        journals = {f"{name}-journal", f"{name}-shm", f"{name}-wal"}
+        names = sorted(set(os.listdir(directory)) - journals)
+    return {"value": {"text": ",".join(names)}}
 
 
 def _bound_value(field, context: dict) -> Any:
@@ -2898,6 +2914,7 @@ _DATABASE_OPS = {
     "statements.count": lambda step, context: _op_statements_count(step, context),
     "transaction": lambda step, context: _op_transaction(step, context),
     "dsn.connect": _op_dsn_connect,
+    "dsn.sqlite_file": _op_dsn_sqlite_file,
     "catalog.connect": _op_connect,
     "catalog.close": _op_close,
     "catalog.reconnect": _op_reconnect,

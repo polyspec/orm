@@ -126,8 +126,15 @@ pub fn connect_dsn(dsn: Option<&str>, database: &str, case_dsn: &str, socket: Op
 
 /// Opens a DSN with Db::connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its driver:
 /// the one implementation of dsn.connect (FCV-4). A refused DSN or a failed statement returns its error code and message.
-async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
-    match polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await {
+async fn connect_driver(dsn: &str, config: &Value) -> Result<String, (String, String)> {
+    let field = |name: &str| config[name].as_u64().unwrap_or(0) as u32;
+    let options = polyspec_orm::Config {
+        pool_idle_size: field("pool_idle_size"),
+        pool_lifetime_ms: field("pool_lifetime_ms"),
+        statement_timeout_ms: field("statement_timeout_ms"),
+        ..polyspec_orm::Config::default()
+    };
+    match polyspec_orm::Db::connect(dsn, field("pool_size"), options).await {
         Ok(db) => {
             let driver = db.driver().to_owned();
             let answer = db.utils().run(async |frame| frame.run("utility", &[], "SELECT 1", &[]).await).await;
@@ -142,12 +149,33 @@ async fn connect_driver(dsn: &str) -> Result<String, (String, String)> {
     }
 }
 
+/// The names in a new directory, other than the journals, after a connection to a file of it (dsn.sqlite_file, FCV-4, CFG-26).
+async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
+    let directory = std::env::temp_dir().join(format!("orm-recipe-sqlite-name-{}-{name}", std::process::id()));
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let dsn = format!("sqlite://{}/{name}?{query}", directory.display());
+    let connected = connect_driver(&dsn, &Value::Null).await.map_err(|(_, message)| message);
+    let listed = std::fs::read_dir(&directory).map_err(|error| error.to_string()).and_then(|entries| {
+        let mut names = Vec::new();
+        for entry in entries {
+            names.push(entry.map_err(|error| error.to_string())?.file_name().to_string_lossy().into_owned());
+        }
+        Ok(names)
+    });
+    std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+    connected?;
+    let journals = [format!("{name}-journal"), format!("{name}-shm"), format!("{name}-wal")];
+    let mut names: Vec<String> = listed?.into_iter().filter(|file| !journals.contains(file)).collect();
+    names.sort();
+    Ok(names.join(","))
+}
+
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
     let expect = &step["expect"][database];
     let dsn = step["dsn"].as_str().unwrap_or_default();
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome = runtime.block_on(connect_driver(dsn));
+    let outcome = runtime.block_on(connect_driver(dsn, &step["config"]));
     match (outcome, expect["error"].as_str()) {
         (Err((got, _)), Some(code)) if got == code => Ok(()),
         (Err((got, message)), Some(code)) => Err(format!("error {got} ({message}), want {code}")),
@@ -2764,12 +2792,22 @@ mod database {
             }
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             "dsn.connect" => {
-                let dsn = match step["dsn"].as_str().unwrap_or_default() {
-                    "case" => context.dsn.as_str(),
-                    text => text,
+                let dsn = match (step["dsn"].as_str().unwrap_or_default(), step["query"].as_str()) {
+                    ("case", Some(query)) => {
+                        let separator = if context.dsn.contains('?') { '&' } else { '?' };
+                        format!("{}{separator}{query}", context.dsn)
+                    }
+                    ("case", None) => context.dsn.clone(),
+                    (text, _) => text.to_owned(),
                 };
-                let driver = crate::recipe::connect_driver(dsn).await.map_err(|(_, message)| Failure::Call(message))?;
+                let driver = crate::recipe::connect_driver(&dsn, &step["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
+            }
+            "dsn.sqlite_file" => {
+                let name = step["name"].as_str().unwrap_or_default();
+                let query = step["query"].as_str().unwrap_or_default();
+                let names = crate::recipe::sqlite_file_names(name, query).await.map_err(Failure::Call)?;
+                Output::fields(json!({ "value": { "text": names } }))
             }
             other => return Err(fault(format!("OP_UNKNOWN {other}"))),
         })

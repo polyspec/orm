@@ -1,8 +1,7 @@
 <?php
 
-// The DSN parameters of the PHP client and the MySQL TLS connection (docs/spec/config.md): the DSN uses only the
-// parameters of the scheme, and `ssl-mode=VERIFY_IDENTITY` with an absolute `ssl-ca` path and a host name is the only
-// MySQL TLS mode; every other parameter and mode is CONFIG. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make
+// The MySQL TLS connection of the PHP client (docs/spec/config.md). The refused parameters and modes are cases of
+// contracts/fixtures/dsn_reject. Connection cases need the ORM_TEST_MYSQL_TLS_DSN from `make
 // orm-test-servers`, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN, and ORM_TEST_MYSQL_TLS_MISMATCH_DSN,
 // and the test fails if any of them is missing.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/MysqlTlsTest.php
@@ -22,57 +21,6 @@ use Polyspec\Orm\OrmException;
 #[Medium]
 final class MysqlTlsTest extends TestCase
 {
-    // Requirements: CFG-19, CFG-20.
-    public function testParameters(): void
-    {
-        MysqlTlsCases::assertRefused(
-            'mysql://root@db.local/orm_example?charset=latin1',
-            'unknown parameter charset'
-        );
-        MysqlTlsCases::assertRefused(
-            'mysql://root@db.local/orm_example?sslmode=disable',
-            'unknown parameter sslmode'
-        );
-        MysqlTlsCases::assertRefused(
-            'postgres://root@db.local/orm_example?application_name=orm',
-            'unknown parameter application_name'
-        );
-        MysqlTlsCases::assertRefused(
-            'postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY',
-            'unknown parameter ssl-mode'
-        );
-        MysqlTlsCases::assertRefused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-        $parsed = Orm::parseDsn(
-            'mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem'
-        );
-        self::assertTrue($parsed[0] === 'mysql' && $parsed[5] === '/tmp/ca.pem', 'parsed ' . json_encode($parsed));
-        foreach (
-            [
-                'postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC',
-                'postgres:///orm_example?host=/tmp',
-                'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
-            'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC'] as $dsn
-        ) {
-            try {
-                Orm::parseDsn($dsn);
-                $refused = null;
-            } catch (OrmException $e) {
-                $refused = $e->getMessage();
-            }
-            self::assertNull($refused, "refused $dsn: $refused");
-        }
-    }
-
-    // Requirements: CFG-18.
-    public function testUnsupportedTlsOptions(): void
-    {
-        MysqlTlsCases::assertUnsupportedOptions('mysql://root@db.local/orm_example', '/tmp/ca.pem');
-        MysqlTlsCases::assertMissingCaRejected(
-            'mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=',
-            'a missing TLS CA file must be CONFIG'
-        );
-    }
-
     // Requirements: CFG-16.
     public function testConnections(): void
     {

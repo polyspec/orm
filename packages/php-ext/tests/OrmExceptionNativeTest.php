@@ -90,48 +90,6 @@ final class OrmExceptionNativeTest extends TestCase
         );
     }
 
-    // Requirements: CFG-26.
-    public function testNativeOrmRequiresAbsoluteSqlitePath(): void
-    {
-        try {
-            Orm::parseDsn('sqlite://relative.sqlite');
-            Assert::fail('SQLite accepted a relative database path');
-        } catch (OrmException $error) {
-            Assert::assertSame(Code::CONFIG, $error->code_);
-        }
-        Assert::assertSame('sqlite', Orm::parseDsn('sqlite:///tmp/orm-example.sqlite')[0]);
-    }
-
-    // Requirements: CFG-2, CFG-19, CFG-20.
-    public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
-    {
-        foreach (
-            [
-            'mysql://localhost/',
-            'sqlite:///tmp/app.sqlite?_pragma=busy_timeout',
-            'mysql://localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem',
-            'mysql://localhost/app?charset=utf8',
-            'postgres://localhost/app?application_name=orm',
-            'mysql://localhost/app?ssl-mode%5B%5D=VERIFY_IDENTITY',
-            ] as $dsn
-        ) {
-            try {
-                Orm::parseDsn($dsn);
-                Assert::fail("invalid DSN was accepted: $dsn");
-            } catch (OrmException $error) {
-                Assert::assertSame(Code::CONFIG, $error->code_, "wrong error for $dsn");
-            }
-        }
-    }
-
-    // Requirements: CFG-19.
-    public function testNativeMysqlTlsKeepsTheCaPathOfAHostName(): void
-    {
-        Assert::assertSame('/tmp/ca.pem', Orm::parseDsn(
-            'mysql://db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem'
-        )[5]);
-    }
-
     public function testNativeDsnErrorsPreserveTheirSupportedParameterDetails(): void
     {
         try {

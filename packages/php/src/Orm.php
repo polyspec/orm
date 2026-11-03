@@ -362,7 +362,10 @@ final class Orm
                         continue;
                     }
                     $value = urldecode($value);
-                    if (preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1) {
+                    if (
+                        preg_match('/^([a-z_]+)\(([A-Za-z0-9_]+)\)$/', $value, $pragma) !== 1
+                        || ($pragma[1] === 'busy_timeout' && !ctype_digit($pragma[2]))
+                    ) {
                         throw new OrmException(Code::CONFIG, "sqlite DSN _pragma $value is invalid");
                     }
                     $pragmas[] = [$pragma[1], $pragma[2]];

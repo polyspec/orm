@@ -2,7 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -77,8 +77,13 @@ export function runRecipe(path, database) {
 
 // connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
 // driver: the one implementation of dsn.connect (FCV-4).
-async function connectDriver(dsn) {
-  const db = await Db.connect(dsn);
+async function connectDriver(dsn, config = {}) {
+  const db = await Db.connect(dsn, {
+    ...(config.pool_size === undefined ? {} : { poolSize: config.pool_size }),
+    ...(config.pool_idle_size === undefined ? {} : { poolIdleSize: config.pool_idle_size }),
+    ...(config.pool_lifetime_ms === undefined ? {} : { poolLifetimeMs: config.pool_lifetime_ms }),
+    ...(config.statement_timeout_ms === undefined ? {} : { statementTimeoutMs: config.statement_timeout_ms }),
+  });
   try {
     const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
     if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
@@ -96,7 +101,7 @@ async function checkDsnConnect(step, database) {
   let driver;
   let code = '';
   try {
-    driver = await connectDriver(step.dsn);
+    driver = await connectDriver(step.dsn, step.config);
   } catch (error) {
     code = error?.code ?? '';
   }
@@ -524,7 +529,20 @@ const GENERATED_FIXTURE = 'contracts/fixtures/bench/dbspec-set.json';
 const OPS = {
   // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
   async 'dsn.connect'(s, context) {
-    return { value: { text: await connectDriver(s.dsn === 'case' ? context.dsn : s.dsn) } };
+    if (s.dsn !== 'case') return { value: { text: await connectDriver(s.dsn, s.config) } };
+    const dsn = s.query === undefined ? context.dsn : `${context.dsn}${context.dsn.includes('?') ? '&' : '?'}${s.query}`;
+    return { value: { text: await connectDriver(dsn, s.config) } };
+  },
+  // dsn.sqlite_file (FCV-4, CFG-26): the names in a new directory, other than the journals, after a connection to a file of it.
+  async 'dsn.sqlite_file'(s) {
+    const directory = mkdtempSync(join(tmpdir(), 'orm-recipe-sqlite-name-'));
+    try {
+      await connectDriver(`sqlite://${directory}/${s.name}?${s.query}`);
+      const journals = [`${s.name}-journal`, `${s.name}-shm`, `${s.name}-wal`];
+      return { value: { text: readdirSync(directory).filter(name => !journals.includes(name)).join(',') } };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   },
   async 'catalog.connect'(s) {
     if (s.dsn.url !== undefined) {

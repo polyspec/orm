@@ -11,7 +11,7 @@ import (
 const dsnConnectionRecipe = "../../../contracts/fixtures/dsn_connection/dsn_connection.json"
 
 // TestRecipeDsnConnectionMysql runs the dsn_connection recipe on MySQL, each case on a case database (FCV-3).
-// Requirements: CFG-1, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14.
+// Requirements: CFG-1, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14, CFG-19, CFG-2, CFG-26.
 func TestRecipeDsnConnectionMysql(t *testing.T) {
 	testcase.Group(t)
 	recipe.Run(t, dsnConnectionRecipe, "mysql")

@@ -1,28 +1,184 @@
 {
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
-  "requirements": ["CFG-1"],
+  "requirements": [
+    "CFG-1",
+    "CFG-2",
+    "CFG-19",
+    "CFG-26"
+  ],
   "fixture": "contracts/fixtures/catalog_connection/dbspec-set.json",
   "cases": [
     {
       "id": "dsn_connection",
-      "requirements": ["CFG-1"],
+      "requirements": [
+        "CFG-1"
+      ],
       "steps": [
         {
           "op": "dsn.connect",
           "dsn": "case",
           "expect": {
-            "mysql": { "value": { "text": "mysql" } },
-            "postgres": { "value": { "text": "postgres" } },
-            "sqlite": { "value": { "text": "sqlite" } }
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "sqlite"
+              }
+            }
           }
         },
         {
           "op": "dsn.connect",
           "dsn": "invalid://database",
           "expect": {
-            "mysql": { "error": "CONFIG" },
-            "postgres": { "error": "CONFIG" },
-            "sqlite": { "error": "CONFIG" }
+            "mysql": {
+              "error": "CONFIG"
+            },
+            "postgres": {
+              "error": "CONFIG"
+            },
+            "sqlite": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "dsn_parameters_of_this_page",
+      "requirements": [
+        "CFG-2",
+        "CFG-19"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "timezone=UTC",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "timezone=%2B00:00",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "mysql"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "sqlite"
+              }
+            }
+          }
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "sslmode=disable",
+          "expect": {
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            }
+          },
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "host=127.0.0.1",
+          "expect": {
+            "postgres": {
+              "value": {
+                "text": "postgres"
+              }
+            }
+          },
+          "only": [
+            "postgres"
+          ]
+        },
+        {
+          "op": "dsn.connect",
+          "dsn": "case",
+          "query": "_pragma=busy_timeout(5000)&timezone=UTC",
+          "expect": {
+            "sqlite": {
+              "value": {
+                "text": "sqlite"
+              }
+            }
+          },
+          "only": [
+            "sqlite"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sqlite_file_name_is_the_path",
+      "requirements": [
+        "CFG-26"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "dsn.sqlite_file",
+          "name": "named.sqlite",
+          "query": "_pragma=busy_timeout(5000)&timezone=%2B00:00",
+          "expect": {
+            "mysql": {
+              "value": {
+                "text": "named.sqlite"
+              }
+            },
+            "postgres": {
+              "value": {
+                "text": "named.sqlite"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "text": "named.sqlite"
+              }
+            }
           }
         }
       ]

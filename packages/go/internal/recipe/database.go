@@ -56,6 +56,8 @@ type databaseCase struct {
 type databaseStep struct {
 	Op             string          `json:"op"`
 	DSN            json.RawMessage `json:"dsn"`
+	Config         dsnConfig       `json:"config"`
+	Query          string          `json:"query"`
 	Table          string          `json:"table"`
 	Limit          int             `json:"limit"`
 	Offset         int64           `json:"offset"`
@@ -914,12 +916,25 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if dsn == "case" {
 			dsn = c.dsn
+			if s.Query != "" {
+				separator := "?"
+				if strings.Contains(dsn, "?") {
+					separator = "&"
+				}
+				dsn += separator + s.Query
+			}
 		}
-		driver, err := connectDriver(dsn)
+		driver, err := connectDriver(dsn, s.Config)
 		if err != nil {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{"value": map[string]any{"text": driver}}}, nil
+	case "dsn.sqlite_file":
+		names, err := sqliteFileName(s.Name, s.Query)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"text": names}}}, nil
 	}
 	switch s.Op {
 	// The ops of the model connections (FCV-4), by their full names.
