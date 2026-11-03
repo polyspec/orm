@@ -1786,7 +1786,13 @@ class DocumentParser {
         continue;
       }
       const target = this.resolve(use.doc);
-      if (target !== null) {
+      if (target === null) {
+        // A used document that fails reports one use diagnostic at its name (DBS-149); its tables are the names of a
+        // failed line, whose references report nothing more (DBS-153).
+        for (const t of use.tables) doc.failed.add(t.t);
+        continue;
+      }
+      {
         const names = new Set<string>();
         for (const name of target.constraints.keys()) {
           if (usedConstraints.has(name) || usedTables.has(name)) names.add(name);
@@ -1796,15 +1802,15 @@ class DocumentParser {
         for (const name of target.constraints.keys()) usedConstraints.add(name);
         for (const t of target.tables) if (t.named) usedTables.add(t.name.t);
       }
-      const tables = target === null ? null : new Map(target.tables.filter(t => t.named).map(t => [t.name.t, t]));
+      const tables = new Map(target.tables.filter(t => t.named).map(t => [t.name.t, t]));
       for (const t of use.tables) {
         if (!wellFormed(t.t)) continue;
         if (available.has(t.t)) {
           this.at('name.duplicate', t, `table ${t.t} is used twice`);
           continue;
         }
-        const found = tables?.get(t.t);
-        if (tables !== null && found === undefined) this.at('use', t, `document ${use.doc.t} does not define table ${t.t}`);
+        const found = tables.get(t.t);
+        if (found === undefined) this.at('use', t, `document ${use.doc.t} does not define table ${t.t}`);
         available.set(t.t, found ?? null);
         usedAt.set(t.t, t);
       }
@@ -1909,7 +1915,7 @@ class DocumentParser {
     if (table.columns.length === 0 && table.failedLines === 0) this.at('column', table.name, 'a table has at least one column');
     if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${table.name.t} has no primary key`);
     for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'a table has exactly one primary key');
-    for (const pk of table.pks) this.keyLike(table, pk, true);
+    for (const pk of table.pks.slice(0, 1)) this.keyLike(table, pk, true);
     for (const u of table.uniques) this.keyLike(table, u, false);
     for (const i of table.indexes) this.keyLike(table, i, false);
     const pk = table.pks[0];
@@ -2748,13 +2754,15 @@ class DocumentParser {
     }
     // A setting that uses both lists does not determine which columns are recorded, so the columns of the history table are not checked.
     if (recorded === null) return;
-    const allowed = new Set([key?.name.t, s.action.t, s.previous.t]);
+    const reserved = new Set([key?.name.t, s.action.t, s.previous.t]);
+    const allowed = new Set(reserved);
     for (const c of table.columns) {
-      if (!wellFormed(c.name.t) || !recorded(c.name.t)) continue;
+      if (!recorded(c.name.t)) continue;
       allowed.add(c.name.t);
+      if (!wellFormed(c.name.t)) continue;
       const copy = history.colMap.get(c.name.t);
-      if (copy === undefined) this.at('setting', s.into, `history table ${s.into.t} has no column ${c.name.t}`);
-      else if (copy !== key && c.type !== null && copy.type !== null && !sameType(c.type, copy.type)) {
+      if (copy === undefined || reserved.has(c.name.t)) this.at('setting', s.into, `history table ${s.into.t} has no column ${c.name.t}`);
+      else if (c.type !== null && copy.type !== null && !sameType(c.type, copy.type)) {
         this.at('setting', s.into, `history column ${c.name.t} is ${typeText(copy.type)}, not ${typeText(c.type)}`);
       }
     }
