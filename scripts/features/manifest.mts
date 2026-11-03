@@ -8,7 +8,7 @@ export type Language = 'go' | 'php' | 'php-extension' | 'rust' | 'typescript' | 
 /** A verification command of a feature. */
 export type Verification = { id: string; command: string; shard: string; inputs?: string[]; cwd?: string; environment?: 'linux-runner' };
 /** A native test command of a coverage part, per database (or none). */
-export type NativeCommand = { runner: 'go' | 'php' | 'cargo' | 'node' | 'python'; test: string; cases: string[]; symbols?: Record<string, string>; dsn_env?: string };
+export type NativeCommand = { runner: 'go' | 'php' | 'cargo' | 'node' | 'python'; test: string; cases: string[]; symbols?: Record<string, string>; dsn_env?: string; recipe?: string; symbol?: string };
 /** The native commands of a coverage part, keyed by database or none. */
 export type Commands = Partial<Record<'mysql' | 'postgres' | 'sqlite' | 'none', NativeCommand[]>>;
 /** The owner part of a language. */

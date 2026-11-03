@@ -70,6 +70,9 @@ final class Recipe
         'utils.lock',
         'utils.set_local',
         'utils.local',
+        'utils.was_inserted',
+        'utils.backend_waiting_for_lock',
+        'utils.groups',
     ];
 
     /** The database part of a recipe without a database (FCV-3). */
@@ -84,7 +87,7 @@ final class Recipe
     /** The dbspec ops whose documents are files relative to the recipe, which dbspecFileStep runs (FCV-4). */
     private const DBSPEC_FILE_OPS = [
         'dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions',
-        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes',
+        'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes',
     ];
 
     /** The Mermaid ops (FCV-4), on the public Mermaid calls of Dbspec (DBS-169). */
@@ -99,6 +102,24 @@ final class Recipe
         $recipe = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
         foreach ($recipe['cases'] as $case) {
             yield $case['id'] => [$case];
+        }
+    }
+
+    /**
+     * Appends the pass of a case that ran on database to the file that ORM_RECIPE_RESULTS names, the line the feature
+     * checker reads (FCV-12). A run outside the checker names no file.
+     *
+     * @param array<string, mixed> $case
+     */
+    public static function report(array $case, string $database): void
+    {
+        $path = getenv('ORM_RECIPE_RESULTS');
+        if ($path === false || $path === '' || (isset($case['only']) && !in_array($database, $case['only'], true))) {
+            return;
+        }
+        $named = $database === self::NONE ? '' : " [{$database}]";
+        if (file_put_contents($path, "CASE {$case['id']}{$named} PASS\n", FILE_APPEND) === false) {
+            throw new \RuntimeException("recipe results: cannot append to {$path}");
         }
     }
 
@@ -807,21 +828,19 @@ final class Recipe
                 }
                 return;
             case 'dbspec.analyze':
-                if (!array_key_exists('document', $step)) {
-                    [$text, $set] = self::inlineDocument($step);
-                    self::checkTokens(Dbspec::analyze($text, $set)->tokens, $expect['tokens'] ?? []);
-                    return;
-                }
-                $text = self::dbspecFile($dir, $step['document']);
-                $analysis = Dbspec::analyze($text, []);
-                $parsed = Dbspec::parse($text, []);
-                if ($analysis->diagnostics !== []) {
+                [$text, $set] = array_key_exists('document', $step)
+                    ? [self::dbspecFile($dir, $step['document']), []]
+                    : self::inlineDocument($step);
+                $analysis = Dbspec::analyze($text, $set);
+                if (array_key_exists('document', $step) && $analysis->diagnostics !== []) {
                     Assert::fail(self::diagnostics($analysis->diagnostics));
                 }
-                $same = $analysis->document !== null && $parsed->document !== null
-                    && Dbspec::emit($analysis->document) === Dbspec::emit($parsed->document)
-                    && $analysis->positions == $parsed->positions;
-                if (!$same) {
+                $parsed = Dbspec::parse($text, $set);
+                if (
+                    $analysis->document != $parsed->document
+                    || $analysis->positions != $parsed->positions
+                    || $analysis->diagnostics != $parsed->diagnostics
+                ) {
                     Assert::fail('the analysis differs from the parse');
                 }
                 self::checkTokens($analysis->tokens, $expect['tokens'] ?? []);
@@ -872,6 +891,20 @@ final class Recipe
                 if (Dbspec::format($result->text, $set)->text !== $result->text) {
                     Assert::fail('the format of the formatted text differs');
                 }
+                return;
+            case 'dbspec.load_set':
+                $text = static fn(array $lines): string => $lines === [] ? '' : implode("\n", $lines) . "\n";
+                try {
+                    $documents = RuntimeModel::loadSet($text($step['owned']), $text($step['external']));
+                } catch (OrmException $error) {
+                    Assert::assertSame($expect['error'] ?? null, $error->code_, 'error');
+                    return;
+                }
+                Assert::assertSame(
+                    $expect['documents'] ?? null,
+                    array_map(static fn($d): array => ['name' => $d->name, 'external' => $d->external], $documents),
+                    'documents',
+                );
                 return;
             case 'dbspec.parse_set':
                 $got = Dbspec::parseSet(array_values($step['owned'] ?? []), array_values($step['external'] ?? []));
@@ -1966,6 +1999,10 @@ final class Recipe
      */
     private static function databaseStep(array $step, array &$context): void
     {
+        // The PHP client names no statement, so a step that a named statement fails holds this outcome here (CFG-28, FCV-4).
+        if (isset($step['expect_unnamed'])) {
+            $step['expect'] = $step['expect_unnamed'];
+        }
         $expected = isset($step['expect'][$context['database']])
             ? self::resolveRefs($step['expect'][$context['database']], $context)
             : null;
@@ -3200,18 +3237,6 @@ final class Recipe
         return $out;
     }
 
-    /** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
-    private static function derivedIntegers(array $row, array $names): array
-    {
-        foreach ($names as $name) {
-            if (is_string($row[$name])) {
-                Assert::assertMatchesRegularExpression('/^-?(?:0|[1-9][0-9]*)$/', $row[$name]);
-                $row[$name] = (int) $row[$name];
-            }
-        }
-        return $row;
-    }
-
     /** The expect of the database of the case compares rows of wrappers. */
     private static function chainWantsRows(array $s, array $context): bool
     {
@@ -3400,6 +3425,24 @@ final class Recipe
                 return [];
             case 'utils.local':
                 return ['json' => self::connectionOf($s, $context)->utils()->local($s['name'])];
+            case 'utils.was_inserted':
+                $utils = self::connectionOf($s, $context)->utils();
+                return ['value' => ['bool' => $utils->wasInserted($s['table'], $s['sequence'])]];
+            case 'utils.backend_waiting_for_lock':
+                return ['value' => ['bool' => self::connectionOf($s, $context)->utils()->backendWaitingForLock()]];
+            case 'utils.groups':
+                // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+                $utils = self::connectionOf($s, $context)->utils();
+                $held = [
+                    'aes' => $utils->aes(),
+                    'privileges' => $utils->privileges(),
+                    'schema' => $utils->schema(),
+                    'stats' => $utils->stats(),
+                ];
+                return ['value' => ['array' => array_map(
+                    static fn(string $text): array => ['text' => $text],
+                    array_keys(array_filter($held, static fn(mixed $group): bool => $group !== null))
+                )]];
         }
         Assert::fail("OP_UNKNOWN {$s['op']}");
     }
@@ -3463,7 +3506,7 @@ final class Recipe
         }
         $list = [];
         foreach ($rows as $row) {
-            $list[] = self::derivedIntegers(self::chainRow($row, $s['pick'] ?? null), $s['derived_integers'] ?? []);
+            $list[] = self::chainRow($row, $s['pick'] ?? null);
         }
         $fields = ['bind' => $rows, 'json' => $list];
         if (self::chainWantsRows($s, $context)) {

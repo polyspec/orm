@@ -424,9 +424,6 @@ async function transactions(db, dsn) {
     check(await new User().getCount() === 1, 'savepoint rollback');
     await new User().name('outer').forUpdate().gets();
     await db.utils().lock('users');
-    await db.utils().setLocal('ormtest.actor', 'tester');
-    check(await db.utils().local('ormtest.actor') === 'tester', 'local');
-    check(await code(db.utils().local('ormtest.missing')) === 'NO_ROWS', 'missing local');
     const concurrent = await Promise.allSettled([new User().getCount(), new User().getCount()]);
     check(concurrent.some(r => r.status === 'rejected' && r.reason instanceof OrmError && r.reason.code === 'CONFIG'), 'concurrent use of one transaction');
   }, { isolation: 'read_committed', retry: 0 });
