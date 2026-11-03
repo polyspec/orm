@@ -163,6 +163,10 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "after": {
+          "$ref": "#/$defs/ops/sql.exec",
+          "description": "The statement that runs once the rows of the seed are written, for what those rows leave behind (FCV-13)."
+        },
         "rows": {
           "type": "object",
           "propertyNames": {
@@ -740,9 +744,6 @@
               }
             }
           }
-        },
-        {
-          "$ref": "#/$defs/withinValue"
         },
         {
           "$ref": "#/$defs/outcomes/json"
@@ -2569,6 +2570,10 @@
                     "properties": {
                       "error": {
                         "type": "string"
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "The exact text of the error of every dialect, when the case holds it."
                       }
                     }
                   }
@@ -3591,6 +3596,12 @@
         "properties": {
           "op": {
             "const": "catalog.read_only_grid_query"
+          },
+          "binds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/argument"
+            }
           },
           "sql": {
             "$ref": "#/$defs/sql"
@@ -8222,9 +8233,6 @@
                         "$ref": "#/$defs/value"
                       },
                       {
-                        "$ref": "#/$defs/withinValue"
-                      },
-                      {
                         "$ref": "#/$defs/ref"
                       }
                     ]
@@ -9367,28 +9375,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/value"
-          }
-        }
-      }
-    },
-    "withinValue": {
-      "type": "object",
-      "required": [
-        "within"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "within": {
-          "type": "object",
-          "required": [
-            "seconds"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "seconds": {
-              "type": "integer",
-              "minimum": 0
-            }
           }
         }
       }

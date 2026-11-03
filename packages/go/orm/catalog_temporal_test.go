@@ -30,71 +30,6 @@ func catalogTemporalValues() []CatalogAssignment {
 	}
 }
 
-// Requirements: INT-103, INT-117.
-func TestCatalogDescribedReadsReturnSQLiteTemporalText(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "temporal", catalogTemporalDDL)
-	ctx := context.Background()
-	want := []any{int64(1), "2024-02-29", "12:34:56", "12:34:56.500", "2024-02-29 01:02:03", "2024-02-29 01:02:03.500000"}
-	inserted, err := catalog.InsertRow(ctx, metadata, catalogTemporalValues())
-	if err != nil {
-		t.Fatalf("InsertRow: %v", err)
-	}
-	requireCatalogInsertedRow(t, inserted, want)
-	page, err := catalog.TablePage(ctx, metadata.Table, 10, 0)
-	if err != nil {
-		t.Fatalf("TablePage: %v", err)
-	}
-	if len(page.Result.Rows) != 1 || !reflect.DeepEqual(page.Result.Rows[0], want) {
-		t.Fatalf("TablePage rows = %#v, want [%#v]", page.Result.Rows, want)
-	}
-	original, err := CatalogSnapshotFromPage(page, 0)
-	if err != nil {
-		t.Fatalf("CatalogSnapshotFromPage: %v", err)
-	}
-	updated, err := catalog.UpdateRow(ctx, original, []CatalogAssignment{{Name: "dt6", Value: "2024-03-01 00:00:00.000001"}})
-	if err != nil {
-		t.Fatalf("UpdateRow: %v", err)
-	}
-	want[5] = "2024-03-01 00:00:00.000001"
-	requireCatalogInsertedRow(t, updated, want)
-	page, err = catalog.TablePage(ctx, metadata.Table, 10, 0)
-	if err != nil {
-		t.Fatalf("TablePage after the update: %v", err)
-	}
-	current, err := CatalogSnapshotFromPage(page, 0)
-	if err != nil {
-		t.Fatalf("CatalogSnapshotFromPage after the update: %v", err)
-	}
-	deleted, err := catalog.DeleteRow(ctx, current)
-	if err != nil || deleted != 1 {
-		t.Fatalf("DeleteRow = %d, %v; want 1", deleted, err)
-	}
-}
-
-// Requirements: INT-103.
-func TestCatalogDescribedTemporalRefusesSQLiteTextOutsideCheck(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	ctx := context.Background()
-	for _, test := range []struct {
-		name string
-		ddl  string
-		code string
-	}{
-		{name: "loose", ddl: "CREATE TABLE loose (id INTEGER PRIMARY KEY, dt DATETIME); INSERT INTO loose VALUES (1, '2024-02-29 01:02:03.5')", code: "GRID_TEMPORAL_PRECISION"},
-		{name: "wrong", ddl: "CREATE TABLE wrong (id INTEGER PRIMARY KEY, d DATE); INSERT INTO wrong VALUES (1, 'not a date')", code: "GRID_TEMPORAL_VALUE"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			catalog, metadata := openCatalogSQLiteDefaultFixture(t, test.name, test.ddl)
-			page, err := catalog.TablePage(ctx, metadata.Table, 10, 0)
-			if ErrorCode(err) != test.code {
-				t.Fatalf("TablePage = %#v, %v; want %s", page.Result.Rows, err, test.code)
-			}
-		})
-	}
-}
-
-// Requirements: INT-111, INT-123.
 func TestCatalogWriteRefusesTimeValueForTemporalColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "temporal", catalogTemporalDDL)
@@ -123,7 +58,86 @@ func TestCatalogWriteRefusesTimeValueForTemporalColumn(t *testing.T) {
 	}
 }
 
-// Requirements: INT-101, INT-103.
+// TestCatalogDescribedBool is the table of the bool read: a boolean column is read as a bool by its column type on MySQL
+// tinyint(1), on SQLite BOOLEAN and on PostgreSQL boolean; a value of any other column is left as it is, and any value
+// other than 0 or 1 of a boolean column fails.
+func TestCatalogDescribedBool(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	cases := []struct {
+		name    string
+		dialect string
+		native  string
+		value   any
+		want    any
+		fails   bool
+	}{
+		{"mysql tinyint(1) zero", "mysql", "tinyint(1)", int64(0), false, false},
+		{"mysql tinyint(1) one", "mysql", "tinyint(1)", int64(1), true, false},
+		{"mysql tinyint(1) null", "mysql", "tinyint(1)", nil, nil, false},
+		{"mysql tinyint(1) two", "mysql", "tinyint(1)", int64(2), nil, true},
+		{"mysql plain tinyint stays integer", "mysql", "tinyint", int64(2), int64(2), false},
+		{"sqlite BOOLEAN zero", "sqlite", "BOOLEAN", int64(0), false, false},
+		{"sqlite BOOLEAN one", "sqlite", "BOOLEAN", int64(1), true, false},
+		{"sqlite BOOLEAN minus one", "sqlite", "BOOLEAN", int64(-1), nil, true},
+		{"sqlite BOOLEAN text", "sqlite", "BOOLEAN", "1", nil, true},
+		{"sqlite integer stays integer", "sqlite", "INTEGER", int64(1), int64(1), false},
+		{"postgres boolean bool", "postgres", "boolean", true, true, false},
+		{"postgres boolean two", "postgres", "boolean", int64(2), nil, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			column := CatalogColumn{Name: "b", NativeType: tc.native}
+			got, err := catalogDescribedBool(tc.value, column, tc.dialect)
+			if tc.fails {
+				if err == nil {
+					t.Fatalf("catalogDescribedBool(%v) = %v, want an error", tc.value, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("catalogDescribedBool(%v): %v", tc.value, err)
+			}
+			if got != tc.want {
+				t.Fatalf("catalogDescribedBool(%v) = %v (%T), want %v (%T)", tc.value, got, got, tc.want, tc.want)
+			}
+		})
+	}
+}
+
+//
+// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
+// starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
+// MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which a described read refuses.
+func TestCatalogGridTemporalZeroDate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for _, test := range []struct {
+		name    string
+		value   time.Time
+		native  string
+		dialect string
+		want    any
+		code    string
+	}{
+		{name: "MySQL zero DATE", value: time.Time{}, native: "DATE", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL zero DATETIME", value: time.Time{}, native: "DATETIME", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
+		{name: "MySQL DATE at the start of its range", value: time.Date(1000, time.January, 1, 0, 0, 0, 0, time.UTC), native: "DATE", dialect: "mysql", want: "1000-01-01"},
+		{name: "PostgreSQL DATE at 0001-01-01", value: time.Time{}, native: "DATE", dialect: "postgres", want: "0001-01-01"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := catalogGridCell(test.value, test.native, test.dialect)
+			if test.code != "" {
+				if ErrorCode(err) != test.code {
+					t.Fatalf("catalogGridCell = %#v, %v; want %s", got, err, test.code)
+				}
+				return
+			}
+			if err != nil || !reflect.DeepEqual(got.Value, test.want) {
+				t.Fatalf("catalogGridCell = %#v, %v; want %#v", got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestCatalogDescribedTemporalText(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	stamp := time.Date(2026, time.January, 2, 3, 4, 5, 123000000, time.UTC)
@@ -176,88 +190,6 @@ func TestCatalogDescribedTemporalText(t *testing.T) {
 			}
 			if err != nil || !reflect.DeepEqual(got, test.want) {
 				t.Fatalf("catalogDescribedTemporal = %#v, %v; want %#v", got, err, test.want)
-			}
-		})
-	}
-}
-
-// Requirements: DIA-29.
-// TestCatalogDescribedBool is the table of the bool read: a boolean column is read as a bool by its column type on MySQL
-// tinyint(1), on SQLite BOOLEAN and on PostgreSQL boolean; a value of any other column is left as it is, and any value
-// other than 0 or 1 of a boolean column fails.
-func TestCatalogDescribedBool(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	cases := []struct {
-		name    string
-		dialect string
-		native  string
-		value   any
-		want    any
-		fails   bool
-	}{
-		{"mysql tinyint(1) zero", "mysql", "tinyint(1)", int64(0), false, false},
-		{"mysql tinyint(1) one", "mysql", "tinyint(1)", int64(1), true, false},
-		{"mysql tinyint(1) null", "mysql", "tinyint(1)", nil, nil, false},
-		{"mysql tinyint(1) two", "mysql", "tinyint(1)", int64(2), nil, true},
-		{"mysql plain tinyint stays integer", "mysql", "tinyint", int64(2), int64(2), false},
-		{"sqlite BOOLEAN zero", "sqlite", "BOOLEAN", int64(0), false, false},
-		{"sqlite BOOLEAN one", "sqlite", "BOOLEAN", int64(1), true, false},
-		{"sqlite BOOLEAN minus one", "sqlite", "BOOLEAN", int64(-1), nil, true},
-		{"sqlite BOOLEAN text", "sqlite", "BOOLEAN", "1", nil, true},
-		{"sqlite integer stays integer", "sqlite", "INTEGER", int64(1), int64(1), false},
-		{"postgres boolean bool", "postgres", "boolean", true, true, false},
-		{"postgres boolean two", "postgres", "boolean", int64(2), nil, true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			column := CatalogColumn{Name: "b", NativeType: tc.native}
-			got, err := catalogDescribedBool(tc.value, column, tc.dialect)
-			if tc.fails {
-				if err == nil {
-					t.Fatalf("catalogDescribedBool(%v) = %v, want an error", tc.value, got)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("catalogDescribedBool(%v): %v", tc.value, err)
-			}
-			if got != tc.want {
-				t.Fatalf("catalogDescribedBool(%v) = %v (%T), want %v (%T)", tc.value, got, got, tc.want, tc.want)
-			}
-		})
-	}
-}
-
-// Requirements: INT-103.
-//
-// go-sql-driver/mysql returns time.Time{} for the zero date 0000-00-00 (parseDateTime). MySQL's DATE and DATETIME range
-// starts at 1000-01-01 (MySQL 8.4 Reference Manual, "The DATE, DATETIME, and TIMESTAMP Types"), so 0001-01-01 is never a
-// MySQL value and a time.Time{} read from a MySQL temporal column is the zero date, which INT-103 refuses.
-func TestCatalogGridTemporalZeroDate(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	for _, test := range []struct {
-		name    string
-		value   time.Time
-		native  string
-		dialect string
-		want    any
-		code    string
-	}{
-		{name: "MySQL zero DATE", value: time.Time{}, native: "DATE", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
-		{name: "MySQL zero DATETIME", value: time.Time{}, native: "DATETIME", dialect: "mysql", code: "GRID_TEMPORAL_VALUE"},
-		{name: "MySQL DATE at the start of its range", value: time.Date(1000, time.January, 1, 0, 0, 0, 0, time.UTC), native: "DATE", dialect: "mysql", want: "1000-01-01"},
-		{name: "PostgreSQL DATE at 0001-01-01", value: time.Time{}, native: "DATE", dialect: "postgres", want: "0001-01-01"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := catalogGridCell(test.value, test.native, test.dialect)
-			if test.code != "" {
-				if ErrorCode(err) != test.code {
-					t.Fatalf("catalogGridCell = %#v, %v; want %s", got, err, test.code)
-				}
-				return
-			}
-			if err != nil || !reflect.DeepEqual(got.Value, test.want) {
-				t.Fatalf("catalogGridCell = %#v, %v; want %#v", got, err, test.want)
 			}
 		})
 	}

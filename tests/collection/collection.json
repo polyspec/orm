@@ -14,6 +14,7 @@
     "INT-84",
     "INT-86",
     "INT-90",
+    "PRT-36",
     "PRT-35",
     "PRT-69"
   ],
@@ -646,7 +647,8 @@
     {
       "id": "selected_boolean_refuses_a_number",
       "requirements": [
-        "INT-68"
+        "INT-68",
+        "PRT-36"
       ],
       "steps": [
         {
@@ -674,7 +676,8 @@
     {
       "id": "selected_boolean_refuses_a_text",
       "requirements": [
-        "INT-68"
+        "INT-68",
+        "PRT-36"
       ],
       "steps": [
         {
@@ -700,9 +703,39 @@
       ]
     },
     {
+      "id": "selected_boolean_refuses_a_float",
+      "requirements": [
+        "INT-68",
+        "PRT-36"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_views",
+          "answer": {
+            "rows": [
+              {
+                "active": 1.0,
+                "age": null,
+                "row_count": 1
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "selected_null_on_a_column_that_is_not_null",
       "requirements": [
-        "INT-68"
+        "INT-68",
+        "PRT-36"
       ],
       "steps": [
         {

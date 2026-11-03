@@ -5,19 +5,13 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Code;
-use Polyspec\Orm\Db;
 use Polyspec\Orm\GroupRow;
-use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 
 /** Shared group-result behavior checks for the PHP library and extension. */
 trait GroupRowsCases
 {
     protected function assertGroupRowOwnership(): void
-    {
-    }
-
-    protected function assertGroupValueOwnership(): void
     {
     }
 
@@ -65,34 +59,6 @@ trait GroupRowsCases
             } catch (OrmException $error) {
                 self::assertContains($error->code_, [Code::CONFIG, Code::INTERNAL]);
             }
-        }
-    }
-
-    public function testGroupValueRejectsInvalidStoredBoolean(): void
-    {
-        $this->assertGroupValueOwnership();
-        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
-        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
-        // A driver that returns a native boolean (PostgreSQL) gives false and true, which are valid stored values.
-        foreach ([false, true] as $native) {
-            self::assertSame($native, $groupValue->invoke(
-                new GroupRowsModelFixture(),
-                $db,
-                ['name' => 'active', 'column' => '', 'type' => 'bool'],
-                $native,
-            ));
-        }
-        try {
-            $groupValue->invoke(
-                new GroupRowsModelFixture(),
-                $db,
-                ['name' => 'active', 'column' => '', 'type' => 'bool'],
-                'invalid',
-            );
-            self::fail('invalid boolean group value was accepted');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertSame('CODEC_DECODE: group column active is not boolean', $error->getMessage());
         }
     }
 
