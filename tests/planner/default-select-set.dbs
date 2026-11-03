@@ -1,0 +1,12 @@
+dbspec 1 selectset
+
+table note {
+  id i64
+  title varchar(32)
+  body text
+  created_at datetime(6)
+  primary key (id)
+  settings {
+    select explicit body
+  }
+}

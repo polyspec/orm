@@ -829,6 +829,7 @@
             "dbspec.format",
             "dbspec.parse_set",
             "dbspec.set",
+            "dbspec.load_set",
             "dbspec.read_file",
             "dbspec.read_bytes",
             "catalog.connect",
@@ -847,7 +848,10 @@
             "model.chain",
             "utils.lock",
             "utils.set_local",
-            "utils.local"
+            "utils.local",
+            "utils.was_inserted",
+            "utils.backend_waiting_for_lock",
+            "utils.groups"
           ]
         }
       },
@@ -1051,6 +1055,9 @@
           "$ref": "#/$defs/ops/dbspec.set"
         },
         {
+          "$ref": "#/$defs/ops/dbspec.load_set"
+        },
+        {
           "$ref": "#/$defs/ops/dbspec.read_file"
         },
         {
@@ -1106,6 +1113,15 @@
         },
         {
           "$ref": "#/$defs/ops/utils.local"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.was_inserted"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.backend_waiting_for_lock"
+        },
+        {
+          "$ref": "#/$defs/ops/utils.groups"
         }
       ]
     },
@@ -3965,6 +3981,13 @@
                   "$ref": "#/$defs/outcomes/rows"
                 }
               },
+              "expect_unnamed": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
+              },
               "lock": {
                 "description": "The row lock of the query; outside a transaction it is refused with CONFIG.",
                 "enum": [
@@ -4120,13 +4143,6 @@
                   "$ref": "#/$defs/name"
                 }
               },
-              "derived_integers": {
-                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/name"
-                }
-              },
               "as": {
                 "$ref": "#/$defs/name"
               },
@@ -4153,6 +4169,9 @@
                 "const": true
               },
               "expect": {
+                "$ref": "#/$defs/expect"
+              },
+              "expect_unnamed": {
                 "$ref": "#/$defs/expect"
               }
             }
@@ -4812,6 +4831,70 @@
             }
           }
         ]
+      },
+      "dbspec.load_set": {
+        "type": "object",
+        "required": [
+          "op",
+          "owned",
+          "external",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "dbspec.load_set"
+          },
+          "owned": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expect": {
+            "type": "object",
+            "required": [
+              "none"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "none": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "external"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "external": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "dbspec.parse_set": {
         "type": "object",
@@ -6055,6 +6138,76 @@
           },
           "value": {
             "$ref": "#/$defs/argument"
+          }
+        }
+      },
+      "utils.was_inserted": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "table",
+          "sequence",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.was_inserted"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "table": {
+            "description": "The entity name of wasInserted (INT-52).",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "The generated key of wasInserted (INT-52).",
+            "type": "integer"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.backend_waiting_for_lock": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.backend_waiting_for_lock"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
+          }
+        }
+      },
+      "utils.groups": {
+        "type": "object",
+        "required": [
+          "op",
+          "connection",
+          "expect"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "op": {
+            "const": "utils.groups"
+          },
+          "connection": {
+            "$ref": "#/$defs/name"
+          },
+          "expect": {
+            "$ref": "#/$defs/expect"
           }
         }
       },

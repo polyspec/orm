@@ -1,5 +1,3 @@
-//go:build featurecoverage
-
 package orm
 
 import (
@@ -19,25 +17,16 @@ import (
 // as a co-routine, and the rows of an ORDER BY DESC query must come back in descending order.
 func TestCoverageCatalogGridOrder(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	driver, dsn := testdb.FeatureDatabase(t)
-	if driver != "sqlite" {
-		t.Fatalf("catalog grid order requires SQLite, got %s", driver)
-	}
+	dsn := testdb.New(t, "sqlite")
 	raw, err := sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if _, err := raw.Exec("DROP TABLE IF EXISTS grid_order"); err != nil {
-			t.Errorf("drop grid_order: %v", err)
-		}
 		if err := raw.Close(); err != nil {
 			t.Errorf("close: %v", err)
 		}
 	})
-	if _, err := raw.Exec("DROP TABLE IF EXISTS grid_order"); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := raw.Exec("CREATE TABLE grid_order (seq INTEGER PRIMARY KEY, label TEXT)"); err != nil {
 		t.Fatal(err)
 	}

@@ -120,7 +120,9 @@
             "test": { "$ref": "#/$defs/text" },
             "cases": { "$ref": "#/$defs/cases" },
             "symbols": { "type": "object", "additionalProperties": { "type": "string" } },
-            "dsn_env": { "type": "string" }
+            "dsn_env": { "type": "string" },
+            "recipe": { "$ref": "#/$defs/text" },
+            "symbol": { "$ref": "#/$defs/text" }
           }
         }
       }

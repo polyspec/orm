@@ -73,6 +73,18 @@ fn recipe_text(path: &str) -> (PathBuf, String) {
     (root, text)
 }
 
+/// Appends the pass of a case to the file that `ORM_RECIPE_RESULTS` names, the line the feature checker reads (FCV-12).
+/// A run outside the checker names no file. A trial that failed panicked before this call.
+fn report_case(id: &str, database: &str) {
+    use std::io::Write as _;
+    let Some(path) = std::env::var_os("ORM_RECIPE_RESULTS") else { return };
+    let line = if database == NONE { format!("CASE {id} PASS\n") } else { format!("CASE {id} [{database}] PASS\n") };
+    let appended = std::fs::OpenOptions::new().append(true).create(true).open(&path).and_then(|mut file| file.write_all(line.as_bytes()));
+    if let Err(error) = appended {
+        panic!("recipe results {}: {error}", path.to_string_lossy());
+    }
+}
+
 /// One trial for each case of the recipe at `path`, relative to the repository root, on `database`, named
 /// `<entry>::<case id>`.
 pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -99,6 +111,7 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
+                report_case(&id, &database);
             })
         })
         .collect()
@@ -227,6 +240,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         | "dbspec.format"
         | "dbspec.parse_set"
         | "dbspec.set"
+        | "dbspec.load_set"
         | "dbspec.read_file"
         | "dbspec.read_bytes" => return dbspec_step(step, dir, database),
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
@@ -775,6 +789,7 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
         "dbspec.format" => dbspec_format(step, want),
         "dbspec.parse_set" => dbspec_parse_set(step, want),
         "dbspec.set" => dbspec_set(step, want),
+        "dbspec.load_set" => dbspec_load_set(step, want),
         "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
@@ -960,6 +975,29 @@ fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), St
 /// and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its
 /// manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders
 /// statements in each dialect that create the tables of expect.created.
+/// The dbspec.load_set op (FCV-4): the documents of a set with their external marks, through `Schema::with_external` on the
+/// manifest that the set builds, or the code of `Manifest::load_set` on a set that does not build.
+fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
+    let text = |value: &Value| {
+        let lines = lines_of(value);
+        if lines.is_empty() { String::new() } else { format!("{}\n", lines.join("\n")) }
+    };
+    let (owned, external) = (text(&step["owned"]), text(&step["external"]));
+    let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
+        let refs: Vec<&Document> = documents.iter().collect();
+        dbspec::manifest(&refs).ok()
+    });
+    let Some(built) = loaded else {
+        let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
+        return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+    };
+    let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
+    let schema = polyspec_orm::Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash));
+    let documents = schema.documents().map_err(|error| error.to_string())?;
+    let got: Vec<Value> = documents.iter().map(|d| json!({"name": d.name.text, "external": d.external})).collect();
+    if want["documents"].as_array() == Some(&got) { Ok(()) } else { Err(format!("documents {got:?}, want {want}")) }
+}
+
 fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
     let owned = strings_of(&step["owned"]);
     let external = strings_of(&step["external"]);
@@ -1998,6 +2036,7 @@ mod database {
                 let id = case["id"].as_str().unwrap_or_default().to_owned();
                 polyspec_orm_testcase::async_trial(format!("{entry}::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
                     run_case(&path, &recipe, &case, &database, schema.as_deref(), &dir, models).await;
+                    super::report_case(&id, &database);
                 })
             })
             .collect()
@@ -2375,6 +2414,9 @@ mod database {
         "utils.lock",
         "utils.set_local",
         "utils.local",
+        "utils.was_inserted",
+        "utils.backend_waiting_for_lock",
+        "utils.groups",
     ];
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
@@ -3874,17 +3916,6 @@ mod tables {
         Ok(Value::Object(out))
     }
 
-    /// The row with the named fields read as a derived integer (COD-45): the text of an integer is its number.
-    fn derived_integers(row: &mut Value, fields: &Value) -> Result<(), String> {
-        for name in names(fields) {
-            if let Some(text) = row[&name].as_str() {
-                let number = text.parse::<i64>().map_err(|error| format!("{name} is an invalid derived integer: {error}"))?;
-                row[&name] = Value::from(number);
-            }
-        }
-        Ok(())
-    }
-
     /// Whether the expect of a step compares rows of wrappers.
     fn wants_rows(step: &Value) -> bool {
         step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
@@ -4098,9 +4129,7 @@ mod tables {
             let rows = gets(&root).await.map_err(orm)?;
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
-                let mut value = row_json(row, &step["pick"])?;
-                derived_integers(&mut value, &step["derived_integers"])?;
-                list.push(value);
+                list.push(row_json(row, &step["pick"])?);
             }
             let mut fields = json!({ "json": list });
             if wants_rows(step) {
@@ -4372,6 +4401,21 @@ mod tables {
                     Ok(json!({}))
                 }
                 "utils.local" => Ok(json!({ "json": db.utils().local(step["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                "utils.was_inserted" => {
+                    let sequence = step["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
+                    let inserted = db.utils().was_inserted(step["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
+                    Ok(json!({ "value": { "bool": inserted } }))
+                }
+                "utils.backend_waiting_for_lock" => {
+                    let waiting = db.utils().backend_waiting_for_lock().await.map_err(orm)?;
+                    Ok(json!({ "value": { "bool": waiting } }))
+                }
+                // The groups that the value of utils() holds (INT-134): each is a value of its own type, read through its call.
+                "utils.groups" => {
+                    let utils = db.utils();
+                    let (_aes, _privileges, _schema, _stats) = (utils.aes(), utils.privileges(), utils.schema(), utils.stats());
+                    Ok(json!({ "value": { "array": [{ "text": "aes" }, { "text": "privileges" }, { "text": "schema" }, { "text": "stats" }] } }))
+                }
                 "model.chain" => {
                     let core = self.built(step, &db)?;
                     if let Some(name) = step["as"].as_str() {

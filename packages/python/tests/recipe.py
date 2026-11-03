@@ -35,6 +35,7 @@ from polyspec.orm import (
     Db,
     Model,
     OrmError,
+    RuntimeModel,
     Schema,
     connect_catalog,
     orm,
@@ -117,6 +118,22 @@ class _Failed:
         self.error = error
 
 
+def _reporting(check, database: str):
+    """check, which then appends the pass of its case to the file that ORM_RECIPE_RESULTS names, the line the feature
+    checker reads (FCV-12). A run outside the checker names no file."""
+
+    def reported(test: unittest.TestCase, case: dict) -> None:
+        check(test, case)
+        path = os.environ.get("ORM_RECIPE_RESULTS")
+        if not path:
+            return
+        named = "" if database == NONE else f" [{database}]"
+        with open(path, "a", encoding="utf-8") as results:
+            results.write(f"CASE {case['id']}{named} PASS\n")
+
+    return reported
+
+
 def recipe_tests(path: str, database: str):
     """The load_tests protocol of an entry: one test for each case of the recipe at path, relative to the repository root."""
     if database != NONE:
@@ -183,7 +200,9 @@ def recipe_tests(path: str, database: str):
         step["op"] == "ir.answer" for case in recipe["cases"] for step in case["steps"]
     )
     cases = recipe["cases"]
-    return vector_load_tests(ChainRecipeCase if has_chain else RecipeCase, cases, check)
+    return vector_load_tests(
+        ChainRecipeCase if has_chain else RecipeCase, cases, _reporting(check, database)
+    )
 
 
 def _mermaid(step: dict, bound: dict, database: str, directory: Path) -> None:
@@ -603,6 +622,7 @@ _DBSPEC_FILE_OPS = (
     "dbspec.format",
     "dbspec.parse_set",
     "dbspec.set",
+    "dbspec.load_set",
     "dbspec.read_file",
     "dbspec.read_bytes",
 )
@@ -659,33 +679,21 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
                 rendered["statements"], expect[dialect], f"{dialect} statements"
             )
     elif op == "dbspec.analyze":
-        if "document" not in step:
-            text, header_set = _inline_document(step)
-            analysis = analyze_dbspec(text, header_set)
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect.get("tokens", []), "tokens")
+        if "document" in step:
+            text, header_set = (directory / step["document"]).read_bytes().decode("utf-8"), {}
         else:
-            text = (directory / step["document"]).read_bytes().decode("utf-8")
-            analysis = analyze_dbspec(text, {})
-            parsed_document, positions, _diagnostics = parse_dbspec(text, {})
-            if list(analysis.diagnostics):
-                raise AssertionError(
-                    f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}"
-                )
-            _expect_equal(
-                emit_dbspec(analysis.document),
-                emit_dbspec(parsed_document),
-                "the analysis holds the parsed document",
-            )
-            _expect_equal(
-                analysis.positions,
-                positions,
-                "the analysis holds the positions of the parse",
-            )
-            if not expect.get("tokens"):
-                raise AssertionError("the expect names no tokens")
-            tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
-            _expect_equal(tokens, expect["tokens"], "tokens")
+            text, header_set = _inline_document(step)
+        analysis = analyze_dbspec(text, header_set)
+        if "document" in step and list(analysis.diagnostics):
+            raise AssertionError(f"the analysis has a diagnostic: {list(analysis.diagnostics)!r}")
+        parsed_document, positions, diagnostics = parse_dbspec(text, header_set)
+        _expect_equal(analysis.document, parsed_document, "the analysis holds the parsed document")
+        _expect_equal(analysis.positions, positions, "the analysis holds the positions of the parse")
+        _expect_equal(list(analysis.diagnostics), list(diagnostics), "the analysis holds the diagnostics of the parse")
+        if "tokens" not in expect:
+            raise AssertionError("the expect names no tokens")
+        tokens = [[t.line, t.start, t.end, t.token_class] for t in analysis.tokens]
+        _expect_equal(tokens, expect["tokens"], "tokens")
     elif op == "dbspec.parse_positions":
         if "document" in step:
             text = (directory / step["document"]).read_bytes().decode("utf-8")
@@ -722,6 +730,20 @@ def _dbspec_files(step: dict, directory: Path, database: str) -> None:
             formatted,
             "a formatted text is its own format",
         )
+    elif op == "dbspec.load_set":
+        def text(lines):
+            return "\n".join(lines) + "\n" if lines else ""
+
+        try:
+            documents = RuntimeModel.load_set(text(step["owned"]), text(step["external"]))
+        except OrmError as error:
+            _expect_equal(error.code, expect.get("error"), "error")
+        else:
+            _expect_equal(
+                [{"name": d.name, "external": d.external} for d in documents],
+                expect.get("documents"),
+                "documents",
+            )
     elif op == "dbspec.parse_set":
         got = parse_dbspec_set(step["owned"], step.get("external", []))
         _expect_equal(len(got), len(expect["documents"]), "one result per text")
@@ -1755,7 +1777,7 @@ def _database_recipe_tests(path: str, database: str):
     cases = [
         case for case in recipe["cases"] if database in case.get("only", DATABASES)
     ]
-    return vector_load_tests(DatabaseRecipeCase, cases, check)
+    return vector_load_tests(DatabaseRecipeCase, cases, _reporting(check, database))
 
 
 def _fixture_schema(set_path: Path):
@@ -2424,14 +2446,6 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
-def _derived_integers(row: dict, step: dict) -> dict:
-    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
-    for name in step.get("derived_integers", []):
-        if isinstance(row[name], str):
-            row[name] = int(row[name])
-    return row
-
-
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2617,10 +2631,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [
-            _derived_integers(_row_json(row, step.get("pick")), step)
-            for row in rows.values()
-        ],
+        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)
@@ -2717,6 +2728,27 @@ def _utils_set_local(step: dict, context: dict) -> dict:
 
 def _utils_local(step: dict, context: dict) -> dict:
     return {"json": _connection_of(step, context).utils().local(step["name"])}
+
+
+def _utils_was_inserted(step: dict, context: dict) -> dict:
+    inserted = _connection_of(step, context).utils().was_inserted(step["table"], step["sequence"])
+    return {"value": {"bool": inserted}}
+
+
+def _utils_backend_waiting_for_lock(step: dict, context: dict) -> dict:
+    return {"value": {"bool": _connection_of(step, context).utils().backend_waiting_for_lock()}}
+
+
+def _utils_groups(step: dict, context: dict) -> dict:
+    """The names of the groups that the value of utils() holds (INT-134), each read through its own call."""
+    utils = _connection_of(step, context).utils()
+    held = {
+        "aes": utils.aes(),
+        "privileges": utils.privileges(),
+        "schema": utils.schema(),
+        "stats": utils.stats(),
+    }
+    return {"value": {"array": [{"text": name} for name, group in held.items() if group is not None]}}
 
 
 def _bind_cell(bind) -> dict:
@@ -3449,6 +3481,9 @@ _TABLE_OPS = {
     "utils.lock": _utils_lock,
     "utils.set_local": _utils_set_local,
     "utils.local": _utils_local,
+    "utils.was_inserted": _utils_was_inserted,
+    "utils.backend_waiting_for_lock": _utils_backend_waiting_for_lock,
+    "utils.groups": _utils_groups,
 }
 
 # The one recipe fixture that generates models. A model op of any other fixture names a model of a table of its own (FCV-4).
