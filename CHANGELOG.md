@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- A function and a subquery on one output name answer COLUMN_ALIAS_CONFLICT as the compile case `planner_function_and_subquery_share_an_output_name` on every runtime; the scalar aggregate type copies and the extension's native planner test are gone, and the extension's planner target runs the compile recipe (#T334-3-6-2)
 - PRT-38 states the order of the page steps as they are, main, count, relations, and what the count step holds; PRT-9 states the select list; `planner_page_steps` of the compile recipe holds those statements (DSL-159).
 - A load of a schema value (SCH-12) reports every diagnostic in one form in every runtime, `<line>:<column> <rule>: <message>` joined by `; `, with lines counted from the document, and the `dbspec.load_set` recipe compares them (#T334-3-18).
 - The conformance vectors begin to move into the `conformance_verification` recipe, run on the three databases by all six runtimes: its fifty-nine cases cover connectors, groups, chain reuse, expressions, columns, joins, relations, subqueries, aggregates, empty reads, functions, AES and hex values, a write cycle, batch creates, restores, audits, transactions and getQuery. Model ops of a fixture that generates no models now reach the public builder through one path in every helper, including `statement_events`. Rust reads an integer column that MySQL returns as text bytes after an `ALTER`.

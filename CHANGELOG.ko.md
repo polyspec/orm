@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c09a6a414d8a16eabccf5e5d10884dedde160eb4ee24b5e3485810197bfbdbf9 -->
+<!-- source-sha256: 0baedb776e316e415cd205e38d89ccc98a1e4aef7988fe0acdda62537c938841 -->
 # 변경 이력
 
 ## Unreleased
 
+- 함수와 subquery가 같은 output 이름을 쓰면 COLUMN_ALIAS_CONFLICT로 답한다는 것을 모든 runtime의 compile case `planner_function_and_subquery_share_an_output_name`이 시험한다. scalar aggregate 타입의 사본과 확장의 native planner 시험은 사라졌고, 확장의 planner target은 compile recipe를 실행한다 (#T334-3-6-2)
 - PRT-38은 페이지 단계 순서를 실제대로 main, count, relation으로 적고 count 단계가 갖는 것을 적는다. PRT-9는 select 목록을 적는다. compile recipe의 `planner_page_steps`가 그 문장들을 담는다(DSL-159).
 - schema 값 읽기(SCH-12)는 모든 runtime에서 모든 diagnostic을 한 형식 `<line>:<column> <rule>: <message>`로 `; `로 이어 보고하고, 줄은 문서부터 세며, `dbspec.load_set` recipe가 그것을 비교한다 (#T334-3-18).
 - recipe `statement_events`가 INT-96이 정한 subscriber의 실패를 여섯 runtime, 세 database에서 담는다: 정확한 메시지와, 원인인 subscriber의 오류이며, 결과 `{"error": <code>}`에 이제 `message`와 `cause`로 적을 수 있다.
