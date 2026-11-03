@@ -2051,10 +2051,15 @@ final class Recipe
                 if ($subscription->recording->negative !== []) {
                     throw new RuntimeException('an event has a negative elapsed time');
                 }
-                return ['value' => ['array' => self::capturedEvents(
-                    $subscription->recording->events,
-                    $s['compare'] ?? '',
-                )]];
+                $events = self::capturedEvents($subscription->recording->events, $s['compare'] ?? '');
+                if (($s['compare'] ?? '') === 'statements') {
+                    // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+                    $events = array_map(static fn (array $event): array => ['object' => array_values(array_filter(
+                        $event['object'],
+                        static fn (array $member): bool => $member[0] === 'sql' || $member[0] === 'kind',
+                    ))], $events);
+                }
+                return ['value' => ['array' => $events]];
             case 'hook.install':
                 // Binds the connection of the step to its connection with the hook of the step (FCV-4); a later
                 // hook.install on the same connection replaces the hook.
@@ -2116,7 +2121,21 @@ final class Recipe
                 if ($statement !== null) {
                     // The native driver of PHP is PDO, opened on the case database.
                     $pdo = case_admin($context['dsn']);
-                    $pdo->exec($statement);
+                    if (($s['refused'] ?? false) !== true) {
+                        $pdo->exec($statement);
+                        return [];
+                    }
+                    // A native SQLite connection starts with foreign keys off; the runners of the other clients open it with them on.
+                    if ($context['database'] === 'sqlite') {
+                        $pdo->exec('PRAGMA foreign_keys = ON');
+                    }
+                    try {
+                        $pdo->exec($statement);
+                    } catch (\PDOException) {
+                        // Any driver error of the refused statement passes.
+                        return [];
+                    }
+                    throw new \RuntimeException("the database accepted the statement that the step expects it to refuse: $statement");
                 }
                 return [];
             case 'query.search':

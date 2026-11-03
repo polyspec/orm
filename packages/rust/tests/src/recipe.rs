@@ -2407,7 +2407,15 @@ mod database {
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
-                let events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
+                let mut events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
+                if step["compare"].as_str() == Some("statements") {
+                    // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
+                    for event in &mut events {
+                        if let Some(members) = event["object"].as_array_mut() {
+                            members.retain(|member| matches!(member[0].as_str(), Some("sql" | "kind")));
+                        }
+                    }
+                }
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
@@ -2553,7 +2561,14 @@ mod database {
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "sql.exec" => {
                 if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
-                    native_exec(&context.dsn, sql).await.map_err(Failure::Call)?;
+                    let done = native_exec(&context.dsn, sql).await;
+                    if step["refused"].as_bool() == Some(true) {
+                        if done.is_ok() {
+                            return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}")));
+                        }
+                    } else {
+                        done.map_err(Failure::Call)?;
+                    }
                 }
                 Output::fields(json!({}))
             }
