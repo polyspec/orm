@@ -102,7 +102,7 @@ const HEADER = 'dbspec 1 ';
 
 /** Splits the concatenated documents of a manifest text at their header lines. */
 function splitDocuments(text: string): string[] {
-  if (!text.startsWith(HEADER)) throw new OrmError(codes.SCHEMA_INVALID, 'manifest text does not start with a dbspec header');
+  if (!text.startsWith(HEADER)) throw new OrmError(codes.SCHEMA_INVALID, '1:1 header: manifest text does not start with a dbspec header');
   const out: string[] = [];
   let start = 0;
   for (let at = text.indexOf(`\n${HEADER}`); at >= 0; at = text.indexOf(`\n${HEADER}`, at + 1)) {
@@ -192,9 +192,7 @@ function externalEntity(t: DbspecTable): Entity {
 export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeModel {
   const result = dbspecManifest(documents);
   if (result.manifest === null) {
-    const [d] = result.diagnostics;
-    if (d === undefined) throw new OrmError(codes.SCHEMA_INVALID, 'document set: no manifest and no diagnostic');
-    throw new OrmError(codes.SCHEMA_INVALID, `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+    throw new OrmError(codes.SCHEMA_INVALID, result.diagnostics.map(d => `${d.line}:${d.column} ${d.rule}: ${d.message}`).join('; '));
   }
   const entities = new Map<string, Entity>();
   const ordered = [...documents].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -224,17 +222,18 @@ export function modelOfDocuments(documents: readonly DbspecDocument[]): RuntimeM
 /**
  * Parses dbspec texts of one document set with the set parse (docs/spec/dbspec.md "Parsing a set"): the documents the set
  * owns and the external documents it uses, the external documents marked external. A text that fails, or repeats a
- * name, is SCHEMA_INVALID naming its document and the first diagnostic.
+ * name, is SCHEMA_INVALID with every diagnostic in the form of SCH-12.
  */
 export function parseDocumentSet(texts: readonly string[], externalTexts: readonly string[] = []): DbspecDocument[] {
   for (const text of [...texts, ...externalTexts]) {
     if (typeof text !== 'string') throw new OrmError(codes.SCHEMA_INVALID, 'a dbspec text does not start with its header');
   }
-  return parseDbspecSet(texts, externalTexts).map(d => {
-    if (d.document !== null) return d.document;
-    const [first] = d.diagnostics;
-    if (first === undefined) throw new OrmError(codes.SCHEMA_INVALID, `document ${d.name}: no document and no diagnostic`);
-    throw new OrmError(codes.SCHEMA_INVALID, `document ${d.name}: ${first.rule} at ${first.line}:${first.column}: ${first.message}`);
+  const set = parseDbspecSet(texts, externalTexts);
+  const problems = set.flatMap(d => d.diagnostics.map(x => `${x.line}:${x.column} ${x.rule}: document ${d.name}: ${x.message}`));
+  if (problems.length > 0) throw new OrmError(codes.SCHEMA_INVALID, problems.join('; '));
+  return set.map(d => {
+    if (d.document === null) throw new OrmError(codes.SCHEMA_INVALID, `document ${d.name}: no document and no diagnostic`);
+    return d.document;
   });
 }
 

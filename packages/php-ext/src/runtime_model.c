@@ -89,7 +89,15 @@ static void append_error(sbuf *b, str label, const diag *d) {
         sb_ch(b, '\n');
     sb_fmt(b, "%S:%d:%d: %S: %S", label, d->line, d->column, d->rule, d->message);
 }
-static void documents_parse(zval *owned, zval *external, zval *out) {
+/* A diagnostic of a manifest text, in the form of SCH-12. */
+static void append_manifest_error(sbuf *b, str name, const diag *d) {
+    if (b->n)
+        sb_ch(b, ';');
+        sb_ch(b, ' ');
+    sb_fmt(b, "%d:%d %S: document %S: %S", d->line, d->column, d->rule, name, d->message);
+}
+/* manifest: the labels are not file names, and the diagnostics take the form of SCH-12. */
+static void documents_parse(zval *owned, zval *external, zval *out, bool manifest) {
     zval *lists[2] = {owned, external};
     size_t n = zend_hash_num_elements(Z_ARRVAL_P(owned)) + zend_hash_num_elements(Z_ARRVAL_P(external));
     str *texts = dbs_alloc((n + 1) * sizeof(str)), *labels = dbs_alloc((n + 1) * sizeof(str));
@@ -142,7 +150,10 @@ static void documents_parse(zval *owned, zval *external, zval *out) {
         }
         if (ds.n) {
             for (size_t q = 0; q < ds.n; q++)
-                append_error(&errors, labels[i], &ds.v[q]);
+                if (manifest)
+                    append_manifest_error(&errors, dbs_header_name(texts[i]), &ds.v[q]);
+                else
+                    append_error(&errors, labels[i], &ds.v[q]);
         }
         if (d) {
             zval z;
@@ -305,8 +316,9 @@ static void build_docs(documentv *docs, zval *out) {
         sbuf b = {0};
         for (size_t i = 0; i < ds.n; i++) {
             if (b.n)
-                sb_ch(&b, '\n');
-            sb_fmt(&b, "%d:%d: %S: %S", ds.v[i].line, ds.v[i].column, ds.v[i].rule, ds.v[i].message);
+                sb_ch(&b, ';');
+                sb_ch(&b, ' ');
+            sb_fmt(&b, "%d:%d %S: %S", ds.v[i].line, ds.v[i].column, ds.v[i].rule, ds.v[i].message);
         }
         orm_error("SCHEMA_INVALID", sb_str(&b));
         return;
@@ -389,7 +401,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, parseSet) {
         }
     ZEND_HASH_FOREACH_END();
     ENTER();
-    documents_parse(owned, external, return_value);
+    documents_parse(owned, external, return_value, false);
     LEAVE();
     if (EG(exception))
         RETURN_THROWS();
@@ -442,7 +454,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, splitManifest) {
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(text) ZEND_PARSE_PARAMETERS_END();
     str s = zs(text);
     if (!str_starts(s, "dbspec 1 ")) {
-        orm_error("SCHEMA_INVALID", SL("manifest text does not start with a dbspec header"));
+        orm_error("SCHEMA_INVALID", SL("1:1 header: manifest text does not start with a dbspec header"));
         RETURN_THROWS();
     }
     array_init(return_value);
@@ -483,18 +495,12 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, loadSet) {
             zval_ptr_dtor(&m);
             RETURN_THROWS();
         }
-        zend_string *k;
-        zval *v;
-        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(x), k, v) {
-            zend_string *n = strpprintf(0, "external %s", ZSTR_VAL(k));
-            Z_TRY_ADDREF_P(v);
-            zend_hash_update(Z_ARRVAL(e), n, v);
-            zend_string_release(n);
-        }
-        ZEND_HASH_FOREACH_END();
-        zval_ptr_dtor(&x);
+        zval_ptr_dtor(&e);
+        ZVAL_COPY_VALUE(&e, &x);
     }
-    zend_call_method_with_2_params(NULL, polyspec_runtime_model_ce, NULL, "parseset", return_value, &m, &e);
+    ENTER();
+    documents_parse(&m, &e, return_value, true);
+    LEAVE();
     zval_ptr_dtor(&m);
     zval_ptr_dtor(&e);
     if (EG(exception))

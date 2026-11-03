@@ -1235,9 +1235,27 @@ export class CatalogConnection {
   }
 
   /** Opens a session in a read-only transaction, or a writable one. */
+  /**
+   * Reserves a connection. The socket that a budget stop closed holds its place in max_user_connections until the server
+   * ends that thread, which it announces to no one, so the connect is tried again: within 40 ms measured, and the 2 s of
+   * CFG-35 at most.
+   */
+  private async reserveConnection(): ReturnType<typeof this.pool.reserve> {
+    const deadline = Date.now() + 2000;
+    for (;;) {
+      try {
+        return await this.pool.reserve();
+      } catch (error) {
+        const full = (error as { errno?: unknown }).errno === 1226;
+        if (!full || Date.now() >= deadline) throw error;
+        await new Promise(resolve => { setTimeout(resolve, 10); });
+      }
+    }
+  }
+
   private async begin(readOnly: boolean): Promise<Session> {
     this.ensureOpen();
-    const session = new Session(this.dialect, await this.pool.reserve());
+    const session = new Session(this.dialect, await this.reserveConnection());
     try {
       // SQLite has one connection that every session shares, so each session sets query_only itself and does not inherit it.
       if (this.dialect === 'sqlite') await session.control(`PRAGMA query_only=${readOnly ? 'ON' : 'OFF'}`);

@@ -860,6 +860,23 @@ func TestFirst(t *testing.T) {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+// Requirements: FCV-2.
+caseTest('a Go test of the normal go test build is read by its exact name', PROCESS, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-tags-')));
+  const owner = 'packages/go/sample/sample_test.go';
+  const body = (tag: string) => `${tag}package sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\nfunc TestFirstOther(t *testing.T) {}\n`;
+  try {
+    await mkdir(join(root, 'packages/go/sample'), { recursive: true });
+    await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
+    // The tag of the normal go test (GO_TEST_TAGS): a test that the normal run holds is a test that the checker reads.
+    await writeFile(join(root, owner), body('//go:build ormtest\n\n'));
+    assert.deepEqual(await runSelected(sampleManifest(owner), root, ['owner/go']), []);
+    // A tag of no run leaves the test out of the checker too, as it does out of the normal go test.
+    await writeFile(join(root, owner), body('//go:build othertag\n\n'));
+    assert.match((await runSelected(sampleManifest(owner), root, ['owner/go'])).join('\n'), /build constraints exclude/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 // A slow but normal build runs to the end with no deadline. The go in front of PATH waits 1.5 s and then runs the real go, so
 // the test2json build and the test binary build each take 1.5 s or more, and both builds and both runs pass.
 caseTest('a slow but healthy coverage build runs to its end without a deadline', PROCESS, async () => {
@@ -1286,6 +1303,8 @@ caseTest('a coverage process deadline is not shorter than the longest declared t
 caseTest('a process that never ends is stopped at its deadline', PROCESS, async () => {
   const result = await run(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 100);
   assert.equal(result.error, 'timeout after 100 ms');
+  assert.ok(result.pid !== undefined, 'the run reports the pid it started');
+  assert.throws(() => process.kill(result.pid as number, 0), { code: 'ESRCH' });
 });
 
 // A go symbol <parent>/<case> names a subtest: go test -run applies each level of a pattern to every test, so the plain

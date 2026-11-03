@@ -41,6 +41,14 @@
       "reply",
       "token"
     ],
+    "markdown.session": [
+      "corpus",
+      "expect",
+      "messages",
+      "op",
+      "replies",
+      "token"
+    ],
     "keyring.versions": [
       "expect",
       "keyring",
@@ -56,9 +64,12 @@
       "call",
       "expect",
       "fail_catalog_read",
+      "fail_statements",
+      "no_row_queries",
       "op",
       "plan",
-      "sql"
+      "sql",
+      "stop_on_applied"
     ],
     "dbspec.ddl_behavior": [
       "case",
@@ -133,6 +144,10 @@
       "refused_message",
       "sql"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "query.search": [
       "columns",
       "connection",
@@ -182,7 +197,8 @@
       "op",
       "operator",
       "params",
-      "process_zone"
+      "process_zone",
+      "surface"
     ],
     "model.assign": [
       "column",
@@ -442,11 +458,19 @@
       "pick",
       "plan",
       "plan_count",
+      "plan_page",
+      "plan_sql",
       "relation",
       "relations",
       "remove_columns",
       "tuples",
+      "unconnected",
       "where"
+    ],
+    "db.last_affected": [
+      "connection",
+      "expect",
+      "op"
     ],
     "events.subscribe": [
       "as",
@@ -457,7 +481,8 @@
       "as",
       "connection",
       "kind",
-      "op"
+      "op",
+      "refusal"
     ],
     "events.stop_failing": [
       "op",
@@ -629,7 +654,8 @@
       "op"
     ],
     "catalog.reconnect": [
-      "op"
+      "op",
+      "user_from_database"
     ],
     "catalog.revision": [
       "as",
@@ -652,6 +678,12 @@
       "op",
       "options",
       "schema"
+    ],
+    "generator.check": [
+      "changed",
+      "document_set",
+      "op",
+      "unchanged"
     ],
     "dbspec.export_mermaid": [
       "as",
@@ -729,6 +761,7 @@
     ],
     "utils.set_local": [
       "connection",
+      "expect",
       "name",
       "op",
       "value"
@@ -760,6 +793,82 @@
     "utils.groups": [
       "connection",
       "expect",
+      "op"
+    ],
+    "dbspec.plan": [
+      "as",
+      "lines",
+      "op"
+    ],
+    "dbspec.connect": [
+      "as",
+      "op",
+      "through"
+    ],
+    "dbspec.exec": [
+      "connection",
+      "expect",
+      "only",
+      "op",
+      "sql"
+    ],
+    "dbspec.other_database": [
+      "as",
+      "op",
+      "steps"
+    ],
+    "dbspec.apply": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.recover": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.rollback": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.finalize": [
+      "connection",
+      "count",
+      "detail",
+      "elapsed",
+      "expect",
+      "message",
+      "on",
+      "only",
+      "op",
+      "plans"
+    ],
+    "dbspec.schema": [
+      "connection",
+      "expect",
+      "only",
       "op"
     ]
   }

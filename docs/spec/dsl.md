@@ -147,7 +147,7 @@ Key   = [Operator] Column
 
 - **DSL-66** `getSum()` and `getAvg()` convert a numeric database scalar to the nearest finite IEEE 754 binary64 value, with ties rounded to even. SQL `SUM` and `AVG` skip null values and give a null scalar when no value is left, whether no row matches or every value is null: then `getSum()` returns 0, the sum of no values, and `getAvg()` returns null, since the average of no values is undefined and 0 would be an invented average. A nonnumeric, nonfinite or overflowing scalar returns `CODEC_DECODE`. Row column decoding retains its lossless conversion rules.
 - **DSL-67** `getsPage` counts rows with the same conditions and joins as the page query. `page` and `perPage` must be positive, and a model with `limit` returns `CONFIG`. A page after the last page returns an empty collection. orm does no rendering, request reading or redirects. A grouped model is not valid for `getsPage`; see DSL-99.
-- **DSL-68** `getQuery` requires a connected model or an active transaction because the dialect decides the statement text; otherwise it returns `CONFIG`. Secret values are shown as `$SECRET`.
+- **DSL-68** `getQuery` requires a connected model or an active transaction because the dialect decides the statement text; otherwise it returns `CONFIG`.
 - **DSL-69** Terminals take no arguments except chain values. A terminal does not change the model, so running a second terminal produces the same statement.
 - **DSL-70** `keyName<Col>()` sets the collection key column. `fetchKey(fn)` computes the collection key. `fetchValue(fn)` replaces each loaded row value with the callback result.
 - **DSL-71** A row exposes `get<Col>()` getters. A relation result is read through the generated relation getter.
@@ -156,6 +156,7 @@ Key   = [Operator] Column
 
 - **DSL-72** `addColumn<Col>()` — Effect: add one column
 - **DSL-73** `addColumn<Col>Alias<Name>(fn)` — Effect: add a column function of the column (section 10) with an output name
+- **DSL-73a** PHP-extension package `polyspec/orm-php-ext` implements the column function factories of `Orm` natively and keeps their column-function metadata in a generated query (DSL-73).
 - **DSL-74** `addColumn<Name>(fn)` — Effect: add a scalar subquery column; the callback receives the calling model and returns an unexecuted model; a scalar column subquery has `limit(0, 1)` and an order that includes every primary key column, else the request is `IR_INVALID`
 - **DSL-75** `removeColumn<Col>()` — Effect: remove one column
 - **DSL-76** `removeAllColumns()` — Effect: keep only primary and foreign keys

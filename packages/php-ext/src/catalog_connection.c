@@ -193,6 +193,37 @@ static bool cat_kill_thread(zval *owner, zend_long id)
     return ok && EG(exception) == NULL;
 }
 
+/* Reads the one value of a statement as text. */
+static bool cat_mysql_text(zval *pdo, const char *sql, char *out, size_t size)
+{
+    zval q, st, r, mode, row;
+    out[0] = '\0';
+    ZVAL_STRING(&q, sql);
+    bool ok = pdo_call(pdo, "prepare", &st, 1, &q, NULL);
+    zval_ptr_dtor(&q);
+    if (!ok) return false;
+    ok = pdo_call(&st, "execute", &r, 0, NULL, NULL);
+    if (!ok) {
+        zval_ptr_dtor(&st);
+        return false;
+    }
+    zval_ptr_dtor(&r);
+    ZVAL_LONG(&mode, CAT_PDO_FETCH_NUM);
+    ok = pdo_call(&st, "fetch", &row, 1, &mode, NULL);
+    zval_ptr_dtor(&st);
+    if (!ok) return false;
+    if (Z_TYPE(row) == IS_ARRAY) {
+        zval *v = zend_hash_index_find(Z_ARRVAL(row), 0);
+        if (v != NULL) {
+            zend_string *text = zval_get_string(v);
+            snprintf(out, size, "%s", ZSTR_VAL(text));
+            zend_string_release(text);
+        }
+    }
+    zval_ptr_dtor(&row);
+    return true;
+}
+
 /* Kills the query that runs on the connection id of the PDO connection of a catalog's Db. */
 static bool cat_kill_query(zval *db, zend_long id)
 {
@@ -203,6 +234,34 @@ static bool cat_kill_query(zval *db, zend_long id)
         return false;
     }
     return cat_kill_thread(owner, id);
+}
+
+/* Added to net_write_timeout: a server at 60 s ended an unread stream at 65.1 s, measured. */
+#define CAT_STREAM_END_MARGIN_SECONDS 6
+
+/* Waits for the server to end a stream whose kill failed (INT-157, CFG-35). PDO reads the rest of a streaming result whenever a
+ * statement or its connection closes, so the read stops reading instead. The server then fails its write and ends the
+ * connection after net_write_timeout. This is a timer because no orthodox mechanism exists: the busy connection cannot be asked
+ * and no second one can be opened. If the server has not ended the stream by then, the close reads the rest, which is slower
+ * and still correct. */
+static void cat_leave_stream(zval *db)
+{
+    zval rv_s, *state = catalog_prop(db, "state", &rv_s);
+    zval rv_o, *owner = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, true, &rv_o);
+    if (Z_TYPE_P(owner) != IS_OBJECT) return;
+    init_bool(owner, "streamLeft", true);
+    zval rv_t, *timeout = catalog_prop(owner, "netWriteTimeout", &rv_t);
+    php_sleep((unsigned int)(zval_get_long(timeout) + CAT_STREAM_END_MARGIN_SECONDS));
+}
+
+/* Whether a stop of the catalog of this Db left a stream unread, so that the server has ended its connection. */
+static bool cat_stream_left(zval *db)
+{
+    zval rv_s, *state = catalog_prop(db, "state", &rv_s);
+    zval rv_o, *owner = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, true, &rv_o);
+    if (Z_TYPE_P(owner) != IS_OBJECT) return false;
+    zval rv_l, *left = catalog_prop(owner, "streamLeft", &rv_l);
+    return Z_TYPE_P(left) == IS_TRUE;
 }
 
 /* Adds a fetched row to a bounded result. It returns 0 when the row fits, 1 when the rows are over the budget and 2 when
@@ -561,9 +620,8 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
                 EG(exception) = NULL;
             }
             if (mysql && connection_id > 0 && !cat_kill_query(db, connection_id)) {
-                if (failure != NULL) OBJ_RELEASE(failure);
-                zval_ptr_dtor(&st);
-                goto driver;
+                zend_clear_exception();
+                cat_leave_stream(db);
             }
             /* The killed query ends its read with an error, the expected end of a stop, so that error is cleared. */
             if (pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) {
@@ -726,6 +784,8 @@ static bool cat_begin_read(zval *db, const char *dialect, zval *pdo)
 /* Ends a failed session: ROLLBACK, and the cause stays the pending error. A failed ROLLBACK becomes OrmException::rollback(cause, driver error). */
 static void cat_abort(zval *db, zval *pdo)
 {
+    /* The connection that a left stream has lost has no transaction to roll back. */
+    if (cat_stream_left(db)) return;
     zval cause;
     ZVAL_OBJ(&cause, EG(exception));
     EG(exception) = NULL;
@@ -2770,6 +2830,7 @@ static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long
         zval r;
         if (!ok && failure != NULL && cat_code_is(failure, "CATALOG_LIMIT") && !cat_kill_query(db, connection_id)) {
             zend_clear_exception();
+            cat_leave_stream(db);
         }
         if (pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) zval_ptr_dtor(&r);
         if (ok && EG(exception) != NULL) {
@@ -2803,6 +2864,29 @@ static bool cat_open(zval *self)
         db_throw_orm("CATALOG_CLOSED", "catalog connection is closed");
         return false;
     }
+    zval rv_left, *left = catalog_prop(self, "streamLeft", &rv_left);
+    if (Z_TYPE_P(left) != IS_TRUE) return true;
+    /* The server ended the connection when a stop left its stream unread: this reads on a new one, as the stop closed the old. */
+    zval rv_db, *old = catalog_prop(self, "db", &rv_db);
+    zval ret;
+    if (pdo_call(old, "close", &ret, 0, NULL, NULL)) {
+        zval_ptr_dtor(&ret);
+    } else {
+        zend_clear_exception();
+    }
+    zval rv_dsn, *dsn = catalog_prop(self, "dsn", &rv_dsn);
+    zval config, args[2], fresh;
+    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
+    ZVAL_COPY_VALUE(&args[0], dsn);
+    ZVAL_COPY_VALUE(&args[1], &config);
+    bool connected = scall("Polyspec\\Orm\\Orm::connect", &fresh, 2, args);
+    zval_ptr_dtor(&config);
+    if (!connected) return false;
+    init_prop(self, "db", &fresh);
+    zval rv_state, *state = catalog_prop(&fresh, "state", &rv_state);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, self);
+    zval_ptr_dtor(&fresh);
+    init_bool(self, "streamLeft", false);
     return true;
 }
 
@@ -4397,6 +4481,28 @@ ZEND_METHOD(Polyspec_Orm_Catalog, connect)
     zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, return_value);
     init_str(return_value, "dialect", zend_string_copy(Z_STR_P(driver)));
     init_str(return_value, "dsn", zend_string_copy(dsn));
+    if (strcmp(Z_STRVAL_P(driver), "mysql") == 0) {
+        zval pdo;
+        char timeout[32];
+        bool read = pdo_call(&db, "pdo", &pdo, 0, NULL, NULL);
+        if (read) {
+            read = cat_mysql_text(&pdo, "SELECT @@SESSION.net_write_timeout", timeout, sizeof(timeout));
+            zval_ptr_dtor(&pdo);
+        }
+        if (read) {
+            zval value;
+            ZVAL_LONG(&value, ZEND_STRTOL(timeout, NULL, 10));
+            init_prop(return_value, "netWriteTimeout", &value);
+        } else {
+            cat_driver_error(&db);
+            zval closed;
+            zend_object *mapped = EG(exception);
+            EG(exception) = NULL;
+            if (pdo_call(&db, "close", &closed, 0, NULL, NULL)) zval_ptr_dtor(&closed);
+            zend_clear_exception();
+            EG(exception) = mapped;
+        }
+    }
     zval_ptr_dtor(&db);
 out_parsed:
     zval_ptr_dtor(&parsed);

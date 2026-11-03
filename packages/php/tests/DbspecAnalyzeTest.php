@@ -7,7 +7,7 @@ namespace Polyspec\Orm\Tests;
 // Syntax analysis (docs/spec/dbspec.md "Syntax analysis") through the PHP client: the focused case whose text holds an
 // invalid UTF-8 byte, which no recipe text can hold. The limit stop and the other focused cases are recipe cases
 // (analyze-limit-no-tokens and the analyze cases of tests/dbspec/canonical.json and tests/dbspec/invalid.json).
-// Requirements: DBS-134, DBS-135, DBS-138.
+// Requirements: DBS-134, DBS-135, DBS-138, DBS-144.
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;

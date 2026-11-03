@@ -50,7 +50,7 @@ fn require_dsn(var: &str) -> String {
 }
 
 /// Changes the path of `dsn` to `/<name>`. The query is kept as is.
-fn with_database(dsn: &str, name: &str) -> String {
+pub fn with_database(dsn: &str, name: &str) -> String {
     let mut url = match url::Url::parse(dsn) {
         Ok(url) => url,
         Err(e) => panic!("case database {name}: the admin DSN is not a URL: {e}"),

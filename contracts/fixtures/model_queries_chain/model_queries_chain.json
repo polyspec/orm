@@ -704,6 +704,98 @@
    ]
   },
   {
+   "id": "scalar_subquery_column_sums_the_correlated_rows",
+   "requirements": [
+    "DSL-74"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "aggregate": {
+          "agg": "sum",
+          "column": "read_count"
+         },
+         "where": {
+          "chain": [
+           [
+            "",
+            {
+             "user_seq": {
+              "eq": {
+               "outer": "seq"
+              }
+             }
+            }
+           ],
+           [
+            "and",
+            {
+             "service_seq": {
+              "int": "7"
+             }
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "as": "read_total"
+      }
+     ],
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "order": [
+      "seq"
+     ],
+     "pick": [
+      "seq",
+      "read_total"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "null_collection_key_is_refused_after_one_select",
    "requirements": [
     "PRT-35"
@@ -1012,6 +1104,896 @@
       },
       "sqlite": {
        "error": "COLUMN_UNSELECTED"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "group_rows_send_only_reads_and_sum_to_the_row_count",
+   "requirements": [
+    "INT-31"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "events.subscribe",
+     "connection": "db",
+     "as": "events"
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "is_close"
+      ]
+     },
+     "order": [
+      "is_close"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "is_close": false,
+         "row_count": 2
+        },
+        {
+         "is_close": true,
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "service_seq"
+      ]
+     },
+     "order": [
+      "service_seq"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "service_seq": 7,
+         "row_count": 3
+        },
+        {
+         "service_seq": 8,
+         "row_count": 1
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "Author",
+     "aggregate": {
+      "agg": "count",
+      "group_by": [
+       "price"
+      ]
+     },
+     "order": [
+      "price"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "price": null,
+         "row_count": 2
+        },
+        {
+         "price": "1.500",
+         "row_count": 2
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.count",
+     "connection": "db",
+     "model": "Author",
+     "expect": {
+      "mysql": {
+       "json": 4
+      },
+      "postgres": {
+       "json": 4
+      },
+      "sqlite": {
+       "json": 4
+      }
+     }
+    },
+    {
+     "op": "events.captured",
+     "ref": "events",
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a`"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`is_close` ORDER BY `a`.`is_close` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`service_seq` AS `a__service_seq`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT `a`.`price` AS `a__price`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`price` ORDER BY `a`.`price` ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM `author` AS `a`"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"is_close\" ORDER BY \"a\".\"is_close\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"price\" AS \"a__price\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"price\" ORDER BY \"a\".\"price\" ASC NULLS FIRST"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"is_close\" AS \"a__is_close\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"is_close\" ORDER BY \"a\".\"is_close\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT \"a\".\"price\" AS \"a__price\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"price\" ORDER BY \"a\".\"price\" ASC"
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         },
+         {
+          "object": [
+           [
+            "sql",
+            {
+             "text": "SELECT COUNT(*) FROM \"author\" AS \"a\""
+            }
+           ],
+           [
+            "binds",
+            {
+             "array": []
+            }
+           ],
+           [
+            "kind",
+            {
+             "text": "select"
+            }
+           ],
+           [
+            "tables",
+            {
+             "array": [
+              {
+               "text": "author"
+              }
+             ]
+            }
+           ],
+           [
+            "transaction",
+            {
+             "null": "int"
+            }
+           ],
+           [
+            "error",
+            {
+             "null": "text"
+            }
+           ]
+          ]
+         }
+        ]
+       }
       }
      }
     }

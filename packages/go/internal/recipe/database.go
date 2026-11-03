@@ -56,6 +56,7 @@ type databaseCase struct {
 
 // databaseStep holds the fields of every database op (scripts/features/schema/recipe.schema.json).
 type databaseStep struct {
+	UserFromDatabase string `json:"user_from_database"`
 	// Vectors is the file of dbspec.ddl_behavior, relative to the recipe, and Case the id of its case.
 	Vectors        string          `json:"vectors"`
 	Case           string          `json:"case"`
@@ -91,6 +92,16 @@ type databaseStep struct {
 	Expect    map[string]json.RawMessage `json:"expect"`
 	Schema    json.RawMessage            `json:"schema"`
 	Steps     []json.RawMessage          `json:"steps"`
+	// The fields of the dbspec apply ops (FCV-4): the lines of dbspec.plan, the pooler of dbspec.connect, and the chain, the
+	// counted event kind, the failure text and the nested steps of a command.
+	Lines   []string `json:"lines"`
+	Through string   `json:"through"`
+	Plans   []string `json:"plans"`
+	Count   []string      `json:"count"`
+	Detail  string        `json:"detail"`
+	Message string        `json:"message"`
+	Elapsed *applyElapsed `json:"elapsed"`
+	On      *applyOn      `json:"on"`
 	// Statements are the statements of utils.run (INT-150), which its one frame runs in order.
 	// MessageContains is the text that the message of the expected error of schema.add_tables_and_columns holds.
 	MessageContains string           `json:"message_contains"`
@@ -112,11 +123,11 @@ type databaseStep struct {
 	Column      string          `json:"column"`
 	Operation   string          `json:"operation"`
 	// The lock of a model.query and the options of a transaction.
-	Lock      string          `json:"lock"`
+	Lock string `json:"lock"`
 	// The generated key of utils.was_inserted (INT-52).
-	Sequence int64 `json:"sequence"`
-	Isolation string          `json:"isolation"`
-	ReadOnly  bool            `json:"read_only"`
+	Sequence  int64  `json:"sequence"`
+	Isolation string `json:"isolation"`
+	ReadOnly  bool   `json:"read_only"`
 	// The other options of a transaction: an absent retry passes 0 unless default_retry leaves it out, and the first
 	// conflicts attempts end with the public transaction conflict (INT-42, INT-43, INT-48).
 	TimeoutMs    int  `json:"timeout_ms"`
@@ -124,15 +135,20 @@ type databaseStep struct {
 	DefaultRetry bool `json:"default_retry"`
 	Conflicts    int  `json:"conflicts"`
 	// The connections of transaction.deadlock, and a model that names no connection (PLN-16).
-	Connections []string `json:"connections"`
-	Unconnected bool     `json:"unconnected"`
-	Amount    json.RawMessage `json:"amount"`
+	Connections []string        `json:"connections"`
+	Unconnected bool            `json:"unconnected"`
+	Amount      json.RawMessage `json:"amount"`
 	// The event fields (FCV-4): the subscription ref or the bound row, the kind that a failing subscriber refuses, the
 	// compare mode of the captured events, and whether a transaction callback fails after its steps.
 	Ref     json.RawMessage `json:"ref"`
 	Row     json.RawMessage `json:"row"`
 	Fail    bool            `json:"fail"`
 	Kind    string          `json:"kind"`
+	// The ORM error of a failing subscriber (INT-96).
+	Refusal *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"refusal"`
 	Compare string          `json:"compare"`
 	// The request hook and AES ops (FCV-4): the hooks of hook.install, the keyring of a model.connect and the keyring
 	// that utils.aes_status and utils.aes_rotate take.
@@ -184,7 +200,7 @@ type outcome struct {
 
 type databaseContext struct {
 	// attempts are the callback runs of the transaction step that ended last (transaction.attempts).
-	attempts int
+	attempts  int
 	t         *testing.T
 	ctx       context.Context
 	db        *orm.DB
@@ -199,6 +215,8 @@ type databaseContext struct {
 	bound     map[string]bound
 	// closers close the connections that model.connect opened, when the case ends.
 	closers []func() error
+	// applyStep is the step of the apply event whose handler runs nested steps; {step} of dbspec.exec is this number.
+	applyStep int
 	// records are the requests that a record action of the installed hook saw (hook.records).
 	records []hookRecord
 }
@@ -492,6 +510,20 @@ func runStepWith(s databaseStep, c *databaseContext, op func(databaseStep, *data
 		if holds, ok := expected["message_holds"].(string); ok && !strings.Contains(err.Error(), holds) {
 			return fmt.Errorf("error message %q does not hold %q", err.Error(), holds)
 		}
+		if want, ok := expected["rollback"]; ok {
+			var coded *orm.Error
+			if !errors.As(err, &coded) {
+				return fmt.Errorf("error %q is not coded", err.Error())
+			}
+			joined, ok := coded.Cause.(interface{ Unwrap() []error })
+			if !ok || len(joined.Unwrap()) != 2 {
+				return fmt.Errorf("error %q does not keep the callback and rollback errors", err.Error())
+			}
+			rollback := joined.Unwrap()[1]
+			if orm.ErrorCode(rollback) != want || !strings.Contains(err.Error(), rollback.Error()) {
+				return fmt.Errorf("error %q keeps the rollback error %q, want code %v", err.Error(), rollback.Error(), want)
+			}
+		}
 		if expected["driver_cause"] == true && errors.Unwrap(err) == nil {
 			return fmt.Errorf("error %q has no driver cause", err.Error())
 		}
@@ -764,7 +796,16 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		// The closed connection stays bound: its operations fail with CATALOG_CLOSED and send no statement.
 		return outcome{}, c.catalog.Close()
 	case "catalog.reconnect":
-		catalog, err := orm.ConnectCatalog(c.dsn)
+		dsn := c.dsn
+		if s.UserFromDatabase != "" {
+			match := mysqlCaseDSN.FindStringSubmatch(dsn)
+			name := match[2]
+			if len(name) > 28 {
+				name = name[len(name)-28:]
+			}
+			dsn = "mysql://" + s.UserFromDatabase + name + "@" + dsn[len("mysql://"+match[1]+"@"):]
+		}
+		catalog, err := orm.ConnectCatalog(dsn)
 		if err != nil {
 			return outcome{}, err
 		}
@@ -963,6 +1004,11 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "session.end":
+		if err := endSession(s.Table, c); err != nil {
+			return outcome{}, err
+		}
+		return okOutcome(), nil
 	case "transaction.attempts":
 		return countOutcome(int64(c.attempts)), nil
 	case "transaction.deadlock":
@@ -1049,6 +1095,9 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 	}
 	if out, handled, err := statementOp(s, c); handled {
 		return out, err
+	}
+	if applyOps[s.Op] {
+		return applyOp(s, c)
 	}
 	return requestOp(s, c)
 }
@@ -1159,10 +1208,40 @@ func okOutcome() outcome {
 }
 
 // runNested runs the nested steps of a statements.count or transaction op, each with its own expect (FCV-4).
+// endSession ends the server session that holds a lock on table in the case database (session.end, CFG-15). It connects
+// to that database through the server DSN, not a pooler, which may handle KILL on its own.
+func endSession(table string, c *databaseContext) error {
+	variable := "ORM_TEST_" + strings.ToUpper(c.database) + "_SERVER_DSN"
+	server := os.Getenv(variable)
+	if server == "" {
+		return fmt.Errorf("%s is required; database tests never skip", variable)
+	}
+	raw := testdb.Open(c.t, c.database, testdb.Retarget(c.t, server, testdb.DatabaseOf(c.t, c.dsn)))
+	defer testcase.Close(c.t, raw)
+	var id int64
+	if c.database == "postgres" {
+		if err := raw.QueryRow(fmt.Sprintf(`SELECT l.pid FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND c.relname = '%s' AND l.pid <> pg_backend_pid() LIMIT 1`, table)).Scan(&id); err != nil {
+			return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+		}
+		_, err := raw.Exec(`SELECT pg_terminate_backend($1, 5000)`, id)
+		return err
+	}
+	if err := raw.QueryRow(fmt.Sprintf(`SELECT t.PROCESSLIST_ID FROM performance_schema.data_locks l JOIN performance_schema.threads t ON t.THREAD_ID = l.THREAD_ID WHERE l.OBJECT_SCHEMA = DATABASE() AND l.OBJECT_NAME = '%s' LIMIT 1`, table)).Scan(&id); err != nil {
+		return fmt.Errorf("the transaction session holds a lock on %s: %w", table, err)
+	}
+	_, err := raw.Exec(fmt.Sprintf("KILL %d", id))
+	return err
+}
+
 func runNested(raw []json.RawMessage, c *databaseContext) error {
 	for index, nested := range raw {
 		op, err := runRawStep(nested, c)
 		if err != nil {
+			// The error of a public call reaches the enclosing callback as the call returned it, so that a ROLLBACK
+			// message names it (CFG-15).
+			if orm.ErrorCode(err) != "" {
+				return err
+			}
 			return fmt.Errorf("nested step %d (%s): %w", index, op, err)
 		}
 	}
