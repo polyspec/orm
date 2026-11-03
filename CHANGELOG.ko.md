@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8cec839ad9d586a10fb7513e7d4b7e26b4d51763af8291b447d4edddb1c473d6 -->
+<!-- source-sha256: 36f8bbf9ad4842c9826d78cd92969ddb8acb133e6a8fa84a91aaabcfb07aedc0 -->
 # 변경 이력
 
 ## Unreleased
 
+- constraints_and_relations의 Python과 Rust native 시험을 없앤다. recipe가 그 case를 담는다 (#T334-3-4-21)
 - TypeScript는 `transactionConflict(message)`를, Python은 `transaction_conflict(message)`를 내보낸다. 이는 INT-48의 재시도 대상 `DEADLOCK` 오류이며 지금까지 다른 runtime에만 있었다. 두 runtime의 utility가 이를 쓰고 recipe helper가 이를 호출한다. recipe `model_queries_chain`은 join한 child의 scalar SUM을 INT-160의 정수로 읽고 NULL collection key의 메시지를 비교한다.
 - recipe `tests/dbspec/runtime-model.json`과 새 op `dbspec.runtime_model`은 Rust `dbspec_runtime.rs`가 entity 이름, 테이블, key, setting, field 값에 대해 검사하던 내용을 담고 여섯 런타임이 모두 실행한다(DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set`은 manifest text를 다시 읽어 그 hash가 나오는지도 검사한다(DBS-100, DBS-103). Rust만 노출하는 것은 native로 남고 FCV-2에 적었다.
 - recipe `tests/planner/runtime-model.json`은 Go `runtime_model_test.go`가 담던 내용을 담고 여섯 런타임이 모두 실행한다. i16 read와 plus, default 또는 빠진 필수 컬럼의 insert(PRT-81), audit 쓰기의 audit slot(PRT-32, PRT-82)이다. `planner.compile`은 audit slot을 `name`과 함께, `assemble_types`이면 출력 타입도 비교한다.

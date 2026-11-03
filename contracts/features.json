@@ -9237,13 +9237,23 @@
         "packages/ts/tests/driver-error.mjs",
         "packages/go/orm/recipe_constraints_and_relations_test.go",
         "packages/go/orm/recipe_immutable_write_test.go",
-        "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
         "contracts/fixtures/refusal.dbs",
         "packages/python/tests/test_driver_errors.py",
-        "packages/python/tests/coverage_constraints_and_relations.py",
         "packages/rust/orm/src/lib.rs",
         "packages/rust/orm/tests/unit/driver_cause.rs",
-        "packages/php-ext/tests/DbspecRenderTestExtensionTest.php"
+        "packages/php-ext/tests/DbspecRenderTestExtensionTest.php",
+        "packages/python/tests/test_constraints_and_relations_mysql.py",
+        "packages/python/tests/test_constraints_and_relations_postgres.py",
+        "packages/python/tests/test_constraints_and_relations_sqlite.py",
+        "packages/python/tests/test_immutable_write_mysql.py",
+        "packages/python/tests/test_immutable_write_postgres.py",
+        "packages/python/tests/test_immutable_write_sqlite.py",
+        "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+        "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
+        "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+        "packages/rust/tests/tests/immutable_write_mysql.rs",
+        "packages/rust/tests/tests/immutable_write_postgres.rs",
+        "packages/rust/tests/tests/immutable_write_sqlite.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -9486,67 +9496,77 @@
             ]
           },
           "rust": {
-            "part": "packages/rust",
+            "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs"
+              "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
+              "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
+              "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
+              "packages/rust/tests/tests/immutable_write_mysql.rs",
+              "packages/rust/tests/tests/immutable_write_postgres.rs",
+              "packages/rust/tests/tests/immutable_write_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/constraints_and_relations_mysql.rs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/immutable_write_mysql.rs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
-                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
-                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/constraints_and_relations_postgres.rs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/immutable_write_postgres.rs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
-                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
-                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+                  "test": "packages/rust/tests/tests/constraints_and_relations_sqlite.rs",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/immutable_write_sqlite.rs",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
-                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
-                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ]
             },
             "inputs": [
               "contracts/fixtures/audit.dbs",
               "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
               "contracts/fixtures/refusal.dbs"
             ]
           },
@@ -9628,51 +9648,75 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_constraints_and_relations.py"
+              "packages/python/tests/test_constraints_and_relations_mysql.py",
+              "packages/python/tests/test_constraints_and_relations_postgres.py",
+              "packages/python/tests/test_constraints_and_relations_sqlite.py",
+              "packages/python/tests/test_immutable_write_mysql.py",
+              "packages/python/tests/test_immutable_write_postgres.py",
+              "packages/python/tests/test_immutable_write_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "test": "packages/python/tests/test_constraints_and_relations_mysql.py",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_immutable_write_mysql.py",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "test": "packages/python/tests/test_constraints_and_relations_postgres.py",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_immutable_write_postgres.py",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "test": "packages/python/tests/test_constraints_and_relations_sqlite.py",
                   "cases": [
                     "constraint_errors",
-                    "external_relation",
+                    "external_relation"
+                  ],
+                  "recipe": "contracts/fixtures/constraints_and_relations/constraints_and_relations.json"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_immutable_write_sqlite.py",
+                  "cases": [
                     "immutable_write"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/immutable_write/immutable_write.json"
                 }
               ]
             },
             "inputs": [
-              "packages/python/tests/test_sqlite.py",
               "contracts/fixtures/audit.dbs",
               "contracts/fixtures/audit_columns.dbs",
-              "contracts/fixtures/restore.dbs",
               "contracts/fixtures/refusal.dbs"
             ]
           },
