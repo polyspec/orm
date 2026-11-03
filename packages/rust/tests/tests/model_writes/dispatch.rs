@@ -37,6 +37,11 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             let count = account(db).creates(rows, batch(step)?).await.map_err(fail)?;
             Ok(json!({ "value": { "int": count.to_string() } }))
         }
+        // A set of the key and the named columns, with no read before it, then one save.
+        "model.save" if step["model"] == "Author" => {
+            let values = &step["values"];
+            Author::new().connect(db).set_seq(int(&values["seq"])?).set_name(text(&values["name"])?).save().await.map(|_| json!({})).map_err(fail)
+        }
         "model.save" => set_account(db, &step["values"])?.save().await.map(|_| json!({})).map_err(fail),
         "model.duplicate_create" => {
             let mut row = set_account(db, &step["values"])?.duplication(set_account(db, &step["duplication"])?);
@@ -83,7 +88,7 @@ async fn run(db: &Db, op: &str, step: &Value) -> Result<Value, String> {
             let rows = if step["model"] == "Author" {
                 match Author::new().connect(db).get_by_seq(int(&step["key"]["seq"])?).await.map_err(fail)? {
                     None => Vec::new(),
-                    Some(row) => vec![cells(&wanted, |column| author_cell(&row, column))?],
+                    Some(row) => vec![cells(&wanted, |column| author_field(&row, column))?],
                 }
             } else {
                 match find_account(db, &step["key"]).await? {
@@ -370,13 +375,7 @@ fn author_field(row: &Author, column: &str) -> Result<Value, String> {
         "seq" => Ok(json!({ "int": row.get_seq().map_err(fail)?.to_string() })),
         "name" => Ok(json!({ "text": row.get_name().map_err(fail)? })),
         "read_count" => Ok(json!({ "int": row.get_read_count().map_err(fail)?.to_string() })),
-        other => Err(format!("Author column {other} has no recipe getter")),
-    }
-}
-
-fn author_cell(row: &Author, column: &str) -> Result<Value, String> {
-    match column {
-        "read_count" => Ok(json!({ "int": row.get_read_count().map_err(fail)?.to_string() })),
+        "user_seq" => Ok(json!({ "int": row.get_user_seq().map_err(fail)?.to_string() })),
         other => Err(format!("Author column {other} has no recipe getter")),
     }
 }

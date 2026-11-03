@@ -186,6 +186,12 @@ export function modelOps({ native, databaseValue, stepArgument }) {
       return { value: { int: String(await new CompositeAccount().connect(db).creates(rows, s.batch)) } };
     },
     async 'model.save'(s, context) {
+      if (s.model === 'Author') {
+        // A set of the key and the named columns, with no read before it, then one save.
+        const values = objectValues(s.values, context);
+        await new Author().connect(connection(s.connection, context)).setSeq(values.seq).setName(values.name).save();
+        return {};
+      }
       await compositeSet(connection(s.connection, context), objectValues(s.values, context)).save();
       return {};
     },

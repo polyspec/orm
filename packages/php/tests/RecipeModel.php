@@ -454,6 +454,11 @@ trait RecipeModel
     {
         $Author = \Polyspec\Orm\Tests\Model\Author::class;
         switch ($s['op']) {
+            case 'model.save':
+                // A set of the key and the named columns, with no read before it, then one save.
+                $values = self::modelValues($s['values'], $context);
+                (new $Author())($db)->setSeq($values['seq'])->setName($values['name'])->save();
+                return [];
             case 'model.query':
                 $model = self::authorChain($db, self::modelValues($s['where'] ?? null, $context), $s['columns']);
                 foreach ($s['order'] ?? [] as $column) {

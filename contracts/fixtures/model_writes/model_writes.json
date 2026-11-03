@@ -702,6 +702,202 @@
       ]
     },
     {
+      "id": "save_keeps_the_stored_value_of_an_unassigned_column",
+      "requirements": [
+        "DSL-109"
+      ],
+      "seed": {
+        "rows": {
+          "user": [
+            {
+              "name": {
+                "text": "user-1"
+              }
+            }
+          ],
+          "service": [
+            {
+              "name": {
+                "text": "service-1"
+              }
+            }
+          ],
+          "service_region": [
+            {
+              "service_seq": {
+                "int": "1"
+              },
+              "name": {
+                "text": "region-1"
+              }
+            }
+          ],
+          "service_member": [
+            {
+              "service_seq": {
+                "int": "1"
+              },
+              "user_seq": {
+                "int": "1"
+              }
+            }
+          ],
+          "author": [
+            {
+              "name": {
+                "text": "author-1"
+              },
+              "start_dt": {
+                "datetime": "2026-06-01 00:00:00.000000"
+              },
+              "read_count": {
+                "int": "1"
+              },
+              "user_seq": {
+                "int": "1"
+              },
+              "service_seq": {
+                "int": "1"
+              },
+              "service_region_seq": {
+                "int": "1"
+              },
+              "service_member_seq": {
+                "int": "1"
+              },
+              "end_dt": {
+                "datetime": "2026-12-31 00:00:00.000000"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": [
+            "name",
+            "user_seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "author-1"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "model.save",
+          "connection": "db",
+          "model": "Author",
+          "values": {
+            "seq": {
+              "int": "1"
+            },
+            "name": {
+              "text": "resaved"
+            }
+          }
+        },
+        {
+          "op": "model.get_by",
+          "connection": "db",
+          "model": "Author",
+          "key": {
+            "seq": {
+              "int": "1"
+            }
+          },
+          "columns": [
+            "name",
+            "user_seq"
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "resaved"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "resaved"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "resaved"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "arithmetic_plus_and_minus",
       "requirements": [
         "PLN-26"

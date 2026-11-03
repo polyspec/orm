@@ -296,6 +296,13 @@ def model_ops(native, database_value, step_argument):
         return {"value": {"int": str(count)}}
 
     def model_save(step, context):
+        if step["model"] == "Author":
+            # A set of the key and the named columns, with no read before it, then one save.
+            values = values_of(step["values"], context)
+            models.Author().connect(connection(step["connection"], context)).set_seq(
+                values["seq"]
+            ).set_name(values["name"]).save()
+            return {}
         composite_set(
             connection(step["connection"], context), values_of(step["values"], context)
         ).save()

@@ -813,6 +813,22 @@ func authorOp(s databaseStep, c *databaseContext, db *orm.DB) (outcome, error) {
 		return m, nil
 	}
 	switch s.Op {
+	case "model.save":
+		// A set of the key and the named columns, with no read before it, then one Save.
+		values, err := modelValues(s.Values, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		m := model.Author().Connect(db)
+		err = setColumns("Author", values, map[string]columnSetter{
+			"seq":  int64Setter(m.SetSeq),
+			"name": stringSetter(m.SetName),
+		})
+		if err != nil {
+			return outcome{}, err
+		}
+		_, err = m.Save()
+		return outcome{api: m, fields: map[string]any{}}, err
 	case "model.count":
 		where, err := modelValues(s.Where, c)
 		if err != nil {
