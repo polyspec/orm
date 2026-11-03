@@ -382,6 +382,7 @@
       "compile",
       "connection",
       "expect",
+      "expect_unnamed",
       "from",
       "group_value",
       "items",
@@ -676,12 +677,6 @@
       "name",
       "op"
     ],
-    "db.notify": [
-      "channel",
-      "connection",
-      "op",
-      "payload"
-    ],
     "utils.set_local": [
       "connection",
       "name",
@@ -693,6 +688,12 @@
       "expect",
       "name",
       "op"
+    ],
+    "db.notify": [
+      "channel",
+      "connection",
+      "op",
+      "payload"
     ],
     "utils.was_inserted": [
       "connection",

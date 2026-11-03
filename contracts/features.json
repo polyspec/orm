@@ -3948,7 +3948,26 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "transactions"
+          "model_write_outside_transaction_is_config",
+          "callback_success_commits",
+          "callback_failure_rolls_back",
+          "savepoint_failure_rolls_back_only_the_inner_transaction",
+          "nested_options_are_config",
+          "row_lock_inside_transaction_is_accepted",
+          "unconnected_model_outside_a_transaction_is_config",
+          "unconnected_model_joins_the_transaction",
+          "every_row_lock_needs_a_transaction",
+          "a_nested_timeout_is_config_before_its_callback",
+          "a_nested_retry_is_accepted_and_ignored",
+          "every_isolation_level_runs",
+          "a_write_in_a_read_only_transaction_is_refused",
+          "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+          "a_locked_statement_ends_at_timeout_ms",
+          "a_conflict_runs_the_whole_callback_again",
+          "the_default_retry_is_three",
+          "retry_zero_returns_the_deadlock",
+          "a_locked_sqlite_writer_is_canceled_and_not_retried",
+          "a_real_deadlock_is_retried_and_both_flows_commit"
         ],
         "owners": {
           "go": {
@@ -3965,12 +3984,27 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "TestRecipeTransactionsMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsMysql"
                 }
               ],
               "postgres": [
@@ -3978,12 +4012,28 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "TestRecipeTransactionsPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsPostgres"
                 }
               ],
               "sqlite": [
@@ -3991,12 +4041,27 @@
                   "runner": "go",
                   "test": "packages/go/orm/recipe_transactions_test.go",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transactions": "TestRecipeTransactionsSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "TestRecipeTransactionsSqlite"
                 }
               ]
             }
@@ -4015,12 +4080,27 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
@@ -4028,12 +4108,28 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -4041,12 +4137,27 @@
                   "runner": "php",
                   "test": "packages/php/tests/TransactionsRecipeTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transactions": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
@@ -4067,12 +4178,26 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_mysql.rs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "transactions_mysql::transactions"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "postgres": [
@@ -4080,12 +4205,27 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_postgres.rs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "transactions_postgres::transactions"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ],
               "sqlite": [
@@ -4093,12 +4233,26 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/transactions_sqlite.rs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transactions": "transactions_sqlite::transactions"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 }
               ]
             }
@@ -4120,15 +4274,33 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-mysql.test.mjs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transactions"
+                    "transaction_rollback",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4138,15 +4310,34 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-postgres.test.mjs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transactions"
+                    "transaction_rollback",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4156,15 +4347,33 @@
                   "runner": "node",
                   "test": "packages/ts/tests/transactions-sqlite.test.mjs",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
-                    "transactions"
+                    "transaction_rollback",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -4188,15 +4397,32 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_mysql.py",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transactions"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -4206,15 +4432,33 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_postgres.py",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transactions"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -4224,15 +4468,32 @@
                   "runner": "python",
                   "test": "packages/python/tests/test_transactions_sqlite.py",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json"
                 },
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
-                    "transactions"
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -4254,12 +4515,27 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "testMysql"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testMysql"
                 }
               ],
               "postgres": [
@@ -4267,12 +4543,28 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_locked_statement_ends_at_timeout_ms",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_real_deadlock_is_retried_and_both_flows_commit"
                   ],
-                  "symbols": {
-                    "transactions": "testPostgres"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testPostgres"
                 }
               ],
               "sqlite": [
@@ -4280,12 +4572,27 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/TransactionsRecipeTestExtensionTest.php",
                   "cases": [
-                    "transactions"
+                    "model_write_outside_transaction_is_config",
+                    "callback_success_commits",
+                    "callback_failure_rolls_back",
+                    "savepoint_failure_rolls_back_only_the_inner_transaction",
+                    "nested_options_are_config",
+                    "row_lock_inside_transaction_is_accepted",
+                    "unconnected_model_outside_a_transaction_is_config",
+                    "unconnected_model_joins_the_transaction",
+                    "every_row_lock_needs_a_transaction",
+                    "a_nested_timeout_is_config_before_its_callback",
+                    "a_nested_retry_is_accepted_and_ignored",
+                    "every_isolation_level_runs",
+                    "a_write_in_a_read_only_transaction_is_refused",
+                    "timeout_ms_runs_on_postgres_and_is_refused_elsewhere",
+                    "a_conflict_runs_the_whole_callback_again",
+                    "the_default_retry_is_three",
+                    "retry_zero_returns_the_deadlock",
+                    "a_locked_sqlite_writer_is_canceled_and_not_retried"
                   ],
-                  "symbols": {
-                    "transactions": "testSqlite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "recipe": "contracts/fixtures/transactions/transactions.json",
+                  "symbol": "testSqlite"
                 }
               ]
             }
