@@ -4,6 +4,7 @@
 ## Unreleased
 
 - CR15-F: `generated_key_lifecycle` inserts beside a trigger that adds a row with a higher key on PostgreSQL and SQLite, so a key read from the table fails it; INT-123 states where a generated key comes from.
+- `clock_microseconds`, `clock_soft_delete_microseconds` and `now_defaults` hold a stored clock value between a wall-clock read before the write and one after it, through the new step `clock.read`, where they allowed one minute of the database clock.
 - CR15-F: the rows of a stored table in descending order, with a NULL, are steps of `grid_column_and_row_order`; the Go test keeps the plan of its wrapper (SCH-6b), the Rust helper test is removed, and the Rust commit classifier is a single-owner unit (INT-118a).
 - `performance_gate` reads the `BENCH_<DATABASE>_DSN` of the database that each class names, and no gate, `perf-check` or `php-ext-memory-check` reads a feature variable; one unknown type has one message in every runtime, `type "<word>" is not a dbspec type` (#T334-3-12-6)
 - A read of a described table returns a value that is not valid UTF-8 as its bytes in all six runtimes, and TypeScript takes the whole answer of such a read from one execution.
