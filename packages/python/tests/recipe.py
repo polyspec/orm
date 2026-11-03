@@ -42,6 +42,7 @@ from polyspec.orm import (
     register_model,
 )
 from polyspec.orm.engine.model import field_of
+from polyspec.orm.engine.params import param_uses
 from polyspec.orm.codec import (
     CodecError,
     blind_index,
@@ -165,6 +166,12 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "ir.param_uses":
+                    _param_uses(step, ROOT / Path(path).parent, database)
+                    continue
+                if step["op"] == "planner.columns":
+                    _planner_columns(step, ROOT / Path(path).parent, database)
                     continue
                 if step["op"] == "generator.generate":
                     check_generator(step, ROOT / Path(path).parent, database)
@@ -1405,6 +1412,64 @@ def _messages(diagnostics, rule: str) -> list:
     return [d.message for d in diagnostics]
 
 
+def _plan_request(step: dict, recipe_dir: Path) -> tuple[Any, dict]:
+    """The model of the schema of a planner step and its input with the manifest_hash of that schema."""
+    schema = (recipe_dir / step["schema"]).resolve()
+    if schema not in _plan_models:
+        _plan_models[schema] = _validation_model(schema)
+    model = _plan_models[schema]
+    return model, dict(
+        json.loads(json.dumps(step["input"])), manifest_hash=model.manifest_hash
+    )
+
+
+def _param_uses(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the uses of each parameter of a validated request (DIA-31, PRT-67)."""
+    model, request = _plan_request(step, recipe_dir)
+    validate(model, request)
+    uses = [
+        [
+            {"type": use.type}
+            if use.column is None
+            else {
+                "type": use.type,
+                **({"assign": True} if use.assign else {}),
+                "column": use.column.name,
+                "length": use.column.length,
+                "null": use.column.nullable,
+                "precision": use.column.precision,
+                "scale": use.column.scale,
+            }
+            for use in parameter
+        ]
+        for parameter in param_uses(model, request)
+    ]
+    want = step["expect"][database]["value"]
+    if {"uses": uses} != want:
+        raise AssertionError(f"ir.param_uses: got {uses}, want {want}")
+
+
+def _planner_columns(step: dict, recipe_dir: Path, database: str) -> None:
+    """States the output columns that the names of the step select from the first statement of the plan of each dialect:
+    their type and whether they are hidden (PRT-69, DIA-33)."""
+    model, request = _plan_request(step, recipe_dir)
+    want = step["expect"][database]["value"]
+    for dialect in _PLAN_DIALECTS:
+        assemble = Engine(model, dialect).compile(request)["steps"][0]["assemble"]
+        got = [
+            {
+                "name": name,
+                "type": column["type"],
+                "hidden": column.get("hidden", False),
+            }
+            for name in step["names"]
+            for column in assemble["columns"]
+            if column["name"] == name
+        ]
+        if got != want:
+            raise AssertionError(f"planner.columns {dialect}: got {got}, want {want}")
+
+
 def _validate(step: dict, model: Any, database: str) -> None:
     """Gives the request of an ir.validate step to the validator, with the manifest_hash of the schema added, and checks the
     outcome of the expect of database: {value: {bool: true}} for an accepted request, {error: CODE} for a request that fails with CODE."""
@@ -1417,7 +1482,13 @@ def _validate(step: dict, model: Any, database: str) -> None:
         raise AssertionError("request already holds manifest_hash")
     got = None
     try:
-        validate(model, dict(step["request"], manifest_hash=model.manifest_hash))
+        validate(
+            model,
+            dict(
+                step["request"],
+                manifest_hash=step.get("manifest_hash", model.manifest_hash),
+            ),
+        )
     except OrmError as error:
         got = error.code
     if "error" in outcome:
@@ -1543,6 +1614,15 @@ def _run(step: dict, bound: dict, database: str) -> None:
         return
     if type(result) is _Failed:
         raise AssertionError(f"unexpected error {result.error!r}")
+    if "bytes_prefix_hex" in expect:
+        # An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        if (
+            not isinstance(result, bytes)
+            or len(result) != expect["bytes_length"]
+            or not result.hex().startswith(expect["bytes_prefix_hex"])
+        ):
+            raise AssertionError(f"cell {result!r}, want {expect}")
+        return
     want = expect["value"]
     if not decoded:
         _compare_cell(want, result)
@@ -3097,6 +3177,25 @@ def _op_aes_rotate(step: dict, context: dict) -> dict:
 _DATABASE_OPS = {
     "schema.install": lambda step, context: _op_schema_install(step, context),
     "schema.register": lambda step, context: _op_schema_register(step, context),
+    "schema.empty": lambda step, context: {
+        "value": {"bool": context["db"].utils().schema().empty()}
+    },
+    "schema.exists": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .exists(_inspected_schema(step["schema"], context))
+        }
+    },
+    "schema.installed": lambda step, context: {
+        "value": {
+            "bool": context["db"]
+            .utils()
+            .schema()
+            .installed(_inspected_schema(step["schema"], context), step["table"])
+        }
+    },
     "schema.connect": lambda step, context: _op_schema_connect(step, context),
     "schema.add_tables_and_columns": lambda step, context: _op_schema_add_tables(
         step, context
@@ -3394,6 +3493,15 @@ def _schema_argument(arg: dict, context: dict) -> Schema:
     if replace is not None:
         text = text.replace(replace["from"], replace["to"])
     return Schema(text, manifest.manifest_hash, manifest.external_text)
+
+
+def _inspected_schema(value, context: dict) -> str:
+    """The schema argument of schema.exists and schema.installed: the name, or that of the database, where $database is
+    the name of the case database."""
+    name = value if isinstance(value, str) else value[context["database"]]
+    if name == "$database":
+        return context["dsn"].split("?", 1)[0].rsplit("/", 1)[1]
+    return name
 
 
 def _op_schema_install(step: dict, context: dict) -> dict:

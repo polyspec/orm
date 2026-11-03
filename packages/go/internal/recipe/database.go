@@ -809,6 +809,32 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return okOutcome(), nil
+	case "schema.empty":
+		empty, err := c.db.Utils().Schema().Empty()
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": empty}}}, nil
+	case "schema.exists":
+		name, err := inspectedSchema(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		exists, err := c.db.Utils().Schema().Exists(name)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": exists}}}, nil
+	case "schema.installed":
+		name, err := inspectedSchema(s.Schema, c)
+		if err != nil {
+			return outcome{}, err
+		}
+		installed, err := c.db.Utils().Schema().Installed(name, s.Table)
+		if err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{"value": map[string]any{"bool": installed}}}, nil
 	case "schema.connect":
 		schema, err := schemaArgument(s.Schema, c)
 		if err != nil {
@@ -1507,4 +1533,22 @@ func normalized(value any) any {
 		return out
 	}
 	return value
+}
+
+// inspectedSchema is the schema argument of schema.exists and schema.installed: the name, or that of the database, where
+// $database is the name of the case database.
+func inspectedSchema(raw json.RawMessage, c *databaseContext) (string, error) {
+	var name string
+	if err := json.Unmarshal(raw, &name); err != nil {
+		var names map[string]string
+		if err := json.Unmarshal(raw, &names); err != nil {
+			return "", err
+		}
+		name = names[c.database]
+	}
+	if name != "$database" {
+		return name, nil
+	}
+	path, _, _ := strings.Cut(c.dsn, "?")
+	return path[strings.LastIndex(path, "/")+1:], nil
 }

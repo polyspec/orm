@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 8aa8f33dffe0e7e6b15e8928436d0fbbbb85d40c6a7d5a6d4bb0fa05c4c583aa -->
+<!-- source-sha256: 5f6f7b21affc97527b87d6c9ccbb3092948f3937cf1a4baba1e6cfe7ede93dc9 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -11,7 +11,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 - **DIA-5** `Lb` — MySQL 8.0.2+ / MariaDB 10.2+: `LIKE` (binary collation `utf8mb4_0900_bin`, code point로 비교한다. `LIKE BINARY`는 MySQL 8.0.27부터 deprecated다. probe `mysql.like.binary_collation_code_point`); PostgreSQL 12+: `LIKE`; SQLite 3.46+: `instr(col, ?) > 0`
 - **DIA-6** `Fulltext` / `FulltextBoolean` — MySQL 8.0.2+ / MariaDB 10.2+: `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized by the transform `fulltext_boolean` (PRT-32): split the value on whitespace and drop empty terms; remove the characters `+ - < > ( ) ~ * " @` from each term and drop a term that becomes empty; prefix every term with `+` and suffix the last term with `*`; join the terms with single spaces; a value with no term fails with `IR_INVALID`; PostgreSQL 12+: `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, 값은 transform 없이 그대로 bind한다. 두 함수 모두 항 주변의 공백을 건너뛰기 때문이다; SQLite 3.46+: **rejected** (FTS5 needs virtual tables)
 - **DIA-7** `forceIndex<Name>` — MySQL 8.0.2+ / MariaDB 10.2+: `FORCE INDEX (name)`; PostgreSQL 12+: ignored (no hints); SQLite 3.46+: `INDEXED BY "name"`
-- **DIA-8** insert id — MySQL 8.0.2+ / MariaDB 10.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`
+- **DIA-8** insert id — MySQL 8.0.2+ / MariaDB 10.2+: `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`); PostgreSQL 12+: `RETURNING pk`; SQLite 3.46+: `RETURNING pk`; 여러 행 insert(`rows`, PRT-5)는 insert id를 알리지 않으므로 `RETURNING`이 없다
 - **DIA-9** `duplication(model)` — MySQL 8.0.2+ / MariaDB 10.2+: `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다. MySQL은 아무 unique key에서나 행과 만나며(`mysql.upsert.any_unique_key`), NOT NULL unique key가 먼저다(`mysql.upsert.not_null_unique_first`)); PostgreSQL 12+: `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다. 다른 unique key에서 만나는 행은 unique 위반이다, `postgres.upsert.other_key_conflicts`); SQLite 3.46+: PostgreSQL과 같다(`sqlite.upsert.other_key_conflicts`). conformance vector `upsert_one_key`는 세 database에서 같은 결과를 준다
 - **DIA-10** `groupLimit(n)` — MySQL 8.0.2+ / MariaDB 10.2+: `ROW_NUMBER() OVER (…)`; PostgreSQL 12+: same; SQLite 3.46+: same
 - **DIA-11** `tuple<ColA>With<ColB>` — MySQL 8.0.2+ / MariaDB 10.2+: `(a, b) IN ((?, ?), …)`; PostgreSQL 12+: same; SQLite 3.46+: `(a, b) IN (VALUES (?, ?), …)`

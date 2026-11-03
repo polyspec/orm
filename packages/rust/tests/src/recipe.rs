@@ -227,6 +227,8 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "keyring.versions" => return keyring_versions(step, database),
         "markdown.builder" => return markdown_builder(step, database),
         "planner.compile" => return planner_compile(step, database, dir),
+        "ir.param_uses" => return ir_param_uses(step, database, dir),
+        "planner.columns" => return planner_columns(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
         "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
@@ -297,6 +299,16 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
             Err((got, _)) if got == code => Ok(()),
             Err((got, message)) => Err(format!("error {got} ({message}), want {code}")),
             Ok(_) => Err(format!("error none, want {code}")),
+        };
+    }
+    if let Some(prefix) = expect["bytes_prefix_hex"].as_str() {
+        // An envelope has a random nonce, so its form is its prefix and its length (COD-5).
+        let length = expect["bytes_length"].as_u64().and_then(|n| usize::try_from(n).ok());
+        return match outcome {
+            Ok(Produced::Written(Param::Bytes(bytes))) if Some(bytes.len()) == length && hex_text(&bytes).starts_with(prefix) => Ok(()),
+            Ok(Produced::Written(Param::Bytes(bytes))) => Err(format!("cell {}, want {length:?} bytes with the prefix {prefix}", hex_text(&bytes))),
+            Err((_, message)) => Err(format!("unexpected error {message}")),
+            Ok(_) => Err(format!("a cell of bytes, want the prefix {prefix}")),
         };
     }
     let want = &expect["value"];
@@ -376,6 +388,42 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     Ok(())
 }
 
+/// The ir.param_uses op (FCV-4): the uses of each parameter of a validated request (DIA-31, PRT-67).
+fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    engine::validate(&manifest, &input).map_err(|error| error.to_string())?;
+    let got = json!({"uses": polyspec_orm::testing::param_uses(&manifest, &input).map_err(|error| error.to_string())?});
+    if got != step["expect"][database]["value"] {
+        return Err(format!("ir.param_uses: got {got}, want {}", step["expect"][database]["value"]));
+    }
+    Ok(())
+}
+
+/// The planner.columns op (FCV-4): the output columns that `names` select from the first statement of the plan of each dialect,
+/// with their type and whether they are hidden (PRT-69, DIA-33).
+fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
+    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    let names: Vec<&str> = step["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
+    for (name, dialect) in PLAN_DIALECTS {
+        let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
+        let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
+        let mut got = Vec::new();
+        for wanted in &names {
+            for column in &assemble.columns {
+                if column.name == *wanted {
+                    got.push(json!({"name": wanted, "type": column.typ, "hidden": column.hidden}));
+                }
+            }
+        }
+        if Value::Array(got.clone()) != step["expect"][database]["value"] {
+            return Err(format!("planner.columns {name}: got {got:?}, want {}", step["expect"][database]["value"]));
+        }
+    }
+    Ok(())
+}
+
 /// The ir.validate op (FCV-4): the step builds its request from its JSON with the manifest hash of the bench schema, then validates
 /// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
 /// true}} for an accepted request.
@@ -385,7 +433,8 @@ fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
         return Err("the request already holds manifest_hash".to_owned());
     }
     let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
-    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], &manifest.manifest_hash));
+    let manifest_hash = step["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
+    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], manifest_hash));
     let got: Result<(), String> = match built {
         Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
         Err(payload) => {
@@ -1840,7 +1889,7 @@ fn equal(got: &Value, want: &Value, ordered: bool) -> bool {
 }
 
 /// The database path (FCV-3 and FCV-4): each case runs on a case database of its own through the public catalog API.
-pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture};
+pub use database::{database_trials, database_trials_with_models, database_trials_written_order, ModelDispatcher, ModelFuture, CASE_CONNECTION};
 
 /// The member in which a step of the table path keeps the written order of an object, since serde_json sorts the keys of
 /// its objects and a column list is written in the order of the recipe (FCV-4).
@@ -1911,6 +1960,9 @@ mod database {
     }
 
     /// The boxed future of a model op or of model.connect: its fields, or the error text, which begins with its code (FCV-4).
+    /// The name under which a dispatcher holds the case connection for the model ops that name no connection.
+    pub const CASE_CONNECTION: &str = "case";
+
     pub type ModelFuture<'a> = Pin<Box<dyn Future<Output = Result<Value, String>> + 'a>>;
 
     /// The generated models of a database case (FCV-4). model.connect opens the connection that its step names with `as`;
@@ -1929,6 +1981,8 @@ mod database {
         fn call<'a>(&'a mut self, op: &'a str, connection: &'a str, step: &'a Value) -> ModelFuture<'a>;
         /// Closes the connections that the case opened.
         fn close<'a>(&'a mut self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+        /// Holds the case connection under `name` for the model ops that name no connection; the case closes it, not the dispatcher.
+        fn adopt(&mut self, _name: &str, _db: Db) {}
         /// The connection `name` that model.connect opened, for the events and transaction ops; none by default.
         fn db(&self, _name: &str) -> Option<Db> {
             None
@@ -2572,6 +2626,16 @@ mod database {
                 context.db.utils().schema().register(&schema).map_err(orm)?;
                 Output::fields(ok_value())
             }
+            "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),
+            "schema.exists" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().exists(&name).await.map_err(orm)? } }))
+            }
+            "schema.installed" => {
+                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                let table = step["table"].as_str().unwrap_or_default();
+                Output::fields(json!({ "value": { "bool": context.db.utils().schema().installed(&name, table).await.map_err(orm)? } }))
+            }
             "schema.connect" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
                 let connected = Db::connect_schema(&context.dsn, &schema, 1, Config::default()).await.map_err(orm)?;
@@ -2942,6 +3006,11 @@ mod database {
         let connection = match step["connection"].as_str() {
             Some(name) => name,
             None if step.get("row").is_some() || op == "hook.records" => "",
+            // A model op of the table path with no connection runs on the case connection, as in the other runtimes.
+            None if context.models.table_path() => {
+                context.models.adopt(CASE_CONNECTION, context.db.clone());
+                CASE_CONNECTION
+            }
             None => return Err(Failure::Step(format!("{op} names no connection and no row"))),
         };
         let resolved = if context.models.table_path() { step.clone() } else { resolve_model_step(step, context).map_err(Failure::Step)? };
@@ -3007,6 +3076,15 @@ mod database {
 
     /// The SQL of a sql.exec field for the case database: a string, or the entry of the database when the object has its key.
     /// An absent key is None, so the step runs nothing on that database.
+    fn inspected_schema(field: &Value, context: &Context<'_>) -> Result<String, String> {
+        let name = field.as_str().or_else(|| field[context.database].as_str()).ok_or_else(|| format!("{field} names no schema for {}", context.database))?;
+        if name != "$database" {
+            return Ok(name.to_owned());
+        }
+        let path = context.dsn.split('?').next().unwrap_or_default();
+        Ok(path.rsplit('/').next().unwrap_or_default().to_owned())
+    }
+
     fn sql_entry<'a>(field: &'a Value, context: &Context<'_>) -> Result<Option<&'a str>, String> {
         if let Some(text) = field.as_str() {
             return Ok(Some(text));
