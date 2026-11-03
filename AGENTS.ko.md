@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: e655dcbc4e12361fff2a219cf5158d5bf35947df982760d7f479ed5064fe049e -->
+<!-- source-sha256: 644966325cb9ca5187298d9dabcf08cd0bee971639463011edce912ed3bbd99f -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -95,6 +95,13 @@ orm 자신의 규칙만 적는다.
   도구)를 tests/environment.mts의 `isolatedEnvironment`로 시작한다: `PATH`, `HOME`, `TMPDIR`과 case가 주는 변수뿐이므로
   CI job의 `GROUP`, `GITHUB_ACTIONS`, `ORM_CHECK_RUN_ID`, 상위 make의 `MAKEFLAGS`와 Makefile이 export하는 변수는 그
   process에 닿지 않는다(`make repo-check`).
+  Enforced by: `make repo-check`
+- Own: 둘 이상의 runtime이 가진 동작은 recipe의 case다(docs/spec/feature-coverage.md의 FCV-2).
+  `config/parity.json`에서 owner가 없고 native test를 묶는 feature unit은 binding 수와 상관없이 그 unit을 지목하는 finding이다.
+  suite unit의 entry나 case를 실행하는 binding은 native test가 아니다.
+  예외는 FCV-2가 native로 남는다고 쓰고 콜론 뒤에 이유를 밝힌 unit뿐이다. 이유가 없는 줄은 아무것도 면제하지 않으며,
+  어떤 unit도 가리키지 않는 예외도 finding이다. 변환을 기다리는 unit의 목록은 두지 않는다. 그런 목록은 끝나지 않은 작업에서도
+  검사를 통과시키기 때문이다.
   Enforced by: `make repo-check`
 - Own: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을

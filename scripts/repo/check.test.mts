@@ -19,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, failedCiSetup, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
 import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
-import { readComposer, readPackage } from '../json/formats.mts';
+import { readComposer, readPackage, readParityConfig } from '../json/formats.mts';
 import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { andLists, commands as shellCommands, segments, shellSegments } from './shell.mts';
 import { readWorkflow } from './workflow.mts';
@@ -27,6 +27,7 @@ import { parse as parseYaml, stringify } from 'yaml';
 import { parse as parseToml } from 'smol-toml';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
+import { nativeBoundUnitErrors, nativeExceptions } from './parity-units.mts';
 import { callerEnvironmentErrors, generateRuns, scriptCommands, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, generatedCodesErrors, phpExtensionBuildErrors, typescriptHolderErrors, typescriptReaderErrors, phpunitModelErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, makeTargets, rustTestCaseErrors, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
 
 // yamlSteps writes steps (the values of a workflow's steps) as the list under a job's steps:, six spaces deep.
@@ -2355,6 +2356,93 @@ caseTest('no target of CHECK_TARGETS runs in two CI jobs', COMPUTE, () => {
 // package-lock.json files, and the composer, uv, Go module and mise tool installs each follow a cache keyed by their lock file.
 caseTest('every CI job restores the caches of its locked installs', COMPUTE, () => {
   assert.deepEqual(lockedCacheErrors(text('.github/workflows/ci.yml')), []);
+});
+
+// The native-bound units case (CR14, B2-4) checks the rule of FCV-2 over a fixture of config/parity.json and a fixture of the spec.
+// The check of `make repo-check` runs the same rule on the tree itself (scripts/repo/check.mts), which names the units that are
+// still native until the conversion rows are done, so this case holds the rule and not the state of the tree.
+const nativeBinding = (implementation: string) => ({ implementation, test: `tests/${implementation}.test`, id: 'a test' });
+const sixBindings = ['go', 'php', 'php-extension', 'typescript', 'python', 'rust'].map(nativeBinding);
+const nativeUnit = (id: string) => ({ id, kind: 'feature', bindings: sixBindings });
+const noSuite = (file: string): unknown => { throw new Error(`no suite file ${file} in this fixture`); };
+const nativeSpec = (...exceptions: string[]) => [
+  '- **FCV-1** Each feature declares its coverage.',
+  '',
+  '- **FCV-2** One spec holds every orm test; a runtime keeps a native test only for a behaviour that no other runtime has.',
+  ...exceptions,
+  '- **FCV-3** A recipe with a fixture is one suite unit per database.',
+  '  - `after-the-rule` stays native in every runtime: this line is outside FCV-2.',
+  '',
+].join('\n');
+caseTest('a feature unit with no owner that is bound natively is a finding', COMPUTE, () => {
+  const finding = (id: string, implementations = 'go, php, php-extension, typescript, python, rust') => `config/parity.json unit ${id} is bound natively in ${implementations}, and no recipe case holds it; make it the cases of a recipe (FCV-2 to FCV-4), or state why it stays native in FCV-2 of docs/spec/feature-coverage.md`;
+  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('shared')], nativeSpec(), noSuite), [finding('shared')]);
+  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('shared'), nativeUnit('other')], nativeSpec(), noSuite), [finding('shared'), finding('other')]);
+  // A binding removed from one runtime does not leave the rule.
+  assert.deepEqual(nativeBoundUnitErrors([{ ...nativeUnit('five'), bindings: sixBindings.slice(1) }], nativeSpec(), noSuite),
+    [finding('five', 'php, php-extension, typescript, python, rust')]);
+});
+caseTest('a binding that runs a case of a suite is no native test, and a native test beside it is', COMPUTE, () => {
+  const readSuite = (file: string): unknown => {
+    assert.equal(file, 'tests/recipe.json');
+    return { cases: [{ id: 'a-case' }] };
+  };
+  const suite = { id: 'recipe', kind: 'suite', file: 'tests/recipe.json', cases: '$.cases[*].id', bindings: [
+    { implementation: 'go', test: 'recipe_test.go', symbol: 'TestRecipeNone' },
+    { implementation: 'php', test: 'RecipeTest.php', symbol: 'Polyspec\\Orm\\Tests\\RecipeTest::testNone' },
+    { implementation: 'rust', test: 'recipe.rs', symbol: 'recipe_none' },
+    { implementation: 'python', test: 'recipe.py' },
+  ] };
+  const held = [
+    { implementation: 'go', test: 'recipe_test.go', id: 'TestRecipeNone/a-case' },
+    { implementation: 'go', test: 'recipe_test.go', id: 'TestRecipeNone' },
+    { implementation: 'php', test: 'RecipeTest.php', id: 'RecipeTest::testNone with data set "a-case"' },
+    { implementation: 'rust', test: 'recipe.rs', id: 'recipe_none::a-case' },
+    { implementation: 'python', test: 'recipe.py', id: 'a-case' },
+  ];
+  assert.deepEqual(nativeBoundUnitErrors([suite, { id: 'held', kind: 'feature', bindings: held }], nativeSpec(), readSuite), []);
+  for (const [native, implementation] of [
+    [{ implementation: 'go', test: 'recipe_test.go', id: 'TestPlanCache' }, 'go'],
+    [{ implementation: 'go', test: 'other_test.go', id: 'TestRecipeNone' }, 'go'],
+    [{ implementation: 'php', test: 'RecipeTest.php', id: 'RecipeTest::testNative' }, 'php'],
+    [{ implementation: 'rust', test: 'recipe.rs', id: 'recipe_nonesuch' }, 'rust'],
+    [{ implementation: 'python', test: 'recipe.py', id: 'test_native' }, 'python'],
+  ] as const) {
+    const errors = nativeBoundUnitErrors([suite, { id: 'mixed', kind: 'feature', bindings: [...held, native] }], nativeSpec(), readSuite);
+    assert.equal(errors.length, 1, `${native.test} ${native.id}`);
+    assert.match(errors[0] ?? '', new RegExp(`unit mixed is bound natively in ${implementation}, and`));
+  }
+});
+caseTest('a suite, an owner unit or an API unit is no finding of the native rule', COMPUTE, () => {
+  assert.deepEqual(nativeBoundUnitErrors([
+    { id: 'recipe', kind: 'suite', bindings: sixBindings },
+    { ...nativeUnit('one-runtime'), bindings: [nativeBinding('go')], owner: { kind: 'binding' } },
+    { id: 'api', kind: 'api' },
+  ], nativeSpec(), noSuite), []);
+});
+caseTest('only FCV-2, with a reason, excepts a unit from the native rule', COMPUTE, () => {
+  const stated = '  - `stated` (DSL-1) stays native in every runtime, as an FCV-2 binding surface: no public call can name it.';
+  assert.deepEqual(nativeExceptions(nativeSpec(stated)), [{ id: 'stated', reason: 'no public call can name it' }]);
+  assert.deepEqual(nativeBoundUnitErrors([nativeUnit('stated')], nativeSpec(stated), noSuite), []);
+  // Two units of one line, and two sentences of one line, are each their own exception.
+  assert.deepEqual(nativeExceptions(nativeSpec('  - `one` and `two` stay native too: a reason. `three` stays native: another reason.')), [
+    { id: 'one', reason: 'a reason' }, { id: 'two', reason: 'a reason' }, { id: 'three', reason: 'another reason' },
+  ]);
+  // A line with no reason, and a line outside FCV-2, except nothing.
+  for (const spec of [nativeSpec('  - `stated` stays native in every runtime.'), nativeSpec('  - `stated` stays native:'), nativeSpec('  - `stated` is mentioned here: a text.'), nativeSpec().replace('`after-the-rule`', '`stated`')])
+    assert.equal(nativeBoundUnitErrors([nativeUnit('stated')], spec, noSuite).length, 1, spec);
+});
+caseTest('an exception of FCV-2 names a unit of config/parity.json', COMPUTE, () => {
+  assert.deepEqual(nativeBoundUnitErrors([], nativeSpec('  - `gone` stays native: a reason.'), noSuite), [
+    'docs/spec/feature-coverage.md FCV-2 states that gone stays native, and config/parity.json has no such unit; remove the line or name the unit',
+  ]);
+});
+caseTest('the native rule reads the exceptions of the spec and the units of the tree', COMPUTE, () => {
+  const units = readParityConfig(join(repository.pathname, 'config/parity.json')).units;
+  const exceptions = nativeExceptions(text('docs/spec/feature-coverage.md'));
+  assert.ok(exceptions.length > 0, 'FCV-2 of the spec states units that stay native, so the parser that finds none reads the wrong text');
+  assert.deepEqual(exceptions.filter(({ id }) => !units.some(unit => unit.id === id)), []);
+  assert.match(text('scripts/repo/check.mts'), /nativeBoundUnitErrors\(readParityConfig\(.*\)\.units, text\('docs\/spec\/feature-coverage\.md'\), /, 'make repo-check runs the rule on the tree');
 });
 
 // The generator case (CR6, B3-2) runs go-models twice on the same inputs with a fake go on the command line. The fake logs each `run`,

@@ -114,6 +114,14 @@ vendors; this file states only the rules of orm.
   `GROUP`, `GITHUB_ACTIONS` and `ORM_CHECK_RUN_ID` of a CI job, the `MAKEFLAGS` of a calling make
   and the variables the Makefile exports do not reach it (`make repo-check`).
   Enforced by: `make repo-check`
+- Own: A behaviour that more than one runtime has is the cases of a recipe (FCV-2 of
+  docs/spec/feature-coverage.md). A feature unit of `config/parity.json` with no owner that binds a native test is a
+  finding that names the unit, whatever the number of its bindings; a binding that runs the entry or a case of a suite
+  unit is no native test. The one exception is a unit that FCV-2 states to
+  stay native, with its reason after a colon; a line without a reason excepts nothing, and an exception that names no
+  unit is a finding too. No list of units waiting for conversion exists: such a list would let the check pass on
+  unfinished work.
+  Enforced by: `make repo-check`
 - Own: Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record

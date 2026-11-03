@@ -274,6 +274,10 @@
       "kind": "policy",
       "reason": "the rule (kit K171) that one Node version declared in mise.toml runs every check and workflow"
     },
+    "scripts/repo/parity-units.mts": {
+      "kind": "policy",
+      "reason": "the rule of FCV-2 over config/parity.json: a shared unit bound natively with no reason in the spec is a finding"
+    },
     "scripts/repo/probes.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a client sends no probing statement on connect"
