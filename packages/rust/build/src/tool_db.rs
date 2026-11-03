@@ -280,8 +280,9 @@ macro_rules! push_row {
 
 macro_rules! fetch_result {
     ($conn:expr, $sql:expr, $params:expr, $budget:expr, $cell:ident, $result:ident, $bind:ident) => {{
+        let statement_length = $sql.0.len();
         let statement = prepare_query!($conn, $sql, $params, $bind);
-        let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+        let columns = result::columns(statement_length, statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
         let q = binds::$bind(statement.query(), $params)?;
         let mut stream = q.fetch(&mut **$conn);
         let mut rows = Vec::new();
@@ -303,8 +304,9 @@ static CURSOR_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::Atomic
 macro_rules! fetch_cursor_result {
     ($conn:expr, $sql:expr, $budget:expr, $cell:ident, $result:ident) => {{
         let (connection, text) = ($conn, $sql.0);
+        let statement_length = text.len();
         let statement = (&mut **connection).prepare(AssertSqlSafe(text.clone()).into_sql_str()).await?;
-        let columns = result::columns(statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
+        let columns = result::columns(statement_length, statement.columns().iter().map(|column| (column.name(), column.type_info().name())))?;
         let cursor = format!("orm_read_{}", CURSOR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         sqlx::query(AssertSqlSafe(format!("DECLARE {cursor} NO SCROLL CURSOR FOR {text}"))).execute(&mut **connection).await?;
         let mut rows = Vec::new();

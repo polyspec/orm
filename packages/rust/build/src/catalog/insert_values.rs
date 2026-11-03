@@ -1,5 +1,5 @@
 //! Bounded typed insert assignment and generated-identity validation.
-use super::{assignment_budget, mutation::cell, row_snapshot, TableMetadata};
+use super::{assignment_budget, mutation::cell, row_snapshot, row_update::exceeds_declared_capacity, TableMetadata};
 use crate::tool_db::{self, P};
 use std::collections::HashSet;
 
@@ -15,6 +15,9 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
         let column = metadata.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
         if !names.insert(name) || column.generated || (!column.nullable && matches!(value, P::Null(_))) {
             return Err("ROW_INSERT_INVALID: invalid column assignment".into());
+        }
+        if exceeds_declared_capacity(&column.native_type, &cell(value)).map_err(|_| "ROW_INSERT_INVALID: invalid declared capacity".to_owned())? {
+            return Err("ROW_INSERT_INVALID: value exceeds the declared capacity".into());
         }
         let size = match value {
             P::S(v) | P::Decimal(v) | P::Date(v) | P::Time(v) | P::DateTime(v) => v.len(),

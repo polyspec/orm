@@ -40,6 +40,10 @@ pub(super) async fn finish<T: Send + 'static>(mut connection: Conn, result: Resu
     task.await.map_err(|error| format!("ROW_COMMIT_INDETERMINATE: commit owner interrupted; do not retry: {error}"))?
 }
 fn explicitly_rejected(error: &sqlx::Error) -> bool {
+    // A constraint that the server checks at the commit rejects the commit on every database.
+    if error.as_database_error().is_some_and(|error| !matches!(error.kind(), sqlx::error::ErrorKind::Other)) {
+        return true;
+    }
     error
         .as_database_error()
         .and_then(|error| error.try_downcast_ref::<sqlx::postgres::PgDatabaseError>())

@@ -43,12 +43,21 @@ fn is_boolean(native_type: &str, dialect: &str) -> bool {
 }
 
 /// The dbspec kind of SQLite's declared `DATE`, `TIME`, `DATETIME` columns. SQLite has no temporal storage
-/// class, and the renderer CHECK enforces the text form and p-digit fractions.
-fn sqlite_kind(native_type: &str) -> Option<&'static str> {
-    match native_type.to_ascii_uppercase().as_str() {
-        "DATE" => Some("date"),
-        "TIME" => Some("time"),
-        "DATETIME" => Some("datetime"),
+/// class, and the renderer CHECK enforces the text form and p-digit fractions. A declared `TIME(3)` is no dbspec declaration
+/// of SQLite: it is the same kind, and no CHECK fixes its digits, so the second value is false.
+fn sqlite_kind(native_type: &str) -> Option<(&'static str, bool)> {
+    let upper = native_type.to_ascii_uppercase();
+    let (name, dbspec) = match upper.split_once('(') {
+        Some((name, rest)) if rest.strip_suffix(')').is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())) => {
+            (name.trim_end(), false)
+        }
+        Some(_) => return None,
+        None => (upper.as_str(), true),
+    };
+    match name {
+        "DATE" => Some(("date", dbspec)),
+        "TIME" => Some(("time", dbspec)),
+        "DATETIME" => Some(("datetime", dbspec)),
         _ => None,
     }
 }
@@ -71,7 +80,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                 continue;
             }
             if dialect == "sqlite" {
-                let Some(kind) = sqlite_kind(&column.native_type) else { continue };
+                let Some((kind, dbspec)) = sqlite_kind(&column.native_type) else { continue };
                 *cell = match cell {
                     GridCell::Null => GridCell::Null,
                     GridCell::Text(text) if is_temporal(kind, text) => {
@@ -79,7 +88,7 @@ pub(super) fn declared_precision(metadata: &TableMetadata, dialect: &str, checks
                         let digits = text.split_once('.').map_or(0, |(_, fraction)| fraction.len());
                         // A CHECK that fixes p requires exactly p fraction digits. A SQLite DATETIME or
                         // TIME with no CHECK has precision 0.
-                        let expected = if kind == "date" { None } else { Some(checks.get(index).copied().flatten().unwrap_or(0)) };
+                        let expected = if kind == "date" || !dbspec { None } else { Some(checks.get(index).copied().flatten().unwrap_or(0)) };
                         if let Some(precision) = expected {
                             if precision != digits {
                                 return Err(format!(

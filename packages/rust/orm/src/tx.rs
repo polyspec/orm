@@ -1078,13 +1078,13 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
             let mut conn = t.conn.take().expect("active MySQL transaction connection");
             events::raw(&tx.db, &mut *conn, s).await?;
             if clean {
-                conn.completed();
+                conn.returned().await;
             }
         }
         TxInner::Postgres(mut t) => {
             events::raw(&tx.db, &mut *t, s).await?;
             if clean {
-                t.completed();
+                t.returned().await;
             }
         }
         TxInner::Sqlite(mut t) => {
@@ -1093,7 +1093,7 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
                 events::raw(&tx.db, &mut *t, s).await?;
             }
             if clean {
-                t.completed();
+                t.returned().await;
             }
         }
         // A markdown connection sends a control message of the same name. The pool closes a failed session.
@@ -1106,6 +1106,7 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
             session.call(&MdControl { op, read_only: false, name: None }).await?;
         }
     }
+    tx.db.keep_idle_size().await;
     Ok(())
 }
 

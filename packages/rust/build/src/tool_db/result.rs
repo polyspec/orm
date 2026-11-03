@@ -10,11 +10,12 @@ pub struct QueryResult {
     pub columns: Vec<QueryColumn>,
     pub rows: Rows,
 }
-pub(super) fn columns<'a>(values: impl IntoIterator<Item = (&'a str, &'a str)>) -> Result<Vec<QueryColumn>, sqlx::Error> {
+/// `statement` is the length of the statement, whose text a server may return as a column name (INT-124).
+pub(super) fn columns<'a>(statement: usize, values: impl IntoIterator<Item = (&'a str, &'a str)>) -> Result<Vec<QueryColumn>, sqlx::Error> {
     let mut result = Vec::new();
     let mut bytes = 0usize;
     for (name, native_type) in values {
-        bytes = bytes.checked_add(name.len()).and_then(|n| n.checked_add(native_type.len())).filter(|n| *n <= 64 * 1024).ok_or_else(error)?;
+        bytes = bytes.checked_add(name.len()).and_then(|n| n.checked_add(native_type.len())).filter(|n| *n <= 64 * 1024 + statement).ok_or_else(error)?;
         if result.len() >= 2048 {
             return Err(error());
         }

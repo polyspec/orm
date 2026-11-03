@@ -108,7 +108,7 @@ codes:
     origin: executor
   - code: TOOL_BIND_LIMIT          # a native bind of the Rust catalog tool exceeds its budget (more than 65535 parameters, or total value bytes beyond 16 MiB), refused before preparing or executing
     origin: executor
-  - code: TOOL_QUERY_COLUMNS       # a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB)
+  - code: TOOL_QUERY_COLUMNS       # a query result of the Rust catalog tool exceeds its column metadata budget (more than 2048 columns, or the column names and native types together beyond 64 KiB plus the length of the statement, whose text a server may return as a column name)
     origin: executor
   - code: TOOL_QUERY_STATEMENT     # a bounded query of the Rust catalog tool does not split into exactly one statement
     origin: executor

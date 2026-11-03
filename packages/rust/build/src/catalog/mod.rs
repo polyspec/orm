@@ -68,10 +68,10 @@ impl CatalogConnection {
         let dialect = parsed.driver().to_owned();
         let pool = match parsed.options {
             ConnectOptions::MySql(options) => {
-                Pool::MySql(sqlx::mysql::MySqlPoolOptions::new().max_connections(4).connect_with(options).await.map_err(|e| e.to_string())?)
+                Pool::MySql(sqlx::mysql::MySqlPoolOptions::new().max_connections(4).connect_with(options).await.map_err(catalog_write_error)?)
             }
             ConnectOptions::Postgres(options) => {
-                Pool::Postgres(sqlx::postgres::PgPoolOptions::new().max_connections(4).connect_with(options).await.map_err(|e| e.to_string())?)
+                Pool::Postgres(sqlx::postgres::PgPoolOptions::new().max_connections(4).connect_with(options).await.map_err(catalog_write_error)?)
             }
             ConnectOptions::Sqlite(options) => {
                 let metadata = std::fs::symlink_metadata(options.get_filename()).map_err(|e| format!("CONFIG: CATALOG_SQLITE_FILE: {e}"))?;
@@ -83,7 +83,7 @@ impl CatalogConnection {
                         .max_connections(4)
                         .connect_with(options.create_if_missing(false))
                         .await
-                        .map_err(|e| e.to_string())?,
+                        .map_err(catalog_write_error)?,
                 )
             }
             ConnectOptions::Markdown(_) => {

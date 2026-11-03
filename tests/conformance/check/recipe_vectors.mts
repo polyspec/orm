@@ -49,7 +49,7 @@ function stepValue(step: Step, database: string): Json {
   return 'error' in expect ? expect.error as Json : plain(expect);
 }
 
-const size = (value: Json): number => {
+const size = (value: Json | undefined): number => {
   if (!Array.isArray(value)) throw new Error(`expected a list, got ${JSON.stringify(value)}`);
   return value.length;
 };

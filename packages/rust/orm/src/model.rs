@@ -887,6 +887,13 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
                 if matches!(value, Val::Null) && column.column == column.name && entity.field(&column.column).is_some_and(|field| !field.nullable) {
                     return Err(Error::Engine { code: codes::CODEC_DECODE.into(), msg: format!("group column {} is SQL NULL", column.name) });
                 }
+                let value = match (value, entity.field(&column.column).map(|field| &field.ty)) {
+                    (Val::Null, _) => Val::Null,
+                    (value, Some(polyspec_orm_schema::dbspec::Type::Decimal(precision, scale))) if column.column == column.name => {
+                        Val::Str(crate::decimal::decode(value, *precision, *scale)?)
+                    }
+                    (value, _) => value,
+                };
                 values.push((column.name.clone(), value));
             }
         }

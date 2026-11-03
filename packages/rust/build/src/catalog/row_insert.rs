@@ -1,7 +1,7 @@
 //! Typed insertion with database-owned generated identities.
 use super::{
     metadata,
-    mutation::{cancelled, cell, lookup, mysql_safety, placeholder, qualified, write_transaction_statement, CommitPermit, Publisher},
+    mutation::{assigned_slot, cancelled, cell, lookup, mysql_safety, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish,
     page::quote,
     row_snapshot, CatalogConnection, MutationPhase, TableMetadata,
@@ -89,7 +89,16 @@ impl CatalogConnection {
             publish(MutationPhase::Locked);
             cancelled(&cancellation)?;
             let names = values.iter().map(|(name, _)| quote(name, &self.dialect)).collect::<Result<Vec<_>, _>>()?.join(",");
-            let slots = (1..=values.len()).map(|index| placeholder(index, &self.dialect)).collect::<Vec<_>>().join(",");
+            let slots = values
+                .iter()
+                .enumerate()
+                .map(|(index, (name, value))| {
+                    let column =
+                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_INSERT_INVALID: unknown column".to_owned())?;
+                    Ok(assigned_slot(index + 1, value, &column.native_type, &self.dialect))
+                })
+                .collect::<Result<Vec<_>, String>>()?
+                .join(",");
             let sql = if values.is_empty() {
                 if self.dialect == "mysql" {
                     format!("INSERT INTO {}() VALUES()", qualified(&descriptor, &self.dialect)?)

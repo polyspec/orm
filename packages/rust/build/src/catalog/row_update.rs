@@ -34,7 +34,7 @@ fn declared_capacity(native_type: &str, names: &[&str]) -> Result<Option<usize>,
     digits.parse().map(Some)
 }
 
-fn exceeds_declared_capacity(native_type: &str, cell: &GridCell) -> Result<bool, std::num::ParseIntError> {
+pub(super) fn exceeds_declared_capacity(native_type: &str, cell: &GridCell) -> Result<bool, std::num::ParseIntError> {
     if let Some(capacity) = declared_capacity(native_type, &["varchar", "character varying"])? {
         return Ok(match cell {
             GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => {

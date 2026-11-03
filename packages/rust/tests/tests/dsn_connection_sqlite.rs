@@ -5,5 +5,10 @@
 use polyspec_orm_tests::recipe;
 
 fn main() {
-    polyspec_orm_testcase::run(recipe::database_trials("dsn_connection_sqlite", "contracts/fixtures/dsn_connection/dsn_connection.json", "sqlite"));
+    polyspec_orm_testcase::run(recipe::table_trials(
+        "dsn_connection_sqlite",
+        "contracts/fixtures/dsn_connection/dsn_connection.json",
+        "contracts/fixtures/catalog_connection/dbspec-set.json",
+        "sqlite",
+    ));
 }

@@ -327,6 +327,8 @@ static NEXT_DB: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct DbInner {
     pub(crate) id: u64,
     pub(crate) pool: Pool,
+    /// Held while the connections beyond the idle size close, so that two ends of work do not close the same surplus twice.
+    idle_trim: tokio::sync::Mutex<()>,
     /// The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.
     pub(crate) listen: Option<sqlx::postgres::PgConnectOptions>,
     /// The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.
@@ -398,6 +400,15 @@ type PoolOwner = Arc<std::sync::OnceLock<std::sync::Weak<DbInner>>>;
 /// The pool options of one driver: at most `size` open connections, at most
 /// `idle` idle connections, and a connection lifetime of `lifetime_ms`
 /// milliseconds when it is not zero.
+/// Closes the idle connections of `pool` beyond `idle`.
+async fn close_idle_beyond<DB: sqlx::Database>(pool: &sqlx::Pool<DB>, idle: usize) {
+    while pool.num_idle() > idle {
+        let Some(connection) = pool.try_acquire() else { return };
+        // A connection that fails to close is gone from the pool as well.
+        let _ = connection.close().await;
+    }
+}
+
 fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owner: &PoolOwner) -> sqlx::pool::PoolOptions<DB> {
     let mut options = sqlx::pool::PoolOptions::<DB>::new().max_connections(size);
     if lifetime_ms > 0 {
@@ -648,6 +659,7 @@ impl Db {
                 sets: std::sync::RwLock::new(std::collections::HashSet::new()),
                 schemas: std::sync::RwLock::new(Vec::new()),
                 closed: AtomicBool::new(false),
+                idle_trim: tokio::sync::Mutex::new(()),
                 sqlite_lock_ready: AtomicBool::new(false),
                 subscribers: Subscribers::default(),
                 rollback_fault: AtomicBool::new(false),
@@ -707,6 +719,22 @@ impl Db {
         };
         let idle = idle as u32;
         DbStats { max_open_connections: max, open_connections: size, in_use: pool_in_use(size, idle), idle }
+    }
+
+    /// Keeps the idle size after a connection returned (CFG-5). The check of after_release runs before the connection is idle,
+    /// so connections that return together all pass it; each end of work closes what that left beyond the size.
+    pub(crate) async fn keep_idle_size(&self) {
+        let idle = self.inner.cfg.pool_idle_size as usize;
+        if idle == 0 {
+            return;
+        }
+        let _closing = self.inner.idle_trim.lock().await;
+        match &self.inner.pool {
+            Pool::MySql(pool) => close_idle_beyond(pool, idle).await,
+            Pool::Postgres(pool) => close_idle_beyond(pool, idle).await,
+            Pool::Sqlite(pool) => close_idle_beyond(pool, idle).await,
+            Pool::Markdown(_) => {}
+        }
     }
 
     /// Closes the pool and clears cached plans. Calling it more than once is safe.
@@ -980,6 +1008,7 @@ impl Db {
             crate::testing::wait_at_statement_gate(self).await;
         }
         let start = std::time::Instant::now();
+        let pooled = matches!(target, Target::Pool(_));
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
             Target::Tx(TxInner::MySql(t)) => fetch_mysql(&sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection"))
@@ -1000,6 +1029,9 @@ impl Db {
             }
             Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
         };
+        if pooled {
+            self.keep_idle_size().await;
+        }
         self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), start, r)
     }
 
@@ -1018,6 +1050,7 @@ impl Db {
             return self.step_done(st, origin, sql, || self.shown(st, &args, 0), std::time::Instant::now(), Err(error));
         }
         let start = std::time::Instant::now();
+        let pooled = matches!(target, Target::Pool(_));
         let r: Result<(u64, u64)> = match target {
             Target::Pool(Pool::MySql(p)) => exec_mysql_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::MySql(t)) => {
@@ -1029,6 +1062,9 @@ impl Db {
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
             Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
         };
+        if pooled {
+            self.keep_idle_size().await;
+        }
         self.step_done(st, origin, sql, || self.shown(st, &args, 0), start, r)
     }
 

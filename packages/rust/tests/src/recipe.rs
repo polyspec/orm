@@ -2593,6 +2593,15 @@ const WRITTEN_ORDER: &str = "__written_order";
 /// the text of an op is a string, and an expect of driver_cause reads this mark (FCV-4).
 const DRIVER_CAUSE: &str = "\u{1f}driver_cause";
 
+/// A failure of an orm call as a dispatcher returns it: the message starts with its code, the mark of a driver cause follows,
+/// then the text of the error and of its cause, each after the detail mark, which an expect with `message` or `cause` reads.
+pub(crate) fn failure_text(error: &polyspec_orm::Error) -> String {
+    let source = std::error::Error::source(error).map(ToString::to_string);
+    let driver = if source.is_some() { DRIVER_CAUSE } else { "" };
+    let cause = source.unwrap_or_default();
+    format!("{}: {error}{driver}{}{error}{}{cause}", error.code(), database::ERROR_DETAIL, database::ERROR_DETAIL)
+}
+
 mod database {
     use std::collections::HashMap;
     use std::future::Future;
@@ -3154,6 +3163,10 @@ mod database {
         match result {
             Ok(()) => Ok(Output::fields(ok_value())),
             Err(polyspec_orm::Error::Config(message)) if message == CALLBACK_FAILED => Err(Failure::Call(format!("{CALLBACK}: {message}"))),
+            // The error of a public call reaches the transaction as the call returned it.
+            Err(polyspec_orm::Error::Config(message)) if message.starts_with(UNEXPECTED_ERROR) => {
+                Err(Failure::Call(message[UNEXPECTED_ERROR.len()..].to_owned()))
+            }
             Err(error) => Err(orm(error)),
         }
     }
@@ -3189,10 +3202,11 @@ mod database {
     }
 
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
-        let name = crate::recipe_reads::read(step, "connection")["connection"]
-            .as_str()
-            .ok_or_else(|| format!("{} names no connection", crate::recipe_reads::read(step, "op")["op"]))?;
-        context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
+        // A step that names no connection runs on the connection of the case, as a transaction does.
+        match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
+            Some(name) => context.models.db(name).ok_or_else(|| format!("no bound connection {name}")),
+            None => Ok(context.db.clone()),
+        }
     }
 
     /// The fixture of a recipe on `db`: its external documents first, whose tables must exist before the set installs
@@ -3296,6 +3310,9 @@ mod database {
     const UNEXPECTED_ERROR: &str = "unexpected error ";
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
+        if step["only"].as_array().is_some_and(|only| !only.iter().any(|name| name.as_str() == Some(context.database))) {
+            return Ok(());
+        }
         let expected = match crate::recipe_reads::read(step, "expect").get("expect") {
             None => None,
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
@@ -3762,7 +3779,6 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.close" => {
-                live(catalog)?;
                 if let Some(open) = catalog.take() {
                     open.close().await;
                 }
@@ -4101,10 +4117,14 @@ mod database {
     /// and calls the dispatcher, whose fields the expect of the step compares as the fields of a catalog call.
     async fn model_call(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
+        // The model is the dispatch of the op: a dispatcher with one model for an op does not read it again.
+        let _ = crate::recipe_reads::read(step, "model");
         if op == "model.connect" {
             let name = crate::recipe_reads::read(step, "as")["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
+            // An unset pool size is the size 0, the default of the connection (CFG-4).
             let pool_size = match crate::recipe_reads::read(step, "pool_size")["pool_size"].as_u64().map(u32::try_from) {
                 Some(Ok(count)) => count,
+                None if step.get("pool_size").is_none() => 0,
                 _ => return Err(Failure::Step("pool_size is not a count".into())),
             };
             let dsn = super::connect_dsn(
@@ -5065,11 +5085,7 @@ mod tables {
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it. After it
     /// come the text of the error and of its cause, each after ERROR_DETAIL, which an expect with `message` or `cause` reads.
     fn orm(error: OrmError) -> String {
-        use crate::recipe::database::ERROR_DETAIL;
-        let source = std::error::Error::source(&error).map(ToString::to_string);
-        let driver = if source.is_some() { super::DRIVER_CAUSE } else { "" };
-        let cause = source.unwrap_or_default();
-        format!("{}: {error}{driver}{ERROR_DETAIL}{error}{ERROR_DETAIL}{cause}", error.code())
+        crate::recipe::failure_text(&error)
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
@@ -5645,6 +5661,12 @@ mod tables {
         let mut value = param(raw)?;
         if let (Some(Type::Decimal(precision, scale)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
             value = Param::Str(polyspec_orm::decimal::normalize(text, precision, scale).map_err(orm)?);
+        }
+        // The Rust input of a datetime holds no zone: a text with an offset enters as its UTC wall clock (DSL-141).
+        if let (Some(Type::DateTime(_)), Param::Str(text)) = (field.map(|field| field.ty), &value) {
+            if let Ok(at) = chrono::DateTime::parse_from_rfc3339(text) {
+                value = Param::Str(at.naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string());
+            }
         }
         let read = match &value {
             Param::Null => Val::Null,

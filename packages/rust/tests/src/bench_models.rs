@@ -188,7 +188,7 @@ impl<M: BenchModels> CaseModels for Bench<M> {
 
 /// The message of an error of the client.
 pub fn fail(error: polyspec_orm::Error) -> String {
-    error.to_string()
+    crate::recipe::failure_text(&error)
 }
 
 /// One row of the cells of `columns`, each read by `cell`.

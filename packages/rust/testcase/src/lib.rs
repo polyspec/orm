@@ -292,7 +292,15 @@ where
     F: std::future::Future<Output = ()>,
 {
     trial(name, deadline, move || {
-        tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime").block_on(body());
+        // A debug build polls nested transactions of a recipe on the stack of this thread, and they outgrow the 2 MiB of a test
+        // thread, so the case runs on the stack size that the recipe connections take.
+        let thread = thread::Builder::new()
+            .stack_size(64 << 20)
+            .spawn(move || tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a current-thread runtime").block_on(body()))
+            .expect("a thread of the case");
+        if let Err(payload) = thread.join() {
+            std::panic::resume_unwind(payload);
+        };
     })
 }
 

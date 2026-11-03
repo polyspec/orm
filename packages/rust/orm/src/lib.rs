@@ -197,6 +197,10 @@ impl From<sqlx::Error> for Error {
         // The connection's socket was lost: the server ended the connection or the connection broke. An error that failed to open
         // the connection (such as ConnectionRefused) is not a lost-connection error.
         if let sqlx::Error::Io(io) = &e {
+            // The handshake reports a refused certificate as an I/O error that holds the error of the TLS library (CFG-16).
+            if io.get_ref().is_some_and(|inner| inner.downcast_ref::<rustls::Error>().is_some_and(|tls| matches!(tls, rustls::Error::InvalidCertificate(_)))) {
+                return Error::Config(format!("TLS connection failed: {e}"));
+            }
             use std::io::ErrorKind::*;
             if matches!(io.kind(), UnexpectedEof | ConnectionReset | ConnectionAborted | BrokenPipe | NotConnected) {
                 return Error::Driver { code: codes::CONNECTION_LOST.into(), msg: e.to_string(), source: e };

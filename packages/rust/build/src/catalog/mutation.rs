@@ -118,6 +118,17 @@ pub(super) fn placeholder(index: usize, dialect: &str) -> String {
         "?".into()
     }
 }
+/// The slot of one assigned value. Postgres types a bound text by its declared type, so a text into another type is cast
+/// explicitly: the server converts it, and the read after the write compares the result.
+pub(super) fn assigned_slot(index: usize, value: &P, native_type: &str, dialect: &str) -> String {
+    let native = native_type.to_ascii_lowercase();
+    let text = ["text", "character", "char", "varchar", "bpchar", "citext"].iter().any(|name| native.starts_with(name));
+    if dialect == "postgres" && matches!(value, P::S(_)) && !text {
+        format!("CAST(${index} AS {native_type})")
+    } else {
+        placeholder(index, dialect)
+    }
+}
 pub(super) fn qualified(metadata: &TableMetadata, dialect: &str) -> Result<String, String> {
     Ok(format!("{}.{}", quote(&metadata.table.namespace, dialect)?, quote(&metadata.table.name, dialect)?))
 }
@@ -224,7 +235,11 @@ impl CatalogConnection {
             let sets = changes
                 .iter()
                 .enumerate()
-                .map(|(index, (name, _))| Ok(format!("{}={}", quote(name, &self.dialect)?, placeholder(index + 1, &self.dialect))))
+                .map(|(index, (name, value))| {
+                    let column =
+                        descriptor.columns.iter().find(|column| column.name == *name).ok_or_else(|| "ROW_UPDATE_INVALID: unknown column".to_owned())?;
+                    Ok(format!("{}={}", quote(name, &self.dialect)?, assigned_slot(index + 1, value, &column.native_type, &self.dialect)))
+                })
                 .collect::<Result<Vec<_>, String>>()?
                 .join(",");
             let sql =

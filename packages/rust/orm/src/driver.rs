@@ -408,7 +408,7 @@ pub(crate) async fn fetch_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = fetch_mysql(sql, args, &mut *connection).await;
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -426,7 +426,7 @@ pub(crate) async fn exec_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool)
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = exec_mysql(sql, args, &mut *connection).await;
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -526,7 +526,7 @@ pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], poo
         result => result.map_err(Error::from),
     };
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -550,7 +550,7 @@ pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool
         result => result.map(|done| (0, done.rows_affected())).map_err(Error::from),
     };
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -567,7 +567,7 @@ pub(crate) async fn fetch_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePo
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = fetch_sqlite(sql, args, &mut *connection).await;
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -585,7 +585,7 @@ pub(crate) async fn exec_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePoo
     let mut connection = CancellableConnection::new(pool.acquire().await?);
     let result = exec_sqlite(sql, args, &mut *connection).await;
     if result.is_ok() {
-        connection.completed();
+        connection.returned().await;
     }
     result
 }
@@ -745,8 +745,13 @@ impl<DB: sqlx::Database> CancellableConnection<DB> {
         Self { connection: Some(connection), close_on_drop: true }
     }
 
-    pub(crate) fn completed(&mut self) {
+    /// Returns the completed connection to the pool before this call ends: the drop handler of SQLx returns it from a task
+    /// of its own, and the pool statistics that follow must already count it as idle (INT-79).
+    pub(crate) async fn returned(mut self) {
         self.close_on_drop = false;
+        if let Some(mut connection) = self.connection.take() {
+            connection.return_to_pool().await;
+        }
     }
 }
 
