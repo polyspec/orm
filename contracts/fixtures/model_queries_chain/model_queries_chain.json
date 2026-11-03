@@ -704,6 +704,98 @@
    ]
   },
   {
+   "id": "scalar_subquery_column_sums_the_correlated_rows",
+   "requirements": [
+    "DSL-74"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 2,
+     "as": "db"
+    },
+    {
+     "op": "model.query",
+     "connection": "db",
+     "model": "User",
+     "add_columns": [
+      {
+       "expr": {
+        "sub": {
+         "model": "Author",
+         "aggregate": {
+          "agg": "sum",
+          "column": "read_count"
+         },
+         "where": {
+          "chain": [
+           [
+            "",
+            {
+             "user_seq": {
+              "eq": {
+               "outer": "seq"
+              }
+             }
+            }
+           ],
+           [
+            "and",
+            {
+             "service_seq": {
+              "int": "7"
+             }
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "as": "read_total"
+      }
+     ],
+     "where": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "order": [
+      "seq"
+     ],
+     "pick": [
+      "seq",
+      "read_total"
+     ],
+     "expect": {
+      "mysql": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "postgres": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      },
+      "sqlite": {
+       "json": [
+        {
+         "seq": 1,
+         "read_total": 30
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "null_collection_key_is_refused_after_one_select",
    "requirements": [
     "PRT-35"

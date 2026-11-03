@@ -125,6 +125,10 @@
       "keys",
       "op"
     ],
+    "session.end": [
+      "op",
+      "table"
+    ],
     "sql.exec": [
       "only",
       "op",

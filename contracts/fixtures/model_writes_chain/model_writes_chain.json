@@ -375,6 +375,175 @@
    ]
   },
   {
+   "id": "ordered_json_keeps_nested_member_order",
+   "requirements": [
+    "COD-15",
+    "DIA-26"
+   ],
+   "steps": [
+    {
+     "op": "model.connect",
+     "pool_size": 1,
+     "as": "db"
+    },
+    {
+     "op": "model.get_by",
+     "connection": "db",
+     "model": "Author",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "columns": "all",
+     "pick": [
+      "name"
+     ],
+     "as": "row",
+     "expect": {
+      "mysql": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "postgres": {
+       "json": {
+        "name": "author-1"
+       }
+      },
+      "sqlite": {
+       "json": {
+        "name": "author-1"
+       }
+      }
+     }
+    },
+    {
+     "op": "model.update",
+     "connection": "db",
+     "row": "row",
+     "set": {
+      "json_setting": {
+       "object": [
+        [
+         "z",
+         {
+          "object": []
+         }
+        ],
+        [
+         "a",
+         {
+          "array": []
+         }
+        ],
+        [
+         "nested",
+         {
+          "object": [
+           [
+            "second",
+            {
+             "int": "2"
+            }
+           ],
+           [
+            "first",
+            {
+             "int": "1"
+            }
+           ]
+          ]
+         }
+        ]
+       ]
+      }
+     }
+    },
+    {
+     "op": "model.get_by",
+     "key": {
+      "seq": {
+       "int": "1"
+      }
+     },
+     "connection": "db",
+     "model": "Author",
+     "columns": "all",
+     "ordered_text": "json_setting",
+     "expect": {
+      "mysql": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      },
+      "postgres": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      },
+      "sqlite": {
+       "json": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+      }
+     }
+    },
+    {
+     "op": "utils.run",
+     "connection": "db",
+     "statements": [
+      {
+       "kind": "select",
+       "tables": [
+        "author"
+       ],
+       "sql": {
+        "mysql": "SELECT `json_setting` FROM `author` WHERE `seq` = 1",
+        "postgres": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1",
+        "sqlite": "SELECT \"json_setting\" FROM \"author\" WHERE \"seq\" = 1"
+       }
+      }
+     ],
+     "expect": {
+      "mysql": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "postgres": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      },
+      "sqlite": {
+       "value": {
+        "array": [
+         {
+          "array": [
+           {
+            "text": "{\"z\":{},\"a\":[],\"nested\":{\"second\":2,\"first\":1}}"
+           }
+          ]
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
    "id": "codec_columns_round_trip",
    "requirements": [
     "COD-11",
