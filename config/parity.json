@@ -9558,7 +9558,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9723,7 +9724,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
@@ -9888,7 +9890,8 @@
         "COD-20",
         "DIA-25",
         "COD-2",
-        "INT-91"
+        "INT-91",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/conformance_verification/conformance_verification.json",
       "cases": "$.cases[*].id",
