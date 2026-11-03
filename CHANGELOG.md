@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- CR32 gives the times that rule out a harness stop of the tool call.
+- The owners of parameter_chunking declare model_parameter_after_schema_change.
+- catalog_read_budgets names its wait for all three databases, as a recipe's sql must.
 - The Python and Rust native tests of constraints_and_relations are gone; the recipes hold their cases (#T334-3-4-21)
 - TypeScript exports `transactionConflict(message)` and Python exports `transaction_conflict(message)`, the retryable `DEADLOCK` error of INT-48, which only the other runtimes had; the utilities of both use it and the recipe helpers call it. The recipe `model_queries_chain` reads the scalar SUM of a joined child as the integer of INT-160 and compares the message of the NULL collection key.
 - The recipe `tests/dbspec/runtime-model.json` with the new op `dbspec.runtime_model` holds what Rust `dbspec_runtime.rs` asserted of entity names, tables, keys, settings and field values, and all six runtimes run it (DBS-65, DBS-85, DBS-111, DBS-112). `dbspec.load_set` also checks that a manifest text reads back to its hash (DBS-100, DBS-103). What only Rust exposes stays native, named in FCV-2.
