@@ -284,10 +284,6 @@
         {
           "glob": "packages/go/engine/dbspec/stress_test.go",
           "reason": "test: the measurement of dbspec-stress-bench that docs/spec/dbspec.md Verification requires, parse time against the reference work; the canonical round trip of the document is the case stress-canonical-roundtrip of dbspec-limits"
-        },
-        {
-          "glob": "packages/go/engine/planner/runtime_model_test.go",
-          "reason": "test: reads the internal plan of the Go planner, its assemble columns and slots, which no public call returns"
         }
       ]
     },
@@ -30840,6 +30836,48 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/default_select_set_none.rs",
           "symbol": "default_select_set_none"
+        }
+      ]
+    },
+    {
+      "id": "runtime-model-plans",
+      "kind": "suite",
+      "requirements": [
+        "DBS-112",
+        "PRT-32",
+        "PRT-81",
+        "PRT-82"
+      ],
+      "file": "tests/planner/runtime-model.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_runtime_model_plans_test.go",
+          "symbol": "TestRecipeRuntimeModelPlansNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelPlansRecipeTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\RuntimeModelPlansRecipeTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelPlansRecipeTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\RuntimeModelPlansRecipeTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/runtime_model_plans-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_runtime_model_plans_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/runtime_model_plans_none.rs",
+          "symbol": "runtime_model_plans_none"
         }
       ]
     },

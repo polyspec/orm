@@ -8,6 +8,8 @@ import (
 	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
+	"github.com/polyspec/orm/packages/go/internal/testmodel"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -192,3 +194,10 @@ func TestOrdinaryInsertHasNoBlindIndexAssignments(t *testing.T) {
 		t.Fatalf("ordinary insert blind-index params = %v, want none", got)
 	}
 }
+
+// testModel is the runtime model of one dbspec document.
+func testModel(t *testing.T, document string) *runtimemodel.Model {
+	return testmodel.Load(t, document)
+}
+
+func intp(i int) *int { return &i }

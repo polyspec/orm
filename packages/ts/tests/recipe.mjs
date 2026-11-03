@@ -938,6 +938,7 @@ function plannerSlot(slot) {
   if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
   if (slot.from === 'param' && slot.col_type === 'varchar') out.length = slot.length ?? 0;
   if (slot.not_null === true) out.not_null = true;
+  if (slot.from === 'audit') out.name = slot.name;
   return out;
 }
 
@@ -962,7 +963,13 @@ function checkPlanner(step, recipeDir, database) {
   const got = {};
   for (const dialect of plannerDialects) {
     const plan = new Engine(model, dialect).compile(request);
-    got[dialect] = plan.steps.map(planStep => ({ role: planStep.role, sql: planStep.sql, slots: planStep.bind_slots.map(plannerSlot), tables: planStep.tables }));
+    got[dialect] = plan.steps.map(planStep => ({
+      role: planStep.role,
+      sql: planStep.sql,
+      slots: planStep.bind_slots.map(plannerSlot),
+      tables: planStep.tables,
+      ...(step.assemble_types === true ? { assemble_types: Object.fromEntries(planStep.assemble.columns.map(column => [column.name, column.type])) } : {}),
+    }));
   }
   const actual = JSON.parse(JSON.stringify(got));
   if (!isDeepStrictEqual(actual, outcome.value)) throw new Error(`planner.compile: got ${JSON.stringify(actual)}, want ${JSON.stringify(outcome.value)}`);

@@ -261,7 +261,9 @@ final class Recipe
                 'slots' => array_map(self::planSlot(...), $planned['bind_slots']),
                 'sql' => $planned['sql'],
                 'tables' => $planned['tables'],
-            ], $plan['steps']);
+            ] + (($step['assemble_types'] ?? false) === true ? [
+                'assemble_types' => array_column($planned['assemble']['columns'], 'type', 'name'),
+            ] : []), $plan['steps']);
         }
         Assert::assertSame(self::sortedKeys($outcome['value']), self::sortedKeys($got), 'planner.compile statements');
     }
@@ -285,6 +287,9 @@ final class Recipe
         }
         if ($type === 'datetime' || $type === 'time') {
             $out['precision'] = $slot['precision'] ?? 0;
+        }
+        if ($slot['from'] === 'audit') {
+            $out['name'] = $slot['name'];
         }
         $out['type'] = $type;
         return $out;

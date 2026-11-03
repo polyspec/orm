@@ -1178,6 +1178,8 @@ def _plan_slot(slot: dict) -> dict:
         out["length"] = slot.get("length", 0)
     if slot.get("not_null"):
         out["not_null"] = True
+    if slot["from"] == "audit":
+        out["name"] = slot["name"]
     return out
 
 
@@ -1220,6 +1222,11 @@ def _plan(step: dict, recipe_dir: Path, database: str) -> None:
                 "slots": [_plan_slot(s) for s in planned["bind_slots"]],
                 "sql": planned["sql"],
                 "tables": planned["tables"],
+                **(
+                    {"assemble_types": {c["name"]: c["type"] for c in planned["assemble"]["columns"]}}
+                    if step.get("assemble_types")
+                    else {}
+                ),
             }
             for planned in plan["steps"]
         ]

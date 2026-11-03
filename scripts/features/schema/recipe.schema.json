@@ -1808,6 +1808,10 @@
             "pattern": "\\.dbs$",
             "description": "The schema manifest of the request, relative to the recipe file."
           },
+          "assemble_types": {
+            "type": "boolean",
+            "description": "Adds the type of each output column of a plan step, by name, to the statements that the step compares."
+          },
           "input": {
             "type": "object",
             "description": "A request of the protocol (docs/spec/protocol.md) without manifest_hash; the step adds the hash of the schema named by schema."

@@ -330,6 +330,10 @@ fn planner_statement(step: &polyspec_orm::plan::Step) -> Value {
             if slot.not_null {
                 out["not_null"] = serde_json::json!(true);
             }
+            // An audit slot names its audit record table (PRT-32).
+            if slot.from == "audit" {
+                out["name"] = serde_json::json!(slot.name);
+            }
             out
         })
         .collect();
@@ -355,7 +359,13 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     }
     for (name, dialect) in PLAN_DIALECTS {
         let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
-        let got = Value::Array(plan.steps.iter().map(planner_statement).collect());
+        let mut got = Value::Array(plan.steps.iter().map(planner_statement).collect());
+        if step["assemble_types"] == true {
+            for (statement, planned) in got.as_array_mut().into_iter().flatten().zip(&plan.steps) {
+                let columns = planned.assemble.iter().flat_map(|assemble| &assemble.columns);
+                statement["assemble_types"] = columns.map(|column| (column.name.clone(), Value::from(column.typ.clone()))).collect();
+            }
+        }
         if got != want["value"][name] {
             return Err(format!("{name}:\n got {got}\nwant {}", want["value"][name]));
         }

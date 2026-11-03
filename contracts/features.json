@@ -4497,6 +4497,7 @@
         "packages/php/tests/DecimalModelTest.php",
         "packages/python/tests/test_model_fields.py",
         "packages/python/tests/test_default_select_set_none.py",
+        "packages/python/tests/test_runtime_model_plans_none.py",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
@@ -6427,7 +6428,6 @@
         "packages/go/engine/ir/operators_test.go",
         "packages/go/engine/dialect/sqlite_test.go",
         "packages/rust/tests/src/conformance.rs",
-        "packages/go/engine/planner/runtime_model_test.go",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/go/orm/coverage_planner_test.go",
         "packages/php/tests/CoveragePlannerTest.php",
@@ -6515,7 +6515,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/engine/planner/restore_test.go",
-            "packages/go/engine/planner/runtime_model_test.go",
             "packages/go/engine/planner/soft_delete_test.go"
           ]
         },
