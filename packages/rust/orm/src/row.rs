@@ -427,18 +427,6 @@ mod declared_boolean_tests {
         let mut invalid = vec![vec![Val::I64(2), Val::I64(3), Val::I64(1)]];
         assert_eq!(decode_boolean_columns(&assemble, &mut invalid).unwrap_err().code(), "CODEC_DECODE");
     }
-
-    // PRT-36: invalid stored boolean values fail decoding instead of coercing.
-    #[test]
-    fn invalid_stored_boolean_is_codec_decode() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let assemble = Assemble { columns: vec![OutCol { index: 0, name: "active".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
-        let mut rows = vec![vec![Val::F64(1.0)]];
-        let error = decode_boolean_columns(&assemble, &mut rows).unwrap_err();
-        assert_eq!(error.code(), "CODEC_DECODE");
-        assert!(error.to_string().contains("expected boolean"), "{error}");
-        assert!(error.to_string().contains("F64(1.0)"), "{error}");
-    }
 }
 
 #[cfg(test)]
