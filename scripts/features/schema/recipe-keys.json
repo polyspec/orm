@@ -346,7 +346,6 @@
       "columns",
       "compile",
       "connection",
-      "derived_integers",
       "expect",
       "from",
       "items",
@@ -516,6 +515,12 @@
       "owned",
       "parsing"
     ],
+    "dbspec.load_set": [
+      "expect",
+      "external",
+      "op",
+      "owned"
+    ],
     "dbspec.read_file": [
       "expect",
       "op",
@@ -637,6 +642,23 @@
       "connection",
       "expect",
       "name",
+      "op"
+    ],
+    "utils.was_inserted": [
+      "connection",
+      "expect",
+      "op",
+      "sequence",
+      "table"
+    ],
+    "utils.backend_waiting_for_lock": [
+      "connection",
+      "expect",
+      "op"
+    ],
+    "utils.groups": [
+      "connection",
+      "expect",
       "op"
     ]
   }

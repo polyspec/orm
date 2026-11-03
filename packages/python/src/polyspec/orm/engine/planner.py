@@ -1096,7 +1096,8 @@ class Planner:
                 codes.INTERNAL,
                 f"{entity.name}.{column_name} is missing from a validated scalar subquery",
             )
-        return col.type
+        # INT-160: a sum leaves the range of its column.
+        return "i64" if agg == "sum" and col.type in ("i16", "i32") else col.type
 
     def _render_assign(self, b: _Builder, ent: Entity, col: Field, a: dict) -> str:
         if _blind_index_source(ent, col.name):

@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlEnvironment, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, proxysqlConfig, postgresEnvironment, SERVER_TIME_ZONE, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -680,6 +680,14 @@ caseTest('the MySQL accounts of the user orm name both hosts and are idempotent'
     assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`CREATE USER IF NOT EXISTS 'orm'@'${host}' IDENTIFIED BY 'orm';`), `no account for ${host}`);
     assert.ok(servers.ORM_ACCOUNTS_SQL.includes(`GRANT ALL ON *.* TO 'orm'@'${host}';`), `no grant for ${host}`);
   }
+});
+
+// A client that stops reading must not take the pooler down, and a client that disconnects must not leave its statement running (CFG-34, CFG-35, T343-13).
+caseTest('the ProxySQL of the test servers declares the settings that CFG-34 and CFG-35 state', COMPUTE, () => {
+  const config = proxysqlConfig(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  const variables = config.slice(config.indexOf('mysql_variables='), config.indexOf('pgsql_variables='));
+  assert.match(variables, /^ {2}threshold_resultset_size=65536$/m, 'mysql-threshold_resultset_size is not 64 KiB');
+  assert.match(variables, /^ {2}kill_backend_connection_when_disconnect=true$/m, 'mysql-kill_backend_connection_when_disconnect is not declared');
 });
 
 // The case-socket DSN of the MySQL recipe cases (FCV-4, CFG-10) reads the primary's Unix socket from the environment file.

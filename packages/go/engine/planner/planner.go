@@ -1725,6 +1725,9 @@ func (p *Planner) subType(sub *ir.Sub) (string, error) {
 		return "", &ir.Error{Code: "INTERNAL", Msg: "scalar subquery entity " + sub.Query.Entity + " is missing"}
 	}
 	if c := entity.Field(sub.Column); c != nil {
+		if sub.Agg == "sum" && (c.Type == "i16" || c.Type == "i32") {
+			return "i64", nil // INT-160: a sum leaves the range of its column.
+		}
 		return c.Type, nil
 	}
 	return "", &ir.Error{Code: "INTERNAL", Msg: entity.Name + "." + sub.Column + " is missing from a validated scalar subquery"}

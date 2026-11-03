@@ -2,7 +2,7 @@
 // <recipe>-<database>.test.mjs, calls runRecipe with the recipe and the database, and each case of the recipe is one test
 // whose steps call the public API of @polyspec/orm that each op names. It has no command line and no output of its own.
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -11,7 +11,7 @@ import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 import { isDeepStrictEqual } from 'node:util';
 import { Kind, Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
-import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
+import { AesKeyring, BindCell, CORE, Collection, Db, OrmError, loadSet, StyledValue, blindIndex, chainPlans, compareSchemas, connect as connectModel, connectCatalog, dbspecManifest, decode, diffPlan, effectText, emitDbspec, emitPlan, encode, hostDecode, hostEncode, orm, parseDbspec, parseDbspecSet, parsePlan, planSteps, readDbspecFile, readDbspecSet, registerModel, renderDbspec } from '../dist/index.js';
 import { analyzeDbspec, formatDbspec, parseDbspecSet as parseDbspecSetBrowser, readDbspecBytes } from '../dist/dbspec/entry.js';
 import { addTablesAndColumnsSteps, exportMermaid, importMermaid } from '../dist/dbspec/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
@@ -31,9 +31,20 @@ import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 // NONE is the database part of a recipe without a database (FCV-3).
 export const NONE = 'none';
 
+// reportCase appends the pass of a case to the file that ORM_RECIPE_RESULTS names, the line the feature checker reads
+// (FCV-12). A run outside the checker names no file.
+function reportCase(id, database) {
+  const path = process.env.ORM_RECIPE_RESULTS;
+  if (!path) return;
+  appendFileSync(path, database === NONE ? `CASE ${id} PASS\n` : `CASE ${id} [${database}] PASS\n`);
+}
+
 // registerRecipeCase registers one case of a recipe with node:test.
-function registerRecipeCase(recipeCase, deadline, body) {
-  return caseTest(recipeCase.id, deadline, body);
+function registerRecipeCase(recipeCase, database, deadline, body) {
+  return caseTest(recipeCase.id, deadline, async context => {
+    await body(context);
+    reportCase(recipeCase.id, database);
+  });
 }
 
 // runRecipe registers every case of the recipe at path, relative to the repository root, on database. A database other than
@@ -50,7 +61,7 @@ export function runRecipe(path, database) {
   const schema = recipe.schema === undefined ? undefined : validationModel(resolve(root, dirname(path), recipe.schema));
   const dir = resolve(root, dirname(path));
   for (const [caseIndex, recipeCase] of recipe.cases.entries()) {
-    registerRecipeCase(recipeCase, COMPUTE, async () => {
+    registerRecipeCase(recipeCase, database, COMPUTE, async () => {
       const bound = new Map();
       for (const [index, step] of recipeCase.steps.entries()) {
         try {
@@ -386,7 +397,7 @@ async function databaseRecipe(path, database) {
     : await fixtureSchema(resolve(root, recipe.fixture));
   for (const recipeCase of recipe.cases) {
     if (recipeCase.only !== undefined && !recipeCase.only.includes(database)) continue;
-    registerRecipeCase(recipeCase, DATABASE, ({ step }) =>
+    registerRecipeCase(recipeCase, database, DATABASE, ({ step }) =>
       withCaseDatabase(database, step, caseDatabase => runCase({ name, recipe, recipeCase, database, schema, installFirst, caseDatabase, step })));
   }
 }
@@ -1472,16 +1483,6 @@ function rowJson(row, pick) {
   }));
 }
 
-/** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
-function derivedIntegers(row, names = []) {
-  for (const name of names) {
-    if (typeof row[name] !== 'string') continue;
-    assert.match(row[name], /^-?(?:0|[1-9][0-9]*)$/, `${name} is an invalid derived integer`);
-    row[name] = Number(row[name]);
-  }
-  return row;
-}
-
 /** The expect of the database of the case compares rows of wrappers. */
 const wantsRows = (s, { database }) => s.expect?.[database]?.rows !== undefined;
 
@@ -1578,7 +1579,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
-    const fields = { bind: rows, json: rows.values().map(row => derivedIntegers(rowJson(row, s.pick), s.derived_integers)) };
+    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
   },
@@ -1637,6 +1638,16 @@ const TABLE_OPS = {
   },
   async 'utils.local'(s, context) {
     return { json: await connectionOf(s, context).utils().local(s.name) };
+  },
+  'utils.was_inserted': (s, context) => ({ value: { bool: connectionOf(s, context).utils().wasInserted(s.table, s.sequence) } }),
+  async 'utils.backend_waiting_for_lock'(s, context) {
+    return { value: { bool: await connectionOf(s, context).utils().backendWaitingForLock() } };
+  },
+  // The names of the groups that the value of utils() holds (INT-134), each read through its own call.
+  'utils.groups'(s, context) {
+    const utils = connectionOf(s, context).utils();
+    const held = { aes: utils.aes(), privileges: utils.privileges(), schema: utils.schema(), stats: utils.stats() };
+    return { value: { array: Object.keys(held).filter(name => held[name]).map(text => ({ text })) } };
   },
 };
 
@@ -1973,7 +1984,7 @@ function checkSet(step, expect) {
 }
 
 // dbspecFileOps are the dbspec ops whose documents are files relative to the recipe, which checkDbspecFiles runs.
-const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.read_file', 'dbspec.read_bytes'];
+const dbspecFileOps = ['dbspec.parse_emit', 'dbspec.manifest', 'dbspec.render', 'dbspec.analyze', 'dbspec.parse_positions', 'dbspec.format', 'dbspec.parse_set', 'dbspec.set', 'dbspec.load_set', 'dbspec.read_file', 'dbspec.read_bytes'];
 
 // checkDbspecFiles runs one dbspec op of a step through the public dbspec API and checks the result against the expect of database.
 // dir is the directory of the recipe: the paths of a step are relative to it (FCV-4).
@@ -2010,19 +2021,14 @@ async function checkDbspecFiles(step, dir, database) {
       break;
     }
     case 'dbspec.analyze': {
-      if (step.document === undefined) {
-        const { text, set } = inlineDocument(step);
-        const analysis = analyzeDbspec(text, set);
-        assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens ?? [], 'tokens');
-        break;
-      }
-      const text = await readFile(resolve(dir, step.document), 'utf8');
-      const analysis = analyzeDbspec(text, {});
-      const parsed = parseDbspec(text, {});
-      assert.deepEqual(analysis.diagnostics, [], 'the analysis has no diagnostic');
-      assert.equal(emitDbspec(analysis.document), emitDbspec(parsed.document), 'the analysis holds the parsed document');
+      const { text, set } = step.document === undefined ? inlineDocument(step) : { text: await readFile(resolve(dir, step.document), 'utf8'), set: {} };
+      const analysis = analyzeDbspec(text, set);
+      const parsed = parseDbspec(text, set);
+      if (step.document !== undefined) assert.deepEqual(analysis.diagnostics, [], 'the analysis has no diagnostic');
+      assert.deepEqual(analysis.document, parsed.document, 'the analysis holds the parsed document');
       assert.deepEqual(analysis.positions, parsed.positions, 'the analysis holds the positions of the parse');
-      assert.ok(expect.tokens?.length > 0, 'the expect names tokens');
+      assert.deepEqual(analysis.diagnostics, parsed.diagnostics, 'the analysis holds the diagnostics of the parse');
+      assert.ok(Array.isArray(expect.tokens), 'the expect names tokens');
       assert.deepEqual(analysis.tokens.map(t => [t.line, t.start, t.end, t.class]), expect.tokens, 'tokens');
       break;
     }
@@ -2048,6 +2054,19 @@ async function checkDbspecFiles(step, dir, database) {
       assert.deepEqual(formatted.diagnostics, [], 'the text formats');
       assert.ok(formatted.text === expected, 'formatted text');
       assert.ok(formatDbspec(formatted.text, set).text === formatted.text, 'a formatted text is its own format');
+      break;
+    }
+    case 'dbspec.load_set': {
+      const text = lines => (lines.length === 0 ? '' : `${lines.join('\n')}\n`);
+      let documents;
+      try {
+        documents = loadSet(text(step.owned), text(step.external));
+      } catch (error) {
+        if (error.code !== expect.error) throw error;
+        break;
+      }
+      assert.equal(expect.error, undefined, 'the set loaded');
+      assert.deepEqual(documents.map(d => ({ name: d.name, external: d.external === true })), expect.documents, 'documents');
       break;
     }
     case 'dbspec.parse_set': {
