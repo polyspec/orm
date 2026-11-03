@@ -75,10 +75,15 @@ export function runRecipe(path, database) {
   }
 }
 
-// connectDriver opens a DSN with Db.connect, closes it and returns its driver: the one implementation of dsn.connect (FCV-4).
+// connectDriver opens a DSN with Db.connect, runs SELECT 1 through the statement runner (INT-150), closes it and returns its
+// driver: the one implementation of dsn.connect (FCV-4).
 async function connectDriver(dsn) {
   const db = await Db.connect(dsn);
   try {
+    const { rows } = await db.utils().run(async frame => frame.run('utility', [], 'SELECT 1'));
+    if (rows.length !== 1 || rows[0].length !== 1 || Number(rows[0][0]) !== 1) {
+      throw new Error(`SELECT 1 on the connection of ${db.driver} returned ${JSON.stringify(rows)}`);
+    }
     return db.driver;
   } finally {
     await db.close();

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-execution -->
-<!-- source-sha256: 9dbce2604568d15d07490469cf6ca216cad8a2cda24e6bd819b176d4a9dc5dc8 -->
+<!-- source-sha256: 704875f74298f1b462c78a911345a0e91950529250f123942a88575b6381c962 -->
 # 실행 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
