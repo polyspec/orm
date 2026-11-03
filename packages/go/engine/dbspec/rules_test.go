@@ -50,7 +50,6 @@ func block(lines ...string) []string { return lines }
 
 var core = map[string][]string{"core": {"dbspec 1 core", "", "table accounts {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_accounts_code (code)", "}"}}
 
-
 func seventeenColumns() []string {
 	lines := []string{"table wide {"}
 	var names []string

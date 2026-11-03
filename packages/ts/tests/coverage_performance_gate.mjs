@@ -23,7 +23,7 @@ function benchDatabase(database) {
   const name = { mysql: 'BENCH_MYSQL_DSN', postgres: 'BENCH_POSTGRES_DSN', sqlite: 'BENCH_SQLITE_DSN' }[database];
   if (name === undefined) throw new Error(`no bench database for ${database}`);
   const dsn = process.env[name];
-  if (!dsn) throw new Error(`${name} is required; the databases need of a make target writes it`);
+  if (!dsn) throw new Error(`${name} is required; run make orm-test-servers, which starts the databases and writes it`);
   const uri = new URL(dsn);
   if (uri.protocol !== `${database}:`) throw new Error(`${name} scheme ${uri.protocol} does not match ${database}`);
   return { dsn, uri };

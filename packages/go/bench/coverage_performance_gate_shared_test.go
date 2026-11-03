@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -22,16 +21,23 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-func coverageHotPathGate(t *testing.T, expected string) {
+// gateDSN is the DSN of the seeded bench database of the entry's database, which the databases need of the run writes after it
+// seeds them. A missing variable fails by its name.
+func gateDSN(t *testing.T, driver string) string {
 	t.Helper()
-	dsn := os.Getenv("ORM_FEATURE_DSN")
-	driver := os.Getenv("ORM_FEATURE_DATABASE")
-	if dsn == "" || driver == "" {
-		t.Fatal("ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run through make feature-check or make perf-check, which supplies the seeded MySQL bench database")
+	name := map[string]string{"mysql": "BENCH_MYSQL_DSN", "postgres": "BENCH_POSTGRES_DSN", "sqlite": "BENCH_SQLITE_DSN"}[driver]
+	dsn := os.Getenv(name)
+	if dsn == "" {
+		t.Fatalf("%s is required; it is the seeded bench database of %s", name, driver)
 	}
-	if driver != expected {
-		t.Fatalf("coverage entrypoint expects %s, received %s", expected, driver)
-	}
+	return dsn
+}
+
+// coverageHotPathGate is the timing of PERF-1 and asserts no correctness: the rows, binds, projection and decoded cells of its
+// reads are the cases of contracts/fixtures/performance_gate/performance_gate.json.
+func coverageHotPathGate(t *testing.T, driver string) {
+	t.Helper()
+	dsn := gateDSN(t, driver)
 	db, err := model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
 	if err != nil {
 		t.Fatal(err)
@@ -50,16 +56,13 @@ func coverageHotPathGate(t *testing.T, expected string) {
 		name  string
 		query func() *model.AuthorModel
 		rows  int
-		// recipe is true when the performance_gate recipe compares the rows of this read , so the
-		// native correctness checks below do not repeat it; the timing stays.
-		recipe bool
 	}{
 		{name: "pk", query: func() *model.AuthorModel {
 			return model.Author().Connect(db).Seq(42).Limit(0, 1)
-		}, rows: 1, recipe: true},
+		}, rows: 1},
 		{name: "list100", query: func() *model.AuthorModel {
 			return model.Author().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100)
-		}, rows: 100, recipe: true},
+		}, rows: 100},
 	} {
 		clientValues := func() [][2]any {
 			rows, err := workload.query().Gets()
@@ -78,18 +81,6 @@ func coverageHotPathGate(t *testing.T, expected string) {
 				t.Fatal(err)
 			}
 			defer testcase.Close(t, rows)
-			columns, err := rows.Columns()
-			if err != nil {
-				t.Fatal(err)
-			}
-			wantColumns := []string{"a__seq", "a__name", "a__created_ts", "a__updated_ts", "a__is_close", "a__is_display",
-				"a__display_start_dt", "a__display_end_dt", "a__is_allday", "a__target_club_reader_count", "a__success_count",
-				"a__reader_count", "a__read_count", "a__photo_url", "a__user_seq", "a__service_seq", "a__service_region_seq",
-				"a__service_member_seq", "a__start_dt", "a__end_dt", "a__uuid", "a__is_single_work", "a__like_count",
-				"a__aes_hex_email", "a__aes_hex_phone", "a__price", "a__aes_key_version"}
-			if !workload.recipe && !reflect.DeepEqual(columns, wantColumns) {
-				t.Fatalf("native author projection = %v, want %v", columns, wantColumns)
-			}
 			values := make([][2]any, 0, workload.rows)
 			for rows.Next() {
 				var author author
@@ -102,15 +93,6 @@ func coverageHotPathGate(t *testing.T, expected string) {
 				t.Fatal(err)
 			}
 			return values
-		}
-		clientInitial, nativeInitial := clientValues(), nativeValues()
-		if !workload.recipe {
-			if !reflect.DeepEqual(clientInitial, nativeInitial) {
-				t.Fatalf("%s client rows differ from native rows: client=%v native=%v", workload.name, clientInitial, nativeInitial)
-			}
-			if len(clientInitial) != workload.rows {
-				t.Fatalf("%s client rows = %d, want %d", workload.name, len(clientInitial), workload.rows)
-			}
 		}
 		client := func() { clientValues() }
 		native := func() { nativeValues() }

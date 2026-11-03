@@ -78,6 +78,11 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "sql.exec": [
       "only",
       "op",
@@ -377,6 +382,12 @@
       "op",
       "ref"
     ],
+    "utils.run": [
+      "connection",
+      "expect",
+      "op",
+      "statements"
+    ],
     "events.captured": [
       "compare",
       "expect",
@@ -449,6 +460,7 @@
       "op"
     ],
     "dbspec.render": [
+      "dialect",
       "documents",
       "expect",
       "op"
@@ -551,6 +563,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

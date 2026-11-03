@@ -1,11 +1,20 @@
 {
   "$schema": "../../scripts/features/schema/recipe.schema.json",
   "requirements": [
+    "INT-1",
+    "INT-11",
+    "INT-62",
+    "INT-63",
     "INT-68",
     "INT-69",
     "INT-70",
     "INT-71",
+    "INT-80",
+    "INT-81",
+    "INT-84",
+    "INT-86",
     "INT-90",
+    "PRT-35",
     "PRT-69"
   ],
   "cases": [
@@ -141,6 +150,35 @@
               {
                 "owner": "P1",
                 "row_count": "-1"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_count_refuses_whole_float_on_the_wire",
+      "requirements": [
+        "INT-68",
+        "INT-90",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count",
+          "answer": {
+            "rows": [
+              {
+                "owner": "P1",
+                "row_count": 3.0
               }
             ]
           },
@@ -684,6 +722,546 @@
               "value": {
                 "error": "CODEC_DECODE"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "group_value_keeps_the_exact_i64",
+      "requirements": [
+        "INT-1",
+        "PRT-69"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "group_count_i64",
+          "answer": {
+            "rows": [
+              {
+                "id": 9007199254740991,
+                "row_count": 1
+              },
+              {
+                "id": 0,
+                "row_count": 2
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                {
+                  "id": 9007199254740991,
+                  "row_count": 1
+                },
+                {
+                  "id": 0,
+                  "row_count": 2
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "typed_key_get_and_fetched_value",
+      "requirements": [
+        "INT-11",
+        "INT-62",
+        "INT-63",
+        "INT-80",
+        "INT-81",
+        "INT-84",
+        "INT-86"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "collection_typed_key",
+          "answer": {
+            "rows": [
+              {
+                "id": 1,
+                "task": "T1",
+                "note": "note 1"
+              },
+              {
+                "id": 0,
+                "task": "T1",
+                "note": "note 0"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "length": 2,
+                "keys": [
+                  1,
+                  0
+                ],
+                "first": 1,
+                "get": 1,
+                "get_text": null,
+                "get_missing": null,
+                "has": true,
+                "has_text": false,
+                "fetched": "note 1",
+                "fetched_text": null,
+                "fetched_missing": null,
+                "array": [
+                  {
+                    "id": 1,
+                    "task": "T1",
+                    "note": "note 1"
+                  },
+                  {
+                    "id": 0,
+                    "task": "T1",
+                    "note": "note 0"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "typed_key_absent_is_none",
+      "requirements": [
+        "INT-11",
+        "INT-62",
+        "INT-63",
+        "INT-80",
+        "INT-81",
+        "INT-84",
+        "INT-86"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "collection_typed_key",
+          "answer": {
+            "rows": [
+              {
+                "id": 0,
+                "task": "T1",
+                "note": "note 0"
+              },
+              {
+                "id": 5,
+                "task": "T1",
+                "note": "note 5"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "length": 2,
+                "keys": [
+                  0,
+                  5
+                ],
+                "first": 0,
+                "get": null,
+                "get_text": null,
+                "get_missing": null,
+                "has": false,
+                "has_text": false,
+                "fetched": null,
+                "fetched_text": null,
+                "fetched_missing": null,
+                "array": [
+                  {
+                    "id": 0,
+                    "task": "T1",
+                    "note": "note 0"
+                  },
+                  {
+                    "id": 5,
+                    "task": "T1",
+                    "note": "note 5"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "row_identity_null_is_codec_decode",
+      "requirements": [
+        "PRT-35"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "collection_typed_key",
+          "answer": {
+            "rows": [
+              {
+                "id": null,
+                "task": "T1",
+                "note": "n"
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "configured_key_of_a_column",
+      "requirements": [
+        "PRT-35",
+        "INT-11"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "collection_key_name",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "age": 30
+              },
+              {
+                "id": "P2",
+                "age": 0
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": [
+                30,
+                0
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "configured_key_null_is_codec_decode",
+      "requirements": [
+        "PRT-35",
+        "INT-11"
+      ],
+      "steps": [
+        {
+          "op": "ir.answer",
+          "chain": "collection_key_name",
+          "answer": {
+            "rows": [
+              {
+                "id": "P1",
+                "age": null
+              }
+            ]
+          },
+          "expect": {
+            "none": {
+              "value": {
+                "error": "CODEC_DECODE"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key_identity_of_every_type",
+      "requirements": [
+        "INT-11",
+        "INT-63",
+        "PRT-35"
+      ],
+      "steps": [
+        {
+          "op": "collection.key",
+          "keys": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "bool",
+              "value": false
+            },
+            {
+              "type": "int",
+              "value": 0
+            },
+            {
+              "type": "text",
+              "value": "0"
+            },
+            {
+              "type": "bool",
+              "value": true
+            },
+            {
+              "type": "int",
+              "value": 1
+            },
+            {
+              "type": "text",
+              "value": "1"
+            },
+            {
+              "type": "bytes",
+              "hex": "616263"
+            },
+            {
+              "type": "text",
+              "value": "abc"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T09:30:00.123456Z"
+            },
+            {
+              "type": "text",
+              "value": "2026-10-18 09:30:00.123456"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T18:30:00.123456+09:00"
+            }
+          ],
+          "expect": {
+            "none": {
+              "groups": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                9
+              ],
+              "types": [
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bytes",
+                "text",
+                "datetime",
+                "text",
+                "datetime"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key_identity_is_stable",
+      "requirements": [
+        "INT-11",
+        "INT-63",
+        "PRT-35"
+      ],
+      "steps": [
+        {
+          "op": "collection.key",
+          "keys": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "bool",
+              "value": false
+            },
+            {
+              "type": "int",
+              "value": 0
+            },
+            {
+              "type": "text",
+              "value": "0"
+            },
+            {
+              "type": "bool",
+              "value": true
+            },
+            {
+              "type": "int",
+              "value": 1
+            },
+            {
+              "type": "text",
+              "value": "1"
+            },
+            {
+              "type": "bytes",
+              "hex": "616263"
+            },
+            {
+              "type": "text",
+              "value": "abc"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T09:30:00.123456Z"
+            },
+            {
+              "type": "text",
+              "value": "2026-10-18 09:30:00.123456"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T18:30:00.123456+09:00"
+            },
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "bool",
+              "value": false
+            },
+            {
+              "type": "int",
+              "value": 0
+            },
+            {
+              "type": "text",
+              "value": "0"
+            },
+            {
+              "type": "bool",
+              "value": true
+            },
+            {
+              "type": "int",
+              "value": 1
+            },
+            {
+              "type": "text",
+              "value": "1"
+            },
+            {
+              "type": "bytes",
+              "hex": "616263"
+            },
+            {
+              "type": "text",
+              "value": "abc"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T09:30:00.123456Z"
+            },
+            {
+              "type": "text",
+              "value": "2026-10-18 09:30:00.123456"
+            },
+            {
+              "type": "datetime",
+              "value": "2026-10-18T18:30:00.123456+09:00"
+            }
+          ],
+          "expect": {
+            "none": {
+              "groups": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                9,
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                9
+              ],
+              "types": [
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bytes",
+                "text",
+                "datetime",
+                "text",
+                "datetime",
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bool",
+                "int",
+                "text",
+                "bytes",
+                "text",
+                "datetime",
+                "text",
+                "datetime"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "key_null_is_codec_decode",
+      "requirements": [
+        "PRT-35"
+      ],
+      "steps": [
+        {
+          "op": "collection.key",
+          "keys": [
+            {
+              "type": "null"
+            }
+          ],
+          "expect": {
+            "none": {
+              "error": "CODEC_DECODE",
+              "message": "CODEC_DECODE: collection row identity contains SQL NULL"
             }
           }
         }

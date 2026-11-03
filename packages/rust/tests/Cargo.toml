@@ -122,6 +122,27 @@ name = "catalog_connection_sqlite"
 path = "tests/catalog_connection_sqlite.rs"
 harness = false
 
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_mysql"
+path = "tests/statement_runner_mysql.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_postgres::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_postgres"
+path = "tests/statement_runner_postgres.rs"
+harness = false
+
+# Each case of the statement_runner recipe, contracts/fixtures/statement_runner/statement_runner.json, is the trial
+# statement_runner_sqlite::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "statement_runner_sqlite"
+path = "tests/statement_runner_sqlite.rs"
+harness = false
+
 # Each case of the statement_events recipe, contracts/fixtures/statement_events/statement_events.json, is the trial
 # statement_events_mysql::<case id> on a case database of its own (FCV-3, FCV-4).
 [[test]]
@@ -364,6 +385,23 @@ harness = false
 [[test]]
 name = "dsn_reject_none"
 path = "tests/dsn_reject_none.rs"
+harness = false
+
+# Each case of the immutable_write recipe, contracts/fixtures/immutable_write/immutable_write.json, is the trial
+# immutable_write_<database>::<case id> on a case database of its own (FCV-3, FCV-4).
+[[test]]
+name = "immutable_write_mysql"
+path = "tests/immutable_write_mysql.rs"
+harness = false
+
+[[test]]
+name = "immutable_write_postgres"
+path = "tests/immutable_write_postgres.rs"
+harness = false
+
+[[test]]
+name = "immutable_write_sqlite"
+path = "tests/immutable_write_sqlite.rs"
 harness = false
 
 # Each case of the audit_triggers recipe, contracts/fixtures/audit_triggers/audit_triggers.json, is the trial

@@ -617,6 +617,11 @@ ZEND_METHOD(Polyspec_Orm_TxFrame, run)
         native_config_error("a statement must be text");
         RETURN_THROWS();
     }
+    zval rv_finished;
+    if (zend_is_true(zend_read_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("finished"), 1, &rv_finished))) {
+        native_config_error("transaction already finished");
+        RETURN_THROWS();
+    }
     zval empty;
     bool own_params = params == NULL;
     if (own_params) {

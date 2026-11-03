@@ -251,6 +251,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     if step["op"] == "markdown.send" {
         return markdown_send(step);
     }
+    if step["op"] == "collection.key" {
+        return collection_key(step, database);
+    }
     if step["op"] == "model.assign" {
         return model_assign(step);
     }
@@ -1159,6 +1162,55 @@ fn markdown_send(step: &Value) -> Result<(), String> {
 
 /// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
 /// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn collection_key(step: &Value, database: &str) -> Result<(), String> {
+    let mut keys: Vec<polyspec_orm::Key> = Vec::new();
+    let mut groups: Vec<usize> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
+    let mut failure = None;
+    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+        let value = match entry["type"].as_str().unwrap_or_default() {
+            "null" => Val::Null,
+            "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
+            "bool" => Val::Bool(entry["value"].as_bool().ok_or("a bool key holds no bool")?),
+            "int" => Val::I64(entry["value"].as_i64().ok_or("an int key holds no integer")?),
+            "bytes" => {
+                let text = entry["hex"].as_str().ok_or("a bytes key holds no hex")?;
+                let digits = (0..text.len()).step_by(2).map(|index| u8::from_str_radix(&text[index..index + 2], 16));
+                Val::Bytes(digits.collect::<Result<Vec<u8>, _>>().map_err(|error| error.to_string())?)
+            }
+            "datetime" => {
+                let text = entry["value"].as_str().ok_or("a datetime key holds no text")?;
+                Val::DateTime(polyspec_orm::chrono::DateTime::parse_from_rfc3339(text).map_err(|error| error.to_string())?.naive_utc())
+            }
+            other => return Err(format!("collection.key has no type {other}")),
+        };
+        let key = match polyspec_orm::Key::of(&value) {
+            Ok(key) => key,
+            Err(error) => {
+                failure = Some(json!({ "error": error.code(), "message": error.to_string() }));
+                break;
+            }
+        };
+        groups.push(keys.iter().position(|other| other == &key).map_or(keys.len(), |index| groups[index]));
+        types.push(match (&key, &value) {
+            (polyspec_orm::Key::I(left), Val::I64(right)) if left == right => "int",
+            (polyspec_orm::Key::S(left), Val::Str(right)) if left == right => "text",
+            (polyspec_orm::Key::B(left), Val::Bool(right)) if left == right => "bool",
+            (polyspec_orm::Key::X(left), Val::Bytes(right)) if left == right => "bytes",
+            (polyspec_orm::Key::T(left), Val::DateTime(right)) if left == right => "datetime",
+            _ => return Err(format!("key {key:?} changed its native value")),
+        });
+        keys.push(key);
+    }
+    let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
+    let want = &step["expect"][database];
+    if &got == want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
+    }
+}
+
 fn model_assign(step: &Value) -> Result<(), String> {
     let model = step["model"].as_str().unwrap_or_default();
     let column = step["column"].as_str().unwrap_or_default();
@@ -1745,6 +1797,10 @@ pub use database::{database_trials, database_trials_with_models, database_trials
 /// its objects and a column list is written in the order of the recipe (FCV-4).
 const WRITTEN_ORDER: &str = "__written_order";
 
+/// The mark that the text of a failed model op ends with when its error keeps the error of the driver as its source;
+/// the text of an op is a string, and an expect of driver_cause reads this mark (FCV-4).
+const DRIVER_CAUSE: &str = "\u{1f}driver_cause";
+
 mod database {
     use std::collections::HashMap;
     use std::future::Future;
@@ -2326,12 +2382,22 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
+                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                    Some(text) => (text.to_owned(), true),
+                    None => (message, false),
+                };
                 let Some(want) = want_error else { return Err(format!("unexpected error {message}")) };
                 let suffix = expected.as_ref().and_then(|e| e.get("message_suffix")).and_then(Value::as_str);
+                let holds = expected.as_ref().and_then(|e| e.get("message_holds")).and_then(Value::as_str);
+                let wants_cause = expected.as_ref().and_then(|e| e.get("driver_cause")).and_then(Value::as_bool) == Some(true);
                 return match error_code(&message) {
                     Some(code) if code == want.as_str() => match suffix {
                         Some(suffix) if !message.ends_with(suffix) => Err(format!("error message {message:?} does not end with {suffix:?}")),
-                        _ => Ok(()),
+                        _ => match holds {
+                            Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
+                            _ if wants_cause && !cause => Err(format!("error {message:?} has no driver cause")),
+                            _ => Ok(()),
+                        },
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
                     None => Err(format!("error without a code ({message}), want {want}")),
@@ -2554,6 +2620,35 @@ mod database {
                 let subscription = context.subscriptions.remove(name).ok_or_else(|| fault(format!("{}: no subscription {name}", step["op"])))?;
                 subscription.unsubscribe();
                 Output::fields(json!({}))
+            }
+            // utils.run (FCV-4, INT-150): one Utils::run whose function runs the statements in order on its frame; the value is
+            // the rows of the last.
+            "utils.run" => {
+                let db = connection_db(step, context).map_err(fault)?;
+                let mut statements = Vec::new();
+                for statement in step["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
+                    let kind = statement["kind"].as_str().ok_or_else(|| fault("a statement of utils.run names no kind".into()))?;
+                    let tables: Vec<&str> = statement["tables"].as_array().map(|names| names.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+                    let sql = sql_field(&statement["sql"], context).map_err(fault)?;
+                    let mut params = Vec::new();
+                    for raw in statement["params"].as_array().map(Vec::as_slice).unwrap_or_default() {
+                        params.push(super::tables::param(raw).map_err(fault)?);
+                    }
+                    statements.push((kind, tables, sql, params));
+                }
+                let rows = db
+                    .utils()
+                    .run(async |frame| {
+                        let mut last = Vec::new();
+                        for (kind, tables, sql, params) in &statements {
+                            last = frame.run(kind, tables, sql, params).await?;
+                        }
+                        Ok(last)
+                    })
+                    .await
+                    .map_err(orm)?;
+                let rows: Vec<Value> = rows.iter().map(|row| json!({ "array": row.iter().map(super::statement::cell_wrapper).collect::<Vec<Value>>() })).collect();
+                Output::fields(json!({ "value": { "array": rows } }))
             }
             "events.captured" => {
                 let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
@@ -3085,7 +3180,7 @@ mod statement {
     use std::collections::HashMap;
     use std::sync::Mutex;
 
-    use polyspec_orm::{Param, StatementEvent};
+    use polyspec_orm::{Param, StatementEvent, Val};
     use serde_json::{json, Value};
 
     /// The events that a recording subscriber received: each with whether it names a table, and its wrapper.
@@ -3102,8 +3197,19 @@ mod statement {
         }
     }
 
+    /// The recipe wrapper of one cell of a statement result of the frame (INT-150).
+    pub(super) fn cell_wrapper(cell: &Val) -> Value {
+        match cell {
+            Val::Null => json!({ "null": true }),
+            Val::I64(n) => json!({ "int": n.to_string() }),
+            Val::F64(f) => json!({ "float": f.to_string() }),
+            Val::Str(text) => json!({ "text": text }),
+            other => panic!("the statement recipe has no wrapper for the cell {other:?}"),
+        }
+    }
+
     /// The wrapper of one bind of an event: a byte bind (a value a codec encoded) compares as its text.
-    fn bind_wrapper(p: &Param) -> Value {
+    pub(super) fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
@@ -3171,8 +3277,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
-    type Record = (String, String);
+    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
+    /// record_param action (hook.records).
+    type Record = (String, String, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -3277,7 +3384,8 @@ mod tables {
 
     /// A failure of an orm call, named by its code: the message starts with the code, as the error check reads it.
     fn orm(error: OrmError) -> String {
-        format!("{}: {error}", error.code())
+        let cause = if std::error::Error::source(&error).is_some() { super::DRIVER_CAUSE } else { "" };
+        format!("{}: {error}{cause}", error.code())
     }
 
     /// A string that lives as long as the process, for the names that polyspec_orm takes as 'static.
@@ -3859,8 +3967,12 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity) in &records {
-                list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+            for (kind, entity, param) in &records {
+                let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
+                if let Some(param) = param {
+                    members.push(json!(["param", param]));
+                }
+                list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
                 counts.insert(entity.clone(), json!(n));
             }
@@ -3890,8 +4002,10 @@ mod tables {
                     let mut relation = step["relation"].clone();
                     relation["columns"] = Value::Null;
                     let mut child = build.relation(&relation)?;
-                    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-                    child.connect(db);
+                    // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+                    if relation["connect"].as_bool() == Some(true) {
+                        child.connect(db);
+                    }
                     core.relation(relation["many"].as_bool() == Some(true), child);
                 }
                 core
@@ -4158,8 +4272,10 @@ mod tables {
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
                     let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
-                    self.bases.insert(connection.to_owned(), base);
-                    connections.insert(connection, hooked);
+                    // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                    let target = step["as"].as_str().unwrap_or(connection);
+                    self.bases.insert(target.to_owned(), base);
+                    connections.insert(target, hooked);
                     Ok(json!({}))
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
@@ -4220,7 +4336,7 @@ mod tables {
     }
 
     /// The recipe value of a column: the parameter of its wrapper.
-    fn param(wrapper: &Value) -> Result<Param, String> {
+    pub(super) fn param(wrapper: &Value) -> Result<Param, String> {
         let (kind, body) = super::kind(wrapper)?;
         Ok(match kind {
             "text" | "decimal" | "datetime" | "date" | "time" | "uuid" => Param::Str(body.as_str().ok_or_else(|| format!("{wrapper} has no text"))?.to_owned()),
@@ -4298,7 +4414,7 @@ mod tables {
                 Value::Null => None,
                 wrapper => Some(param(wrapper)?),
             };
-            if matches!(action.as_str(), "scope" | "assign") && (value.is_none() || hook["column"].as_str().is_none()) {
+            if matches!(action.as_str(), "scope" | "assign" | "assign_first" | "rewrite") && (value.is_none() || hook["column"].as_str().is_none()) {
                 return Err(format!("hook action {action} needs a column and a value"));
             }
             out.push(HookAction {
@@ -4371,7 +4487,26 @@ mod tables {
                         row.push(q);
                     }
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                ("assign_first", Some(value)) => {
+                    let p = params.add(value.clone());
+                    request.set.insert(0, Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                }
+                ("rewrite", Some(value)) => {
+                    for assignment in request.set.iter_mut().filter(|assignment| assignment.column == action.column) {
+                        assignment.p = Some(params.add(value.clone()));
+                    }
+                }
+                ("invalid_param", _) => {
+                    let p = request.n_params + 5;
+                    and_where(&mut request.query, equal_pred(&action.column, p));
+                }
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("record_param", _) => {
+                    for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
+                        let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                    }
+                }
                 ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
                 (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
             }

@@ -1,6 +1,6 @@
 # Helpers of the statement events of tests/events/vectors.json for the Python client: the recipe
 # contracts/fixtures/statement_events/statement_events.json runs the cases (test_statement_events_<dialect>.py), and
-# the coverage and server_transactions tests use these helpers. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
+# the server_transactions test uses these helpers. MySQL and PostgreSQL need ORM_TEST_MYSQL_DSN and
 # ORM_TEST_POSTGRES_DSN, and a missing variable fails the test that uses them.
 import json
 import os
@@ -133,35 +133,3 @@ class EventRun:
             return
         if "error" in step:
             raise AssertionError(f"step {step['op']} succeeded, want {step['error']}")
-
-
-def run_case(case: dict, dialect: str, dsn: str) -> list:
-    """Runs the case on the dialect's database and returns its problems."""
-    problems = []
-    schema = STATE["models"].SCHEMA
-    db = Db.connect_schema(dsn, schema)
-    try:
-        if case.get("install", True):
-            db.utils().schema().install(schema)
-        run = EventRun(db, problems)
-        for step in case["steps"]:
-            run.checked(step)
-        got = (
-            [r for r in run.records if r["tables"]]
-            if case.get("compare") == "tables"
-            else run.records
-        )
-        want = [
-            {
-                key: event[key]
-                for key in ("sql", "binds", "kind", "tables", "transaction", "error")
-            }
-            for event in case["events"][dialect]
-        ]
-        if got != want:
-            problems.append(
-                f"events\n got {json.dumps(got, indent=2)}\nwant {json.dumps(want, indent=2)}"
-            )
-    finally:
-        db.close()
-    return problems
