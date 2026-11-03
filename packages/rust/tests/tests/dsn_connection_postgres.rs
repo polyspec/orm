@@ -1,6 +1,6 @@
 //! The dsn_connection recipe, contracts/fixtures/dsn_connection/dsn_connection.json, on postgres
 //! (docs/spec/feature-coverage.md FCV-3).
-//! Requirements: CFG-1, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14, CFG-19, CFG-2, DIA-57, DSL-141, CFG-27, CFG-28, CFG-29, CFG-6, CFG-21, CFG-22, CFG-23, CFG-25.
+//! Requirements: CFG-1, FCV-8, FCV-9, FCV-10, FCV-11, FCV-12, FCV-13, FCV-14, CFG-19, CFG-2, DIA-57, DSL-141, CFG-27, CFG-28, CFG-29, CFG-6, CFG-21, CFG-22, CFG-23, CFG-25, CFG-24, PLN-31.
 
 use polyspec_orm_tests::recipe;
 

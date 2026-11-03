@@ -173,6 +173,9 @@
     "replica.await": [
       "op"
     ],
+    "database.read_only": [
+      "op"
+    ],
     "row.connect": [
       "connection",
       "op",

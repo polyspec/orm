@@ -16,7 +16,7 @@ const clientScans = [
   'tests/coverage_transactions.mjs', 'tests/decimal_model_type.ts', 'tests/group_rows.types.ts',
   'tests/model-new-output-name.mjs', 'tests/model.mjs',
   'tests/paginate-order.mjs', 'tests/parent-slot-expansion.mjs', 'tests/recipe.mjs', 'tests/recipe_model.mjs',
-  'tests/refusal-before-request.mjs', 'tests/replica.mjs',
+  'tests/refusal-before-request.mjs',
   'tests/split-plan.test.mjs', 'tests/styled-value-checks.mjs',
   'tests/transaction-flow.mjs', 'tests/typecheck.ts',
   '../../examples/thin-slice/ts/main.mts',

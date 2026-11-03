@@ -93,9 +93,6 @@
       "tests": [
         "packages/go/orm/dsn_test.go",
         "packages/go/orm/timezone_test.go",
-        "packages/go/model/replica_test.go",
-        "packages/ts/tests/replica.mjs",
-        "packages/rust/tests/tests/replica.rs",
         "packages/php/tests/DsnTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/ConnectionUtcNativeTest.php",
@@ -130,7 +127,6 @@
         "packages/python/tests/test_placeholders.py",
         "packages/python/tests/test_driver_cells.py",
         "packages/python/tests/connection_config.py",
-        "packages/python/tests/replica.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
         "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
@@ -408,14 +404,6 @@
           ]
         },
         {
-          "id": "replica-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^(TestPrimaryAndReplica|TestReadOnlySQLite)$' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/model/replica_test.go"
-          ]
-        },
-        {
           "id": "example-dsn-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts example-dsn-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test example_dsn",
           "shard": "rust",
@@ -479,32 +467,6 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/connection_config.py",
-            "packages/python/src/polyspec/orm/database.py"
-          ]
-        },
-        {
-          "id": "replica-typescript",
-          "command": "node packages/ts/tests/replica.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/replica.mjs"
-          ]
-        },
-        {
-          "id": "replica-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts replica-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test replica",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/replica.rs",
-            "contracts/fixtures/rollback.dbs"
-          ]
-        },
-        {
-          "id": "replica-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.replica",
-          "shard": "other",
-          "inputs": [
-            "packages/python/tests/replica.py",
             "packages/python/src/polyspec/orm/database.py"
           ]
         },

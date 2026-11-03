@@ -2735,6 +2735,12 @@ def _op_replica_await(step: dict, context: dict) -> dict:
     return {}
 
 
+def _op_database_read_only(step: dict, context: dict) -> dict:
+    """The file of the case database becomes one that the process may only read (CFG-24)."""
+    os.chmod(context["dsn"].removeprefix("sqlite://").split("?")[0], 0o444)
+    return {}
+
+
 def _op_wait_start(step: dict, context: dict) -> dict:
     context["wait_start"] = time.monotonic()
     return {}
@@ -4050,6 +4056,7 @@ _DATABASE_OPS = {
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
     "replica.await": _op_replica_await,
+    "database.read_only": _op_database_read_only,
     "wait.start": _op_wait_start,
     "transaction.writers": _op_transaction_writers,
     "wait.at_least": _op_wait_at_least,

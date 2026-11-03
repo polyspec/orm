@@ -728,48 +728,6 @@ class ModelTest extends TestCase
         }
     }
 
-    // Multi-row inserts run as batches of the given size (docs/spec/protocol.md "Relation steps"; the shared cases of
-    // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch
-    // that is not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep
-    // their order, and a failing batch leaves no row of the call.
-    /**
-     * Returns after the replica has applied every change the primary committed
-     * before the call. On PostgreSQL a transaction with
-     * synchronous_commit=remote_apply that writes WAL, here a transactional
-     * logical message, commits after the standby has applied it; a transaction
-     * that writes no WAL besides its commit record does not wait. On MySQL
-     * SOURCE_POS_WAIT on the replica waits for the binary log position of the
-     * primary.
-     */
-    private static function awaitReplica(string $driver, string $primary, string $replica): void
-    {
-        [, $pdoDsn, $user, $password] = Orm::parseDsn($primary);
-        $source = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        if ($driver === 'postgres') {
-            $source->beginTransaction();
-            $source->exec('SET LOCAL synchronous_commit = remote_apply');
-            $mode = $source->query(
-                "SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')"
-            )->fetchColumn();
-            if ($mode !== 'remote_apply') {
-                throw new RuntimeException("synchronous_commit of the barrier transaction is $mode");
-            }
-            $source->commit();
-            return;
-        }
-        $status = $source->query('SHOW BINARY LOG STATUS')->fetch(PDO::FETCH_NUM);
-        [, $pdoDsn, $user, $password] = Orm::parseDsn($replica);
-        $target = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        // The deadline is 60 s: the replica applies the writes of all clients running in parallel in turn, so on a 4
-        // vCPU Linux runner it could not reach the primary's position within 10 s.
-        $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
-        $st->execute([$status[0], (int) $status[1]]);
-        $waited = $st->fetchColumn();
-        if ($waited === null || (int) $waited < 0) {
-            throw new RuntimeException("the replica did not reach {$status[0]}:{$status[1]}");
-        }
-    }
-
     /** The message of the error that fn threw. 'no error' if there was none. */
     private static function failureMessage(callable $fn): string
     {
@@ -812,14 +770,6 @@ class ModelTest extends TestCase
         self::$caseDatabases = [];
         foreach ($databases as $database) {
             $database->drop();
-        }
-    }
-
-    /** @return iterable<string, array{string}> the server drivers, each a data set */
-    public static function serverDrivers(): iterable
-    {
-        foreach (['mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
         }
     }
 
@@ -885,91 +835,6 @@ class ModelTest extends TestCase
             }
         });
         self::check($inside !== null && $inside->code_ === Code::CONFIG, 'install inside a transaction returns CONFIG');
-    }
-
-    // A connection to the primary and one to its replica work side by side. A
-    // model uses the connection it is connected to and no other, and a model
-    // without a connection inside a transaction uses the transaction.
-    #[DataProvider('serverDrivers')]
-    // Requirements: CFG-21, CFG-22, CFG-23, CFG-25, PLN-35.
-    public function testPrimaryAndReplica(string $driver): void
-    {
-        $env = strtoupper($driver);
-        $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
-        if ($replica === false || $replica === '') {
-            throw new RuntimeException(
-                "ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make "
-                . "target, which reads the environment of make orm-test-servers"
-            );
-        }
-        // The replica copies the primary's case database under the same name. MySQL needs that database on the replica
-        // before it can connect, so it waits on the shared replica database and then connects.
-        $primary = self::caseDatabase($driver);
-        $master = self::database($driver, $primary->dsn);
-        $name = 'replica-' . hrtime(true);
-        (new User())($master)->setName($name)->create();
-        self::awaitReplica($driver, $primary->dsn, $replica);
-        $slave1 = \Polyspec\Orm\Tests\Model\connect(
-            $primary->related($replica),
-            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
-        );
-        self::check(
-            (new User())($slave1)->name($name)->getCount() === 1,
-            'the replica reads the row written through the primary'
-        );
-        self::check(
-            self::code(fn() => (new User())($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY,
-            'a write through the replica connection is rejected'
-        );
-        self::check(
-            (new User())($master)->name("$name-replica")->getCount() === 0,
-            'a write through the replica connection does not reach the primary'
-        );
-        // A row read through the replica is written through the primary.
-        (new User())($slave1)->name($name)->get()->connect($master)->setName("$name-renamed")->update();
-        $master->transaction(function () use ($master, $slave1, $name): void {
-            (new User())->setName("$name-tx")->create();
-            self::check(
-                (new User())($master)->name("$name-tx")->getCount() === 1,
-                'the primary connection inside its transaction'
-            );
-            self::check(
-                (new User())($slave1)->name("$name-tx")->getCount() === 0,
-                'the replica connection reads no uncommitted row'
-            );
-        });
-        self::awaitReplica($driver, $primary->dsn, $replica);
-        self::check(
-            (new User())($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2,
-            'the replica reads the committed rows'
-        );
-        $slave1->close();
-        $master->close();
-    }
-
-    // A connection to a SQLite database file that the process may only read:
-    // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
-    // Requirements: CFG-24.
-    public function testReadOnly(): void
-    {
-        $path = self::$work . "/read-only.sqlite";
-        $writable = self::database('sqlite', "sqlite://$path");
-        (new User())($writable)->setName('read-only')->create();
-        $writable->close();
-        chmod($path, 0o444);
-        $readOnly = \Polyspec\Orm\Tests\Model\connect(
-            "sqlite://$path",
-            new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key')
-        );
-        self::check(
-            (new User())($readOnly)->name('read-only')->getCount() === 1,
-            'the read-only database reads the row'
-        );
-        self::check(
-            self::code(fn() => (new User())($readOnly)->setName('rejected')->create()) === Code::READ_ONLY,
-            'a write to the read-only database'
-        );
-        $readOnly->close();
     }
 
     // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.

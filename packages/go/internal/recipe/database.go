@@ -1187,6 +1187,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 			return outcome{}, err
 		}
 		return outcome{fields: map[string]any{}}, nil
+	case "database.read_only":
+		// The file of the case database becomes one that the process may only read (CFG-24).
+		path, _, _ := strings.Cut(strings.TrimPrefix(c.dsn, "sqlite://"), "?")
+		if err := os.Chmod(path, 0o444); err != nil {
+			return outcome{}, err
+		}
+		return outcome{fields: map[string]any{}}, nil
 	case "wait.start":
 		c.waitStart = time.Now()
 		return outcome{fields: map[string]any{}}, nil

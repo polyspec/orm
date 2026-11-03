@@ -3843,6 +3843,14 @@ mod database {
                 await_replica(context).await.map_err(fault)?;
                 Output::fields(json!({}))
             }
+            "database.read_only" => {
+                // The file of the case database becomes one that the process may only read (CFG-24).
+                let path = context.dsn.strip_prefix("sqlite://").unwrap_or(&context.dsn).split('?').next().unwrap_or_default().to_owned();
+                let mut permissions = std::fs::metadata(&path).map_err(|e| fault(format!("{path}: {e}")))?.permissions();
+                permissions.set_readonly(true);
+                std::fs::set_permissions(&path, permissions).map_err(|e| fault(format!("{path}: {e}")))?;
+                Output::fields(json!({}))
+            }
             "wait.start" => {
                 *WAIT_START.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(std::time::Instant::now());
                 Output::fields(json!({}))

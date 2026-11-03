@@ -2803,6 +2803,175 @@
           }
         }
       ]
+    },
+    {
+      "id": "replica_rejects_a_write",
+      "requirements": [
+        "CFG-24"
+      ],
+      "only": [
+        "mysql",
+        "postgres"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "primary"
+        },
+        {
+          "op": "model.create",
+          "connection": "primary",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "replica.await"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "dsn": "case-replica",
+          "as": "replica"
+        },
+        {
+          "op": "model.create",
+          "connection": "replica",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "refused"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
+            },
+            "postgres": {
+              "error": "READ_ONLY",
+              "message_holds": "read-only"
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "primary",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "refused"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 0
+            },
+            "postgres": {
+              "json": 0
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "connection": "replica",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "json": 1
+            },
+            "postgres": {
+              "json": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlite_read_only_file_rejects_a_write",
+      "requirements": [
+        "CFG-24"
+      ],
+      "only": [
+        "sqlite"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "writable"
+        },
+        {
+          "op": "model.create",
+          "connection": "writable",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "written"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          }
+        },
+        {
+          "op": "database.read_only"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "read_only"
+        },
+        {
+          "op": "model.count",
+          "connection": "read_only",
+          "model": "Author",
+          "where": {
+            "name": {
+              "text": "written"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "json": 1
+            }
+          }
+        },
+        {
+          "op": "model.create",
+          "connection": "read_only",
+          "model": "Author",
+          "values": {
+            "name": {
+              "text": "refused"
+            },
+            "start_dt": {
+              "text": "2026-01-01 00:00:00"
+            }
+          },
+          "expect": {
+            "sqlite": {
+              "error": "READ_ONLY",
+              "message_holds": "readonly database"
+            }
+          }
+        }
+      ]
     }
   ]
 }

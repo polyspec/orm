@@ -3156,6 +3156,10 @@ final class Recipe
                 $waited = $wait->fetchColumn();
                 Assert::assertTrue($waited !== null && (int) $waited >= 0, "the replica did not reach {$status[0]}:{$status[1]}");
                 return [];
+            case 'database.read_only':
+                // The file of the case database becomes one that the process may only read (CFG-24).
+                Assert::assertTrue(chmod(explode('?', substr($context['dsn'], strlen('sqlite://')))[0], 0o444));
+                return [];
             case 'wait.start':
                 self::$waitStart = hrtime(true);
                 return [];

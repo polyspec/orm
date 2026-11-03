@@ -1726,26 +1726,6 @@ python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.statement_fault
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 
-# replica-check runs the primary and replica cases (CFG-21, CFG-22, CFG-23, CFG-24, CFG-25) of every client: a connection to the primary
-# and one to its replica on MySQL and PostgreSQL, and a SQLite file opened read-only. It needs the primary and replica
-# servers of make orm-test-servers (WITH_TEST_ENV).
-.PHONY: replica-check
-replica-check: RUN_DIR = $(abspath .runtime/run)/replica-check-$$PPID
-replica-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
-	$(WITH_TEST_ENV) $(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^Test(PrimaryAndReplica|ReadOnlySQLite)$$' -count=1
-	$(WITH_TEST_ENV) $(NODE) packages/ts/tests/replica.mjs
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.replica
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit --timeout 120 -- --configuration packages/php/phpunit.xml.dist --filter 'testPrimaryAndReplica' packages/php/tests/ModelTest.php
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter 'testReadOnly' packages/php/tests/ModelTest.php
-	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
-	@set -eu; \
-	status=0; \
-	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --timeout 120 --php-extension "$(PHP_EXTENSION_LIBRARY)" -- --configuration packages/php/phpunit.xml.dist --filter 'testPrimaryAndReplica' packages/php/tests/ModelTest.php || status=$$?; \
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter 'testReadOnly' packages/php/tests/ModelTest.php || status=$$?; \
-	rm -rf $(RUN_DIR); \
-	exit $$status
-	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) replica-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test replica -- --test-threads=1
-
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).
