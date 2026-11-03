@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d19b3b9cbca55020d3116258ed14a69b157b723216fc2ce0c8305693f6631d0b -->
+<!-- source-sha256: 3cab9a65c87c6ff9818d8fead52459184f21d7247a14a21f4f0b2279cf226675 -->
 # 변경 이력
 
 ## Unreleased
 
+- 문 실행기는 recipe `statement_runner`가 되었고, 여섯 runtime 모두 새 op `utils.run`으로 그 case를 MySQL, PostgreSQL, SQLite에서 실행한다. Go `TxFrame.Run`과 Rust `TxFrame::run`은 MySQL text column을 bytes가 아닌 text로 돌려준다. transaction이 끝난 뒤 쓰는 frame은 이제 Go, TypeScript, PHP, PHP extension에서 `CONFIG`로 실패한다. Go는 `DRIVER`를 돌려주었고 TypeScript와 PHP는 statement를 실행했다. 텍스트가 아닌 statement는 TypeScript에서 `DRIVER` 대신 `CONFIG`로 실패한다(INT-150a, INT-150b).
 - recipe의 `sql` field는 FCV-4대로 text이거나 세 database를 모두 가진 객체다. 일부만 가진 map은 빠진 database에서 아무것도 실행하지 않았고, 이는 FCV-10이 금지한다. fulltext index step은 text에 `only`를 붙인다. (#T334-3-4-14)
 - recipe schema의 step union은 `query.search_chain`을 포함하고, catalog error에 `message_suffix`를 선언하며, parity suite의 모든 recipe가 schema에 맞는다. audit recipe는 복원된 행을 key 숫자가 아니라 audit record의 actor로 찾는다. 다른 row가 지운 테스트와 owner에 맞춰 feature test를 고쳤다. (#T334-3-4-13)
 - INT-74와 INT-130의 keyring version과 INT-88, INT-89의 첫 builder 오류는 recipe `public-interface`와 `public-interface-signed`의 case이며, 모든 runtime이 새 op `keyring.versions`와 `markdown.builder`로 실행한다. PHP와 PHP extension은 이제 Go, TypeScript, Python, Rust처럼 condition 값의 거부를 chain 호출에서 기록하므로, 종단은 첫 오류를 반환한다(T334-3-24).

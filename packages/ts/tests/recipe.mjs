@@ -1686,6 +1686,17 @@ Object.assign(OPS, {
     refOf(s.ref, context).stop();
     return {};
   },
+  // utils.run (FCV-4, INT-150): one Utils.run whose function runs the statements in order on its frame; the value is the rows of the last.
+  async 'utils.run'(s, context) {
+    const result = await connectionOf(s, context).utils().run(async frame => {
+      let last = { rows: [] };
+      for (const statement of s.statements) {
+        last = await frame.run(statement.kind, statement.tables, sql(statement.sql, context), (statement.params ?? []).map(toValue));
+      }
+      return last;
+    });
+    return { value: { array: result.rows.map(row => ({ array: row.map(cell => plain(cell)) })) } };
+  },
   async 'events.captured'(s, context) {
     const subscription = refOf(s.ref, context);
     if (subscription.negative) throw new Error('an event has a negative elapsed time');

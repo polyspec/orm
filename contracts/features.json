@@ -13998,10 +13998,29 @@
       ],
       "parity": [
         "statement-runner-database",
-        "coverage-statement-runner-statement-runner"
+        "statement-runner-frame-after-its-transaction-ended",
+        "statement-runner-non-text-statement",
+        "coverage-statement-runner-statement-runner",
+        "statement_runner-mysql",
+        "statement_runner-postgres",
+        "statement_runner-sqlite"
       ],
-      "fixtures": [],
+      "fixtures": [
+        "contracts/fixtures/statement_runner/statement_runner.json"
+      ],
       "tests": [
+        "packages/go/orm/recipe_statement_runner_test.go",
+        "packages/php/tests/StatementRunnerRecipeTest.php",
+        "packages/php-ext/tests/StatementRunnerRecipeTestExtensionTest.php",
+        "packages/ts/tests/statement_runner-mysql.test.mjs",
+        "packages/ts/tests/statement_runner-postgres.test.mjs",
+        "packages/ts/tests/statement_runner-sqlite.test.mjs",
+        "packages/python/tests/test_statement_runner_mysql.py",
+        "packages/python/tests/test_statement_runner_postgres.py",
+        "packages/python/tests/test_statement_runner_sqlite.py",
+        "packages/rust/tests/tests/statement_runner_mysql.rs",
+        "packages/rust/tests/tests/statement_runner_postgres.rs",
+        "packages/rust/tests/tests/statement_runner_sqlite.rs",
         "packages/ts/tests/statement-runner.mjs",
         "packages/go/orm/statement_runner_test.go",
         "packages/php/tests/StatementRunnerTest.php",
@@ -14010,7 +14029,6 @@
         "packages/rust/orm/tests/statement_runner.rs",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
         "packages/ts/tests/statement-runner-run.mjs",
-        "packages/go/orm/coverage_statement_runner_test.go",
         "packages/php/tests/CoverageStatementRunnerTest.php",
         "packages/php-ext/tests/CoverageStatementRunnerExtensionTest.php",
         "packages/ts/tests/coverage_statement_runner.mjs",
@@ -14090,18 +14108,18 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_statement_runner_test.go"
+              "packages/go/orm/recipe_statement_runner_test.go"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -14109,12 +14127,12 @@
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -14122,12 +14140,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/orm/coverage_statement_runner_test.go",
+                  "test": "packages/go/orm/recipe_statement_runner_test.go",
                   "cases": [
                     "statement_runner"
                   ],
                   "symbols": {
-                    "statement_runner": "TestCoverageStatementRunner"
+                    "statement_runner": "TestRecipeStatementRunnerPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }

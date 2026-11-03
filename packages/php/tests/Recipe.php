@@ -2178,6 +2178,27 @@ final class Recipe
             case 'events.unsubscribe':
                 (self::boundValue($s['ref'], $context)->stop)();
                 return [];
+            case 'utils.run':
+                // One Utils::run whose function runs the statements in order on its frame (INT-150); the value is the rows of the last.
+                $rows = self::connectionOf($s, $context)->utils()->run(
+                    static function (TxFrame $frame) use ($s, $context): array {
+                        $last = [];
+                        foreach ($s['statements'] as $statement) {
+                            $text = is_string($statement['sql']) ? $statement['sql'] : $statement['sql'][$context['database']];
+                            $last = $frame->run(
+                                $statement['kind'],
+                                $statement['tables'],
+                                $text,
+                                array_map(self::toValue(...), $statement['params'] ?? []),
+                            );
+                        }
+                        return $last;
+                    }
+                );
+                return ['value' => ['array' => array_map(static fn (array $row): array => ['array' => array_map(
+                    static fn (mixed $cell): array => self::plainWrapper($cell, null),
+                    array_values($row),
+                )], $rows)]];
             case 'events.captured':
                 $subscription = self::boundValue($s['ref'], $context);
                 if ($subscription->recording === null) {
