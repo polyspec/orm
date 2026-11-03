@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Nine more write cases of the conformance vectors run in the recipe conformance_verification (#T334-3-4-23)
 - A process deadline reports a process that has ended, and its case holds that the pid is gone (#T334-3-4-22)
 - The parameter indexes of a value function are a case of the conformance_verification recipe, read from the statement events, and the rejections of an ordered-json AES column are cases of the invalid recipe, in all six runtimes.
 - The verification errors of apply and rollback are the recipe `tests/dbspec/apply-verification-errors.json` in all six runtimes, through the op `dbspec.apply_fault`, in place of a native test in each runtime; the cases of a rollback on real drift now run in every runtime (PLN-92, PLN-93, PLN-96).
