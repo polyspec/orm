@@ -139,6 +139,14 @@ final class Recipe
                     self::dsnConnectStep($step, $database);
                     continue;
                 }
+                if ($step['op'] === 'keyring.versions') {
+                    self::keyringVersionsStep($step, $database);
+                    continue;
+                }
+                if ($step['op'] === 'markdown.builder') {
+                    self::markdownBuilderStep($step, $database);
+                    continue;
+                }
                 if (in_array($step['op'], self::DBSPEC_FILE_OPS, true)) {
                     self::dbspecFileStep($step, $path, $database);
                     continue;
@@ -1192,6 +1200,55 @@ final class Recipe
             }
         });
         self::checkMessage($step['expect'], $message, $code);
+    }
+
+    /**
+     * Runs one keyring.versions step (FCV-4): the public constructor of the keyring, then its current version and its
+     * versions (INT-74, INT-130), against the expect of database.
+     */
+    private static function keyringVersionsStep(array $step, string $database): void
+    {
+        $expect = $step['expect'][$database];
+        try {
+            $keyring = self::aesKeyring($step['keyring']);
+        } catch (OrmException $error) {
+            Assert::assertSame($expect['error'] ?? null, $error->code_, 'the error of the keyring');
+            return;
+        }
+        Assert::assertArrayNotHasKey('error', $expect, 'the keyring was built');
+        Assert::assertSame($expect['current'], $keyring->currentVersion, 'the current version');
+        Assert::assertSame($expect['versions'], $keyring->versions(), 'the versions');
+    }
+
+    /**
+     * Runs one markdown.builder step (FCV-4): the builder calls on the slots model, then getCount, on the listener of
+     * sendFirst. The terminal returns the first recorded error before it sends a message (INT-88, INT-89).
+     */
+    private static function markdownBuilderStep(array $step, string $database): void
+    {
+        self::loadBindModels();
+        $caught = null;
+        [$message, $code] = self::sendFirst(static function (mixed $db) use ($step, &$caught): void {
+            $model = (new \Polyspec\Orm\Tests\BindModel\Slots())->connect($db);
+            try {
+                foreach ($step['calls'] as $call) {
+                    $model = match ($call) {
+                        'limit_zero_count' => $model->limit(0, 0),
+                        'limit_negative_offset' => $model->limit(-1, 1),
+                        'empty_i64_list' => $model->i64Value([]),
+                        'empty_varchar_list' => $model->varcharValue([]),
+                    };
+                }
+                $model->getCount();
+            } catch (OrmException $error) {
+                $caught = $error;
+                throw $error;
+            }
+        });
+        Assert::assertNull($message, 'the terminal sent a message before its error');
+        $expect = $step['expect'][$database];
+        Assert::assertSame($expect['error'], $code, 'the error code of the terminal');
+        Assert::assertStringContainsString($expect['message_contains'], $caught->getMessage());
     }
 
     /**

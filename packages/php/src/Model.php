@@ -772,23 +772,30 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     // ---- conditions ----
 
     /** @param list<array> $keys */
+    /**
+     * Adds the conditions of one chain call. An error of a value is the error of the builder call: it is recorded, and the
+     * terminal returns the first one before it sends a statement (INT-88).
+     */
     private function whereChain(string $conn, array $keys, array $args): void
     {
         $i = 0;
         foreach ($keys as $k => $key) {
             if ($i >= count($args)) {
-                throw new OrmException(Code::CONFIG, 'the condition expects ' . count($keys) . ' values');
+                $this->fail('the condition expects ' . count($keys) . ' values');
+                return;
             }
             $value = $args[$i++];
-            [$pred, $extra] = $this->predicate($key, $value, array_slice($args, $i), count($keys) === 1);
+            try {
+                [$pred, $extra] = $this->predicate($key, $value, array_slice($args, $i), count($keys) === 1);
+            } catch (OrmException $error) {
+                $this->error ??= $error;
+                return;
+            }
             $i += $extra;
             $this->addItem($k === 0 ? $conn : $key['conn'], ['pred' => $pred]);
         }
         if ($i !== count($args)) {
-            throw new OrmException(
-                Code::CONFIG,
-                'the condition expects ' . count($keys) . ' values, got ' . count($args)
-            );
+            $this->fail('the condition expects ' . count($keys) . ' values, got ' . count($args));
         }
     }
 
