@@ -15,6 +15,7 @@ import threading
 import time
 import types
 import unittest
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,7 @@ from polyspec.orm.dbspec import (
     read_dbspec_set,
     render_dbspec,
 )
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.compare import compare_schemas
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid
 from polyspec.orm.dbspec.plan import chain_plans, emit_plan, parse_plan
@@ -140,6 +142,9 @@ def recipe_tests(path: str, database: str):
                     continue
                 if step["op"] == "ir.answer":
                     _answer(step, database)
+                    continue
+                if step["op"] == "collection.key":
+                    _collection_key(step, database)
                     continue
                 if step["op"] == "planner.compile":
                     _plan(step, ROOT / Path(path).parent, database)
@@ -318,6 +323,45 @@ def _answer(step: dict, database: str) -> None:
         got = _request_params(sent)
     if not same(got, want):
         raise AssertionError(f"got {json.dumps(got)}, want {json.dumps(want)}")
+
+
+def _collection_key(step: dict, database: str) -> None:
+    """Runs a collection.key step: each value through the public put and get of a Collection. Its groups are, for each key, the
+    index of the first key equal to it, and its types the native type of the key that the collection returns (INT-11, INT-63,
+    PRT-35)."""
+
+    def native(entry):
+        kind = entry["type"]
+        if kind == "null":
+            return None
+        if kind == "bytes":
+            return bytes.fromhex(entry["hex"])
+        if kind == "datetime":
+            return datetime.fromisoformat(entry["value"])
+        return entry["value"]
+
+    names = {str: "text", bool: "bool", int: "int", bytes: "bytes", datetime: "datetime"}
+    collection = Collection()
+    try:
+        groups = []
+        for index, entry in enumerate(step["keys"]):
+            key = native(entry)
+            first = collection.get(key)
+            groups.append(index if first is None else first["group"])
+            if first is None:
+                collection.put(key, {"group": index})
+        got = {
+            "groups": groups,
+            "types": [names[type(native(entry))] for entry in step["keys"]],
+        }
+        stored = collection.keys()
+        distinct = [native(step["keys"][group]) for group in dict.fromkeys(groups)]
+        if stored != distinct or [type(key) for key in stored] != [type(key) for key in distinct]:
+            raise AssertionError(f"the keys changed their native values or order: {stored}")
+    except OrmError as error:
+        got = {"error": error.code, "message": str(error)}
+    if got != step["expect"][database]:
+        raise AssertionError(f"got {got}, want {step['expect'][database]}")
 
 
 def _request_params(sent: list) -> list:
@@ -1189,6 +1233,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
 )
@@ -1228,6 +1273,18 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         if result["diagnostics"]:
             raise AssertionError(f"{op}: {result['diagnostics'][:1]}")
         got = {"steps": [_plan_step_fields(s) for s in result["steps"]]}
+    elif op == "dbspec.add_tables_steps":
+        result = add_tables_and_columns_steps(
+            _dbspec_document(step["source"], bound),
+            [],
+            _dbspec_document(step["target"], bound),
+            step["dialect"],
+        )
+        got = {
+            "added": result["added"],
+            "statements": [s["statement"] for s in result["steps"]],
+            "differences": result["differences"],
+        }
     elif op == "dbspec.diff":
         result = diff_plan(
             _dbspec_document(step["source"], bound),
@@ -2181,6 +2238,9 @@ class _ChainBuild:
                 return model.core.connector(conn, [self.joined[value]])
             if name == "tuple":
                 return self.tuple(model, conn, value)
+            if name == "fulltext_boolean":
+                key = ChainKey(op=name, columns=tuple(value["columns"]))
+                return model.core.where_chain(conn, [key], (value["text"],))
         if "expr" in raw and "cmp" in raw:
             return self.function_leaf(model, conn, raw["expr"], raw["cmp"])
         for i, (column, value) in enumerate(raw.items()):
@@ -2413,8 +2473,9 @@ def _chain_built(step: dict, context: dict) -> Model:
     if relation is not None:
         # The columns of this relation are read of each child row; they do not narrow its statement.
         child = build.relation({k: v for k, v in relation.items() if k != "columns"})
-        # This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-        child.connect(db)
+        # Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+        if relation.get("connect") is True:
+            child.connect(db)
         model.core.relation(relation.get("many") is True, child)
     return _by_key(model, step, context)
 
@@ -2486,6 +2547,24 @@ def _table_model_query(step: dict, context: dict) -> dict:
     model = _chain_built(step, context)
     if step.get("compile") is True:
         return {"json": _plain_json(model.get_query())}
+    if step.get("plan") is True:
+        limit = step["limit"]
+        steps = model.get_page_plan_steps(
+            limit["offset"] // limit["count"] + 1, limit["count"]
+        )
+        return {
+            "json": [
+                {
+                    "role": plan_step["role"],
+                    "tables": plan_step["tables"],
+                    "count": {
+                        text: plan_step["sql"].upper().count(text)
+                        for text in step["plan_count"]
+                    },
+                }
+                for plan_step in steps
+            ]
+        }
     aggregate = step.get("aggregate")
     if aggregate is not None:
         if aggregate["agg"] == "sum":
@@ -2510,6 +2589,16 @@ def _table_model_query(step: dict, context: dict) -> dict:
                     "pages": page["totalPages"],
                     "page": page["page"],
                     "per_page": page["perPage"],
+                    **(
+                        {
+                            "items": [
+                                _row_json(row, step.get("pick"))
+                                for row in page["items"].values()
+                            ]
+                        }
+                        if step.get("items") is True
+                        else {}
+                    ),
                 }
             ),
             "total": page["totalCount"],
@@ -2694,6 +2783,12 @@ def _op_events_captured(step: dict, context: dict) -> dict:
             {"object": [m for m in event["object"] if m[0] in ("sql", "kind")]}
             for event in events
         ]
+    if step.get("compare") == "shape":
+        # The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+        events = [
+            {"object": [m for m in event["object"] if m[0] in ("kind", "tables")]}
+            for event in events
+        ]
     return {"value": {"array": events}}
 
 
@@ -2839,23 +2934,49 @@ def _install_hook(step: dict, context: dict) -> None:
                 query.setdefault("set", []).append({"column": a["column"], "p": p})
                 for row in query.get("rows") or []:
                     row.append(add_param(a["value"]))
+            elif action == "assign_first":
+                query["set"] = [
+                    {"column": a["column"], "p": add_param(a["value"])},
+                    *(query.get("set") or []),
+                ]
+            elif action == "rewrite":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        assignment["p"] = add_param(a["value"])
+            elif action == "invalid_param":
+                and_where(
+                    query,
+                    {"column": a["column"], "op": "eq", "p": query["n_params"] + 5},
+                )
             elif action == "record":
                 context["records"].append(
                     {"kind": query["kind"], "entity": query["entity"]}
                 )
+            elif action == "record_param":
+                for assignment in query.get("set") or []:
+                    if assignment["column"] == a["column"]:
+                        context["records"].append(
+                            {
+                                "kind": query["kind"],
+                                "entity": query["entity"],
+                                "param": _plain(params[assignment["p"]], None),
+                            }
+                        )
             elif action == "fail":
                 raise OrmError(a["code"], f"request hook refused {query['kind']}")
             else:
                 raise AssertionError(f"hook action {action} is unknown")
         return query
 
-    context["hook_bases"][name] = base
-    context["bound"][name] = base.with_request_hook(hook)
+    # With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+    target = step.get("as", name)
+    context["hook_bases"][target] = base
+    context["bound"][target] = base.with_request_hook(hook)
 
 
 def _op_hook_install(step: dict, context: dict) -> dict:
     _install_hook(step, context)
-    return {}
+    return {"bind": context["bound"][step["as"]]} if "as" in step else {}
 
 
 def _op_hook_records(_step: dict, context: dict) -> dict:
@@ -2868,6 +2989,7 @@ def _op_hook_records(_step: dict, context: dict) -> dict:
             "object": [
                 ["kind", {"text": record["kind"]}],
                 ["entity", {"text": record["entity"]}],
+                *([["param", record["param"]]] if "param" in record else []),
             ]
         }
         for record in records
@@ -3233,12 +3355,19 @@ def _op_schema_connect(step: dict, context: dict) -> dict:
 
 
 def _op_schema_add_tables(step: dict, context: dict) -> dict:
-    added = (
-        context["db"]
-        .utils()
-        .schema()
-        .add_tables_and_columns(_schema_argument(step["schema"], context))
-    )
+    try:
+        added = (
+            context["db"]
+            .utils()
+            .schema()
+            .add_tables_and_columns(_schema_argument(step["schema"], context))
+        )
+    except OrmError as error:
+        if step.get("message_contains", "") not in str(error):
+            raise AssertionError(
+                f"the message {error} holds no {step['message_contains']}"
+            ) from error
+        raise
     return {"value": {"array": [{"text": name} for name in added]}}
 
 

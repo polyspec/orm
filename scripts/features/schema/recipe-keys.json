@@ -78,6 +78,11 @@
       "op",
       "value"
     ],
+    "collection.key": [
+      "expect",
+      "keys",
+      "op"
+    ],
     "sql.exec": [
       "only",
       "op",
@@ -213,6 +218,7 @@
     ],
     "schema.add_tables_and_columns": [
       "expect",
+      "message_contains",
       "op",
       "schema"
     ],
@@ -342,6 +348,7 @@
       "connection",
       "expect",
       "from",
+      "items",
       "joins",
       "key",
       "limit",
@@ -352,6 +359,8 @@
       "order",
       "page",
       "pick",
+      "plan",
+      "plan_count",
       "relation",
       "relations",
       "remove_columns",
@@ -436,6 +445,13 @@
       "op",
       "plan",
       "source"
+    ],
+    "dbspec.add_tables_steps": [
+      "dialect",
+      "expect",
+      "op",
+      "source",
+      "target"
     ],
     "utils.aes_status": [
       "connection",
@@ -558,6 +574,7 @@
       "skeleton_of"
     ],
     "hook.install": [
+      "as",
       "connection",
       "hooks",
       "op"

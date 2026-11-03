@@ -12,7 +12,6 @@ import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent, type ParityConfig } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
-import { COMPLEX_QUERY_DSN_ENVS, COMPLEX_QUERY_SETUP } from '../check/databases.mts';
 import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, performanceReferenceReport, readPerformanceReferenceDeclaration, writePerformanceMeasurementRecord, performanceAttemptOf, performanceDatabaseOf, performanceRuntimeOf, type PerformanceMeasurement } from './performance-reference.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
@@ -182,8 +181,6 @@ export type FileItem = { database: string; dsn_env?: string; dsn: string | null 
 export function databaseDsn(env: NodeJS.ProcessEnv, item: { database: string; dsn_env?: string }): string | null {
   if (item.database === 'none') return null;
   const dsn = env[item.dsn_env ?? ''];
-  // A complex-query fixture exists only in a run that asked for it (KSTD-2-9-13-3).
-  if (!dsn && COMPLEX_QUERY_DSN_ENVS.includes(item.dsn_env ?? '')) throw new Error(`${item.dsn_env} is missing; run ${COMPLEX_QUERY_SETUP}`);
   if (!dsn) throw new Error(`${item.database} database DSN is not set in ${item.dsn_env}; run it through make feature-check`);
   return dsn;
 }

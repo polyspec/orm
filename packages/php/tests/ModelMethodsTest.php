@@ -91,7 +91,7 @@ class ModelMethodsTest extends TestCase
         exec('rm -rf ' . escapeshellarg(self::$work));
     }
 
-    // Requirements: DSL-42, DSL-154.
+    // Requirements: DSL-42, DSL-154, INT-28.
     public function testPhpstanFindsEveryQueryMethodOfAGeneratedModel(): void
     {
         $root = dirname(__DIR__, 3);
