@@ -16,7 +16,6 @@ zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_pag
 #define CAT_SNAPSHOT_BYTES (8 << 20)
 #define CAT_DEFAULT_ROWS 100000
 #define CAT_DEFAULT_BYTES (64 << 20)
-#define CAT_SQL_BYTES (256 << 10)
 #define CAT_PDO_FETCH_NUM 3 /* PDO::FETCH_NUM */
 
 /* The native relation kind and the columns of a relation by dialect (Catalog::KIND_SQL and Catalog::COLUMNS_SQL). */
@@ -862,6 +861,11 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
         ZVAL_COPY(out, v);
         return true;
     }
+    /* A value that is not valid UTF-8 is its bytes: a database tool shows the cell (INT-153). */
+    if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
+        ZVAL_COPY(out, v);
+        return true;
+    }
     const char *t = ZSTR_VAL(type);
     bool integer = strcmp(t, "LONG") == 0 || strcmp(t, "LONGLONG") == 0 || strcmp(t, "SHORT") == 0 || strcmp(t, "TINY") == 0
         || strcmp(t, "INT24") == 0 || strcmp(t, "YEAR") == 0;
@@ -891,10 +895,6 @@ static bool cat_cell_value(zval *v, zend_string *type, const char *dialect, zval
         || strstr(t, "NUMERIC") != NULL || strstr(t, "MONEY") != NULL || strcmp(t, "NEWDECIMAL") == 0) {
         ZVAL_COPY(out, v);
         return true;
-    }
-    if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
-        db_throw_orm("CATALOG_VALUE", "text of native type \"%s\" is not valid UTF-8", t);
-        return false;
     }
     ZVAL_COPY(out, v);
     return true;
@@ -1347,7 +1347,7 @@ static bool cat_validate_read_only(zend_string *sql, const char *dialect)
     bool semicolon = false;
     char first[8] = {0};
     size_t first_len = 0;
-    if (n == 0 || n > CAT_SQL_BYTES) goto refuse;
+    if (n == 0) goto refuse;
     for (size_t i = 0; i < n;) {
         char c = q[i];
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v') {
@@ -2167,15 +2167,8 @@ static bool cat_bytes_or_text(zval *v, bool binary, zval *kind_out, zval *value_
         cat_refuse("expected text or binary data");
         return false;
     }
-    if (binary) {
-        ZVAL_STRING(kind_out, "binary");
-    } else {
-        ZVAL_STRING(kind_out, "text");
-        if (!cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v))) {
-            cat_refuse("text is not valid UTF-8");
-            return false;
-        }
-    }
+    /* A value that is not valid UTF-8 is its bytes (INT-153). */
+    ZVAL_STRING(kind_out, binary || !cat_utf8_valid(Z_STRVAL_P(v), Z_STRLEN_P(v)) ? "binary" : "text");
     ZVAL_COPY(value_out, v);
     return true;
 }
@@ -4783,9 +4776,6 @@ static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cel
             }
             ZVAL_COPY(&v, catalog_prop(&cell, "value", &rv));
             zval_ptr_dtor(&cell);
-        } else if (Z_TYPE_P(value) == IS_STRING && !cat_utf8_valid(Z_STRVAL_P(value), Z_STRLEN_P(value))) {
-            /* A value that is not text is its bytes (INT-153): an expression reports no binary type. */
-            ZVAL_COPY(&v, value);
         } else if (!cat_cell_value(value, Z_STR_P(t), dialect, &v)) {
             zval_ptr_dtor(cells);
             return false;

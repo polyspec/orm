@@ -107,7 +107,7 @@ pub fn trials(entry: &str, path: &str, database: &str) -> Vec<polyspec_orm_testc
                 let mut bound = HashMap::new();
                 let steps = case["steps"].as_array().cloned().unwrap_or_default();
                 for (index, step) in steps.iter().enumerate() {
-                    if let Err(failure) = run(step, &mut bound, &database, &dir) {
+                    if let Err(failure) = run(step, &mut bound, &database, &dir).and_then(|()| crate::recipe_reads::check(step)) {
                         panic!("recipe {path} case {id} step {index} ({}) on {database}: {failure}", step["op"]);
                     }
                 }
@@ -236,8 +236,8 @@ async fn sqlite_file_names(name: &str, query: &str) -> Result<String, String> {
 /// checked against the line it received and the outcome of the expect of `database`.
 fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
     use std::io::{BufRead as _, Write as _};
-    let expect = &step["expect"][database];
-    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
+    let text = |name: &str| crate::recipe_reads::read(step, name)[name].as_str().unwrap_or_default().to_owned();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
     let port = listener.local_addr().map_err(|error| error.to_string())?.port();
     let reply = text("reply");
@@ -269,10 +269,10 @@ fn markdown_connect(step: &Value, database: &str) -> Result<(), String> {
 fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
     use std::io::{BufRead as _, Write as _};
     let lines = |name: &str| -> Vec<String> {
-        step[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+        crate::recipe_reads::read(step, name)[name].as_array().map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect()).unwrap_or_default()
     };
     let (replies, messages) = (lines("replies"), lines("messages"));
-    let text = |name: &str| step[name].as_str().unwrap_or_default().to_owned();
+    let text = |name: &str| crate::recipe_reads::read(step, name)[name].as_str().unwrap_or_default().to_owned();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
     let port = listener.local_addr().map_err(|error| error.to_string())?.port();
     let server = std::thread::spawn(move || -> Result<Vec<String>, String> {
@@ -304,7 +304,7 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
     if received != messages {
         return Err(format!("the listener received {received:?}, want {messages:?}"));
     }
-    let expect = &step["expect"][database];
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     let (want, holds) = (expect["error"].as_str().unwrap_or_default(), expect["message_holds"].as_str().unwrap_or_default());
     match outcome {
         Err(error) if error.code() == want && error.to_string().contains(holds) => Ok(()),
@@ -315,10 +315,10 @@ fn markdown_session(step: &Value, database: &str) -> Result<(), String> {
 
 /// The dsn.connect op (FCV-4) on the DSN text of the step, checked against the outcome of the expect of `database`.
 fn dsn_connect(step: &Value, database: &str) -> Result<(), String> {
-    let expect = &step["expect"][database];
-    let dsn = step["dsn"].as_str().unwrap_or_default();
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
+    let dsn = crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default();
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
-    let outcome = runtime.block_on(connect_driver(dsn, &step["config"]));
+    let outcome = runtime.block_on(connect_driver(dsn, &crate::recipe_reads::read(step, "config")["config"]));
     match (outcome, expect["error"].as_str()) {
         (Err((got, message)), Some(code)) if got == code => {
             let holds = expect["message_holds"].as_str().unwrap_or_default();
@@ -372,9 +372,9 @@ fn shown_catalog_rows(catalog: &Value, name: &str, create: &str, query: &str) ->
 /// vectors file, whose check lines and unsupported objects, or error, it compares with the expect of `database` (DIA-84). A
 /// reason compares by its rule, the text before the first ": ", since its text differs between the clients.
 fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
-    let path = dir.join(step["vectors"].as_str().unwrap_or_default());
+    let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?).map_err(|error| error.to_string())?;
-    let id = step["case"].as_str().unwrap_or_default();
+    let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
     let cases = vectors["cases"].as_array().ok_or("the vectors have no cases")?;
     let case = cases.iter().find(|case| case["id"] == id).ok_or_else(|| format!("the vectors have no case {id}"))?;
     let lines: Vec<&str> = case["create"].as_array().ok_or("the case has no create")?.iter().filter_map(Value::as_str).collect();
@@ -389,7 +389,7 @@ fn dbspec_introspect_shown(step: &Value, database: &str, dir: &Path) -> Result<(
         results.push(shown_catalog_rows(catalog, name, &create, &query)?);
     }
     let read = dbspec::read_catalog(Dialect::MySql, &results, "introspected");
-    let expect = &step["expect"][database];
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     if let Some(want) = expect["error"].as_str() {
         return match read {
             Err(got) if got == want => Ok(()),
@@ -533,37 +533,37 @@ fn apply_fault_now() -> chrono::DateTime<chrono::Utc> {
 fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: &str) -> Result<(), String> {
     use dbspec::{ApplyConnection as _, ApplyError, ApplyEvent, ApplyEventError, IntrospectError};
     use sqlx::Connection as _;
-    let expect = &step["expect"][database];
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     let want = expect["code"].as_str();
-    let plans = vec![bound_plan(&step["plan"], bound)?];
+    let plans = vec![bound_plan(&crate::recipe_reads::read(step, "plan")["plan"], bound)?];
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     runtime.block_on(async {
         let inner = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
         let mut fault = FaultConnection { inner, cause: None, fail_at: 0, reads: 0, fail: HashMap::new(), no_row: Vec::new() };
-        if step["applied_first"].as_bool() == Some(true) {
+        if crate::recipe_reads::read(step, "applied_first")["applied_first"].as_bool() == Some(true) {
             let mut quiet = |_: &ApplyEvent| -> Result<(), ApplyEventError> { Ok(()) };
             dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut quiet).await.map_err(|error| format!("apply: {error}"))?;
         }
-        if let Some(statements) = step["sql"].as_array() {
+        if let Some(statements) = crate::recipe_reads::read(step, "sql")["sql"].as_array() {
             for statement in statements {
                 fault.execute(statement.as_str().ok_or("a statement is not a string")?).await.map_err(|error| error.to_string())?;
             }
         }
-        if let Some(read) = step["fail_catalog_read"].as_u64() {
+        if let Some(read) = crate::recipe_reads::read(step, "fail_catalog_read")["fail_catalog_read"].as_u64() {
             fault.cause = Some("catalog read failed".to_owned());
             fault.fail_at = fault.reads + usize::try_from(read).map_err(|error| error.to_string())?;
         }
-        if let Some(queries) = step["no_row_queries"].as_array() {
+        if let Some(queries) = crate::recipe_reads::read(step, "no_row_queries")["no_row_queries"].as_array() {
             fault.no_row = queries.iter().filter_map(Value::as_str).map(str::to_owned).collect();
         }
-        if let Some(failing) = step["fail_statements"].as_array() {
+        if let Some(failing) = crate::recipe_reads::read(step, "fail_statements")["fail_statements"].as_array() {
             for f in failing {
                 let statement = f["statement"].as_str().ok_or("a failing statement has no text")?.to_owned();
                 let message = f["message"].as_str().ok_or("a failing statement has no message")?.to_owned();
                 fault.fail.insert(statement, (message, f["sqlite_result"].as_i64()));
             }
         }
-        let stop = step["stop_on_applied"].as_str();
+        let stop = crate::recipe_reads::read(step, "stop_on_applied")["stop_on_applied"].as_str();
         let mut kinds: Vec<String> = Vec::new();
         let result = {
             let mut events = |event: &ApplyEvent| -> Result<(), ApplyEventError> {
@@ -573,7 +573,7 @@ fn dbspec_apply_fault(step: &Value, bound: &HashMap<String, Outcome>, database: 
                     _ => Ok(()),
                 }
             };
-            if step["call"] == "rollback" {
+            if crate::recipe_reads::read(step, "call")["call"] == "rollback" {
                 dbspec::rollback(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
             } else {
                 dbspec::apply(&mut fault, Dialect::Sqlite, &plans, &apply_fault_now, &mut events).await
@@ -636,7 +636,7 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|error| error.to_string())?;
     let unsupported = runtime.block_on(async {
         let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.map_err(|error| error.to_string())?;
-        for statement in step["sql"].as_array().ok_or("sql is not a list")? {
+        for statement in crate::recipe_reads::read(step, "sql")["sql"].as_array().ok_or("sql is not a list")? {
             let text = statement.as_str().ok_or("a statement is not a string")?.to_owned();
             sqlx::query(sqlx::AssertSqlSafe(text)).execute(&mut connection).await.map_err(|error| error.to_string())?;
         }
@@ -648,7 +648,7 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
         .iter()
         .map(|item| json!({ "kind": item.kind, "table": item.table, "name": item.name, "reason": item.reason }))
         .collect();
-    let want = &step["expect"][database]["unsupported"];
+    let want = &crate::recipe_reads::read(step, "expect")["expect"][database]["unsupported"];
     if want.as_array().map(Vec::as_slice) == Some(got.as_slice()) {
         Ok(())
     } else {
@@ -659,13 +659,13 @@ fn dbspec_introspect_sqlite(step: &Value, database: &str) -> Result<(), String> 
 /// The keyring.versions op (FCV-4): the public constructor of the keyring, then its current version and its versions (INT-74,
 /// INT-130), against the expect of `database`.
 fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
-    let expect = &step["expect"][database];
-    let versions = step["keyring"]["versions"].as_object().ok_or("the keyring has no versions")?;
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
+    let versions = crate::recipe_reads::read(step, "keyring")["keyring"]["versions"].as_object().ok_or("the keyring has no versions")?;
     let mut keys = std::collections::BTreeMap::new();
     for (version, key) in versions {
         keys.insert(version.parse::<i32>().map_err(|error| error.to_string())?, key.as_str().ok_or("a key is not a text")?.to_owned());
     }
-    let current = step["keyring"]["current"].as_i64().ok_or("the keyring has no current version")?;
+    let current = crate::recipe_reads::read(step, "keyring")["keyring"]["current"].as_i64().ok_or("the keyring has no current version")?;
     let current = i32::try_from(current).map_err(|error| error.to_string())?;
     match (polyspec_orm::AesKeyring::new(keys, current), expect["error"].as_str()) {
         (Err(error), Some(code)) if error.code() == code => Ok(()),
@@ -685,13 +685,13 @@ fn keyring_versions(step: &Value, database: &str) -> Result<(), String> {
 /// The markdown.builder op (FCV-4): the builder calls on the slots model, then get_count, on the listener of markdown.send. The
 /// terminal returns the first recorded error before it sends a message (INT-88, INT-89).
 fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
-    let calls: Vec<String> = step["calls"].as_array().ok_or("the step has no calls")?.iter().filter_map(|call| call.as_str().map(str::to_owned)).collect();
+    let calls: Vec<String> = crate::recipe_reads::read(step, "calls")["calls"].as_array().ok_or("the step has no calls")?.iter().filter_map(|call| call.as_str().map(str::to_owned)).collect();
     let listener = markdown::send_listener();
     let result = call_on_connection(listener.dsn.clone(), Call::Builder(calls));
     if let Some(message) = listener.finish() {
         return Err(format!("the terminal sent {message} before its error"));
     }
-    let expect = &step["expect"][database];
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
     let (code, message) = (expect["error"].as_str().unwrap_or_default(), expect["message"].as_str().unwrap_or_default());
     match result {
         Err(error) if error.code() == code && error.to_string() == message => Ok(()),
@@ -702,7 +702,7 @@ fn markdown_builder(step: &Value, database: &str) -> Result<(), String> {
 
 /// Maps the op of `step` to its call and checks the result against the expect of `database`.
 fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
-    match step["op"].as_str().unwrap_or_default() {
+    match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
         "dsn.connect" => return dsn_connect(step, database),
         "dbspec.introspect_shown" => return dbspec_introspect_shown(step, database, dir),
         "dbspec.introspect_sqlite" => return dbspec_introspect_sqlite(step, database),
@@ -736,47 +736,47 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
         _ => {}
     }
-    if step["op"] == "ir.answer" {
+    if crate::recipe_reads::read(step, "op")["op"] == "ir.answer" {
         // The chain runs on a listener that answers with the step's answer (or answers), and its value is compared as JSON (FCV-3).
         // An expect of {params} compares the params of the request that the listener received instead (PRT-66, PRT-67).
-        let expect = &step["expect"][database];
+        let expect = &crate::recipe_reads::read(step, "expect")["expect"][database];
         let params = expect.get("params").is_some();
-        if params && step["answers"].is_object() {
+        if params && crate::recipe_reads::read(step, "answers")["answers"].is_object() {
             return Err("a params expect needs one answer, not answers".to_owned());
         }
         let present = if params { expect.get("params") } else { expect.get("value") };
         let Some(want) = present else {
             return Err(format!("ir.answer expect for {database} has neither value nor params"));
         };
-        let chain = step["chain"].as_str().unwrap_or_default();
-        let got = markdown::answer(chain, &step["answer"], &step["answers"], params);
+        let chain = crate::recipe_reads::read(step, "chain")["chain"].as_str().unwrap_or_default();
+        let got = markdown::answer(chain, &crate::recipe_reads::read(step, "answer")["answer"], &crate::recipe_reads::read(step, "answers")["answers"], params);
         return if markdown::same(&got, want) { Ok(()) } else { Err(format!("got {got}, want {want}")) };
     }
-    if step["op"] == "markdown.send" {
+    if crate::recipe_reads::read(step, "op")["op"] == "markdown.send" {
         return markdown_send(step);
     }
-    if step["op"] == "collection.key" {
+    if crate::recipe_reads::read(step, "op")["op"] == "collection.key" {
         return collection_key(step, database);
     }
-    if step["op"] == "model.assign" {
+    if crate::recipe_reads::read(step, "op")["op"] == "model.assign" {
         return model_assign(step);
     }
-    let styles: Vec<String> = step["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
-    let key = step["key"].as_str().unwrap_or_default();
-    let op = step["op"].as_str().unwrap_or_default();
+    let styles: Vec<String> = crate::recipe_reads::read(step, "styles")["styles"].as_array().map(|s| s.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default();
+    let key = crate::recipe_reads::read(step, "key")["key"].as_str().unwrap_or_default();
+    let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
     let failed = |error: polyspec_orm::Error| (error.code().to_owned(), error.to_string());
     let outcome: Outcome = match op {
-        "codec.decode" => codec::decode(&styles, &cell(&step["raw"], bound)?).map(Produced::Read).map_err(failed),
-        "codec.encode" => encode(&styles, &step["value"], bound)?.map(Produced::Written).map_err(failed),
-        "codec.host_encode" => codec::host_encode(&param(&step["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed),
-        "codec.host_decode" => codec::host_decode(&cell(&step["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed),
-        "codec.blind_index" => codec::blind_index(&param(&step["value"], bound)?, key).map(|text| Produced::Written(Param::Str(text))).map_err(failed),
+        "codec.decode" => codec::decode(&styles, &cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?).map(Produced::Read).map_err(failed),
+        "codec.encode" => encode(&styles, &crate::recipe_reads::read(step, "value")["value"], bound)?.map(Produced::Written).map_err(failed),
+        "codec.host_encode" => codec::host_encode(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, &styles, key).map(Produced::Written).map_err(failed),
+        "codec.host_decode" => codec::host_decode(&cell(&crate::recipe_reads::read(step, "raw")["raw"], bound)?, &styles, key).map(Produced::Read).map_err(failed),
+        "codec.blind_index" => codec::blind_index(&param(&crate::recipe_reads::read(step, "value")["value"], bound)?, key).map(|text| Produced::Written(Param::Str(text))).map_err(failed),
         other => return Err(format!("OP_UNKNOWN {other}")),
     };
-    if let Some(name) = step["as"].as_str() {
+    if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
         bound.insert(name.to_owned(), outcome.clone());
     }
-    let Some(expect) = step["expect"].get(database) else {
+    let Some(expect) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else {
         return match outcome {
             Err((_, message)) => Err(format!("unexpected error {message}")),
             Ok(_) => Ok(()),
@@ -856,11 +856,11 @@ fn planner_statement(step: &polyspec_orm::plan::Step) -> Value {
 /// The planner.compile op (FCV-4): the step builds its request from its JSON with the manifest hash of its schema, compiles it for
 /// each dialect, and checks the plans with the expect of `database`, or the error code that every dialect fails with.
 fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
-    let want = step["expect"].get(database).ok_or_else(|| format!("planner.compile has no expect for {database}"))?;
-    let schema = step["schema"].as_str().unwrap_or_default();
+    let want = crate::recipe_reads::read(step, "expect")["expect"].get(database).ok_or_else(|| format!("planner.compile has no expect for {database}"))?;
+    let schema = crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default();
     // The schema is named relative to the directory of the recipe, which is absolute, so the path is absolute too.
     let manifest = ir_request::schema(&dir.join(schema).to_string_lossy());
-    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    let input = ir_request::request(&crate::recipe_reads::read(step, "input")["input"], &manifest.manifest_hash);
     if let Some(code) = want.get("error").and_then(Value::as_str) {
         for (name, dialect) in PLAN_DIALECTS {
             let error = engine::compile(&manifest, dialect, &input).err();
@@ -879,7 +879,7 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
     for (name, dialect) in PLAN_DIALECTS {
         let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
         let mut got = Value::Array(plan.steps.iter().map(planner_statement).collect());
-        if step["assemble_types"] == true {
+        if crate::recipe_reads::read(step, "assemble_types")["assemble_types"] == true {
             for (statement, planned) in got.as_array_mut().into_iter().flatten().zip(&plan.steps) {
                 let columns = planned.assemble.iter().flat_map(|assemble| &assemble.columns);
                 statement["assemble_types"] = columns.map(|column| (column.name.clone(), Value::from(column.typ.clone()))).collect();
@@ -894,12 +894,12 @@ fn planner_compile(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
 
 /// The ir.param_uses op (FCV-4): the uses of each parameter of a validated request (DIA-31, PRT-67).
 fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
-    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
-    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
+    let manifest = ir_request::schema(&dir.join(crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&crate::recipe_reads::read(step, "input")["input"], &manifest.manifest_hash);
     engine::validate(&manifest, &input).map_err(|error| error.to_string())?;
     let got = json!({"uses": polyspec_orm::testing::param_uses(&manifest, &input).map_err(|error| error.to_string())?});
-    if got != step["expect"][database]["value"] {
-        return Err(format!("ir.param_uses: got {got}, want {}", step["expect"][database]["value"]));
+    if got != crate::recipe_reads::read(step, "expect")["expect"][database]["value"] {
+        return Err(format!("ir.param_uses: got {got}, want {}", crate::recipe_reads::read(step, "expect")["expect"][database]["value"]));
     }
     Ok(())
 }
@@ -907,9 +907,9 @@ fn ir_param_uses(step: &Value, database: &str, dir: &Path) -> Result<(), String>
 /// The planner.columns op (FCV-4): the output columns that `names` select from the first statement of the plan of each dialect,
 /// with their type and whether they are hidden (PRT-69, DIA-33).
 fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), String> {
-    let manifest = ir_request::schema(&dir.join(step["schema"].as_str().unwrap_or_default()).to_string_lossy());
-    let input = ir_request::request(&step["input"], &manifest.manifest_hash);
-    let names: Vec<&str> = step["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
+    let manifest = ir_request::schema(&dir.join(crate::recipe_reads::read(step, "schema")["schema"].as_str().unwrap_or_default()).to_string_lossy());
+    let input = ir_request::request(&crate::recipe_reads::read(step, "input")["input"], &manifest.manifest_hash);
+    let names: Vec<&str> = crate::recipe_reads::read(step, "names")["names"].as_array().ok_or("the step has no names")?.iter().filter_map(Value::as_str).collect();
     for (name, dialect) in PLAN_DIALECTS {
         let plan = engine::compile(&manifest, dialect, &input).map_err(|error| format!("{name}: {error}"))?;
         let assemble = plan.steps[0].assemble.as_ref().ok_or_else(|| format!("{name}: the first statement assembles no row"))?;
@@ -921,8 +921,8 @@ fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
                 }
             }
         }
-        if Value::Array(got.clone()) != step["expect"][database]["value"] {
-            return Err(format!("planner.columns {name}: got {got:?}, want {}", step["expect"][database]["value"]));
+        if Value::Array(got.clone()) != crate::recipe_reads::read(step, "expect")["expect"][database]["value"] {
+            return Err(format!("planner.columns {name}: got {got:?}, want {}", crate::recipe_reads::read(step, "expect")["expect"][database]["value"]));
         }
     }
     Ok(())
@@ -932,13 +932,13 @@ fn planner_columns(step: &Value, database: &str, dir: &Path) -> Result<(), Strin
 /// it. A request shape that the typed request refuses is IR_INVALID. The expect of `database` is {error: CODE}, or {value: {bool:
 /// true}} for an accepted request.
 fn ir_validate(step: &Value, database: &str) -> Result<(), String> {
-    let want = step["expect"].get(database).ok_or_else(|| format!("ir.validate has no expect for {database}"))?;
-    if step["request"].get("manifest_hash").is_some() {
+    let want = crate::recipe_reads::read(step, "expect")["expect"].get(database).ok_or_else(|| format!("ir.validate has no expect for {database}"))?;
+    if crate::recipe_reads::read(step, "request")["request"].get("manifest_hash").is_some() {
         return Err("the request already holds manifest_hash".to_owned());
     }
     let manifest = ir_request::schema(IR_VALIDATE_SCHEMA);
-    let manifest_hash = step["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
-    let built = std::panic::catch_unwind(|| ir_request::request(&step["request"], manifest_hash));
+    let manifest_hash = crate::recipe_reads::read(step, "manifest_hash")["manifest_hash"].as_str().unwrap_or(&manifest.manifest_hash);
+    let built = std::panic::catch_unwind(|| ir_request::request(&crate::recipe_reads::read(step, "request")["request"], manifest_hash));
     let got: Result<(), String> = match built {
         Ok(request) => engine::validate(&manifest, &request).map_err(|error| error.code().to_owned()),
         Err(payload) => {
@@ -985,7 +985,7 @@ fn bound_plan(raw: &Value, bound: &HashMap<String, Outcome>) -> Result<dbspec::P
 
 /// The document of the key of a step, or none when the step has no such key or its value is null.
 fn optional_document(step: &Value, key: &str, bound: &HashMap<String, Outcome>) -> Result<Option<Document>, String> {
-    match step.get(key).filter(|raw| !raw.is_null()) {
+    match crate::recipe_reads::read(step, key).get(key).filter(|raw| !raw.is_null()) {
         Some(raw) => bound_document(raw, bound).map(Some),
         None => Ok(None),
     }
@@ -1069,11 +1069,11 @@ fn plan_dialect(name: &str) -> Result<Dialect, String> {
 /// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
 /// of the step is compared, as JSON, with the expect of `database`.
 fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
-    let op = step["op"].as_str().unwrap_or_default();
-    let want = step["expect"].get(database).ok_or_else(|| format!("{op} has no expect for {database}"))?;
-    let binds = step["as"].as_str().map(str::to_owned);
+    let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
+    let want = crate::recipe_reads::read(step, "expect")["expect"].get(database).ok_or_else(|| format!("{op} has no expect for {database}"))?;
+    let binds = crate::recipe_reads::read(step, "as")["as"].as_str().map(str::to_owned);
     let got = match op {
-        "dbspec.parse" => match dbspec::parse(&plan_text(&step["lines"]), &BTreeMap::new()) {
+        "dbspec.parse" => match dbspec::parse(&plan_text(&crate::recipe_reads::read(step, "lines")["lines"]), &BTreeMap::new()) {
             Ok(parsed) => {
                 if let Some(name) = binds {
                     bound.insert(name, Ok(Produced::Document(parsed.document)));
@@ -1082,7 +1082,7 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
             }
             Err(diagnostics) => serde_json::json!({"diagnostics": plan_rows(&diagnostics, false)}),
         },
-        "dbspec.parse_plan" => match dbspec::parse_plan(&plan_text(&step["lines"])) {
+        "dbspec.parse_plan" => match dbspec::parse_plan(&plan_text(&crate::recipe_reads::read(step, "lines")["lines"])) {
             Ok(parsed) => {
                 if let Some(name) = binds {
                     bound.insert(name, Ok(Produced::Plan(parsed)));
@@ -1091,20 +1091,20 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
             }
             Err(diagnostics) => serde_json::json!({"diagnostics": plan_rows(&diagnostics, false)}),
         },
-        "dbspec.emit_plan" => serde_json::json!({"text": dbspec::emit_plan(&bound_plan(&step["plan"], bound)?)}),
+        "dbspec.emit_plan" => serde_json::json!({"text": dbspec::emit_plan(&bound_plan(&crate::recipe_reads::read(step, "plan")["plan"], bound)?)}),
         "dbspec.plan_steps" => {
             let source = optional_document(step, "source", bound)?;
-            let plan = bound_plan(&step["plan"], bound)?;
-            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let plan = bound_plan(&crate::recipe_reads::read(step, "plan")["plan"], bound)?;
+            let dialect = plan_dialect(crate::recipe_reads::read(step, "dialect")["dialect"].as_str().unwrap_or_default())?;
             match dbspec::plan_steps(source.as_ref(), &plan, dialect) {
                 Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
         }
         "dbspec.add_tables_steps" => {
-            let source = bound_document(&step["source"], bound)?;
-            let target = bound_document(&step["target"], bound)?;
-            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let source = bound_document(&crate::recipe_reads::read(step, "source")["source"], bound)?;
+            let target = bound_document(&crate::recipe_reads::read(step, "target")["target"], bound)?;
+            let dialect = plan_dialect(crate::recipe_reads::read(step, "dialect")["dialect"].as_str().unwrap_or_default())?;
             let result = dbspec::add_tables_and_columns_steps(&source, &[], &target, dialect);
             serde_json::json!({
                 "added": result.added,
@@ -1114,14 +1114,14 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
         }
         "dbspec.diff" => {
             let source = optional_document(step, "source", bound)?;
-            let plan = bound_plan(&step["plan"], bound)?;
+            let plan = bound_plan(&crate::recipe_reads::read(step, "plan")["plan"], bound)?;
             match dbspec::diff(source.as_ref(), &plan) {
                 Ok(changes) => serde_json::json!({"changes": changes.iter().map(|c| serde_json::json!([c.kind, c.table, c.name])).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
         }
         "dbspec.chain" => {
-            let raw = step["plans"].as_array().ok_or_else(|| "dbspec.chain has no plans".to_owned())?;
+            let raw = crate::recipe_reads::read(step, "plans")["plans"].as_array().ok_or_else(|| "dbspec.chain has no plans".to_owned())?;
             let plans = raw.iter().map(|raw| bound_plan(raw, bound)).collect::<Result<Vec<dbspec::Plan>, String>>()?;
             match dbspec::chain(&plans) {
                 Ok(ordered) => serde_json::json!({"order": ordered.iter().map(|p| p.name()).collect::<Vec<&str>>()}),
@@ -1129,8 +1129,8 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
             }
         }
         "dbspec.compare" => {
-            let source = bound_document(&step["source"], bound)?;
-            let target = bound_document(&step["target"], bound)?;
+            let source = bound_document(&crate::recipe_reads::read(step, "source")["source"], bound)?;
+            let target = bound_document(&crate::recipe_reads::read(step, "target")["target"], bound)?;
             match dbspec::compare_schemas(&source, &target) {
                 Ok(differences) => serde_json::json!({
                     "differences": differences.iter().map(|d| serde_json::json!([d.kind, d.table, d.name])).collect::<Vec<Value>>(),
@@ -1172,16 +1172,16 @@ fn read_documents(dir: &Path, paths: &[String]) -> Result<(Vec<String>, Vec<Docu
 
 /// The documents named by a dbspec step.
 fn step_documents(step: &Value) -> Vec<String> {
-    step["documents"].as_array().map(|d| d.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+    crate::recipe_reads::read(step, "documents")["documents"].as_array().map(|d| d.iter().filter_map(|x| x.as_str().map(str::to_owned)).collect()).unwrap_or_default()
 }
 
 /// Runs a dbspec.export_mermaid or dbspec.import_mermaid op (FCV-4) on the public Mermaid calls (DBS-169), binds its plain JSON
 /// result to `as`, and checks the keys that the expect value of `database` names, as a subset.
 fn mermaid(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: &Path) -> Result<(), String> {
-    let op = step["op"].as_str().unwrap_or_default();
-    let want = &step["expect"][database]["value"];
+    let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
+    let want = &crate::recipe_reads::read(step, "expect")["expect"][database]["value"];
     let got = if op == "dbspec.export_mermaid" { mermaid_export(step, dir)? } else { mermaid_import(step, bound, dir)? };
-    if let Some(name) = step["as"].as_str() {
+    if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
         bound.insert(name.to_owned(), Ok(Produced::Plain(got.clone())));
     }
     let Some(subset) = want.as_object() else { return Err(format!("{op} has no expect value for {database}: {want}")) };
@@ -1198,7 +1198,7 @@ fn mermaid(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, d
 /// The export op: the Mermaid text and the dropped objects of the inline text with the other documents of its set, or of
 /// the .dbs file `document`.
 fn mermaid_export(step: &Value, dir: &Path) -> Result<Value, String> {
-    let (source, set) = match step["document"].as_str() {
+    let (source, set) = match crate::recipe_reads::read(step, "document")["document"].as_str() {
         Some(path) => (mermaid_file(dir, path)?, BTreeMap::new()),
         None => inline_text(step),
     };
@@ -1210,8 +1210,8 @@ fn mermaid_export(step: &Value, dir: &Path) -> Result<Value, String> {
 /// The import op: the document and the dropped objects of a Mermaid text, or its errors; with `skeleton_of`, whether the
 /// tables, columns, primary keys and foreign keys equal those of the file (MER-13).
 fn mermaid_import(step: &Value, bound: &HashMap<String, Outcome>, dir: &Path) -> Result<Value, String> {
-    let text = mermaid_text(&step["mermaid"], bound)?;
-    let name = step["name"].as_str().unwrap_or_default();
+    let text = mermaid_text(&crate::recipe_reads::read(step, "mermaid")["mermaid"], bound)?;
+    let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
     let (document, dropped) = match import_mermaid(&text, name) {
         Ok(imported) => imported,
         Err(diagnostics) => {
@@ -1219,7 +1219,7 @@ fn mermaid_import(step: &Value, bound: &HashMap<String, Outcome>, dir: &Path) ->
             return Ok(json!({"errors": errors}));
         }
     };
-    let Some(skeleton_of) = step["skeleton_of"].as_str() else {
+    let Some(skeleton_of) = crate::recipe_reads::read(step, "skeleton_of")["skeleton_of"].as_str() else {
         return Ok(json!({"document": dbspec::emit(&document), "dropped": drops(&dropped)}));
     };
     let original = mermaid_document(&mermaid_file(dir, skeleton_of)?, &BTreeMap::new())?;
@@ -1255,7 +1255,7 @@ fn drops(dropped: &[Unsupported]) -> Value {
 
 /// The text of the one document of a dbspec step, read from `dir`.
 fn step_document(step: &Value, dir: &Path) -> Result<String, String> {
-    let path = step["document"].as_str().unwrap_or_default();
+    let path = crate::recipe_reads::read(step, "document")["document"].as_str().unwrap_or_default();
     std::fs::read_to_string(dir.join(path)).map_err(|error| format!("{path}: {error}"))
 }
 
@@ -1268,8 +1268,8 @@ fn positions_json(positions: &[Position]) -> Vec<Value> {
 /// The ops and their expects are those of docs/spec/feature-coverage.md FCV-4, and each one mirrors the reference
 /// implementation (packages/go/internal/recipe/dbspec.go).
 fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
-    let op = step["op"].as_str().unwrap_or_default();
-    let Some(want) = step["expect"].get(database) else { return Err(format!("{op} has no expect for {database}")) };
+    let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
+    let Some(want) = crate::recipe_reads::read(step, "expect")["expect"].get(database) else { return Err(format!("{op} has no expect for {database}")) };
     match op {
         "dbspec.parse_emit" => {
             let want_identical = want["identical"].as_bool().ok_or("expect identical is not a bool")?;
@@ -1378,15 +1378,15 @@ fn joined_lines(lines: &[&str], crlf: bool, mixed: bool) -> String {
 
 /// The text of a step and the set of its other documents, each joined with the line ends of the step.
 fn inline_text(step: &Value) -> (String, BTreeMap<String, String>) {
-    let crlf = step["crlf"].as_bool() == Some(true);
-    let mixed = step["mixed"].as_bool() == Some(true);
+    let crlf = crate::recipe_reads::read(step, "crlf")["crlf"].as_bool() == Some(true);
+    let mixed = crate::recipe_reads::read(step, "mixed")["mixed"].as_bool() == Some(true);
     let mut set = BTreeMap::new();
-    if let Some(documents) = step["set"].as_object() {
+    if let Some(documents) = crate::recipe_reads::read(step, "set")["set"].as_object() {
         for (name, lines) in documents {
             set.insert(name.clone(), joined_lines(&lines_of(lines), crlf, mixed));
         }
     }
-    let lines = expanded_lines(&step["text"]);
+    let lines = expanded_lines(&crate::recipe_reads::read(step, "text")["text"]);
     (joined_lines(&lines.iter().map(String::as_str).collect::<Vec<_>>(), crlf, mixed), set)
 }
 
@@ -1414,7 +1414,7 @@ fn expanded_lines(items: &Value) -> Vec<String> {
 
 /// The text and the set of a dbspec step: inline when the step has text, else the document file of the step.
 fn step_source(step: &Value, dir: &Path) -> Result<(String, BTreeMap<String, String>), String> {
-    if step["text"].is_array() {
+    if crate::recipe_reads::read(step, "text")["text"].is_array() {
         return Ok(inline_text(step));
     }
     Ok((step_document(step, dir)?, BTreeMap::new()))
@@ -1461,7 +1461,7 @@ fn check_refusal(text: &str, set: &BTreeMap<String, String>, want: &[Value]) -> 
 /// The dbspec.format op: the text of the step formats to the expect's text, and the emission of the text is that text too,
 /// and the formatted text formats to itself; or the text is refused with the expect's diagnostics.
 fn dbspec_format(step: &Value, want: &Value) -> Result<(), String> {
-    if expanded_lines(&step["text"]).is_empty() {
+    if expanded_lines(&crate::recipe_reads::read(step, "text")["text"]).is_empty() {
         return Err("dbspec.format has no text".to_owned());
     }
     let (text, set) = inline_text(step);
@@ -1536,7 +1536,7 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
         let lines = lines_of(value);
         if lines.is_empty() { String::new() } else { format!("{}\n", lines.join("\n")) }
     };
-    let (owned, external) = (text(&step["owned"]), text(&step["external"]));
+    let (owned, external) = (text(&crate::recipe_reads::read(step, "owned")["owned"]), text(&crate::recipe_reads::read(step, "external")["external"]));
     let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
         let refs: Vec<&Document> = documents.iter().collect();
         dbspec::manifest(&refs).ok()
@@ -1568,7 +1568,7 @@ fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
 /// names of the entities and fields it names.
 fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
     let owned = step_documents(step);
-    let paths: Vec<String> = owned.iter().cloned().chain(strings_of(&step["external"])).collect();
+    let paths: Vec<String> = owned.iter().cloned().chain(strings_of(&crate::recipe_reads::read(step, "external")["external"])).collect();
     let (_, mut documents) = read_documents(dir, &paths)?;
     for document in documents.iter_mut().skip(owned.len()) {
         document.external = true;
@@ -1632,9 +1632,9 @@ fn dbspec_runtime_model(step: &Value, dir: &Path, want: &Value) -> Result<(), St
 }
 
 fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
-    let owned = strings_of(&step["owned"]);
-    let external = strings_of(&step["external"]);
-    let parsing: BTreeMap<String, String> = step["parsing"]
+    let owned = strings_of(&crate::recipe_reads::read(step, "owned")["owned"]);
+    let external = strings_of(&crate::recipe_reads::read(step, "external")["external"]);
+    let parsing: BTreeMap<String, String> = crate::recipe_reads::read(step, "parsing")["parsing"]
         .as_object()
         .map(|map| map.iter().map(|(name, text)| (name.clone(), text.as_str().unwrap_or_default().to_owned())).collect())
         .unwrap_or_default();
@@ -1725,8 +1725,8 @@ fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
 /// The dbspec.parse_set op: the owned and external texts parse as one set, and each result has the expect's name, external
 /// mark, parsed flag and diagnostics (with its message where the expect states one).
 fn dbspec_parse_set(step: &Value, want: &Value) -> Result<(), String> {
-    let owned = strings_of(&step["owned"]);
-    let external = strings_of(&step["external"]);
+    let owned = strings_of(&crate::recipe_reads::read(step, "owned")["owned"]);
+    let external = strings_of(&crate::recipe_reads::read(step, "external")["external"]);
     let owned: Vec<&str> = owned.iter().map(String::as_str).collect();
     let external: Vec<&str> = external.iter().map(String::as_str).collect();
     let got = dbspec::parse_set(&owned, &external);
@@ -1762,9 +1762,9 @@ fn dbspec_parse_set(step: &Value, want: &Value) -> Result<(), String> {
 /// its rule; a file without errors gives its bytes as text, which parse and emit unchanged.
 fn dbspec_read(step: &Value, dir: &Path, want: &Value) -> Result<(), String> {
     let want_errors = want["errors"].as_array().cloned().unwrap_or_default();
-    let path = step["path"].as_str().unwrap_or_default();
+    let path = crate::recipe_reads::read(step, "path")["path"].as_str().unwrap_or_default();
     let full = dir.join(path);
-    let (name, read) = if step["op"] == "dbspec.read_file" {
+    let (name, read) = if crate::recipe_reads::read(step, "op")["op"] == "dbspec.read_file" {
         (full.display().to_string(), dbspec::read_file(&full))
     } else {
         let bytes = std::fs::read(&full).map_err(|error| format!("{path}: {error}"))?;
@@ -1837,8 +1837,8 @@ const SEND_COLUMNS: &[&str] = &[
 fn markdown_send(step: &Value) -> Result<(), String> {
     // The process zone is the TZ environment variable of the process, restored when the step ends (even on a panic). The
     // Rust connection zone is fixed at UTC, so the bound value does not depend on it.
-    let _zone = step["process_zone"].as_str().map(ProcessZone::set);
-    if let Some(surface) = step["surface"].as_str() {
+    let _zone = crate::recipe_reads::read(step, "process_zone")["process_zone"].as_str().map(ProcessZone::set);
+    if let Some(surface) = crate::recipe_reads::read(step, "surface")["surface"].as_str() {
         return send_and_check(step, Call::Surface(surface.to_owned()), "markdown.send");
     }
     let send = SendStep::parse(step)?;
@@ -1852,7 +1852,7 @@ fn collection_key(step: &Value, database: &str) -> Result<(), String> {
     let mut groups: Vec<usize> = Vec::new();
     let mut types: Vec<&str> = Vec::new();
     let mut failure = None;
-    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+    for entry in crate::recipe_reads::read(step, "keys")["keys"].as_array().ok_or("collection.key has no keys")? {
         let value = match entry["type"].as_str().unwrap_or_default() {
             "null" => Val::Null,
             "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
@@ -1888,7 +1888,7 @@ fn collection_key(step: &Value, database: &str) -> Result<(), String> {
         keys.push(key);
     }
     let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
-    let want = &step["expect"][database];
+    let want = &crate::recipe_reads::read(step, "expect")["expect"][database];
     if &got == want {
         Ok(())
     } else {
@@ -1897,16 +1897,16 @@ fn collection_key(step: &Value, database: &str) -> Result<(), String> {
 }
 
 fn model_assign(step: &Value) -> Result<(), String> {
-    let model = step["model"].as_str().unwrap_or_default();
-    let column = step["column"].as_str().unwrap_or_default();
+    let model = crate::recipe_reads::read(step, "model")["model"].as_str().unwrap_or_default();
+    let column = crate::recipe_reads::read(step, "column")["column"].as_str().unwrap_or_default();
     if model != "slots" || column != "varchar_value" {
         return Err(format!("model.assign of {model}.{column} has no typed setter in the Rust cases"));
     }
-    let (wrapper, body) = kind(&step["value"])?;
+    let (wrapper, body) = kind(&crate::recipe_reads::read(step, "value")["value"])?;
     if wrapper == "nil" {
         return Err("the typed setter takes no null, so the Rust cases exclude a nil value".to_owned());
     }
-    let text = body.as_str().ok_or_else(|| format!("the value {} holds no text", step["value"]))?;
+    let text = body.as_str().ok_or_else(|| format!("the value {} holds no text", crate::recipe_reads::read(step, "value")["value"]))?;
     send_and_check(step, Call::Assign(text.to_owned()), "model.assign")
 }
 
@@ -1920,7 +1920,7 @@ fn send_and_check(step: &Value, call: Call, op: &str) -> Result<(), String> {
         (None, Err(error)) => Sent::Error(error.code().to_owned()),
         (None, Ok(())) => return Err("the call returned and sent no message".to_owned()),
     };
-    let expect = &step["expect"];
+    let expect = &crate::recipe_reads::read(step, "expect")["expect"];
     if let Some(want) = expect.get("error") {
         let want = want.as_str().unwrap_or_default();
         return match sent {
@@ -2019,7 +2019,7 @@ enum Filter {
 
 impl SendStep {
     fn parse(step: &Value) -> Result<Self, String> {
-        if let Some(begin) = step.get("begin") {
+        if let Some(begin) = crate::recipe_reads::read(step, "begin").get("begin") {
             return Ok(Self {
                 begin: Some(begin["read_only"].as_bool().unwrap_or(false)),
                 column: String::new(),
@@ -2028,14 +2028,14 @@ impl SendStep {
                 operator: String::new(),
             });
         }
-        let operator = step["operator"].as_str().unwrap_or_default();
+        let operator = crate::recipe_reads::read(step, "operator")["operator"].as_str().unwrap_or_default();
         let contains = match operator {
             "eq" => false,
             "like_contains" => true,
             "eq_method" | "ne_method" | "gt_method" => false,
             _ => return Err(format!("operator {operator} has no typed filter in the Rust cases")),
         };
-        let column = step["column"].as_str().unwrap_or_default();
+        let column = crate::recipe_reads::read(step, "column")["column"].as_str().unwrap_or_default();
         if contains && column != "slots.text_value" {
             return Err(format!("the column {column} has no contains filter in the Rust cases"));
         }
@@ -2043,11 +2043,11 @@ impl SendStep {
             return Err(format!("the column {column} has no typed filter in the Rust cases"));
         }
         // The typed filters take the wrapper of the parameter: the runtime reads it in the form of the column type (FCV-4).
-        let (wrapper, body) = kind(&step["params"][0])?;
+        let (wrapper, body) = kind(&crate::recipe_reads::read(step, "params")["params"][0])?;
         let value = match column {
             _ if wrapper == "nil" => Filter::Nil,
             "slots.i64_value" if wrapper == "array" => {
-                let items = body.as_array().ok_or_else(|| format!("the parameter {} holds no list", step["params"][0]))?;
+                let items = body.as_array().ok_or_else(|| format!("the parameter {} holds no list", crate::recipe_reads::read(step, "params")["params"][0]))?;
                 let list = items
                     .iter()
                     .map(|item| {
@@ -2060,11 +2060,11 @@ impl SendStep {
             "slots.f64_value" => Filter::F64(float(column, wrapper, body)?),
             "slots.bool_value" => Filter::Bool(boolean(column, wrapper, body)?),
             "slots.bytes_value" => {
-                let hex = body.as_str().ok_or_else(|| format!("the parameter {} holds no hex", step["params"][0]))?;
+                let hex = body.as_str().ok_or_else(|| format!("the parameter {} holds no hex", crate::recipe_reads::read(step, "params")["params"][0]))?;
                 Filter::Bytes(hex_bytes(hex)?)
             }
             _ => {
-                let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", step["params"][0]))?;
+                let text = body.as_str().ok_or_else(|| format!("the parameter {} holds no text", crate::recipe_reads::read(step, "params")["params"][0]))?;
                 match column {
                     "slots.i16_value" => Filter::I16(integer(column, text)?),
                     "slots.i32_value" => Filter::I32(integer(column, text)?),
@@ -2966,7 +2966,7 @@ mod database {
     ) -> Result<Output, Failure> {
         let state = tokio::sync::Mutex::new((catalog, context));
         let attempts = std::sync::atomic::AtomicU64::new(0);
-        let conflicts = step["conflicts"].as_u64().unwrap_or(0);
+        let conflicts = crate::recipe_reads::read(step, "conflicts")["conflicts"].as_u64().unwrap_or(0);
         let callback = async || {
             let attempt = attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
             let mut guard = state.lock().await;
@@ -2984,14 +2984,14 @@ mod database {
         };
         let mut transaction = db.transaction(callback);
         // An absent retry passes 0 unless default_retry leaves it out (INT-43).
-        if step["default_retry"].as_bool() != Some(true) {
-            let retry = u32::try_from(step["retry"].as_u64().unwrap_or(0)).map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
+        if crate::recipe_reads::read(step, "default_retry")["default_retry"].as_bool() != Some(true) {
+            let retry = u32::try_from(crate::recipe_reads::read(step, "retry")["retry"].as_u64().unwrap_or(0)).map_err(|_| Failure::Step("retry is not a count".to_owned()))?;
             transaction = transaction.retry(retry);
         }
-        if let Some(timeout) = step["timeout_ms"].as_u64() {
+        if let Some(timeout) = crate::recipe_reads::read(step, "timeout_ms")["timeout_ms"].as_u64() {
             transaction = transaction.timeout_ms(timeout);
         }
-        if let Some(level) = step["isolation"].as_str() {
+        if let Some(level) = crate::recipe_reads::read(step, "isolation")["isolation"].as_str() {
             transaction = transaction.isolation(match level {
                 "read_uncommitted" => polyspec_orm::Isolation::ReadUncommitted,
                 "read_committed" => polyspec_orm::Isolation::ReadCommitted,
@@ -3000,11 +3000,11 @@ mod database {
                 other => return Err(Failure::Step(format!("isolation {other} is not a level of the recipe"))),
             });
         }
-        if step["read_only"].as_bool() == Some(true) {
+        if crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true) {
             transaction = transaction.read_only();
         }
-        if step.get("audit").is_some() {
-            transaction = transaction.audit(audit_values(&step["audit"])?);
+        if crate::recipe_reads::read(step, "audit").get("audit").is_some() {
+            transaction = transaction.audit(audit_values(&crate::recipe_reads::read(step, "audit")["audit"])?);
         }
         let result = transaction.await;
         state.into_inner().1.attempts = attempts.load(std::sync::atomic::Ordering::SeqCst);
@@ -3022,7 +3022,7 @@ mod database {
 
     /// The name that the `as` of a step binds.
     fn bound_name(step: &Value) -> Result<String, String> {
-        step["as"].as_str().map(str::to_owned).ok_or_else(|| format!("{} binds no as", step["op"]))
+        crate::recipe_reads::read(step, "as")["as"].as_str().map(str::to_owned).ok_or_else(|| format!("{} binds no as", crate::recipe_reads::read(step, "op")["op"]))
     }
 
     /// The connection that the `connection` of a step names, as the dispatcher of the case holds it.
@@ -3039,7 +3039,7 @@ mod database {
     }
 
     fn connection_db(step: &Value, context: &Context<'_>) -> Result<Db, String> {
-        let name = step["connection"].as_str().ok_or_else(|| format!("{} names no connection", step["op"]))?;
+        let name = crate::recipe_reads::read(step, "connection")["connection"].as_str().ok_or_else(|| format!("{} names no connection", crate::recipe_reads::read(step, "op")["op"]))?;
         context.models.db(name).ok_or_else(|| format!("no bound connection {name}"))
     }
 
@@ -3062,7 +3062,7 @@ mod database {
     /// directory and parsed through the public dbspec API; manifest_replace changes the manifest text after building and keeps
     /// its hash, so that the text no longer hashes to it.
     fn schema_argument(step: &Value, context: &Context<'_>) -> Result<Schema, String> {
-        let arg = &step["schema"];
+        let arg = &crate::recipe_reads::read(step, "schema")["schema"];
         let read = |names: &Value| -> Result<Vec<String>, String> {
             names
                 .as_array()
@@ -3143,13 +3143,13 @@ mod database {
     const UNEXPECTED_ERROR: &str = "unexpected error ";
 
     async fn run_step(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<(), String> {
-        let expected = match step.get("expect") {
+        let expected = match crate::recipe_reads::read(step, "expect").get("expect") {
             None => None,
             Some(expect) => Some(resolve_refs(&expect[context.database], context)?),
         };
         let want_error = expected.as_ref().and_then(|e| e.get("error")).and_then(Value::as_str).map(str::to_owned);
         // query.search runs on the generated models of the dispatcher too, as the model ops do (FCV-4).
-        let dispatched = if step["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search" || op == "query.search_chain") {
+        let dispatched = if crate::recipe_reads::read(step, "op")["op"].as_str().is_some_and(|op| MODEL_OPS.contains(&op) || op == "query.search" || op == "query.search_chain") {
             model_call(step, context).await
         } else {
             call(catalog, step, context).await
@@ -3188,7 +3188,11 @@ mod database {
                         _ => match holds {
                             Some(holds) if !message.contains(holds) => Err(format!("error message {message:?} does not hold {holds:?}")),
                             _ if wants_cause && !driver_cause => Err(format!("error {message:?} has no driver cause")),
-                            _ => Ok(()),
+                            _ => crate::recipe_reads::check_outcome(
+                                expected.as_ref(),
+                                crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default(),
+                                &["error", "message_suffix", "message", "cause", "message_holds", "rollback", "keeps_callback", "driver_cause", "file_created"],
+                            ),
                         },
                     },
                     Some(code) => Err(format!("error code {code} ({message}), want {want}")),
@@ -3196,11 +3200,11 @@ mod database {
                 };
             }
         };
-        if let Some(name) = step["as"].as_str() {
+        if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
             let value = output.bind.unwrap_or_else(|| Bound::Json(output.fields.get("value").cloned().unwrap_or(Value::Null)));
             context.bound.insert(name.to_owned(), value);
         }
-        let Some(expected) = expected else { return Ok(()) };
+        let Some(expected) = expected else { return crate::recipe_reads::check(step) };
         if let Some(want) = want_error {
             return Err(format!("expected {want}, and the op succeeded"));
         }
@@ -3208,7 +3212,7 @@ mod database {
         let compared: serde_json::Map<String, Value> = keys.keys().map(|key| (key.clone(), output.fields.get(key).cloned().unwrap_or(Value::Null))).collect();
         let (got, want) = (normalized(&Value::Object(compared)), normalized(&expected));
         if got == want {
-            Ok(())
+            crate::recipe_reads::check(step)
         } else {
             Err(format!("got {got}, want {want}"))
         }
@@ -3289,7 +3293,7 @@ mod database {
     /// Maps the op of `step` to its call of the public API and returns the fields that its expect compares.
     async fn call(catalog: &mut Option<CatalogConnection>, step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
         let fault = Failure::Step;
-        Ok(match step["op"].as_str().unwrap_or_default() {
+        Ok(match crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default() {
             // The dbspec apply ops (FCV-4) run on their own connections and report their value.
             op if crate::recipe_apply::OPS.contains(&op) => {
                 let database = context.database;
@@ -3299,7 +3303,7 @@ mod database {
             // schema.install (FCV-4): {schema} installs the set of the step on the case database; {connection} installs the
             // recipe fixture on that connection.
             "schema.install" => {
-                match step["connection"].as_str() {
+                match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
                     Some(name) => {
                         let db = context.models.db(name).ok_or_else(|| fault(format!("no bound connection {name}")))?;
                         let fixture = context.schemas.ok_or_else(|| fault("schema.install names a connection, and the recipe has no fixture".into()))?;
@@ -3319,12 +3323,12 @@ mod database {
             }
             "schema.empty" => Output::fields(json!({ "value": { "bool": context.db.utils().schema().empty().await.map_err(orm)? } })),
             "schema.exists" => {
-                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
+                let name = inspected_schema(&crate::recipe_reads::read(step, "schema")["schema"], context).map_err(fault)?;
                 Output::fields(json!({ "value": { "bool": context.db.utils().schema().exists(&name).await.map_err(orm)? } }))
             }
             "schema.installed" => {
-                let name = inspected_schema(&step["schema"], context).map_err(fault)?;
-                let table = step["table"].as_str().unwrap_or_default();
+                let name = inspected_schema(&crate::recipe_reads::read(step, "schema")["schema"], context).map_err(fault)?;
+                let table = crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default();
                 Output::fields(json!({ "value": { "bool": context.db.utils().schema().installed(&name, table).await.map_err(orm)? } }))
             }
             "schema.connect" => {
@@ -3336,7 +3340,7 @@ mod database {
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
                 let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
-                    match step["message_contains"].as_str() {
+                    match crate::recipe_reads::read(step, "message_contains")["message_contains"].as_str() {
                         Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
                         _ => orm(error),
                     }
@@ -3355,7 +3359,7 @@ mod database {
                     })
                     .map_err(orm)?;
                 let mut outcome = Ok(());
-                for nested in step["steps"].as_array().into_iter().flatten() {
+                for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
                     if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
                         outcome = Err(message);
                         break;
@@ -3368,16 +3372,16 @@ mod database {
             // transaction (FCV-4): {connection?, steps, fail?}; the connection defaults to the case connection, and fail makes
             // the callback return its own error after its steps, which the expect names as CALLBACK.
             "transaction" => {
-                let db = match step["connection"].as_str() {
+                let db = match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
                     Some(_) => connection_db(step, context).map_err(fault)?,
                     None => context.db.clone(),
                 };
-                let steps: Vec<Value> = step["steps"].as_array().cloned().unwrap_or_default();
-                let fail = step["fail"].as_bool().unwrap_or(false);
+                let steps: Vec<Value> = crate::recipe_reads::read(step, "steps")["steps"].as_array().cloned().unwrap_or_default();
+                let fail = crate::recipe_reads::read(step, "fail")["fail"].as_bool().unwrap_or(false);
                 // The options of the transaction (INT-46) take the db.transaction form, the one that carries them; a
                 // nested transaction that names one is refused with CONFIG.
                 let optioned = ["isolation", "audit", "retry", "default_retry", "timeout_ms", "conflicts"];
-                if optioned.iter().any(|option| step.get(*option).is_some()) || step["read_only"].as_bool() == Some(true) {
+                if optioned.iter().any(|option| step.get(*option).is_some()) || crate::recipe_reads::read(step, "read_only")["read_only"].as_bool() == Some(true) {
                     return transaction_with_options(&db, step, &steps, fail, catalog, context).await;
                 }
                 let ran = std::sync::atomic::AtomicU64::new(0);
@@ -3413,6 +3417,14 @@ mod database {
                 Output::fields(ok_value())
             }
             "transaction.attempts" => Output::fields(json!({ "value": { "int": context.attempts.to_string() } })),
+            // The client writes the reading of this clock, cut to the microsecond, so both edges are the reading
+            // itself: a value written between two readings lies between their texts (FCV-4).
+            "clock.read" => match step["edge"].as_str() {
+                Some("lower" | "upper") => Output::fields(json!({ "value": {
+                    "text": chrono::Utc::now().naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } })),
+                other => return Err(format!("clock.read has no edge {other:?}")),
+            },
             // The events ops (FCV-4): a subscription on a connection, its recording, and the ops that stop or read them.
             "events.subscribe" => {
                 let name = bound_name(step).map_err(fault)?;
@@ -3437,11 +3449,11 @@ mod database {
             "events.fail_subscriber" => {
                 let name = bound_name(step).map_err(fault)?;
                 let db = connection_db(step, context).map_err(fault)?;
-                let kind = step["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
-                let refusal = step["refusal"].is_object().then(|| {
+                let kind = crate::recipe_reads::read(step, "kind")["kind"].as_str().ok_or_else(|| fault("events.fail_subscriber names no kind".into()))?.to_owned();
+                let refusal = crate::recipe_reads::read(step, "refusal")["refusal"].is_object().then(|| {
                     (
-                        step["refusal"]["code"].as_str().unwrap_or_default().to_owned(),
-                        step["refusal"]["message"].as_str().unwrap_or_default().to_owned(),
+                        crate::recipe_reads::read(step, "refusal")["refusal"]["code"].as_str().unwrap_or_default().to_owned(),
+                        crate::recipe_reads::read(step, "refusal")["refusal"]["message"].as_str().unwrap_or_default().to_owned(),
                     )
                 });
                 let subscription = db
@@ -3459,8 +3471,8 @@ mod database {
                 Output::fields(json!({}))
             }
             "events.stop_failing" | "events.unsubscribe" => {
-                let name = step["ref"].as_str().ok_or_else(|| fault(format!("{} names no ref", step["op"])))?;
-                let subscription = context.subscriptions.remove(name).ok_or_else(|| fault(format!("{}: no subscription {name}", step["op"])))?;
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().ok_or_else(|| fault(format!("{} names no ref", crate::recipe_reads::read(step, "op")["op"])))?;
+                let subscription = context.subscriptions.remove(name).ok_or_else(|| fault(format!("{}: no subscription {name}", crate::recipe_reads::read(step, "op")["op"])))?;
                 subscription.unsubscribe();
                 Output::fields(json!({}))
             }
@@ -3469,7 +3481,7 @@ mod database {
             "utils.run" => {
                 let db = connection_db(step, context).map_err(fault)?;
                 let mut statements = Vec::new();
-                for statement in step["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
+                for statement in crate::recipe_reads::read(step, "statements")["statements"].as_array().ok_or_else(|| fault("utils.run names no statements".into()))? {
                     let kind = statement["kind"].as_str().ok_or_else(|| fault("a statement of utils.run names no kind".into()))?;
                     let tables: Vec<&str> = statement["tables"].as_array().map(|names| names.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
                     let sql = sql_field(&statement["sql"], context).map_err(fault)?;
@@ -3486,7 +3498,7 @@ mod database {
                         for (kind, tables, sql, params) in &statements {
                             last = frame.run(kind, tables, sql, params).await?;
                         }
-                        if let Some(message) = step["conflict"].as_str() {
+                        if let Some(message) = crate::recipe_reads::read(step, "conflict")["conflict"].as_str() {
                             return Err(polyspec_orm::transaction_conflict(message));
                         }
                         Ok(last)
@@ -3500,7 +3512,7 @@ mod database {
             // the server transactions of each run. The probe runs in a frame of its own, so its cost is measured first.
             "events.server_transactions" => {
                 let db = connection_db(step, context).map_err(fault)?;
-                let probe_text = step["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
+                let probe_text = crate::recipe_reads::read(step, "probe")["probe"].as_str().ok_or_else(|| fault("events.server_transactions names no probe".into()))?.to_owned();
                 let mut fields = serde_json::Map::new();
                 if context.database == "postgres" {
                     let rows = frame_rows(&db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").await.map_err(orm)?;
@@ -3513,7 +3525,7 @@ mod database {
                 let first = probe_value(&db, &probe_text).await.map_err(fault)?;
                 let mut before = probe_value(&db, &probe_text).await.map_err(fault)?;
                 let cost = before - first;
-                let prepares = step["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
+                let prepares = crate::recipe_reads::read(step, "first_run_prepare_clients")["first_run_prepare_clients"].as_array().is_some_and(|clients| clients.iter().any(|client| client == "rust"));
                 for run in ["first", "second"] {
                     let texts = Arc::new(Mutex::new(Vec::<String>::new()));
                     let sink = Arc::clone(&texts);
@@ -3524,7 +3536,7 @@ mod database {
                         })
                         .map_err(orm)?;
                     let mut outcome = Ok(());
-                    for nested in step["steps"].as_array().into_iter().flatten() {
+                    for nested in crate::recipe_reads::read(step, "steps")["steps"].as_array().into_iter().flatten() {
                         if let Err(message) = Box::pin(run_step(catalog, nested, context)).await {
                             outcome = Err(message);
                             break;
@@ -3547,11 +3559,11 @@ mod database {
                 Output::fields(Value::Object(fields))
             }
             "events.captured" => {
-                let name = step["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
+                let name = crate::recipe_reads::read(step, "ref")["ref"].as_str().ok_or_else(|| fault("events.captured names no ref".into()))?;
                 let recorded = context.recordings.get(name).cloned().ok_or_else(|| fault(format!("no recording {name}")))?;
-                let mut events = recorded.lock().unwrap().captured(step["compare"].as_str() == Some("tables"));
-                apply_masks(&mut events, &step["masks"][context.database]).map_err(fault)?;
-                if step["compare"].as_str() == Some("statements") {
+                let mut events = recorded.lock().unwrap().captured(crate::recipe_reads::read(step, "compare")["compare"].as_str() == Some("tables"));
+                apply_masks(&mut events, &crate::recipe_reads::read(step, "masks")["masks"][context.database]).map_err(fault)?;
+                if crate::recipe_reads::read(step, "compare")["compare"].as_str() == Some("statements") {
                     // The bound clock of a soft delete differs on each run, so the sql and the kind are compared.
                     for event in &mut events {
                         if let Some(members) = event["object"].as_array_mut() {
@@ -3559,7 +3571,7 @@ mod database {
                         }
                     }
                 }
-                if step["compare"].as_str() == Some("shape") {
+                if crate::recipe_reads::read(step, "compare")["compare"].as_str() == Some("shape") {
                     // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
                     for event in &mut events {
                         if let Some(members) = event["object"].as_array_mut() {
@@ -3570,7 +3582,7 @@ mod database {
                 Output::fields(json!({ "value": { "array": events } }))
             }
             "catalog.connect" => {
-                connect_check(&step["dsn"], step["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
+                connect_check(&crate::recipe_reads::read(step, "dsn")["dsn"], crate::recipe_reads::read(step, "expect")["expect"][context.database]["file_created"].as_bool().unwrap_or(false)).await?;
                 Output::fields(json!({}))
             }
             "catalog.close" => {
@@ -3581,14 +3593,14 @@ mod database {
                 Output::fields(json!({}))
             }
             "catalog.reconnect" => {
-                let dsn = match step.get("user_from_database").and_then(Value::as_str) {
+                let dsn = match crate::recipe_reads::read(step, "user_from_database").get("user_from_database").and_then(Value::as_str) {
                     Some(prefix) => user_from_database_dsn(&context.dsn, prefix),
                     None => context.dsn.clone(),
                 };
-                if let Some(text) = step.get("refused_message").and_then(Value::as_str) {
+                if let Some(text) = crate::recipe_reads::read(step, "refused_message").get("refused_message").and_then(Value::as_str) {
                     return match CatalogConnection::connect(&dsn).await {
                         Ok(_) => Err(fault("the server accepted the connection that the step expects it to refuse".to_owned())),
-                        Err(error) if error.to_lowercase().contains(text) && error.starts_with(step["refused_code"].as_str().unwrap_or_default()) => {
+                        Err(error) if error.to_lowercase().contains(text) && error.starts_with(crate::recipe_reads::read(step, "refused_code")["refused_code"].as_str().unwrap_or_default()) => {
                             Ok(Output::fields(json!({})))
                         }
                         Err(error) => Err(fault(format!("the server refused the connection for another reason: {error}"))),
@@ -3623,12 +3635,12 @@ mod database {
                 Output { fields, bind: Some(Bound::Metadata(metadata)) }
             }
             "catalog.table_page" => {
-                let limit = step["limit"].as_u64().ok_or_else(|| fault("limit is not a count".into()))?;
-                let offset = step["offset"].as_u64().ok_or_else(|| fault("offset is not a count".into()))?;
+                let limit = crate::recipe_reads::read(step, "limit")["limit"].as_u64().ok_or_else(|| fault("limit is not a count".into()))?;
+                let offset = crate::recipe_reads::read(step, "offset")["offset"].as_u64().ok_or_else(|| fault("offset is not a count".into()))?;
                 let limit = usize::try_from(limit).map_err(|e| fault(e.to_string()))?;
                 let page = live(catalog)?.table_page(&table(step, context).map_err(fault)?, limit, offset).await.map_err(Failure::Call)?;
                 let mut indexes = Vec::new();
-                for column in step["columns"].as_array().into_iter().flatten() {
+                for column in crate::recipe_reads::read(step, "columns")["columns"].as_array().into_iter().flatten() {
                     let name = column.as_str().unwrap_or_default();
                     let at = page.result.columns.iter().position(|c| c.name == name).ok_or_else(|| fault(format!("the page has no column {name}")))?;
                     indexes.push(at);
@@ -3644,7 +3656,7 @@ mod database {
                 Output { fields: fields.clone(), bind: Some(Bound::Page(page, fields)) }
             }
             "catalog.read_only_query" => {
-                let sql = sql_field(&step["sql"], context).map_err(fault)?;
+                let sql = sql_field(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)?;
                 let binds = binds(step, context).map_err(fault)?;
                 let (max_rows, max_bytes) = limits(step)?;
                 let result = live(catalog)?.read_only_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
@@ -3653,7 +3665,7 @@ mod database {
                 Output::fields(json!({ "columns": columns, "rows": rows, "row_count": result.rows.len() }))
             }
             "catalog.read_only_grid_query" => {
-                let sql = sql_field(&step["sql"], context).map_err(fault)?;
+                let sql = sql_field(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)?;
                 let binds = binds(step, context).map_err(fault)?;
                 let (max_rows, max_bytes) = limits(step)?;
                 let result = live(catalog)?.read_only_grid_query_counted(sql, &binds, max_rows, max_bytes).await.map_err(Failure::Call)?;
@@ -3662,9 +3674,9 @@ mod database {
                 Output::fields(json!({ "columns": columns, "rows": rows.map_err(fault)? }))
             }
             "catalog.row_snapshot" => {
-                let index = step["index"].as_u64().ok_or_else(|| fault("index is not a count".into()))?;
+                let index = crate::recipe_reads::read(step, "index")["index"].as_u64().ok_or_else(|| fault("index is not a count".into()))?;
                 let index = usize::try_from(index).map_err(|e| fault(format!("index {index}: {e}")))?;
-                let reordered: Option<TablePage> = match step.get("page_with") {
+                let reordered: Option<TablePage> = match crate::recipe_reads::read(step, "page_with").get("page_with") {
                     Some(with) => {
                         let Bound::Page(page, _) = bound(&with["page"], context).map_err(fault)? else { return Err(fault("page is not a bound page".into())) };
                         let mut page = page.clone();
@@ -3697,7 +3709,7 @@ mod database {
                 };
                 let page = match &reordered {
                     Some(page) => page,
-                    None => match bound(&step["page"], context).map_err(fault)? {
+                    None => match bound(&crate::recipe_reads::read(step, "page")["page"], context).map_err(fault)? {
                         Bound::Page(page, _) => page,
                         _ => return Err(fault("page is not a bound page".into())),
                     },
@@ -3708,50 +3720,50 @@ mod database {
                 Output { fields: json!({ "keys": keys, "key_indexes": key_indexes }), bind: Some(Bound::Snapshot(snapshot)) }
             }
             "catalog.revision" => {
-                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
                 Output::fields(json!({ "value": { "text": snapshot.revision() } }))
             }
             "catalog.revision_compare" => {
-                let revision = snapshot(&step["snapshot"], context).map_err(fault)?.revision().to_owned();
-                let other = snapshot(&step["other"], context).map_err(fault)?.revision().to_owned();
+                let revision = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?.revision().to_owned();
+                let other = snapshot(&crate::recipe_reads::read(step, "other")["other"], context).map_err(fault)?.revision().to_owned();
                 Output::fields(json!({ "json": { "length": revision.len(), "differs": revision != other } }))
             }
             "catalog.row_cells" => {
-                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
                 let cells: Result<Vec<Value>, String> =
                     snapshot.cells().iter().zip(&snapshot.metadata().columns).map(|(cell, column)| plain_cell(cell, Some(&column.native_type))).collect();
                 Output::fields(json!({ "cells": cells.map_err(fault)? }))
             }
             "model.read_bind_cell" => {
-                let seq = step["seq"].as_i64().ok_or_else(|| fault("seq is not an integer".into()))?;
+                let seq = crate::recipe_reads::read(step, "seq")["seq"].as_i64().ok_or_else(|| fault("seq is not an integer".into()))?;
                 let value = read_bind_cell(&context.dsn, seq).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": value }))
             }
             "catalog.insert_row" => {
-                let Bound::Metadata(metadata) = bound(&step["metadata"], context).map_err(fault)? else {
+                let Bound::Metadata(metadata) = bound(&crate::recipe_reads::read(step, "metadata")["metadata"], context).map_err(fault)? else {
                     return Err(fault("metadata is not bound metadata".into()));
                 };
-                let values = assignments(&step["values"], context).map_err(fault)?;
+                let values = assignments(&crate::recipe_reads::read(step, "values")["values"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
                 let result = live(catalog)?.insert_row(metadata, &values, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "rows": mutation(metadata, &result).map_err(fault)? }))
             }
             "catalog.update_row" => {
-                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
-                let set = assignments(&step["set"], context).map_err(fault)?;
+                let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
+                let set = assignments(&crate::recipe_reads::read(step, "set")["set"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
                 let result = live(catalog)?.update_row(snapshot, &set, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "rows": mutation(snapshot.metadata(), &result).map_err(fault)? }))
             }
             "catalog.delete_row" => {
-                let snapshot = snapshot(&step["snapshot"], context).map_err(fault)?;
+                let snapshot = snapshot(&crate::recipe_reads::read(step, "snapshot")["snapshot"], context).map_err(fault)?;
                 let (cancellation, publish, permit) = mutation_hooks();
                 let deleted = live(catalog)?.delete_row(snapshot, cancellation, publish, permit).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "int": deleted.to_string() } }))
             }
             // dbspec.ddl_behavior (FCV-4, DIA-113): the statements of a case of the vectors file and its behavior steps.
             // dbspec.introspect (FCV-4, DIA-133, DIA-198): the rendered documents on the case database, then the public introspect.
-            "dbspec.introspect" if step["catalog_of"].is_string() => {
+            "dbspec.introspect" if crate::recipe_reads::read(step, "catalog_of")["catalog_of"].is_string() => {
                 introspect_failure_step(step, &context.dsn).await.map_err(fault)?;
                 Output::fields(json!({ "failed": true }))
             }
@@ -3765,11 +3777,11 @@ mod database {
             }
             // sql.exec (FCV-4): a string runs on every database; an object runs only where its key is present.
             "session.end" => {
-                end_session(step["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
+                end_session(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), context).await.map_err(fault)?;
                 Output::fields(json!({}))
             }
             "sql.hold_connection" => {
-                let dsn = user_from_database_dsn(&context.dsn, step["user_from_database"].as_str().unwrap_or_default());
+                let dsn = user_from_database_dsn(&context.dsn, crate::recipe_reads::read(step, "user_from_database")["user_from_database"].as_str().unwrap_or_default());
                 let ConnectOptions::MySql(options) = parse_dsn(&dsn).map_err(|e| fault(e.to_string()))?.options else {
                     return Err(fault(format!("{dsn} is not a mysql DSN")));
                 };
@@ -3785,13 +3797,13 @@ mod database {
                 Output::fields(json!({}))
             }
             "sql.exec" => {
-                if let Some(sql) = sql_entry(&step["sql"], context).map_err(fault)? {
+                if let Some(sql) = sql_entry(&crate::recipe_reads::read(step, "sql")["sql"], context).map_err(fault)? {
                     let done = native_exec(&context.dsn, sql).await;
-                    if step["refused"].as_bool() == Some(true) {
+                    if crate::recipe_reads::read(step, "refused")["refused"].as_bool() == Some(true) {
                         match done {
                             Ok(_) => return Err(fault(format!("the database accepted the statement that the step expects it to refuse: {sql}"))),
                             Err(error) => {
-                                let text = step["refused_message"].as_str().unwrap_or_default();
+                                let text = crate::recipe_reads::read(step, "refused_message")["refused_message"].as_str().unwrap_or_default();
                                 if !error.to_lowercase().contains(text) {
                                     return Err(fault(format!("the database refused the statement for another reason: {error}")));
                                 }
@@ -3805,7 +3817,7 @@ mod database {
             }
             // dsn.connect (FCV-4): the DSN of the case database for "case", otherwise the text of the step.
             "dsn.connect" => {
-                let dsn = match (step["dsn"].as_str().unwrap_or_default(), step["query"].as_str()) {
+                let dsn = match (crate::recipe_reads::read(step, "dsn")["dsn"].as_str().unwrap_or_default(), crate::recipe_reads::read(step, "query")["query"].as_str()) {
                     ("case", Some(query)) => {
                         let separator = if context.dsn.contains('?') { '&' } else { '?' };
                         format!("{}{separator}{query}", context.dsn)
@@ -3816,12 +3828,12 @@ mod database {
                         None => text.to_owned(),
                     },
                 };
-                let driver = crate::recipe::connect_driver(&dsn, &step["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
+                let driver = crate::recipe::connect_driver(&dsn, &crate::recipe_reads::read(step, "config")["config"]).await.map_err(|(_, message)| Failure::Call(message))?;
                 Output::fields(json!({ "value": { "text": driver } }))
             }
             "dsn.sqlite_file" => {
-                let name = step["name"].as_str().unwrap_or_default();
-                let query = step["query"].as_str().unwrap_or_default();
+                let name = crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default();
+                let query = crate::recipe_reads::read(step, "query")["query"].as_str().unwrap_or_default();
                 let names = crate::recipe::sqlite_file_names(name, query).await.map_err(Failure::Call)?;
                 Output::fields(json!({ "value": { "text": names } }))
             }
@@ -3832,28 +3844,28 @@ mod database {
     /// A model op or model.connect (FCV-4): model.connect opens the connection named by `as`; a model op resolves its fields
     /// and calls the dispatcher, whose fields the expect of the step compares as the fields of a catalog call.
     async fn model_call(step: &Value, context: &mut Context<'_>) -> Result<Output, Failure> {
-        let op = step["op"].as_str().unwrap_or_default();
+        let op = crate::recipe_reads::read(step, "op")["op"].as_str().unwrap_or_default();
         if op == "model.connect" {
-            let name = step["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
-            let pool_size = match step["pool_size"].as_u64().map(u32::try_from) {
+            let name = crate::recipe_reads::read(step, "as")["as"].as_str().ok_or_else(|| Failure::Step("model.connect names no as".into()))?;
+            let pool_size = match crate::recipe_reads::read(step, "pool_size")["pool_size"].as_u64().map(u32::try_from) {
                 Some(Ok(count)) => count,
                 _ => return Err(Failure::Step("pool_size is not a count".into())),
             };
             let dsn = super::connect_dsn(
-                step["dsn"].as_str(),
+                crate::recipe_reads::read(step, "dsn")["dsn"].as_str(),
                 context.database,
                 &context.dsn,
                 std::env::var_os("ORM_TEST_MYSQL_SOCKET").as_deref().and_then(std::ffi::OsStr::to_str),
             )
             .map_err(Failure::Step)?;
-            if let Some(idle) = step["pool_idle_size"].as_u64() {
+            if let Some(idle) = crate::recipe_reads::read(step, "pool_idle_size")["pool_idle_size"].as_u64() {
                 // A connection with an idle bound opens without the models of the case: a pool op only reads its counts.
                 let options = polyspec_orm::Config { pool_idle_size: u32::try_from(idle).map_err(|e| Failure::Step(e.to_string()))?, ..polyspec_orm::Config::default() };
                 let db = Db::connect(&dsn, pool_size, options).await.map_err(|e| Failure::Step(e.to_string()))?;
                 context.models.adopt(name, db);
                 return Ok(Output::fields(json!({})));
             }
-            match (step.get("aes_keyring"), step.get("audit_source")) {
+            match (crate::recipe_reads::read(step, "aes_keyring").get("aes_keyring"), crate::recipe_reads::read(step, "audit_source").get("audit_source")) {
                 (Some(keyring), _) => context.models.connect_keyring(name, &dsn, pool_size, keyring).await.map_err(Failure::Call)?,
                 (None, Some(source)) => {
                     let resolved = resolve_audit_source(source, context).map_err(Failure::Step)?;
@@ -3865,10 +3877,10 @@ mod database {
         }
         // A step with `row` and no connection is routed by its bound row, which records the connection it was bound on;
         // hook.records reads the records of the case, on no connection.
-        let connection = match step["connection"].as_str() {
+        let connection = match crate::recipe_reads::read(step, "connection")["connection"].as_str() {
             Some(name) => name,
-            None if op == "transaction.deadlock" => step["connections"][0].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connections")))?,
-            None if step.get("row").is_some() || op == "hook.records" || step["unconnected"].as_bool() == Some(true) => "",
+            None if op == "transaction.deadlock" => crate::recipe_reads::read(step, "connections")["connections"][0].as_str().ok_or_else(|| Failure::Step(format!("{op} names no connections")))?,
+            None if crate::recipe_reads::read(step, "row").get("row").is_some() || op == "hook.records" || crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) => "",
             // A model op of the table path with no connection runs on the case connection, as in the other runtimes.
             None if context.models.table_path() => {
                 context.models.adopt(CASE_CONNECTION, context.db.clone());
@@ -3883,8 +3895,10 @@ mod database {
             let dsn = super::connect_dsn(None, context.database, &context.dsn, socket.as_deref().and_then(std::ffi::OsStr::to_str)).map_err(Failure::Step)?;
             resolved["dsn"] = json!(dsn);
         }
-        let fields = context.models.call(op, connection, &resolved).await.map_err(Failure::Call)?;
-        Ok(Output::fields(fields))
+        crate::recipe_reads::copy_of(&resolved, step);
+        let fields = context.models.call(op, connection, &resolved).await;
+        crate::recipe_reads::forget_copy(&resolved);
+        Ok(Output::fields(fields.map_err(Failure::Call)?))
     }
 
     /// The audit_source of a model.connect with its values resolved.
@@ -3931,8 +3945,8 @@ mod database {
 
     /// The table of a step, in the namespace of the step when it names one, and in the current namespace otherwise.
     fn table(step: &Value, context: &Context<'_>) -> Result<TableRef, String> {
-        let name = step["table"].as_str().ok_or("table is not a name")?;
-        let namespace = step["namespace"].as_str().unwrap_or(&context.namespace);
+        let name = crate::recipe_reads::read(step, "table")["table"].as_str().ok_or("table is not a name")?;
+        let namespace = crate::recipe_reads::read(step, "namespace")["namespace"].as_str().unwrap_or(&context.namespace);
         Ok(TableRef { namespace: namespace.to_owned(), name: name.to_owned() })
     }
 
@@ -3972,7 +3986,7 @@ mod database {
 
     /// The counts of a read's limits, as the step gives them: an absent count is None, and the catalog checks the values.
     fn limits(step: &Value) -> Result<(Option<i64>, Option<i64>), Failure> {
-        let count = |key: &str| match &step[key] {
+        let count = |key: &str| match &crate::recipe_reads::read(step, key)[key] {
             Value::Null => Ok(None),
             value => value.as_i64().map(Some).ok_or_else(|| Failure::Step(format!("{key} is not an integer: {value}"))),
         };
@@ -4047,7 +4061,7 @@ mod database {
 
     /// The bound parameters of a read, as native values.
     fn binds(step: &Value, context: &Context<'_>) -> Result<Vec<P>, String> {
-        step["binds"].as_array().into_iter().flatten().map(|value| native(&database_value(argument(value, context)?, context))).collect()
+        crate::recipe_reads::read(step, "binds")["binds"].as_array().into_iter().flatten().map(|value| native(&database_value(argument(value, context)?, context))).collect()
     }
 
     /// The names of a list of strings.
@@ -4175,9 +4189,9 @@ mod database {
     /// value, as text, with want, and a NULL or absent value fails it (DIA-113).
     async fn ddl_behavior(step: &Value, database: &str, dsn: &str, dir: &Path) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _, Row as _};
-        let path = dir.join(step["vectors"].as_str().unwrap_or_default());
+        let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
         let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
-        let id = step["case"].as_str().unwrap_or_default();
+        let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
         let vector = vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
         let rule = match database {
             "mysql" => "SET time_zone = '+00:00'",
@@ -4246,7 +4260,7 @@ mod database {
     /// The documents of a dbspec.introspect step by name and its vector, which is null for a step with paths.
     fn introspect_source(step: &Value, dir: &Path) -> Result<(std::collections::BTreeMap<String, String>, Value), String> {
         let mut texts = std::collections::BTreeMap::new();
-        if let Some(paths) = step["paths"].as_array() {
+        if let Some(paths) = crate::recipe_reads::read(step, "paths")["paths"].as_array() {
             for path in paths.iter().filter_map(Value::as_str) {
                 let text = dbspec::read_file(&dir.join(path)).map_err(|e| format!("{path}: {e}"))?;
                 let name = Path::new(path).file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| format!("{path}: no file name"))?;
@@ -4254,9 +4268,9 @@ mod database {
             }
             return Ok((texts, Value::Null));
         }
-        let path = dir.join(step["vectors"].as_str().unwrap_or_default());
+        let path = dir.join(crate::recipe_reads::read(step, "vectors")["vectors"].as_str().unwrap_or_default());
         let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| e.to_string())?;
-        let id = step["case"].as_str().unwrap_or_default();
+        let id = crate::recipe_reads::read(step, "case")["case"].as_str().unwrap_or_default();
         let vector = vectors["cases"].as_array().and_then(|cases| cases.iter().find(|case| case["id"] == id)).ok_or_else(|| format!("the vectors have no case {id}"))?;
         for (name, lines) in vector["documents"].as_object().ok_or_else(|| format!("the case {id} has no documents"))? {
             let lines: Vec<&str> = lines.as_array().map(|list| list.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
@@ -4299,7 +4313,7 @@ mod database {
     /// The only case runs on SQLite with the queries of MySQL.
     async fn introspect_failure_step(step: &Value, dsn: &str) -> Result<(), String> {
         use sqlx::{ConnectOptions as _, Connection as _};
-        let dialect = match step["catalog_of"].as_str() {
+        let dialect = match crate::recipe_reads::read(step, "catalog_of")["catalog_of"].as_str() {
             Some("mysql") => dbspec::Dialect::MySql,
             Some("postgres") => dbspec::Dialect::Postgres,
             other => return Err(format!("catalog_of {other:?} has no introspection failure case")),
@@ -5187,14 +5201,14 @@ mod tables {
 
     /// Whether the expect of a step compares rows of wrappers.
     fn wants_rows(step: &Value) -> bool {
-        step["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
+        crate::recipe_reads::read(step, "expect")["expect"].as_object().is_some_and(|expect| expect.values().any(|fields| fields.get("rows").is_some()))
     }
 
     /// The rows of wrappers of the columns of a step, each followed by the columns of each related row of its relation; a
     /// parent without a child gives no row.
     fn cells_of<'a>(parents: impl Iterator<Item = &'a TableRow>, step: &Value) -> Result<Value, String> {
-        let columns = names(&step["columns"]);
-        let relation = &step["relation"];
+        let columns = names(&crate::recipe_reads::read(step, "columns")["columns"]);
+        let relation = &crate::recipe_reads::read(step, "relation")["relation"];
         let mut rows = Vec::new();
         for parent in parents {
             let own = project(parent, &columns)?;
@@ -5300,7 +5314,7 @@ mod tables {
 
     /// The name of the bound row of a step.
     fn row_name(step: &Value) -> Result<&str, String> {
-        step["row"].as_str().ok_or_else(|| format!("{} names no row", step["op"]))
+        crate::recipe_reads::read(step, "row")["row"].as_str().ok_or_else(|| format!("{} names no row", crate::recipe_reads::read(step, "op")["op"]))
     }
 
     impl Tables {
@@ -5331,27 +5345,27 @@ mod tables {
 
         /// The core of a read: the fields of the step applied, then the key of a terminal by.
         fn built(&self, step: &Value, db: &Db) -> Result<Core, String> {
-            let core = if let Some(from) = step["from"].as_str() {
+            let core = if let Some(from) = crate::recipe_reads::read(step, "from")["from"].as_str() {
                 // A bound chain is read again: a terminal leaves it as it was (DSL-98).
                 self.chains.get(from).cloned().ok_or_else(|| format!("from {from} names no bound chain"))?
             } else {
-                let mut core = core_of(step["model"].as_str().ok_or_else(|| format!("{} names no model", step["op"]))?)?;
-                if step["unconnected"].as_bool() != Some(true) {
+                let mut core = core_of(crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{} names no model", crate::recipe_reads::read(step, "op")["op"]))?)?;
+                if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() != Some(true) {
                     core.connect(db);
                 }
                 let mut build = Build { db: Some(db.clone()), handles: self.handles.clone(), ..Build::default() };
-                let paged = step["page"].as_bool() == Some(true);
-                build.query(&mut core, step, !paged && step["offset"].is_null())?;
-                if !paged && !step["offset"].is_null() {
-                    let (_, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
-                    let offset = u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+                let paged = crate::recipe_reads::read(step, "page")["page"].as_bool() == Some(true);
+                build.query(&mut core, step, !paged && crate::recipe_reads::read(step, "offset")["offset"].is_null())?;
+                if !paged && !crate::recipe_reads::read(step, "offset")["offset"].is_null() {
+                    let (_, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
+                    let offset = u32::try_from(crate::recipe_reads::read(step, "offset")["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
                     if count > 0 {
                         core.limit(offset, count);
                     }
                 }
-                if !step["relation"].is_null() {
+                if !crate::recipe_reads::read(step, "relation")["relation"].is_null() {
                     // The columns of this relation are read of each child row; they do not narrow its statement.
-                    let mut relation = step["relation"].clone();
+                    let mut relation = crate::recipe_reads::read(step, "relation")["relation"].clone();
                     relation["columns"] = Value::Null;
                     let mut child = build.relation(&relation)?;
                     // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
@@ -5362,30 +5376,30 @@ mod tables {
                 }
                 core
             };
-            if step.get("key").is_none() {
+            if crate::recipe_reads::read(step, "key").get("key").is_none() {
                 return Ok(core);
             }
-            let (keys, arguments) = key_of(&step["key"])?;
+            let (keys, arguments) = key_of(&crate::recipe_reads::read(step, "key")["key"])?;
             Ok(core.by(&keys, arguments))
         }
 
         /// The terminal of a model.query: gets, or the terminal of its aggregate, its page or its compile.
         async fn query(&mut self, step: &Value, db: &Db) -> Result<Value, String> {
             let core = self.built(step, db)?;
-            if step["compile"].as_bool() == Some(true) {
+            if crate::recipe_reads::read(step, "compile")["compile"].as_bool() == Some(true) {
                 let statement = get_query(&core).await.map_err(orm)?;
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
             }
-            if step["plan"].as_bool() == Some(true) {
-                let (page, per_page) = if step["plan_page"].is_null() {
-                    let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+            if crate::recipe_reads::read(step, "plan")["plan"].as_bool() == Some(true) {
+                let (page, per_page) = if crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
+                    let (offset, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
                     if count == 0 {
                         return Err("a plan needs a limit above 0".into());
                     }
                     (offset / count + 1, count)
                 } else {
-                    let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                    let number = |key: &str| u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
                     (number("page")?, number("per_page")?)
                 };
                 let steps = get_page_plan_steps(&core, page, per_page).await.map_err(orm)?;
@@ -5394,9 +5408,9 @@ mod tables {
                     .map(|plan_step| {
                         let sql = plan_step.sql.to_uppercase();
                         let count: serde_json::Map<String, Value> =
-                            names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
+                            names(&crate::recipe_reads::read(step, "plan_count")["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
                         let mut shown = json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count });
-                        if step["plan_sql"].as_bool() == Some(true) {
+                        if crate::recipe_reads::read(step, "plan_sql")["plan_sql"].as_bool() == Some(true) {
                             shown["sql"] = json!(plan_step.sql);
                         }
                         shown
@@ -5405,32 +5419,32 @@ mod tables {
                 return Ok(json!({ "json": list }));
             }
             let root = TableRow::from_core(core);
-            if let Some(name) = step["group_value"].as_str() {
+            if let Some(name) = crate::recipe_reads::read(step, "group_value")["group_value"].as_str() {
                 let groups = gets_count(&root).await.map_err(orm)?;
                 let row = groups.iter().next().ok_or_else(|| format!("group_value {name}: the aggregate has no group row"))?;
                 row.value(name).map_err(orm)?;
                 return Ok(json!({ "json": row.to_array().map_err(orm)?[name].clone() }));
             }
-            if let Some(aggregate) = step.get("aggregate") {
+            if let Some(aggregate) = crate::recipe_reads::read(step, "aggregate").get("aggregate") {
                 return Ok(json!({ "json": match aggregate["agg"].as_str() {
                     Some("sum") => json!(get_sum(root.core()).await.map_err(orm)?),
                     Some("avg") => json!(get_avg(root.core()).await.map_err(orm)?),
                     _ => gets_count(&root).await.map_err(orm)?.to_array().map_err(orm)?,
                 } }));
             }
-            if step["page"].as_bool() == Some(true) || !step["plan_page"].is_null() {
+            if crate::recipe_reads::read(step, "page")["page"].as_bool() == Some(true) || !crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
                 return self.page(step, &root).await;
             }
             let rows = gets(&root).await.map_err(orm)?;
             let mut list = Vec::with_capacity(rows.len());
             for row in rows.models() {
-                list.push(row_json(row, &step["pick"])?);
+                list.push(row_json(row, &crate::recipe_reads::read(step, "pick")["pick"])?);
             }
             let mut fields = json!({ "json": list });
             if wants_rows(step) {
                 fields["rows"] = cells_of(rows.models(), step)?;
             }
-            if let Some(name) = step["as"].as_str() {
+            if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                 self.collections.insert(name.to_owned(), rows);
             }
             Ok(fields)
@@ -5438,15 +5452,15 @@ mod tables {
 
         /// gets_page: the keys and the counts of the page, and the rows and total of a rows expect.
         async fn page(&mut self, step: &Value, root: &TableRow) -> Result<Value, String> {
-            let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
-            let offset = offset + u32::try_from(step["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
-            let (number, size) = if step["plan_page"].is_null() {
+            let (offset, count) = limit_of(&crate::recipe_reads::read(step, "limit")["limit"])?.unwrap_or((0, 0));
+            let offset = offset + u32::try_from(crate::recipe_reads::read(step, "offset")["offset"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+            let (number, size) = if crate::recipe_reads::read(step, "plan_page")["plan_page"].is_null() {
                 if count == 0 {
                     return Err("a paged model.query needs a limit above 0".into());
                 }
                 (offset / count + 1, count)
             } else {
-                let number = |key: &str| u32::try_from(step["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
+                let number = |key: &str| u32::try_from(crate::recipe_reads::read(step, "plan_page")["plan_page"][key].as_u64().unwrap_or(0)).map_err(|e| e.to_string());
                 (number("page")?, number("per_page")?)
             };
             let page = gets_page(root, number, size).await.map_err(orm)?;
@@ -5455,10 +5469,10 @@ mod tables {
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
                 "total": page.total_count,
             });
-            if step["items"].as_bool() == Some(true) {
+            if crate::recipe_reads::read(step, "items")["items"].as_bool() == Some(true) {
                 let mut items = Vec::new();
                 for row in page.items.models() {
-                    items.push(row_json(row, &step["pick"])?);
+                    items.push(row_json(row, &crate::recipe_reads::read(step, "pick")["pick"])?);
                 }
                 fields["json"]["items"] = json!(items);
             }
@@ -5471,15 +5485,15 @@ mod tables {
         /// model.create, model.save, model.duplicate_create and model.restore: a model set from values, then its terminal.
         /// The written model is bound with as, and its toArray is the result.
         async fn write(&mut self, op: &str, step: &Value, db: &Db) -> Result<Value, String> {
-            let model = step["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
-            let mut row = if step["unconnected"].as_bool() == Some(true) {
+            let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| format!("{op} names no model"))?;
+            let mut row = if crate::recipe_reads::read(step, "unconnected")["unconnected"].as_bool() == Some(true) {
                 let mut row = TableRow::from_core(core_of(model)?);
-                assign_values(&mut row, &step["values"])?;
+                assign_values(&mut row, &crate::recipe_reads::read(step, "values")["values"])?;
                 row
             } else {
-                self.row(model, db, &step["values"])?
+                self.row(model, db, &crate::recipe_reads::read(step, "values")["values"])?
             };
-            for (name, value) in members(&step["attached"]) {
+            for (name, value) in members(&crate::recipe_reads::read(step, "attached")["attached"]) {
                 let plain = match param(value)? {
                     Param::Null => Value::Null,
                     Param::Bool(b) => json!(b),
@@ -5489,24 +5503,24 @@ mod tables {
                 };
                 row.core.attach(name, plain);
             }
-            if step.get("duplication").is_some() {
+            if crate::recipe_reads::read(step, "duplication").get("duplication").is_some() {
                 let mut other = TableRow::from_core(core_of(model)?);
-                assign_values(&mut other, &step["duplication"])?;
+                assign_values(&mut other, &crate::recipe_reads::read(step, "duplication")["duplication"])?;
                 row.core.duplication(other.into_core());
             }
             let written = match op {
                 "model.save" => save(&mut row).await,
                 "model.restore" => restore(&row).await,
-                _ if step["restore_or_create"].as_bool() == Some(true) => restore_or_create(&row).await,
+                _ if crate::recipe_reads::read(step, "restore_or_create")["restore_or_create"].as_bool() == Some(true) => restore_or_create(&row).await,
                 _ => create(&mut row).await,
             }
             .map_err(orm)?;
-            let mut fields = json!({ "json": row_json(&written, &step["pick"])? });
+            let mut fields = json!({ "json": row_json(&written, &crate::recipe_reads::read(step, "pick")["pick"])? });
             // With columns, the rows expect compares the row that the write returns (INT-38).
-            if step.get("columns").is_some() {
+            if crate::recipe_reads::read(step, "columns").get("columns").is_some() {
                 fields["rows"] = cells_of(std::iter::once(&written), step)?;
             }
-            if let Some(name) = step["as"].as_str() {
+            if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                 self.rows.insert(name.to_owned(), written);
             }
             Ok(fields)
@@ -5514,11 +5528,11 @@ mod tables {
 
         /// model.creates on the rows of rows or rows_sequence.
         async fn creates(&self, step: &Value, db: &Db) -> Result<Value, String> {
-            let model = step["model"].as_str().ok_or_else(|| "model.creates names no model".to_owned())?;
+            let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.creates names no model".to_owned())?;
             let mut rows = Vec::new();
-            let sequence = &step["rows_sequence"];
+            let sequence = &crate::recipe_reads::read(step, "rows_sequence")["rows_sequence"];
             if sequence.is_null() {
-                for values in step["rows"].as_array().into_iter().flatten() {
+                for values in crate::recipe_reads::read(step, "rows")["rows"].as_array().into_iter().flatten() {
                     let mut row = TableRow::from_core(core_of(model)?);
                     assign_values(&mut row, values)?;
                     rows.push(row);
@@ -5533,7 +5547,7 @@ mod tables {
                     rows.push(row);
                 }
             }
-            let batch = step["batch"].as_u64().map_or(Ok(rows.len()), usize::try_from).map_err(|e| e.to_string())?;
+            let batch = crate::recipe_reads::read(step, "batch")["batch"].as_u64().map_or(Ok(rows.len()), usize::try_from).map_err(|e| e.to_string())?;
             let all = self.row(model, db, &Value::Null)?;
             let n = creates(&all, rows, batch).await.map_err(orm)?;
             Ok(count_fields(n))
@@ -5541,19 +5555,19 @@ mod tables {
 
         /// model.update on the bound row, or on a new model set from values, which writes with no read.
         async fn update_row(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
-            let optimistic = step["optimistic"].as_bool() == Some(true);
-            let revision = revision_of(&step["revision"])?;
-            let bound = step.get("row").is_some();
+            let optimistic = crate::recipe_reads::read(step, "optimistic")["optimistic"].as_bool() == Some(true);
+            let revision = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])?;
+            let bound = crate::recipe_reads::read(step, "row").get("row").is_some();
             let mut row = if bound {
                 let name = row_name(step)?;
                 self.rows.remove(name).ok_or_else(|| format!("no bound row {name}"))?
             } else {
                 let db = db.ok_or_else(|| "model.update names no connection and no row".to_owned())?;
-                let model = step["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?;
+                let model = crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.update names no model".to_owned())?;
                 // The key form sets the key on a new model, with no read before it, so a key that names no row matches none (FCV-4).
-                self.row(model, db, step.get("key").unwrap_or(&step["values"]))?
+                self.row(model, db, crate::recipe_reads::read(step, "key").get("key").unwrap_or(&crate::recipe_reads::read(step, "values")["values"]))?
             };
-            assign_values(&mut row, &step["set"])?;
+            assign_values(&mut row, &crate::recipe_reads::read(step, "set")["set"])?;
             if let Some((column, value)) = &revision {
                 row.core.expect_revision(column, *value);
             }
@@ -5567,22 +5581,22 @@ mod tables {
 
         /// model.delete on a bound row, a bound collection, the rows of a where, or a new model set from values.
         async fn delete_rows(&mut self, step: &Value, db: Option<&Db>) -> Result<Value, String> {
-            let recursive = step["recursive"].as_bool() == Some(true);
-            if step.get("row").is_some() {
+            let recursive = crate::recipe_reads::read(step, "recursive")["recursive"].as_bool() == Some(true);
+            if crate::recipe_reads::read(step, "row").get("row").is_some() {
                 let name = row_name(step)?;
                 if let Some(collection) = self.collections.get(name) {
                     collection.delete(recursive).await.map_err(orm)?;
                     return Ok(json!({}));
                 }
                 let mut row = self.rows.get(name).cloned().ok_or_else(|| format!("no bound row {name}"))?;
-                if let Some((column, value)) = revision_of(&step["revision"])? {
+                if let Some((column, value)) = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])? {
                     row.core.expect_revision(&column, value);
                 }
                 delete(&row, recursive).await.map_err(orm)?;
                 return Ok(json!({}));
             }
             let db = db.ok_or_else(|| "model.delete names no connection and no row".to_owned())?;
-            if step.get("where").is_some() {
+            if crate::recipe_reads::read(step, "where").get("where").is_some() {
                 // A delete by where loads the rows and deletes each one (FCV-4).
                 let rows = gets(&TableRow::from_core(self.built(step, db)?)).await.map_err(orm)?;
                 for row in rows.models() {
@@ -5590,8 +5604,8 @@ mod tables {
                 }
                 return Ok(json!({}));
             }
-            let mut row = self.row(step["model"].as_str().ok_or_else(|| "model.delete names no model".to_owned())?, db, &step["values"])?;
-            if let Some((column, value)) = revision_of(&step["revision"])? {
+            let mut row = self.row(crate::recipe_reads::read(step, "model")["model"].as_str().ok_or_else(|| "model.delete names no model".to_owned())?, db, &crate::recipe_reads::read(step, "values")["values"])?;
+            if let Some((column, value)) = revision_of(&crate::recipe_reads::read(step, "revision")["revision"])? {
                 row.core.expect_revision(&column, value);
             }
             delete(&row, recursive).await.map_err(orm)?;
@@ -5666,10 +5680,10 @@ mod tables {
             }
             self.handles = connections.all();
             let db = connections.bound(connection)?;
-            let model = step["model"].as_str().unwrap_or_default();
+            let model = crate::recipe_reads::read(step, "model")["model"].as_str().unwrap_or_default();
             match op {
                 "hook.install" => {
-                    let actions = hook_actions(&step["hooks"])?;
+                    let actions = hook_actions(&crate::recipe_reads::read(step, "hooks")["hooks"])?;
                     let base = match self.bases.get(connection) {
                         Some(base) => base.clone(),
                         None => db,
@@ -5678,13 +5692,13 @@ mod tables {
                     records.lock().expect("the records").clear();
                     let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
                     // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
-                    let target = step["as"].as_str().unwrap_or(connection);
+                    let target = crate::recipe_reads::read(step, "as")["as"].as_str().unwrap_or(connection);
                     self.bases.insert(target.to_owned(), base);
                     connections.insert(target, hooked);
                     Ok(json!({}))
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
-                    let keyring = keyring_of(&step["keyring"])?;
+                    let keyring = keyring_of(&crate::recipe_reads::read(step, "keyring")["keyring"])?;
                     let row = self.row(model, &db, &Value::Null)?;
                     if op == "utils.aes_rotate" {
                         let n = db.utils().aes().rotate(&row, &keyring).await.map_err(orm)?;
@@ -5703,19 +5717,19 @@ mod tables {
                     Ok(json!({ "value": { "int": polyspec_orm::testing::last_affected(&db).unwrap_or_default().to_string() } }))
                 }
                 "db.notify" => {
-                    db.notify(step["channel"].as_str().unwrap_or_default(), step["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    db.notify(crate::recipe_reads::read(step, "channel")["channel"].as_str().unwrap_or_default(), crate::recipe_reads::read(step, "payload")["payload"].as_str().unwrap_or_default()).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.lock" => {
-                    db.utils().lock(step["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
+                    db.utils().lock(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).await.map_err(orm)?;
                     Ok(json!({}))
                 }
                 "utils.set_local" => {
-                    let Param::Str(value) = param(&step["value"])? else { return Err("utils.set_local holds no text".into()) };
-                    db.utils().set_local(step["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
+                    let Param::Str(value) = param(&crate::recipe_reads::read(step, "value")["value"])? else { return Err("utils.set_local holds no text".into()) };
+                    db.utils().set_local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default(), &value).await.map_err(orm)?;
                     Ok(json!({}))
                 }
-                "utils.local" => Ok(json!({ "json": db.utils().local(step["name"].as_str().unwrap_or_default()).map_err(orm)? })),
+                "utils.local" => Ok(json!({ "json": db.utils().local(crate::recipe_reads::read(step, "name")["name"].as_str().unwrap_or_default()).map_err(orm)? })),
                 // connect of a bound collection (INT-85): it takes the collection and returns it, so the value is the same.
                 "collection.connect" => {
                     let name = row_name(step)?.to_owned();
@@ -5748,8 +5762,8 @@ mod tables {
                     }
                 }
                 "utils.was_inserted" => {
-                    let sequence = step["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
-                    let inserted = db.utils().was_inserted(step["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
+                    let sequence = crate::recipe_reads::read(step, "sequence")["sequence"].as_i64().ok_or_else(|| "utils.was_inserted names no sequence".to_owned())?;
+                    let inserted = db.utils().was_inserted(crate::recipe_reads::read(step, "table")["table"].as_str().unwrap_or_default(), sequence).map_err(orm)?;
                     Ok(json!({ "value": { "bool": inserted } }))
                 }
                 "utils.backend_waiting_for_lock" => {
@@ -5763,8 +5777,8 @@ mod tables {
                     // the tasks run on a LocalSet.
                     use std::sync::atomic::{AtomicU32, Ordering};
                     use std::sync::Arc;
-                    let count = step["transactions"].as_u64().unwrap_or(0);
-                    let hold = u32::try_from(step["hold"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
+                    let count = crate::recipe_reads::read(step, "transactions")["transactions"].as_u64().unwrap_or(0);
+                    let hold = u32::try_from(crate::recipe_reads::read(step, "hold")["hold"].as_u64().unwrap_or(0)).map_err(|e| e.to_string())?;
                     let (active, peak, open, begun) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
                     let gate = Arc::new(tokio::sync::watch::channel(false).0);
                     let local = tokio::task::LocalSet::new();
@@ -5814,7 +5828,7 @@ mod tables {
                 }
                 "model.chain" => {
                     let core = self.built(step, &db)?;
-                    if let Some(name) = step["as"].as_str() {
+                    if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                         self.chains.insert(name.to_owned(), core);
                     }
                     Ok(json!({}))
@@ -5826,17 +5840,17 @@ mod tables {
                 "model.get_by" => {
                     let core = self.built(step, &db)?;
                     let Some(row) = get_core::<TableRow>(&core).await.map_err(orm)? else { return Ok(json!({ "json": null })) };
-                    if step["json_output"] == json!(true) {
+                    if crate::recipe_reads::read(step, "json_output")["json_output"] == json!(true) {
                         return Ok(json!({ "json": polyspec_orm::model::to_json(&row).map_err(orm)? }));
                     }
-                    if let Some(column) = step["ordered_text"].as_str() {
+                    if let Some(column) = crate::recipe_reads::read(step, "ordered_text")["ordered_text"].as_str() {
                         return match row.value(column) {
                             Some(Val::Ordered(value)) => Ok(json!({ "json": value.raw() })),
                             _ => Err(format!("ordered_text: the column {column} holds no ordered-json value")),
                         };
                     }
-                    let fields = json!({ "json": row_json(&row, &step["pick"])? });
-                    if let Some(name) = step["as"].as_str() {
+                    let fields = json!({ "json": row_json(&row, &crate::recipe_reads::read(step, "pick")["pick"])? });
+                    if let Some(name) = crate::recipe_reads::read(step, "as")["as"].as_str() {
                         self.rows.insert(name.to_owned(), row);
                     }
                     Ok(fields)

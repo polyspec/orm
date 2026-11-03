@@ -128,4 +128,23 @@ mod tests {
         let error = check_keys(PATH, r#"{"cases": []}"#).unwrap_err();
         assert_eq!(error, format!("recipe {PATH}: no $schema names the recipe key table"));
     }
+
+    #[test]
+    fn a_step_key_that_the_run_does_not_read_fails_by_name() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let step = serde_json::json!({"op": "dsn.connect", "dsn": "case", "reason": "for the reader", "bogus": 1});
+        crate::recipe_reads::read(&step, "dsn");
+        assert_eq!(crate::recipe_reads::check(&step).unwrap_err(), "the helper did not read bogus of dsn.connect");
+        crate::recipe_reads::read(&step, "dsn");
+        crate::recipe_reads::read(&step, "bogus");
+        assert_eq!(crate::recipe_reads::check(&step), Ok(()));
+    }
+
+    #[test]
+    fn an_outcome_key_that_no_compare_takes_fails_by_name() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let expected = serde_json::json!({"error": "X", "bogus": 1});
+        let error = crate::recipe_reads::check_outcome(Some(&expected), "dsn.connect", &["error"]).unwrap_err();
+        assert_eq!(error, "the helper did not read expect.bogus of dsn.connect");
+    }
 }
