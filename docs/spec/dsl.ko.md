@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: fe60790a2f30d2ebae7b9dac7ed8f15ce0001ebf9d13f8024cab6bea50cc4784 -->
+<!-- source-sha256: 126255cd3a9a454bc28eaf284d20d917039de4513e8cd3a43850211d4ec581d7 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -82,7 +82,7 @@ Key   = [Operator] Column
 - **DSL-34** `<ColA><Op><ColB>(model)`는 같은 SQL 문장 안에서 호출한 모델의 컬럼 `ColA`와 `model`의 컬럼 `ColB`를 비교한다. `(new Product)->priceGtMinPrice($brand)`는 `a.price > b.min_price`를 출력한다. `Op`는 `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, `Le`다. `on(fn)` 안에서 호출한 모델은 조인 자식이다.
 - **DSL-35** `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플, Python은 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
 - **DSL-36** `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
-- **DSL-37** 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부하며, PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
+- **DSL-37** 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부하며, PHP는 `--scan`을 주면 같은 메서드를 `@method` 태그로 선언하고 같은 오류를 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method와 그 chain이 받지 않는 인자 개수의 호출을 생성 단계에서 보고한다. 이 거부의 코드는 모두 `CONFIG`다.
 - **DSL-38** 각 언어는 자기 빌드 도구로 생성한다.
   - **DSL-39** `github.com/polyspec/orm/packages/go` 생성기(Go)는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
   - **DSL-40** `@polyspec/orm` 생성기(TypeScript)는 `--scan`으로 지정한 파일을 oxc-parser로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src`를 실행한다.

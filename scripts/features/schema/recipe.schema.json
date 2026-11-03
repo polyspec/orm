@@ -4464,6 +4464,23 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+              "schema_replace": {
+                "type": "object",
+                "description": "A text of the document of schema and the text that replaces it before the generation, so that one document holds the column names that the generator refuses.",
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                }
+              },
               "used": {
                 "type": "array",
                 "items": {
@@ -4571,6 +4588,11 @@
                       "error": {
                         "type": "string",
                         "pattern": "^[A-Z][A-Z0-9_]*$"
+                      },
+                      "message": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "A text that the error contains."
                       },
                       "position": {
                         "type": "object",

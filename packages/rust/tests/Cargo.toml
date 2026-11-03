@@ -390,6 +390,12 @@ name = "generator_scan_none"
 path = "tests/generator_scan_none.rs"
 harness = false
 
+# Each case of the generator recipe, contracts/fixtures/generator/generator.json, is the trial generator_none::<case id> (FCV-3).
+[[test]]
+name = "generator_none"
+path = "tests/generator_none.rs"
+harness = false
+
 # Each case of the planner compile recipe, tests/planner/compile.json, is the trial planner_compile_none::<case id> (FCV-3).
 [[test]]
 name = "planner_compile_none"

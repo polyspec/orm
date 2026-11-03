@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The column name and chain name refusals of the generator are the cases of the `generator` recipe in all six runtimes, each with the code `CONFIG`. The TypeScript scan now refuses a name that no column, chain or operator accepts and a call with the wrong count of values (it declared nothing and let the type checker report it), Go refuses that count during generation, Python refuses an operator that the column does not take and that count, and TypeScript and PHP reserve `fulltext` in a column name (DSL-37, DSL-130).
 - The audit foreign key is held in both directions: the recipe `audit_triggers` refuses a raw insert with a missing parent and the delete of a referenced parent. The case `soft_delete_statements` holds the guarded update of a soft delete and the filter of each read. A `sql.exec` step takes `refused`, and `events.captured` takes the compare mode `statements`. (#T334-3-4-12)
 - `make lint-ts` passes: the Rust lane skip list reads its JSON through validated readers, and `config/parity.json` declares the `command` of a binding in its schema.
 - The MySQL test server has the account `'orm'@'localhost'` next to `'orm'@'127.0.0.1'`, on a new start and on a server that already runs, so the `case-socket` DSN connects when the case DSN carries the user `orm` of ProxySQL.

@@ -12944,85 +12944,6 @@
       }
     },
     {
-      "id": "generator-rejects-a-column-named-after-a-model-method",
-      "kind": "feature",
-      "requirements": [
-        "DSL-127",
-        "PLN-22"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestColumnNameRules"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAColumnNamedAfterAModelMethod"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenRejectsAColumnNamedAfterAModelMethod"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_column_named_after_a_model_method_is_rejected"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "column_names_of_the_model_rules_are_rejected_through_the_builder"
-        }
-      ]
-    },
-    {
-      "id": "generator-rejects-a-column-name-with-an-operator-or-connector-segment",
-      "kind": "feature",
-      "requirements": [
-        "DSL-130"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestColumnNameRules"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
-          "id": "OrmGenCliTestExtensionTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_column_name_with_an_operator_or_connector_segment_is_rejected"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "column_names_of_the_model_rules_are_rejected_through_the_builder"
-        }
-      ]
-    },
-    {
       "id": "ts-styled-value-checks-setter",
       "kind": "feature",
       "requirements": [
@@ -14568,50 +14489,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "rejects_an_invalid_document"
-        }
-      ]
-    },
-    {
-      "id": "generator-refuses-an-unknown-chain-method",
-      "kind": "feature",
-      "requirements": [
-        "DSL-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_output_test.go",
-          "id": "TestGoGenerationCommandReportsOutcomes"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testVector"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmGenScanTestExtensionTest.php",
-          "id": "OrmGenScanTestExtensionTest::testVector"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_scan_reports_unknown_model_methods"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_unknown_names_of_a_known_model"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_argument_count"
         }
       ]
     },
@@ -23845,11 +23722,6 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_chain_conditions"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
           "id": "test_scan_reports_unknown_model_methods"
         }
       ]
@@ -28277,45 +28149,6 @@
       ]
     },
     {
-      "id": "dsl-129-generated-method-collision",
-      "kind": "feature",
-      "requirements": [
-        "DSL-129"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_test.go",
-          "id": "TestGeneratedMethodCollision"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenCliTest.php",
-          "id": "OrmGenCliTest::testGenRejectsAColumnWhoseConditionMethodCollidesWithAnAggregate"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generated method collision"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_generated_method_collision_is_rejected"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_method_collision_is_rejected"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testSharedPhpGeneratorRejectsTheMethodCollisionUsedWithNativeModels"
-        }
-      ]
-    },
-    {
       "id": "generated-field-types-follow-runtime-model-dbs-112",
       "kind": "feature",
       "requirements": [
@@ -30849,45 +30682,6 @@
         "feature": "schema_definition",
         "part": "owner/python"
       }
-    },
-    {
-      "id": "model-new-output-name-rejects-stored-column",
-      "kind": "feature",
-      "requirements": [
-        "DSL-116"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestStoredColumnNameIsRejectedThroughExportedGenerate"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::testNewOutputNameRejectsAStoredColumn"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
-          "id": "ModelQueriesWritesNativeTest::testNewOutputNameRejectsAStoredColumnOnTheNativeModel"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/model-new-output-name.mjs",
-          "id": "a stored column name cannot be attached with new<Name>"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_new_values.py",
-          "id": "test_new_output_name_rejects_a_stored_column"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "stored_column_name_is_rejected_as_an_output_name"
-        }
-      ]
     },
     {
       "id": "dbspec-apply-cleanup-php",
@@ -43381,6 +43175,127 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/generator_scan_none.rs",
           "symbol": "generator_scan_none"
+        }
+      ]
+    },
+    {
+      "id": "go-generator-command-reports-the-outcome-of-a-scan",
+      "kind": "feature",
+      "requirements": [
+        "DSL-39"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_output_test.go",
+          "id": "TestGoGenerationCommandReportsOutcomes"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "rust-scan-refusal-names-each-call-position",
+      "kind": "feature",
+      "requirements": [
+        "DSL-41"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "rejects_unknown_names_of_a_known_model"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
+    },
+    {
+      "id": "dynamic-model-new-output-name-rejects-stored-column",
+      "kind": "feature",
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/typescript",
+          "owner/python"
+        ]
+      },
+      "requirements": [
+        "DSL-116"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testNewOutputNameRejectsAStoredColumn"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+          "id": "ModelQueriesWritesNativeTest::testNewOutputNameRejectsAStoredColumnOnTheNativeModel"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model-new-output-name.mjs",
+          "id": "a stored column name cannot be attached with new<Name>"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_new_values.py",
+          "id": "test_new_output_name_rejects_a_stored_column"
+        }
+      ]
+    },
+    {
+      "id": "generator",
+      "kind": "suite",
+      "requirements": [
+        "DSL-37",
+        "DSL-116",
+        "DSL-127",
+        "DSL-129",
+        "DSL-130",
+        "PLN-22"
+      ],
+      "file": "contracts/fixtures/generator/generator.json",
+      "cases": "$.cases[*].id",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_generator_test.go",
+          "symbol": "TestRecipeGeneratorNone"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GeneratorTest.php",
+          "symbol": "Polyspec\\Orm\\Tests\\GeneratorTest::testNone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/GeneratorTestExtensionTest.php",
+          "symbol": "Polyspec\\Orm\\Extension\\Tests\\GeneratorTestExtensionTest::testNone"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generator-none.test.mjs"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_generator_none.py"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/generator_none.rs",
+          "symbol": "generator_none"
         }
       ]
     },
