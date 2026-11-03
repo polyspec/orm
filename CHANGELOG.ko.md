@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4d6bff9dbc2743102d3a2135f3a9a996e4d4ba23dd6239eaaee2f0addb46e582 -->
+<!-- source-sha256: 5dce80d01049c72974fc2305cf84fcc5182c09fd740bba1d9623cc730a39cd3a -->
 # 변경 이력
 
 ## Unreleased
 
+- 추가 열은 모든 runtime에서 plan 열의 타입으로 읽는다(INT-160). MySQL에서 추가한 SUM은 text "906"이 아니라 모두 정수 906이고, 그 타입의 정수가 정확히 아닌 text는 PHP처럼 cast하지 않고 `CODEC_DECODE`로 실패하며, `i16`이나 `i32` 열의 SUM은 plan 타입이 `i64`다.
 - Python 모델 read에서 codec이 거부하는 cell은 쓰기와 같이 code를 가진 `OrmError`를 던지며 `CodecError`를 던지지 않는다. codec을 직접 호출하면 `CodecError`를 유지한다.
 - TypeScript의 `toJSONText()`와 `JSON.stringify(row)`는 bigint를 담은 행에서 더 이상 던지지 않는다. 둘은 정확한 정수를 JSON 숫자로 쓰고, 스타일 값 안에서도 그렇게 쓴다.
 - immutable table의 거부는 recipe `immutable_write`이다(DBS-84). update와 delete는 `DRIVER`로 실패하고, 메시지는 `table refused_row is immutable`을 담으며, driver 원인이 남고, 이후 읽기는 저장된 값을 돌려준다. op의 outcome은 `message_holds`와 `driver_cause`를 받는다. delete는 이전에 어느 runtime에서도 검사하지 않았다. (#T334-3-4-16)

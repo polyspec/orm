@@ -112,7 +112,6 @@ type chainStep struct {
 	As              string                     `json:"as"`
 	From            string                     `json:"from"`
 	Pick            []string                   `json:"pick"`
-	DerivedIntegers []string                   `json:"derived_integers"`
 	Page            bool                       `json:"page"`
 	Compile         bool                       `json:"compile"`
 	Values          json.RawMessage            `json:"values"`
@@ -796,27 +795,6 @@ func chainRows(rows []*tableRow, pick []string) ([]any, error) {
 	return out, nil
 }
 
-// derivedIntegers reads the named fields of each row as a derived integer (COD-45): the text of an integer is its number.
-func derivedIntegers(rows []any, names []string) error {
-	for _, row := range rows {
-		fields, ok := row.(map[string]any)
-		if !ok {
-			return fmt.Errorf("a row with a derived integer is %T", row)
-		}
-		for _, name := range names {
-			text, ok := fields[name].(string)
-			if !ok {
-				continue
-			}
-			if _, err := strconv.ParseInt(text, 10, 64); err != nil {
-				return fmt.Errorf("%s is an invalid derived integer: %w", name, err)
-			}
-			fields[name] = json.Number(text)
-		}
-	}
-	return nil
-}
-
 // jsonOutcome is the outcome of a step whose expect is {"json": <value>}.
 func jsonOutcome(value any) outcome {
 	return outcome{fields: map[string]any{"json": value}}
@@ -988,9 +966,6 @@ func chainGets(s chainStep, db *orm.DB, c *databaseContext) (outcome, error) {
 	}
 	value, err := chainRows(rows.Slice(), s.Pick)
 	if err != nil {
-		return outcome{}, err
-	}
-	if err := derivedIntegers(value, s.DerivedIntegers); err != nil {
 		return outcome{}, err
 	}
 	out := jsonOutcome(value)

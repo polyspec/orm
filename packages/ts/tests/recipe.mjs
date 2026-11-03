@@ -1425,16 +1425,6 @@ function rowJson(row, pick) {
   }));
 }
 
-/** The row with the named fields read as a derived integer (COD-45): the text of an integer is its number. */
-function derivedIntegers(row, names = []) {
-  for (const name of names) {
-    if (typeof row[name] !== 'string') continue;
-    assert.match(row[name], /^-?(?:0|[1-9][0-9]*)$/, `${name} is an invalid derived integer`);
-    row[name] = Number(row[name]);
-  }
-  return row;
-}
-
 /** The expect of the database of the case compares rows of wrappers. */
 const wantsRows = (s, { database }) => s.expect?.[database]?.rows !== undefined;
 
@@ -1524,7 +1514,7 @@ const TABLE_OPS = {
       return fields;
     }
     const rows = await m.gets();
-    const fields = { bind: rows, json: rows.values().map(row => derivedIntegers(rowJson(row, s.pick), s.derived_integers)) };
+    const fields = { bind: rows, json: rows.values().map(row => rowJson(row, s.pick)) };
     if (wantsRows(s, context)) fields.rows = chainCells(rows.values(), s);
     return fields;
   },

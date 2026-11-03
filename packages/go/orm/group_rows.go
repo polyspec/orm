@@ -199,3 +199,24 @@ func groupColumnValue(c *Core, db *DB, column plan.OutCol, declared *runtimemode
 		return nil, codecErr(CodeInternal, "group column %s has unsupported type %s", column.Name, column.Type)
 	}
 }
+
+// addedColumnValue decodes an added column by the type its plan column states (INT-160). Other types keep the driver value.
+func addedColumnValue(typ string, raw any) (any, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	switch typ {
+	case "i64":
+		return AsInt64(raw)
+	case "i32":
+		return AsInt32(raw)
+	case "i16":
+		return AsInt16(raw)
+	case "bool":
+		return AsBool(raw)
+	case "f64":
+		return AsFloat64(raw)
+	default:
+		return raw, nil
+	}
+}

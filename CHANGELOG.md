@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- An added column reads by the type of its plan column in every runtime (INT-160): an added MySQL SUM is the integer 906 in all of them, not the text "906"; a text that is not exactly an integer of the type fails with `CODEC_DECODE`, where PHP cast it; and a SUM of an `i16` or `i32` column has the plan type `i64`.
 - The refusal of an immutable table is the recipe `immutable_write` (DBS-84): an update and a delete fail with `DRIVER`, the message holds `table refused_row is immutable`, the driver cause stays, and a later read gives the stored value. The outcome of an op takes `message_holds` and `driver_cause`. The delete was not checked in any runtime before. (#T334-3-4-16)
 - Key prefix methods, scanned chain methods, used external tables, the absence of lint suppressions and the manifest hash of generated code are cases of the `generator` recipe in all six runtimes, and their native tests are gone; the command line of the generator, the type of a generated member and the loading of a generated module stay native, each with its reason in docs/spec/feature-coverage.md.
 - The recipe `schema_install` holds the difference an install names: the outcome of every op takes `message_suffix`, and `install_external_drift` expects the message to end with `column user.coverage_missing does not exist`. The three tests of `CoverageSchemaInstallNativeTest` that read `coverageItemsOf` are gone; that recipe and `SchemaSetTest` hold them. (#T334-3-4-15)

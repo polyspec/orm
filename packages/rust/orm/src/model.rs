@@ -547,7 +547,8 @@ impl<'a> Assembler<'a> {
             {
                 continue;
             }
-            st.extra.insert(col.name.clone(), v);
+            let added = added_column_value(&col.typ, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+            st.extra.insert(col.name.clone(), added);
         }
         for key in &asm.key {
             let name = asm.columns.iter().find(|c| c.index == key.index).ok_or_else(|| Error::internal("key column index is missing"))?.name.clone();
@@ -626,6 +627,21 @@ impl<'a> Assembler<'a> {
         m.core_dyn_mut().row = Some(st);
         Ok(Built { model: m })
     }
+}
+
+/// An added column by the type its plan column states (INT-160); other types keep the driver value.
+fn added_column_value(typ: &str, value: Val) -> Result<Val> {
+    if matches!(value, Val::Null) {
+        return Ok(value);
+    }
+    Ok(match typ {
+        "i64" => Val::I64(value.as_i64()?),
+        "i32" => Val::I64(i64::from(value.as_i32()?)),
+        "i16" => Val::I64(i64::from(value.as_i16()?)),
+        "f64" => Val::F64(value.as_f64()?),
+        "bool" => Val::Bool(value.as_bool()?),
+        _ => value,
+    })
 }
 
 fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {

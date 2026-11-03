@@ -2364,14 +2364,6 @@ def _row_json(row, pick) -> Any:
     return {name: values[name] for name in pick}
 
 
-def _derived_integers(row: dict, step: dict) -> dict:
-    """The row with the named fields read as a derived integer (COD-45): the text of an integer is its number."""
-    for name in step.get("derived_integers", []):
-        if isinstance(row[name], str):
-            row[name] = int(row[name])
-    return row
-
-
 def _wants_rows(step: dict, context: dict) -> bool:
     """The expect of the database of the case compares rows of wrappers."""
     return "rows" in (step.get("expect", {}).get(context["database"]) or {})
@@ -2528,10 +2520,7 @@ def _table_model_query(step: dict, context: dict) -> dict:
     rows = model.gets()
     fields = {
         "bind": rows,
-        "json": [
-            _derived_integers(_row_json(row, step.get("pick")), step)
-            for row in rows.values()
-        ],
+        "json": [_row_json(row, step.get("pick")) for row in rows.values()],
     }
     if _wants_rows(step, context):
         fields["rows"] = _chain_cells(list(rows.values()), step)

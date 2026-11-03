@@ -3952,13 +3952,6 @@
                   "$ref": "#/$defs/name"
                 }
               },
-              "derived_integers": {
-                "description": "The fields of each result row read as a derived integer (COD-45): an added column whose database cell may be the text of an integer, such as a MySQL SUM.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/name"
-                }
-              },
               "as": {
                 "$ref": "#/$defs/name"
               },
