@@ -478,7 +478,8 @@ def sub_type(m: RuntimeModel, sub: dict) -> str:
             codes.INTERNAL,
             f"{entity.name}.{column_name} is missing from a validated scalar subquery",
         )
-    return f.type
+    # INT-160: a sum leaves the range of its column.
+    return "i64" if sub.get("agg") == "sum" and f.type in ("i16", "i32") else f.type
 
 
 def answer_value(type_: str, raw, where: str):

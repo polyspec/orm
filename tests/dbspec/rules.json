@@ -45,7 +45,13 @@
     "DBS-168",
     "DBS-169",
     "DBS-171",
-    "DBS-181"
+    "DBS-181",
+    "DBS-134",
+    "DBS-135",
+    "DBS-141",
+    "DBS-73",
+    "DBS-74",
+    "ORES-19"
   ],
   "cases": [
     {
@@ -4523,6 +4529,5836 @@
                 "  # empty",
                 "}"
               ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-worked-example",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table users {",
+            "  id i64 identity",
+            "  email varchar(191) default 'a'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  11,
+                  "name"
+                ],
+                [
+                  2,
+                  12,
+                  13,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "name"
+                ],
+                [
+                  4,
+                  8,
+                  15,
+                  "type"
+                ],
+                [
+                  4,
+                  15,
+                  16,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  16,
+                  19,
+                  "number"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  21,
+                  28,
+                  "keyword"
+                ],
+                [
+                  4,
+                  29,
+                  32,
+                  "string"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-header-stop-keeps-lexical-classes",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec\t1 shop"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-byte-order-mark-then-header-stop",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "﻿dbspec 1 shop"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  1,
+                  7,
+                  "word"
+                ],
+                [
+                  1,
+                  8,
+                  9,
+                  "number"
+                ],
+                [
+                  1,
+                  10,
+                  14,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-table-name-takes-a-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table 12 {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  8,
+                  "name"
+                ],
+                [
+                  2,
+                  9,
+                  10,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-keeps-its-text-from-to-the-line-end",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "   # note",
+            "table t {",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  3,
+                  3,
+                  9,
+                  "comment"
+                ],
+                [
+                  4,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  4,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  4,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-column-with-type-options-and-default",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity default now",
+            "  n varchar(9) null default 'a''b'",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  3,
+                  18,
+                  25,
+                  "keyword"
+                ],
+                [
+                  3,
+                  26,
+                  29,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  4,
+                  4,
+                  11,
+                  "type"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "number"
+                ],
+                [
+                  4,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  15,
+                  19,
+                  "keyword"
+                ],
+                [
+                  4,
+                  20,
+                  27,
+                  "keyword"
+                ],
+                [
+                  4,
+                  28,
+                  34,
+                  "string"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-type-parameter-word-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  m varchar(x)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  11,
+                  "type"
+                ],
+                [
+                  3,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  3,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-abandoned-line-is-all-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity foo",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "word"
+                ],
+                [
+                  3,
+                  18,
+                  21,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-tab-is-an-offending-character-and-abandons-its-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "\tid i64",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  1,
+                  3,
+                  "word"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-failed-table-opening-keeps-its-block-lexical",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t { extra",
+            "  id i64 identity",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "word"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "word"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  10,
+                  15,
+                  "word"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-settings-block-with-setting-options-and-names",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    select explicit id",
+            "    entity Foo",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  10,
+                  "setting"
+                ],
+                [
+                  5,
+                  11,
+                  19,
+                  "keyword"
+                ],
+                [
+                  5,
+                  20,
+                  22,
+                  "name"
+                ],
+                [
+                  6,
+                  4,
+                  10,
+                  "setting"
+                ],
+                [
+                  6,
+                  11,
+                  14,
+                  "name"
+                ],
+                [
+                  7,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-unknown-setting-keeps-its-first-word-as-setting",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    bogus x y",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  5,
+                  10,
+                  11,
+                  "word"
+                ],
+                [
+                  5,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  6,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-codec-stages-are-keywords-only-when-they-are-stages",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    codec c aes hex zz",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  9,
+                  "setting"
+                ],
+                [
+                  5,
+                  10,
+                  11,
+                  "name"
+                ],
+                [
+                  5,
+                  12,
+                  15,
+                  "keyword"
+                ],
+                [
+                  5,
+                  16,
+                  19,
+                  "keyword"
+                ],
+                [
+                  5,
+                  20,
+                  22,
+                  "word"
+                ],
+                [
+                  6,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  7,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-state-machine-transition-and-its-form-words",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  settings {",
+            "    state_machine st a -> b require (x)",
+            "    state_machine st initial a",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  10,
+                  "keyword"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  4,
+                  17,
+                  "setting"
+                ],
+                [
+                  5,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  5,
+                  21,
+                  22,
+                  "name"
+                ],
+                [
+                  5,
+                  23,
+                  24,
+                  "operator"
+                ],
+                [
+                  5,
+                  24,
+                  25,
+                  "operator"
+                ],
+                [
+                  5,
+                  26,
+                  27,
+                  "name"
+                ],
+                [
+                  5,
+                  28,
+                  35,
+                  "keyword"
+                ],
+                [
+                  5,
+                  36,
+                  37,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  37,
+                  38,
+                  "name"
+                ],
+                [
+                  5,
+                  38,
+                  39,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  4,
+                  17,
+                  "setting"
+                ],
+                [
+                  6,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  6,
+                  21,
+                  28,
+                  "keyword"
+                ],
+                [
+                  6,
+                  29,
+                  30,
+                  "name"
+                ],
+                [
+                  7,
+                  2,
+                  3,
+                  "punctuation"
+                ],
+                [
+                  8,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-foreign-key-with-actions",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  foreign key fk (id) references p (id) on delete cascade on update zz",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  4,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  4,
+                  14,
+                  16,
+                  "name"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  18,
+                  20,
+                  "name"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  22,
+                  32,
+                  "keyword"
+                ],
+                [
+                  4,
+                  33,
+                  34,
+                  "name"
+                ],
+                [
+                  4,
+                  35,
+                  36,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  36,
+                  38,
+                  "name"
+                ],
+                [
+                  4,
+                  38,
+                  39,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  40,
+                  42,
+                  "keyword"
+                ],
+                [
+                  4,
+                  43,
+                  49,
+                  "keyword"
+                ],
+                [
+                  4,
+                  50,
+                  57,
+                  "keyword"
+                ],
+                [
+                  4,
+                  58,
+                  60,
+                  "keyword"
+                ],
+                [
+                  4,
+                  61,
+                  67,
+                  "keyword"
+                ],
+                [
+                  4,
+                  68,
+                  70,
+                  "word"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-index-with-directions",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  id i64 identity",
+            "  index ix (id desc, id asc)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  3,
+                  9,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  14,
+                  "name"
+                ],
+                [
+                  4,
+                  15,
+                  19,
+                  "keyword"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  21,
+                  23,
+                  "name"
+                ],
+                [
+                  4,
+                  24,
+                  27,
+                  "keyword"
+                ],
+                [
+                  4,
+                  27,
+                  28,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-check-with-a-predicate",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (a = 1 and a is not null)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "name"
+                ],
+                [
+                  4,
+                  14,
+                  15,
+                  "operator"
+                ],
+                [
+                  4,
+                  16,
+                  17,
+                  "number"
+                ],
+                [
+                  4,
+                  18,
+                  21,
+                  "keyword"
+                ],
+                [
+                  4,
+                  22,
+                  23,
+                  "name"
+                ],
+                [
+                  4,
+                  24,
+                  26,
+                  "keyword"
+                ],
+                [
+                  4,
+                  27,
+                  30,
+                  "keyword"
+                ],
+                [
+                  4,
+                  31,
+                  35,
+                  "keyword"
+                ],
+                [
+                  4,
+                  35,
+                  36,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-check-function-name-is-word-and-the-rest-is-lexical",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (f(a) = 1)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "word"
+                ],
+                [
+                  4,
+                  13,
+                  14,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  14,
+                  15,
+                  "word"
+                ],
+                [
+                  4,
+                  15,
+                  16,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "number"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-null-operand-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (null = 1)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  16,
+                  "word"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  19,
+                  20,
+                  "number"
+                ],
+                [
+                  4,
+                  20,
+                  21,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-between-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  a i64",
+            "  check ck (a between 1 and 2)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  4,
+                  2,
+                  7,
+                  "keyword"
+                ],
+                [
+                  4,
+                  8,
+                  10,
+                  "name"
+                ],
+                [
+                  4,
+                  11,
+                  12,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  12,
+                  13,
+                  "name"
+                ],
+                [
+                  4,
+                  14,
+                  21,
+                  "word"
+                ],
+                [
+                  4,
+                  22,
+                  23,
+                  "number"
+                ],
+                [
+                  4,
+                  24,
+                  27,
+                  "word"
+                ],
+                [
+                  4,
+                  28,
+                  29,
+                  "number"
+                ],
+                [
+                  4,
+                  29,
+                  30,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-use-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "use other { t1, t2 }"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  3,
+                  "keyword"
+                ],
+                [
+                  2,
+                  4,
+                  9,
+                  "name"
+                ],
+                [
+                  2,
+                  10,
+                  11,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  12,
+                  14,
+                  "name"
+                ],
+                [
+                  2,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  2,
+                  16,
+                  18,
+                  "name"
+                ],
+                [
+                  2,
+                  19,
+                  20,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-diagram-with-negative-coordinate",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "diagram d {",
+            "  users at 1 -2",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  7,
+                  "keyword"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "name"
+                ],
+                [
+                  2,
+                  10,
+                  11,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  10,
+                  "keyword"
+                ],
+                [
+                  3,
+                  11,
+                  12,
+                  "number"
+                ],
+                [
+                  3,
+                  13,
+                  14,
+                  "operator"
+                ],
+                [
+                  3,
+                  14,
+                  15,
+                  "number"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-value-word-other-than-the-value-words-is-word",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {",
+            "  n i64 default foo",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  3,
+                  "name"
+                ],
+                [
+                  3,
+                  4,
+                  7,
+                  "type"
+                ],
+                [
+                  3,
+                  8,
+                  15,
+                  "keyword"
+                ],
+                [
+                  3,
+                  16,
+                  19,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-cr-before-lf-is-the-line-end-bare-cr-is-offending",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 shop",
+            "table t {\r",
+            "  id i64\rx",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  13,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  2,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  2,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  3,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  3,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  3,
+                  9,
+                  10,
+                  "word"
+                ],
+                [
+                  4,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-table-document",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "# note"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  2,
+                  0,
+                  6,
+                  "comment"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-name-takes-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table 12 {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  8,
+                  "name"
+                ],
+                [
+                  3,
+                  9,
+                  10,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-abandoned-line-words",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 primary key",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "word"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "word"
+                ],
+                [
+                  4,
+                  9,
+                  16,
+                  "word"
+                ],
+                [
+                  4,
+                  17,
+                  20,
+                  "word"
+                ],
+                [
+                  5,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-unclosed-block",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-header-failure",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app x"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "word"
+                ],
+                [
+                  1,
+                  13,
+                  14,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-comment-before-header",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "# c",
+            "dbspec 1 app"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  3,
+                  "comment"
+                ],
+                [
+                  2,
+                  0,
+                  6,
+                  "word"
+                ],
+                [
+                  2,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  2,
+                  9,
+                  12,
+                  "word"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-minus-before-number",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 default -1",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  8,
+                  "type"
+                ],
+                [
+                  4,
+                  9,
+                  16,
+                  "keyword"
+                ],
+                [
+                  4,
+                  17,
+                  18,
+                  "operator"
+                ],
+                [
+                  4,
+                  18,
+                  19,
+                  "number"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-value-keywords",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  ok bool default true",
+            "  primary key (ok)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  2,
+                  4,
+                  "name"
+                ],
+                [
+                  4,
+                  5,
+                  9,
+                  "type"
+                ],
+                [
+                  4,
+                  10,
+                  17,
+                  "keyword"
+                ],
+                [
+                  4,
+                  18,
+                  22,
+                  "keyword"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "analyze-class-tab-abandons-line",
+      "requirements": [
+        "DBS-134",
+        "DBS-135"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.analyze",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "\tid i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "tokens": [
+                [
+                  1,
+                  0,
+                  6,
+                  "keyword"
+                ],
+                [
+                  1,
+                  7,
+                  8,
+                  "number"
+                ],
+                [
+                  1,
+                  9,
+                  12,
+                  "name"
+                ],
+                [
+                  3,
+                  0,
+                  5,
+                  "keyword"
+                ],
+                [
+                  3,
+                  6,
+                  7,
+                  "name"
+                ],
+                [
+                  3,
+                  8,
+                  9,
+                  "punctuation"
+                ],
+                [
+                  4,
+                  1,
+                  3,
+                  "word"
+                ],
+                [
+                  4,
+                  4,
+                  7,
+                  "word"
+                ],
+                [
+                  5,
+                  2,
+                  9,
+                  "keyword"
+                ],
+                [
+                  5,
+                  10,
+                  13,
+                  "keyword"
+                ],
+                [
+                  5,
+                  14,
+                  15,
+                  "punctuation"
+                ],
+                [
+                  5,
+                  15,
+                  17,
+                  "name"
+                ],
+                [
+                  5,
+                  17,
+                  18,
+                  "punctuation"
+                ],
+                [
+                  6,
+                  0,
+                  1,
+                  "punctuation"
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "format-invalid-refused",
+      "requirements": [
+        "DBS-141"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "table t {",
+            "  id i64 bogus",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 10,
+                  "line": 4,
+                  "rule": "syntax"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "format-idempotent",
+      "requirements": [
+        "DBS-141"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 app",
+            "",
+            "",
+            "table t {",
+            "  id i64",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 app",
+                "",
+                "table t {",
+                "  id i64",
+                "  primary key (id)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-literal-forms",
+      "requirements": [
+        "DBS-128",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table v {",
+            "  id i64 identity",
+            "  a i16 default -0",
+            "  b i32 default 007",
+            "  c i64 default -9223372036854775808",
+            "  d bool default false",
+            "  e decimal(5,2) default -0.5",
+            "  f decimal(4,0) default 0012",
+            "  g f64 default 0001.2500",
+            "  h f64 default -0.0",
+            "  i varchar(8) default 'it''s'",
+            "  j uuid default '0E2B5D7A-0000-4000-8000-00000000000A'",
+            "  k date default '0001-01-01'",
+            "  l time(3) default '23:59:59.5'",
+            "  m datetime(6) default '2026-01-01 00:00:00'",
+            "  n time(3) default '12:00:00'",
+            "  primary key (id)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table v {",
+                "  id i64 identity",
+                "  a i16 default 0",
+                "  b i32 default 7",
+                "  c i64 default -9223372036854775808",
+                "  d bool default false",
+                "  e decimal(5,2) default -0.50",
+                "  f decimal(4,0) default 12",
+                "  g f64 default 1.25",
+                "  h f64 default 0",
+                "  i varchar(8) default 'it''s'",
+                "  j uuid default '0e2b5d7a-0000-4000-8000-00000000000a'",
+                "  k date default '0001-01-01'",
+                "  l time(3) default '23:59:59.500'",
+                "  m datetime(6) default '2026-01-01 00:00:00.000000'",
+                "  n time(3) default '12:00:00.000'",
+                "  primary key (id)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-check-expressions",
+      "requirements": [
+        "DBS-57",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table v {",
+            "  id i64 identity",
+            "  s varchar(8) null",
+            "  n decimal(5,2)",
+            "  primary key (id)",
+            "  check ck_b (s   not in('a','b''c') and(n >= -01.50 and n<=2))",
+            "  check ck_a ((id>=0)or s is not null or 2.5<>n)",
+            "  check ck_c (s is null)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table v {",
+                "  id i64 identity",
+                "  s varchar(8) null",
+                "  n decimal(5,2)",
+                "  primary key (id)",
+                "  check ck_a (id >= 0 or s is not null or 2.50 <> n)",
+                "  check ck_b (s not in ('a', 'b''c') and n >= -1.50 and n <= 2.00)",
+                "  check ck_c (s is null)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-comments-move-with-sorted-lines",
+      "requirements": [
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "# zeta",
+            "use zeta { z }",
+            "# alpha",
+            "use alpha { a }",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # second",
+            "  index ix_b (id)",
+            "  # first",
+            "  index ix_a (id desc)",
+            "  settings {",
+            "    # select",
+            "    select explicit id",
+            "    # entity",
+            "    entity person",
+            "    # end of settings",
+            "  }",
+            "  # end of table",
+            "}",
+            "diagram d {",
+            "  # entry",
+            "  users at -0 -5",
+            "  # end of diagram",
+            "}",
+            "# trailing"
+          ],
+          "set": {
+            "alpha": [
+              "dbspec 1 alpha",
+              "",
+              "table a {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ],
+            "zeta": [
+              "dbspec 1 zeta",
+              "",
+              "table z {",
+              "  id i64 identity",
+              "  primary key (id)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "# alpha",
+                "use alpha { a }",
+                "# zeta",
+                "use zeta { z }",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "  # first",
+                "  index ix_a (id desc)",
+                "  # second",
+                "  index ix_b (id)",
+                "  settings {",
+                "    # entity",
+                "    entity person",
+                "    # select",
+                "    select explicit id",
+                "    # end of settings",
+                "  }",
+                "  # end of table",
+                "}",
+                "",
+                "diagram d {",
+                "  # entry",
+                "  users at 0 -5",
+                "  # end of diagram",
+                "}",
+                "",
+                "# trailing"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-settings-order",
+      "requirements": [
+        "DBS-63",
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "}",
+            "",
+            "table orders {",
+            "  id i64 identity",
+            "  user_id i64 null",
+            "  secret bytes null",
+            "  token varchar(64) null",
+            "  note text null",
+            "  v i32",
+            "  op i64",
+            "  gone datetime(6) null",
+            "  changed datetime(0)",
+            "  primary key (id)",
+            "  index ix_op (op)",
+            "  index ix_token (token)",
+            "  index ix_user (user_id)",
+            "  foreign key fk_op (op) references users (id) on delete restrict on update restrict",
+            "  foreign key fk_user (user_id) references users (id) on delete restrict on update restrict",
+            "  settings {",
+            "    audit into orders_history column op references users action act previous prev",
+            "    immutable",
+            "    navigation fk_user orders user",
+            "    blind_index secret token",
+            "    aes_version v",
+            "    codec secret ordered_json aes",
+            "    codec note gz base64",
+            "    select explicit note secret",
+            "    soft_delete gone",
+            "    updated changed",
+            "    entity order",
+            "  }",
+            "}",
+            "",
+            "table orders_history {",
+            "  hid i64 identity",
+            "  act varchar(8)",
+            "  prev i64 null",
+            "  id i64",
+            "  user_id i64 null",
+            "  secret bytes null",
+            "  token varchar(64) null",
+            "  note text null",
+            "  v i32 null",
+            "  op i64",
+            "  gone datetime(6) null",
+            "  changed datetime(0)",
+            "  primary key (hid)",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "}",
+                "",
+                "table orders {",
+                "  id i64 identity",
+                "  user_id i64 null",
+                "  secret bytes null",
+                "  token varchar(64) null",
+                "  note text null",
+                "  v i32",
+                "  op i64",
+                "  gone datetime(6) null",
+                "  changed datetime(0)",
+                "  primary key (id)",
+                "  index ix_op (op)",
+                "  index ix_token (token)",
+                "  index ix_user (user_id)",
+                "  foreign key fk_op (op) references users (id) on delete restrict on update restrict",
+                "  foreign key fk_user (user_id) references users (id) on delete restrict on update restrict",
+                "  settings {",
+                "    entity order",
+                "    updated changed",
+                "    soft_delete gone",
+                "    select explicit note secret",
+                "    codec note gz base64",
+                "    codec secret ordered_json aes",
+                "    aes_version v",
+                "    blind_index secret token",
+                "    navigation fk_user orders user",
+                "    immutable",
+                "    audit into orders_history column op references users action act previous prev",
+                "  }",
+                "}",
+                "",
+                "table orders_history {",
+                "  hid i64 identity",
+                "  act varchar(8)",
+                "  prev i64 null",
+                "  id i64",
+                "  user_id i64 null",
+                "  secret bytes null",
+                "  token varchar(64) null",
+                "  note text null",
+                "  v i32 null",
+                "  op i64",
+                "  gone datetime(6) null",
+                "  changed datetime(0)",
+                "  primary key (hid)",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-empty-settings-comments-move",
+      "requirements": [
+        "DBS-132"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table users {",
+            "  id i64 identity",
+            "  primary key (id)",
+            "  # before",
+            "  settings {",
+            "      # inside",
+            "  }",
+            "  # end",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table users {",
+                "  id i64 identity",
+                "  primary key (id)",
+                "  # before",
+                "  # inside",
+                "  # end",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-header-only",
+      "requirements": [
+        "DBS-131"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 empty",
+            "",
+            ""
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 empty"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "canonical-form-used-table-in-diagram-and-mixed-line-ends",
+      "requirements": [
+        "DBS-35",
+        "DBS-171"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop\r",
+            "use core { accounts }",
+            "diagram d {\r",
+            "  accounts at 1 2",
+            "}"
+          ],
+          "set": {
+            "core": [
+              "dbspec 1 core",
+              "",
+              "table accounts {",
+              "  id i64 identity",
+              "  code varchar(8)",
+              "  primary key (id)",
+              "  unique uq_accounts_code (code)",
+              "}"
+            ]
+          },
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "use core { accounts }",
+                "",
+                "diagram d {",
+                "  accounts at 1 2",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "state-machine-column-type",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status i32",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status waiting -> doing",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 19,
+                  "line": 8,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "state-machine-terminal-exit",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status varchar(16)",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status waiting -> doing",
+            "    state_machine status terminal done",
+            "    state_machine status done -> waiting",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 10,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "state-machine-require-column",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status varchar(16)",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status waiting -> doing require (nope)",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 52,
+                  "line": 8,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "state-machine-two-columns",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status varchar(16)",
+            "  phase varchar(16)",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status waiting -> doing",
+            "    state_machine phase ready -> running",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 19,
+                  "line": 10,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stable-state-machine-setting",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status varchar(16)",
+            "  evidence text null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (evidence)",
+            "    state_machine status terminal done require (evidence)",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table jobs {",
+                "  id i64 identity",
+                "  status varchar(16)",
+                "  evidence text null",
+                "  primary key (id)",
+                "  settings {",
+                "    state_machine status waiting -> doing",
+                "    state_machine status doing -> done require (evidence)",
+                "    state_machine status terminal done require (evidence)",
+                "  }",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-on-integer-column",
+      "requirements": [
+        "DBS-74"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table pages {",
+            "  id i64 identity",
+            "  n i32",
+            "  primary key (id)",
+            "  settings {",
+            "    markdown n",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 14,
+                  "line": 8,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stable-markdown-setting",
+      "requirements": [
+        "DBS-74"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table pages {",
+            "  id i64 identity",
+            "  body text null",
+            "  note varchar(200)",
+            "  primary key (id)",
+            "  settings {",
+            "    markdown body",
+            "    markdown note",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table pages {",
+                "  id i64 identity",
+                "  body text null",
+                "  note varchar(200)",
+                "  primary key (id)",
+                "  settings {",
+                "    markdown body",
+                "    markdown note",
+                "  }",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stable-markdown-storage-setting",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    store document list",
+            "    key_prefix 'T'",
+            "    title title",
+            "    body body",
+            "    order position",
+            "    checkbox status waiting '-'",
+            "    checkbox status doing '/'",
+            "    checkbox status done 'x'",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status limit doing 3",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table tickets {",
+                "  id varchar(32)",
+                "  title varchar(255)",
+                "  body text",
+                "  position i64",
+                "  status varchar(16)",
+                "  reason varchar(200) null",
+                "  primary key (id)",
+                "  settings {",
+                "    store document list",
+                "    key_prefix 'T'",
+                "    title title",
+                "    body body",
+                "    order position",
+                "    checkbox status waiting '-'",
+                "    checkbox status doing '/'",
+                "    checkbox status done 'x'",
+                "    state_machine status initial waiting",
+                "    state_machine status waiting -> doing",
+                "    state_machine status doing -> done require (reason)",
+                "    state_machine status terminal done",
+                "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+                "    state_machine status limit doing 3",
+                "  }",
+                "}",
+                "",
+                "table ticket_history {",
+                "  id i64 identity",
+                "  ticket_id varchar(32)",
+                "  from_status varchar(16)",
+                "  to_status varchar(16)",
+                "  changed_at datetime(6)",
+                "  reason varchar(200) null",
+                "  primary key (id)",
+                "  index ix_ticket_history_ticket (ticket_id)",
+                "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "stable-state-machine-keyword-states",
+      "requirements": [
+        "DBS-73"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table jobs {",
+            "  id i64 identity",
+            "  status varchar(16)",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status initial -> waiting",
+            "    state_machine status limit -> history",
+            "    state_machine status initial initial",
+            "  }",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "text": [
+                "dbspec 1 shop",
+                "",
+                "table jobs {",
+                "  id i64 identity",
+                "  status varchar(16)",
+                "  primary key (id)",
+                "  settings {",
+                "    state_machine status initial -> waiting",
+                "    state_machine status limit -> history",
+                "    state_machine status initial initial",
+                "  }",
+                "}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-store-repeats",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    store files",
+            "    store document list",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 13,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-store-shape",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    store document rows",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 20,
+                  "line": 12,
+                  "rule": "syntax"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-store-block-foreign-key",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    store block nope list",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 17,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-key-prefix-integer-key",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id i64 identity",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    key_prefix 'T'",
+            "  }",
+            "}",
+            ""
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-title-nullable",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    title reason",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 11,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-body-unknown-column",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    body nope",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 10,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-order-kind",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    order status",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 11,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-order-default",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64 default 0",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    order position",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 11,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-order-in-index",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_position (position)",
+            "  settings {",
+            "    order position",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 11,
+                  "line": 13,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-checkbox-outside-state-set",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    checkbox status waiting '-'",
+            "    checkbox status doing '/'",
+            "    checkbox status done 'x'",
+            "    checkbox status paused '~'",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 21,
+                  "line": 15,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-checkbox-missing-state",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    checkbox status waiting '-'",
+            "    checkbox status doing '/'",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-checkbox-repeated-glyph",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    checkbox status waiting '-'",
+            "    checkbox status doing '-'",
+            "    checkbox status done 'x'",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 27,
+                  "line": 13,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-checkbox-glyph-length",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    checkbox status waiting '--'",
+            "    checkbox status doing '/'",
+            "    checkbox status done 'x'",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 29,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-checkbox-without-machine",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    checkbox status waiting '-'",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 14,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-initial-terminal",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status initial done",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-default-not-initial",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16) default 'doing'",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 30,
+                  "line": 8,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-missing-table",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history nope row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 34,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-extra-column",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  note varchar(10) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 34,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-at-precision",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(3)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 34,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-from-type",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(8)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 34,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-missing-required-column",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 34,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-history-repeated",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 5,
+                  "line": 13,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-limit-outside-state-set",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status limit paused 3",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 32,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-limit-zero-count",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status limit doing 0",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 38,
+                  "line": 12,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-limit-repeated-state",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.format",
+          "text": [
+            "dbspec 1 shop",
+            "",
+            "table tickets {",
+            "  id varchar(32)",
+            "  title varchar(255)",
+            "  body text",
+            "  position i64",
+            "  status varchar(16)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  settings {",
+            "    state_machine status limit doing 3",
+            "    state_machine status limit doing 4",
+            "    state_machine status initial waiting",
+            "    state_machine status waiting -> doing",
+            "    state_machine status doing -> done require (reason)",
+            "    state_machine status terminal done",
+            "  }",
+            "}",
+            "",
+            "table ticket_history {",
+            "  id i64 identity",
+            "  ticket_id varchar(32)",
+            "  from_status varchar(16)",
+            "  to_status varchar(16)",
+            "  changed_at datetime(6)",
+            "  reason varchar(200) null",
+            "  primary key (id)",
+            "  index ix_ticket_history_ticket (ticket_id)",
+            "  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+            "}"
+          ],
+          "expect": {
+            "none": {
+              "diagnostics": [
+                {
+                  "column": 32,
+                  "line": 13,
+                  "rule": "setting"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "markdown-storage-setting-is-in-the-manifest-hash-only",
+      "requirements": [
+        "ORES-19"
+      ],
+      "steps": [
+        {
+          "op": "dbspec.set",
+          "owned": [
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+          ],
+          "expect": {
+            "none": {
+              "manifest": {
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document list\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n}\n",
+                "manifest_hash": "sha256:2834cf62ac62d099b78762400041894e82dac4350a0c45b75454a1eabe5cca08",
+                "schema_hash": "sha256:45d2bed1e8c1e4a1894e0e7b70fe39a7765887a46d72db384b113c649d255048"
+              }
+            }
+          }
+        },
+        {
+          "op": "dbspec.set",
+          "owned": [
+            "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n"
+          ],
+          "expect": {
+            "none": {
+              "manifest": {
+                "manifest_text": "dbspec 1 shop\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n  settings {\n    store document table\n    key_prefix 'T'\n    title title\n    body body\n    order position\n    checkbox status waiting '-'\n    checkbox status doing '/'\n    checkbox status done 'x'\n    state_machine status initial waiting\n    state_machine status waiting -> doing\n    state_machine status doing -> done require (reason)\n    state_machine status terminal done\n    state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at\n    state_machine status limit doing 3\n  }\n}\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n",
+                "schema_text": "dbspec 1 schema\n\ntable ticket_history {\n  id i64 identity\n  ticket_id varchar(32)\n  from_status varchar(16)\n  to_status varchar(16)\n  changed_at datetime(6)\n  reason varchar(200) null\n  primary key (id)\n  index ix_ticket_history_ticket (ticket_id)\n  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict\n}\n\ntable tickets {\n  id varchar(32)\n  title varchar(255)\n  body text\n  position i64\n  status varchar(16)\n  reason varchar(200) null\n  primary key (id)\n}\n",
+                "manifest_hash": "sha256:605ba3fc88d2933e91d3ef52bc68d30164e49bb962c9b1442e37f9c80d5e8e10",
+                "schema_hash": "sha256:45d2bed1e8c1e4a1894e0e7b70fe39a7765887a46d72db384b113c649d255048"
+              }
             }
           }
         }

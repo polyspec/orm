@@ -10,31 +10,9 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class ComplexQueryNativeTest extends TestCase
 {
-    public function testProductSearchFulltextNamesUseNativeModelAndChain(): void
-    {
-        ComplexQueryDbCase::assertFulltextChains(true);
-    }
-
-    // Requirements: CPX-1.
-    public function testProductSearchPublicRequestCompilesAcrossDialects(): void
-    {
-        ComplexQueryDbCase::assertPublicRequestCompiles(true);
-    }
-
     // Requirements: DSL-159.
     public function testGetPagePlanStepsGivesTheStepsOfThePlanOfGetsPage(): void
     {
         ComplexQueryDbCase::assertPagePlanSteps(true);
-    }
-
-    public function testFeatureProductSearchPageUsesNativePlannerAndModels(): void
-    {
-        ComplexQueryDbCase::runFeature(true);
-    }
-
-    // Requirements: CPX-2.
-    public function testProductSearchPageUsesNativePlannerAndModels(): void
-    {
-        ComplexQueryDbCase::run(true);
     }
 }

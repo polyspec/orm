@@ -547,7 +547,8 @@ impl<'a> Assembler<'a> {
             {
                 continue;
             }
-            st.extra.insert(col.name.clone(), v);
+            let added = added_column_value(&col.typ, v).map_err(|error| column_decode_error(b.ent.name, &col.name, error))?;
+            st.extra.insert(col.name.clone(), added);
         }
         for key in &asm.key {
             let name = asm.columns.iter().find(|c| c.index == key.index).ok_or_else(|| Error::internal("key column index is missing"))?.name.clone();
@@ -626,6 +627,21 @@ impl<'a> Assembler<'a> {
         m.core_dyn_mut().row = Some(st);
         Ok(Built { model: m })
     }
+}
+
+/// An added column by the type its plan column states (INT-160); other types keep the driver value.
+fn added_column_value(typ: &str, value: Val) -> Result<Val> {
+    if matches!(value, Val::Null) {
+        return Ok(value);
+    }
+    Ok(match typ {
+        "i64" => Val::I64(value.as_i64()?),
+        "i32" => Val::I64(i64::from(value.as_i32()?)),
+        "i16" => Val::I64(i64::from(value.as_i16()?)),
+        "f64" => Val::F64(value.as_f64()?),
+        "bool" => Val::Bool(value.as_bool()?),
+        _ => value,
+    })
 }
 
 fn column_decode_error(entity: &str, column: &str, error: Error) -> Error {
@@ -1976,40 +1992,6 @@ mod related_tests {
                 assert!(error.to_string().contains(name), "{error} does not name {name}");
             }
         }
-    }
-
-    // Requirements: PRT-35.
-    #[test]
-    fn split_root_merge_rejects_sql_null_identity() {
-        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let refs = [crate::plan::KeyRef { column: "id".into(), index: 0 }];
-        let error = match super::split_row_key(&[Val::Null], &refs) {
-            Err(error) => error,
-            Ok(_) => panic!("split root merge accepted SQL NULL identity"),
-        };
-        assert_eq!(error.code(), codes::CODEC_DECODE);
-        assert!(error.to_string().contains("split query row identity contains SQL NULL"));
-        let zero = super::split_row_key(&[Val::I64(0)], &refs).unwrap();
-        let false_value = super::split_row_key(&[Val::Bool(false)], &refs).unwrap();
-        let empty = super::split_row_key(&[Val::Str(String::new())], &refs).unwrap();
-        assert_ne!(zero, false_value);
-        assert_ne!(zero, empty);
-        assert_ne!(false_value, empty);
-
-        let composite_refs = [
-            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
-            crate::plan::KeyRef { column: "enabled".into(), index: 1 },
-            crate::plan::KeyRef { column: "label".into(), index: 2 },
-        ];
-        let composite_error = match super::split_row_key(&[Val::I64(0), Val::Null, Val::Str(String::new())], &composite_refs) {
-            Err(error) => error,
-            Ok(_) => panic!("split root merge accepted SQL NULL in a composite identity"),
-        };
-        assert_eq!(composite_error.code(), codes::CODEC_DECODE);
-        assert!(composite_error.to_string().contains("split query row identity contains SQL NULL"));
-        let composite_false = super::split_row_key(&[Val::I64(0), Val::Bool(false), Val::Str(String::new())], &composite_refs).unwrap();
-        let composite_true = super::split_row_key(&[Val::I64(0), Val::Bool(true), Val::Str(String::new())], &composite_refs).unwrap();
-        assert_ne!(composite_false, composite_true);
     }
 }
 

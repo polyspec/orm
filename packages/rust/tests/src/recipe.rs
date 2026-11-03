@@ -216,7 +216,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         "planner.compile" => return planner_compile(step, database, dir),
         "generator.generate" => return recipe_generator::check(step, database, dir),
         "ir.validate" => return ir_validate(step, database),
-        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
+        "dbspec.parse" | "dbspec.parse_plan" | "dbspec.emit_plan" | "dbspec.plan_steps" | "dbspec.add_tables_steps" | "dbspec.diff" | "dbspec.chain" | "dbspec.compare" => {
             return dbspec_plan_step(step, bound, database)
         }
         "dbspec.parse_emit"
@@ -227,6 +227,7 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
         | "dbspec.format"
         | "dbspec.parse_set"
         | "dbspec.set"
+        | "dbspec.load_set"
         | "dbspec.read_file"
         | "dbspec.read_bytes" => return dbspec_step(step, dir, database),
         "dbspec.export_mermaid" | "dbspec.import_mermaid" => return mermaid(step, bound, database, dir),
@@ -250,6 +251,9 @@ fn run(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str, dir: 
     }
     if step["op"] == "markdown.send" {
         return markdown_send(step);
+    }
+    if step["op"] == "collection.key" {
+        return collection_key(step, database);
     }
     if step["op"] == "model.assign" {
         return model_assign(step);
@@ -495,7 +499,7 @@ fn plan_dialect(name: &str) -> Result<Dialect, String> {
     }
 }
 
-/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps,
+/// The dbspec plan ops of a recipe step (FCV-4), each through its public dbspec call: parse, parse_plan, emit_plan, plan_steps, add_tables_steps,
 /// diff, chain and compare. A document or a plan that a step binds with `as` is the value of the ref of a later step. The result
 /// of the step is compared, as JSON, with the expect of `database`.
 fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database: &str) -> Result<(), String> {
@@ -530,6 +534,17 @@ fn dbspec_plan_step(step: &Value, bound: &mut HashMap<String, Outcome>, database
                 Ok(steps) => serde_json::json!({"steps": steps.iter().map(plan_fields).collect::<Vec<Value>>()}),
                 Err(diagnostics) => serde_json::json!({"messages": plan_messages(&diagnostics, "plan")?}),
             }
+        }
+        "dbspec.add_tables_steps" => {
+            let source = bound_document(&step["source"], bound)?;
+            let target = bound_document(&step["target"], bound)?;
+            let dialect = plan_dialect(step["dialect"].as_str().unwrap_or_default())?;
+            let result = dbspec::add_tables_and_columns_steps(&source, &[], &target, dialect);
+            serde_json::json!({
+                "added": result.added,
+                "statements": result.steps.iter().map(|s| s.statement.as_str()).collect::<Vec<&str>>(),
+                "differences": result.differences,
+            })
         }
         "dbspec.diff" => {
             let source = optional_document(step, "source", bound)?;
@@ -761,6 +776,7 @@ fn dbspec_step(step: &Value, dir: &Path, database: &str) -> Result<(), String> {
         "dbspec.format" => dbspec_format(step, want),
         "dbspec.parse_set" => dbspec_parse_set(step, want),
         "dbspec.set" => dbspec_set(step, want),
+        "dbspec.load_set" => dbspec_load_set(step, want),
         "dbspec.read_file" | "dbspec.read_bytes" => dbspec_read(step, dir, want),
         other => Err(format!("OP_UNKNOWN {other}")),
     }
@@ -946,6 +962,29 @@ fn same_diagnostics(want: &[Value], got: &[dbspec::Diagnostic]) -> Result<(), St
 /// and no manifest and no statements. A built set expects its texts and hashes when expect.manifest is given, parses its
 /// manifest and external texts back as a set without diagnostics, gives the same hashes in the reversed order, and renders
 /// statements in each dialect that create the tables of expect.created.
+/// The dbspec.load_set op (FCV-4): the documents of a set with their external marks, through `Schema::with_external` on the
+/// manifest that the set builds, or the code of `Manifest::load_set` on a set that does not build.
+fn dbspec_load_set(step: &Value, want: &Value) -> Result<(), String> {
+    let text = |value: &Value| {
+        let lines = lines_of(value);
+        if lines.is_empty() { String::new() } else { format!("{}\n", lines.join("\n")) }
+    };
+    let (owned, external) = (text(&step["owned"]), text(&step["external"]));
+    let loaded = dbspec::parse_manifest_set(&owned, &external).ok().and_then(|documents| {
+        let refs: Vec<&Document> = documents.iter().collect();
+        dbspec::manifest(&refs).ok()
+    });
+    let Some(built) = loaded else {
+        let error = polyspec_orm::Manifest::load_set(&owned, &external, "").err().ok_or("the set loaded")?;
+        return if want["error"].as_str() == Some(error.code()) { Ok(()) } else { Err(format!("error {error}, want {want}")) };
+    };
+    let leak = |text: String| -> &'static str { Box::leak(text.into_boxed_str()) };
+    let schema = polyspec_orm::Schema::with_external(leak(built.manifest_text), leak(built.external_text), leak(built.manifest_hash));
+    let documents = schema.documents().map_err(|error| error.to_string())?;
+    let got: Vec<Value> = documents.iter().map(|d| json!({"name": d.name.text, "external": d.external})).collect();
+    if want["documents"].as_array() == Some(&got) { Ok(()) } else { Err(format!("documents {got:?}, want {want}")) }
+}
+
 fn dbspec_set(step: &Value, want: &Value) -> Result<(), String> {
     let owned = strings_of(&step["owned"]);
     let external = strings_of(&step["external"]);
@@ -1159,6 +1198,55 @@ fn markdown_send(step: &Value) -> Result<(), String> {
 
 /// One model.assign step (FCV-4): the public setter of a column of a new row of the slots model, then the insert that the
 /// listener records. The setter takes text, so the Rust cases exclude a nil value (DSL-29).
+fn collection_key(step: &Value, database: &str) -> Result<(), String> {
+    let mut keys: Vec<polyspec_orm::Key> = Vec::new();
+    let mut groups: Vec<usize> = Vec::new();
+    let mut types: Vec<&str> = Vec::new();
+    let mut failure = None;
+    for entry in step["keys"].as_array().ok_or("collection.key has no keys")? {
+        let value = match entry["type"].as_str().unwrap_or_default() {
+            "null" => Val::Null,
+            "text" => Val::Str(entry["value"].as_str().ok_or("a text key holds no text")?.to_owned()),
+            "bool" => Val::Bool(entry["value"].as_bool().ok_or("a bool key holds no bool")?),
+            "int" => Val::I64(entry["value"].as_i64().ok_or("an int key holds no integer")?),
+            "bytes" => {
+                let text = entry["hex"].as_str().ok_or("a bytes key holds no hex")?;
+                let digits = (0..text.len()).step_by(2).map(|index| u8::from_str_radix(&text[index..index + 2], 16));
+                Val::Bytes(digits.collect::<Result<Vec<u8>, _>>().map_err(|error| error.to_string())?)
+            }
+            "datetime" => {
+                let text = entry["value"].as_str().ok_or("a datetime key holds no text")?;
+                Val::DateTime(polyspec_orm::chrono::DateTime::parse_from_rfc3339(text).map_err(|error| error.to_string())?.naive_utc())
+            }
+            other => return Err(format!("collection.key has no type {other}")),
+        };
+        let key = match polyspec_orm::Key::of(&value) {
+            Ok(key) => key,
+            Err(error) => {
+                failure = Some(json!({ "error": error.code(), "message": error.to_string() }));
+                break;
+            }
+        };
+        groups.push(keys.iter().position(|other| other == &key).map_or(keys.len(), |index| groups[index]));
+        types.push(match (&key, &value) {
+            (polyspec_orm::Key::I(left), Val::I64(right)) if left == right => "int",
+            (polyspec_orm::Key::S(left), Val::Str(right)) if left == right => "text",
+            (polyspec_orm::Key::B(left), Val::Bool(right)) if left == right => "bool",
+            (polyspec_orm::Key::X(left), Val::Bytes(right)) if left == right => "bytes",
+            (polyspec_orm::Key::T(left), Val::DateTime(right)) if left == right => "datetime",
+            _ => return Err(format!("key {key:?} changed its native value")),
+        });
+        keys.push(key);
+    }
+    let got = failure.unwrap_or_else(|| json!({ "groups": groups, "types": types }));
+    let want = &step["expect"][database];
+    if &got == want {
+        Ok(())
+    } else {
+        Err(format!("got {got}, want {want}"))
+    }
+}
+
 fn model_assign(step: &Value) -> Result<(), String> {
     let model = step["model"].as_str().unwrap_or_default();
     let column = step["column"].as_str().unwrap_or_default();
@@ -2330,7 +2418,7 @@ mod database {
             Ok(output) => output,
             Err(Failure::Step(message)) => return Err(message),
             Err(Failure::Call(message)) => {
-                let (message, cause) = match message.strip_suffix(DRIVER_CAUSE) {
+                let (message, cause) = match message.strip_suffix(super::DRIVER_CAUSE) {
                     Some(text) => (text.to_owned(), true),
                     None => (message, false),
                 };
@@ -2475,7 +2563,12 @@ mod database {
             }
             "schema.add_tables_and_columns" => {
                 let schema = schema_argument(step, context).map_err(fault)?;
-                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(orm)?;
+                let added = context.db.utils().schema().add_tables_and_columns(&schema).await.map_err(|error| {
+                    match step["message_contains"].as_str() {
+                        Some(text) if !error.to_string().contains(text) => fault(format!("the message {error} holds no {text}")),
+                        _ => orm(error),
+                    }
+                })?;
                 let names: Vec<Value> = added.iter().map(|name| json!({ "text": name })).collect();
                 Output::fields(json!({ "value": { "array": names } }))
             }
@@ -2608,6 +2701,14 @@ mod database {
                     for event in &mut events {
                         if let Some(members) = event["object"].as_array_mut() {
                             members.retain(|member| matches!(member[0].as_str(), Some("sql" | "kind")));
+                        }
+                    }
+                }
+                if step["compare"].as_str() == Some("shape") {
+                    // The kind and the tables are the shape of a plan, whatever its text and binds on the database.
+                    for event in &mut events {
+                        if let Some(members) = event["object"].as_array_mut() {
+                            members.retain(|member| matches!(member[0].as_str(), Some("kind" | "tables")));
                         }
                     }
                 }
@@ -3157,7 +3258,7 @@ mod statement {
     }
 
     /// The wrapper of one bind of an event: a byte bind (a value a codec encoded) compares as its text.
-    fn bind_wrapper(p: &Param) -> Value {
+    pub(super) fn bind_wrapper(p: &Param) -> Value {
         match p {
             Param::Null => json!({ "null": "text" }),
             Param::Str(text) => json!({ "text": text }),
@@ -3213,7 +3314,7 @@ mod tables {
     use polyspec_orm::dbspec::Type;
     use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
     use polyspec_orm::model::{
-        create, creates, delete, get_avg, get_core, get_count, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
+        create, creates, delete, get_avg, get_core, get_count, get_page_plan_steps, get_query, get_sum, gets, gets_count, gets_page, restore, restore_or_create, save, to_array,
         update,
     };
     use polyspec_orm::{AesKeyring, Collection, Config, Core, Db, Entity, Error as OrmError, Model, Param, RequestParams, Schema, Val};
@@ -3225,8 +3326,9 @@ mod tables {
     /// The kinds of the read requests (the hook kinds reads and reads+restore).
     const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
-    /// A request that a record action of the installed hook saw: its kind and its table (hook.records).
-    type Record = (String, String);
+    /// A request that a record action of the installed hook saw: its kind, its table and the wrapper of the bound value of a
+    /// record_param action (hook.records).
+    type Record = (String, String, Option<Value>);
 
     /// The trials of a table recipe on `database`, over the fixture set at `fixture` (FCV-3, FCV-4).
     pub fn table_trials(entry: &str, path: &str, fixture: &str, database: &str) -> Vec<polyspec_orm_testcase::Trial> {
@@ -3494,6 +3596,13 @@ mod tables {
                         return Ok(());
                     }
                     "tuple" => return tuple(core, conn, value),
+                    "fulltext_boolean" => {
+                        let columns: Vec<&'static str> = names(&value["columns"]).iter().map(|name| leaked(name)).collect();
+                        let text = value["text"].as_str().ok_or_else(|| format!("fulltext_boolean {value} names no text"))?;
+                        let key = ChainKey { op: "fulltext_boolean", columns: Box::leak(columns.into_boxed_slice()), ..ChainKey::EMPTY };
+                        core.chain(conn, &[key], vec![Arg::Value(ArgValue::One(Param::Str(text.to_owned())))]);
+                        return Ok(());
+                    }
                     _ => {}
                 }
             }
@@ -3914,8 +4023,12 @@ mod tables {
             let records = self.records.lock().expect("the records").clone();
             let mut counts = Map::new();
             let mut list = Vec::new();
-            for (kind, entity) in &records {
-                list.push(json!({ "object": [["kind", { "text": kind }], ["entity", { "text": entity }]] }));
+            for (kind, entity, param) in &records {
+                let mut members = vec![json!(["kind", { "text": kind }]), json!(["entity", { "text": entity }])];
+                if let Some(param) = param {
+                    members.push(json!(["param", param]));
+                }
+                list.push(json!({ "object": members }));
                 let n = counts.get(entity).and_then(Value::as_u64).map_or(1, |n| n + 1);
                 counts.insert(entity.clone(), json!(n));
             }
@@ -3945,8 +4058,10 @@ mod tables {
                     let mut relation = step["relation"].clone();
                     relation["columns"] = Value::Null;
                     let mut child = build.relation(&relation)?;
-                    // This relation runs on the connection of its query, as a relation that names connect does (INT-87).
-                    child.connect(db);
+                    // Only a relation that names connect runs on the connection of the query; without it the child has no handle and takes the connection of its parent (INT-87).
+                    if relation["connect"].as_bool() == Some(true) {
+                        child.connect(db);
+                    }
                     core.relation(relation["many"].as_bool() == Some(true), child);
                 }
                 core
@@ -3965,6 +4080,23 @@ mod tables {
                 let statement = get_query(&core).await.map_err(orm)?;
                 let binds: Vec<Value> = statement.binds.iter().map(bind_json).collect();
                 return Ok(json!({ "json": { "sql": statement.sql, "binds": binds } }));
+            }
+            if step["plan"].as_bool() == Some(true) {
+                let (offset, count) = limit_of(&step["limit"])?.unwrap_or((0, 0));
+                if count == 0 {
+                    return Err("a plan needs a limit above 0".into());
+                }
+                let steps = get_page_plan_steps(&core, offset / count + 1, count).await.map_err(orm)?;
+                let list: Vec<Value> = steps
+                    .iter()
+                    .map(|plan_step| {
+                        let sql = plan_step.sql.to_uppercase();
+                        let count: serde_json::Map<String, Value> =
+                            names(&step["plan_count"]).iter().map(|text| ((*text).to_owned(), json!(sql.matches(text.as_str()).count()))).collect();
+                        json!({ "role": plan_step.role, "tables": plan_step.tables, "count": count })
+                    })
+                    .collect();
+                return Ok(json!({ "json": list }));
             }
             let root = TableRow::from_core(core);
             if let Some(aggregate) = step.get("aggregate") {
@@ -4005,6 +4137,13 @@ mod tables {
                 "json": { "keys": keys, "total": page.total_count, "pages": page.total_pages, "page": page.page, "per_page": page.per_page },
                 "total": page.total_count,
             });
+            if step["items"].as_bool() == Some(true) {
+                let mut items = Vec::new();
+                for row in page.items.models() {
+                    items.push(row_json(row, &step["pick"])?);
+                }
+                fields["json"]["items"] = json!(items);
+            }
             if wants_rows(step) {
                 fields["rows"] = cells_of(page.items.models(), step)?;
             }
@@ -4213,8 +4352,10 @@ mod tables {
                     let records = self.records.clone();
                     records.lock().expect("the records").clear();
                     let hooked = base.with_request_hook(move |request: &mut Request, params: &mut RequestParams| run_hook(&actions, &records, request, params));
-                    self.bases.insert(connection.to_owned(), base);
-                    connections.insert(connection, hooked);
+                    // With as, the hooked handle takes that name and the connection keeps its name, unhooked (INT-78).
+                    let target = step["as"].as_str().unwrap_or(connection);
+                    self.bases.insert(target.to_owned(), base);
+                    connections.insert(target, hooked);
                     Ok(json!({}))
                 }
                 "utils.aes_status" | "utils.aes_rotate" => {
@@ -4342,7 +4483,6 @@ mod tables {
         column: String,
         value: Option<Param>,
         nested: bool,
-        first: bool,
         code: String,
     }
 
@@ -4354,7 +4494,7 @@ mod tables {
                 Value::Null => None,
                 wrapper => Some(param(wrapper)?),
             };
-            if matches!(action.as_str(), "scope" | "assign" | "rebind") && (value.is_none() || hook["column"].as_str().is_none()) {
+            if matches!(action.as_str(), "scope" | "assign" | "assign_first" | "rewrite") && (value.is_none() || hook["column"].as_str().is_none()) {
                 return Err(format!("hook action {action} needs a column and a value"));
             }
             out.push(HookAction {
@@ -4363,7 +4503,6 @@ mod tables {
                 column: hook["column"].as_str().map(str::to_owned).unwrap_or_default(),
                 value,
                 nested: hook["nested"].as_bool() == Some(true),
-                first: hook["first"].as_bool() == Some(true),
                 code: hook["error"].as_str().map(str::to_owned).unwrap_or_default(),
             });
         }
@@ -4422,29 +4561,32 @@ mod tables {
                 }
                 ("assign", Some(value)) => {
                     let p = params.add(value.clone());
-                    let assignment = Assign { column: action.column.clone(), p: Some(p), ..Default::default() };
-                    if action.first {
-                        request.set.insert(0, assignment);
-                    } else {
-                        request.set.push(assignment);
-                    }
+                    request.set.push(Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
                     for row in &mut request.rows {
                         let q = params.add(value.clone());
                         row.push(q);
                     }
                 }
-                ("rebind", Some(value)) => {
-                    for assignment in &mut request.set {
-                        if assignment.column == action.column {
-                            assignment.p = Some(params.add(value.clone()));
-                        }
+                ("assign_first", Some(value)) => {
+                    let p = params.add(value.clone());
+                    request.set.insert(0, Assign { column: action.column.clone(), p: Some(p), ..Default::default() });
+                }
+                ("rewrite", Some(value)) => {
+                    for assignment in request.set.iter_mut().filter(|assignment| assignment.column == action.column) {
+                        assignment.p = Some(params.add(value.clone()));
                     }
                 }
-                ("bad_param", _) => {
+                ("invalid_param", _) => {
                     let p = request.n_params + 5;
                     and_where(&mut request.query, equal_pred(&action.column, p));
                 }
-                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone())),
+                ("record", _) => records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), None)),
+                ("record_param", _) => {
+                    for assignment in request.set.iter().filter(|assignment| assignment.column == action.column) {
+                        let param = assignment.p.and_then(|p| params.get(p)).map(super::statement::bind_wrapper);
+                        records.lock().expect("the records").push((request.kind.clone(), request.query.entity.clone(), param));
+                    }
+                }
                 ("fail", _) => return Err(OrmError::Engine { code: action.code.clone(), msg: format!("request hook refused {}", request.kind) }),
                 (other, _) => return Err(OrmError::Engine { code: "STEP".into(), msg: format!("hook action {other} has no column value") }),
             }

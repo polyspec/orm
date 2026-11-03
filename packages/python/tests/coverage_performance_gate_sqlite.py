@@ -1,15 +1,13 @@
-import os
 import unittest
 
 from .coverage_case import coverage_main
-from .coverage_performance_gate import feature_hot_path_gate
+from .coverage_performance_gate import hot_path_gate
 
 
 # Requirements: PERF-1.
 class CoverageTest(unittest.TestCase):
     def test_hot_path_gate(self):
-        self.assertEqual(os.environ.get("ORM_FEATURE_DATABASE"), "sqlite")
-        feature_hot_path_gate()
+        hot_path_gate("sqlite")
         print("CASE hot_path_gate [sqlite] PASS", flush=True)
 
 

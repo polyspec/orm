@@ -2205,6 +2205,11 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
         return fail("INTERNAL", "%s.%s is missing from a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
     }
     zval *t = orm_hash_value(col, "type", sizeof("type") - 1, false);
+    /* INT-160: a sum leaves the range of its column. */
+    if (t != NULL && zend_string_equals_literal(agg, "sum") && Z_TYPE_P(t) == IS_STRING &&
+        (zend_string_equals_literal(Z_STR_P(t), "i16") || zend_string_equals_literal(Z_STR_P(t), "i32"))) {
+        return fmt(c, "i64");
+    }
     return t != NULL ? zstr(c, t) : fail("INTERNAL", "%s.%s has no type in a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
 }
 

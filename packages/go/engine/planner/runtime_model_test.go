@@ -81,22 +81,6 @@ func intp(i int) *int { return &i }
 
 // The default select set leaves out only the explicit select columns. text, bytes, and codec
 // columns are not left out by themselves.
-func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
-	// Requirements: PRT-9, DBS-68.
-	testcase.Start(t, testcase.Compute)
-	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, c := range p.Steps[0].Assemble.Columns {
-		names = append(names, c.Name)
-	}
-	if got := strings.Join(names, ","); got != "id,rank,body,payload,meta,created_at" {
-		t.Fatalf("default select set = %s", got)
-	}
-}
-
 // An i16 field is read as the i16 value type and accepts plus.
 func TestI16FieldPlansAsI16(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

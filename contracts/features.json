@@ -1301,7 +1301,6 @@
         "packages/ts/tests/typecheck.ts",
         "packages/ts/tests/decimal_model_type.ts",
         "packages/ts/src/bin/orm-gen.ts",
-        "packages/python/tests/test_collection.py",
         "packages/python/tests/test_aggregate_numeric.py",
         "packages/python/tests/test_aggregate_numeric_driver_values.py",
         "packages/python/tests/test_alias_columns.py",
@@ -1340,9 +1339,7 @@
         "packages/ts/tests/model_json_output.test.mts",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php/tests/PageCacheBoundCases.php",
-        "packages/ts/tests/split-null.test.mjs",
         "packages/python/tests/test_group_rows_db.py",
-        "packages/python/tests/test_split_null.py",
         "packages/php-ext/tests/ChainNativeSurfaceTest.php",
         "packages/go/model/group_rows_db_test.go",
         "packages/rust/orm/src/collection.rs",
@@ -1350,7 +1347,6 @@
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
         "packages/rust/orm/tests/compiler_fixtures.rs",
-        "packages/rust/tests/tests/collection_get_fetched.rs",
         "packages/php-ext/tests/CollectionIdentityTestExtensionTest.php",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/GroupRowsTestExtensionTest.php",
@@ -1762,10 +1758,9 @@
         },
         {
           "id": "queries-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_collection && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric && packages/python/.venv/bin/python -m packages.python.tests.test_aggregate_numeric_driver_values && packages/python/.venv/bin/python -m packages.python.tests.test_alias_columns && packages/python/.venv/bin/python -m packages.python.tests.test_subqueries && packages/python/.venv/bin/python -m packages.python.tests.test_terminal_by && packages/python/.venv/bin/python -m packages.python.tests.test_related_output && packages/python/.venv/bin/python -m packages.python.tests.test_remove_columns && packages/python/.venv/bin/python -m packages.python.tests.test_model_json_text && packages/python/.venv/bin/python -m packages.python.tests.test_styled_column_states && packages/python/.venv/bin/python -m packages.python.tests.test_styled_sql_null && packages/python/.venv/bin/python -m packages.python.tests.test_values",
           "shard": "other",
           "inputs": [
-            "packages/python/tests/test_collection.py",
             "packages/python/tests/test_aggregate_numeric.py",
             "packages/python/tests/test_aggregate_numeric_driver_values.py",
             "packages/python/tests/test_alias_columns.py",
@@ -1804,7 +1799,7 @@
         },
         {
           "id": "collection-identity-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionKeyIdentityFromFixture|TestCollectionKeyNullIsCodecDecodeFromFixture)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCompositeCollectionKeyTypedComponentsFromFixture|TestNullableCompositeRowHasNoCollectionKey)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_identity_test.go",
@@ -3966,7 +3961,9 @@
         "packages/python/tests/statement_events_server_transactions.py",
         "packages/python/tests/test_event_placeholders.py",
         "packages/python/tests/test_subscriber_error.py",
-        "packages/python/tests/coverage_statement_events.py",
+        "packages/python/tests/test_statement_events_mysql.py",
+        "packages/python/tests/test_statement_events_postgres.py",
+        "packages/python/tests/test_statement_events_sqlite.py",
         "packages/php-ext/tests/StatementEventSurfaceTest.php",
         "packages/php-ext/tests/StatementEventsTestExtensionTest.php",
         "packages/ts/tests/statement_events-mysql.test.mjs",
@@ -4344,19 +4341,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_events.py"
+              "packages/python/tests/test_statement_events_mysql.py",
+              "packages/python/tests/test_statement_events_postgres.py",
+              "packages/python/tests/test_statement_events_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/case_database.py",
-              "packages/python/tests/statement_events.py",
-              "contracts/fixtures/statement_events/statement_events.dbs",
-              "tests/events/vectors.json"
+              "contracts/fixtures/statement_events/statement_events.json",
+              "contracts/fixtures/statement_events/statement_events.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_mysql.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4366,7 +4363,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_postgres.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4376,7 +4373,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_events.py",
+                  "test": "packages/python/tests/test_statement_events_sqlite.py",
                   "cases": [
                     "statement_events"
                   ],
@@ -4497,7 +4494,7 @@
         "packages/go/model/decimal_field_test.go",
         "packages/php/tests/DecimalModelTest.php",
         "packages/python/tests/test_model_fields.py",
-        "packages/python/tests/test_runtime_model_selected_set.py",
+        "packages/python/tests/test_default_select_set_none.py",
         "packages/php-ext/tests/DecimalModelTestExtensionTest.php",
         "packages/php-ext/tests/ModelMethodsTestExtensionTest.php",
         "packages/php-ext/tests/OrmGenCliTestExtensionTest.php",
@@ -4882,6 +4879,7 @@
         "packages/ts/tests/dbspec-plan-chains.mjs",
         "packages/ts/tests/dbspec-plan-parse.mjs",
         "packages/ts/tests/dbspec-plan-comparisons.mjs",
+        "packages/ts/tests/dbspec-add-tables-steps.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/dbspec-render.mjs",
         "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
@@ -4920,7 +4918,6 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php/tests/DbspecSetTest.php",
         "packages/go/engine/dbspec/analyze_test.go",
-        "packages/ts/tests/dbspec-analyze.mjs",
         "packages/go/engine/dbspec/set_test.go",
         "packages/rust/schema/tests/dbspec_set.rs",
         "packages/rust/schema/tests/dbspec_show_create.rs",
@@ -4935,6 +4932,7 @@
         "packages/python/tests/test_dbspec_plan_chains.py",
         "packages/python/tests/test_dbspec_plan_parse.py",
         "packages/python/tests/test_dbspec_plan_comparisons.py",
+        "packages/python/tests/test_dbspec_add_tables_steps.py",
         "packages/python/tests/test_dbspec_analyze.py",
         "packages/python/tests/test_dbspec_set_files.py",
         "packages/python/tests/test_dbspec_show_create.py",
@@ -5140,7 +5138,6 @@
           "command": "make dbspec-ts-check",
           "shard": "other",
           "inputs": [
-            "packages/ts/tests/dbspec-analyze.mjs",
             "packages/ts/tests/dbspec-rules.mjs",
             "packages/ts/tests/dbspec-render.mjs",
             "packages/ts/tests/dbspec_dialect_refusal-none.test.mjs",
@@ -5149,6 +5146,7 @@
             "packages/ts/tests/dbspec-plan-chains.mjs",
             "packages/ts/tests/dbspec-plan-parse.mjs",
             "packages/ts/tests/dbspec-plan-comparisons.mjs",
+            "packages/ts/tests/dbspec-add-tables-steps.mjs",
             "packages/ts/tests/plan_case.mjs",
             "packages/ts/tests/dbspec-apply-cleanup.mjs",
             "packages/ts/tests/dbspec-unicode.mjs",
@@ -5194,6 +5192,7 @@
             "packages/python/tests/test_dbspec_plan_chains.py",
             "packages/python/tests/test_dbspec_plan_parse.py",
             "packages/python/tests/test_dbspec_plan_comparisons.py",
+            "packages/python/tests/test_dbspec_add_tables_steps.py",
             "packages/python/tests/dbspec_apply.py",
             "packages/python/tests/test_dbspec_analyze.py",
             "packages/python/tests/test_dbspec_set_files.py",
@@ -5632,24 +5631,18 @@
         "packages/ts/tests/case-database.mjs",
         "packages/go/decimalmodel/schema_set_test.go",
         "packages/rust/tests/tests/decimal_physical.rs",
-        "packages/go/orm/add_tables_and_columns_test.go",
-        "packages/php/tests/AddTablesAndColumnsTest.php",
-        "packages/rust/orm/tests/add_tables_and_columns.rs",
-        "packages/ts/tests/add-tables-and-columns.mjs",
         "packages/rust/orm/tests/external_documents.rs",
         "packages/go/orm/register_test.go",
         "packages/rust/orm/tests/install.rs",
         "packages/ts/tests/dbspec_runtime_db.mjs",
         "packages/python/tests/test_schema_install.py",
         "packages/python/tests/test_schema_install_uses.py",
-        "packages/python/tests/test_add_tables_and_columns.py",
-        "packages/python/tests/test_add_tables_steps.py",
         "packages/python/tests/test_installed_differences.py",
         "packages/python/tests/install_changed_database.py",
         "packages/python/tests/schema_inspection.py",
         "packages/python/tests/test_schema_inspection.py",
         "packages/python/tests/test_schema_utils.py",
-        "packages/python/tests/test_load_set.py",
+        "packages/python/tests/test_dbspec_load_set_none.py",
         "packages/python/tests/case_database.py",
         "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
         "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
@@ -5711,44 +5704,6 @@
           "inputs": [
             "packages/php/tests/EngineTest.php",
             "tests/ir/validate.json"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestAddTablesAndColumns' -count=1",
-          "shard": "other",
-          "inputs": [
-            "packages/go/orm/add_tables_and_columns_test.go",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AddTablesAndColumnsTest.php",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/AddTablesAndColumnsTest.php",
-            "packages/php/tests/case_database.php",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-typescript",
-          "command": "node packages/ts/tests/add-tables-and-columns.mjs",
-          "shard": "other",
-          "inputs": [
-            "packages/ts/tests/add-tables-and-columns.mjs",
-            "packages/ts/tests/case-database.mjs",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
-          ]
-        },
-        {
-          "id": "install-add-tables-and-columns-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts install-add-tables-and-columns-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/orm/tests/add_tables_and_columns.rs",
-            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
@@ -5831,17 +5786,15 @@
         },
         {
           "id": "orm-install-python",
-          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_and_columns && packages/python/.venv/bin/python -m packages.python.tests.test_add_tables_steps && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_load_set && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_schema_install && packages/python/.venv/bin/python -m packages.python.tests.test_schema_install_uses && packages/python/.venv/bin/python -m packages.python.tests.test_installed_differences && packages/python/.venv/bin/python -m packages.python.tests.test_schema_inspection && packages/python/.venv/bin/python -m packages.python.tests.test_schema_utils && packages/python/.venv/bin/python -m packages.python.tests.test_dbspec_load_set_none && packages/python/.venv/bin/python -m packages.python.tests.test_schema_set",
           "shard": "other",
           "inputs": [
             "packages/python/tests/test_schema_install.py",
             "packages/python/tests/test_schema_install_uses.py",
-            "packages/python/tests/test_add_tables_and_columns.py",
-            "packages/python/tests/test_add_tables_steps.py",
             "packages/python/tests/test_installed_differences.py",
             "packages/python/tests/test_schema_inspection.py",
             "packages/python/tests/test_schema_utils.py",
-            "packages/python/tests/test_load_set.py",
+            "packages/python/tests/test_dbspec_load_set_none.py",
             "packages/python/src/polyspec/orm/schema.py",
             "packages/python/src/polyspec/orm/utils.py",
             "packages/python/tests/test_schema_set.py",
@@ -7898,30 +7851,23 @@
         }
       ],
       "parity": [
-        "coverage-composite-keys-composite-key-rows"
+        "composite_keys-mysql",
+        "composite_keys-postgres",
+        "composite_keys-sqlite",
+        "coverage-composite-keys-native"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
-        "packages/go/model/coverage_helpers_test.go",
-        "packages/php/tests/coverage_cases.php",
-        "packages/rust/tests/tests/integration/coverage_env.rs",
-        "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py",
         "contracts/fixtures/bench/bench.dbs",
-        "contracts/fixtures/composite_key_collision.json"
+        "contracts/fixtures/composite_key_collision.json",
+        "contracts/fixtures/composite_keys/composite_keys.json"
       ],
       "tests": [
         "packages/go/model/model_test.go",
         "packages/php/tests/ModelTest.php",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/ts/tests/model.mjs",
-        "packages/go/model/coverage_composite_keys_test.go",
-        "packages/php/tests/CoverageCompositeKeysTest.php",
-        "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-        "packages/ts/tests/coverage_composite_keys.mjs",
         "packages/python/tests/test_key_prefix.py",
-        "packages/python/tests/coverage_composite_keys.py",
-        "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
         "packages/php-ext/tests/CompositeKeysNativeTest.php",
         "packages/php-ext/tests/ModelTestExtensionTest.php"
       ],
@@ -7956,24 +7902,20 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/model/coverage_composite_keys_test.go"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json"
+              "packages/go/orm/recipe_composite_keys_test.go"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "test": "packages/go/orm/recipe_composite_keys_test.go",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                    "composite_key_rows": "TestRecipeCompositeKeysMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7981,12 +7923,12 @@
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "test": "packages/go/orm/recipe_composite_keys_test.go",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                    "composite_key_rows": "TestRecipeCompositeKeysPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7994,12 +7936,12 @@
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "test": "packages/go/orm/recipe_composite_keys_test.go",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                    "composite_key_rows": "TestRecipeCompositeKeysSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8009,23 +7951,18 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageCompositeKeysTest.php"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json",
-              "packages/php/tests/CoverageCompositeKeysCase.php"
+              "packages/php/tests/CompositeKeysRecipeTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "test": "packages/php/tests/CompositeKeysRecipeTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
+                    "composite_key_rows": "testMysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8033,12 +7970,12 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "test": "packages/php/tests/CompositeKeysRecipeTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
+                    "composite_key_rows": "testPostgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8046,12 +7983,12 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "test": "packages/php/tests/CompositeKeysRecipeTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
+                    "composite_key_rows": "testSqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8061,22 +7998,20 @@
           "rust": {
             "part": "packages/rust/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json"
+              "packages/rust/tests/tests/composite_keys_mysql.rs",
+              "packages/rust/tests/tests/composite_keys_postgres.rs",
+              "packages/rust/tests/tests/composite_keys_sqlite.rs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/composite_keys_mysql.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                    "composite_key_rows": "composite_keys_mysql"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -8084,12 +8019,12 @@
               "postgres": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/composite_keys_postgres.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                    "composite_key_rows": "composite_keys_postgres"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -8097,12 +8032,12 @@
               "sqlite": [
                 {
                   "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "test": "packages/rust/tests/tests/composite_keys_sqlite.rs",
                   "cases": [
                     "composite_key_rows"
                   ],
                   "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                    "composite_key_rows": "composite_keys_sqlite"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8112,17 +8047,15 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_composite_keys.mjs"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json"
+              "packages/ts/tests/composite_keys-mysql.test.mjs",
+              "packages/ts/tests/composite_keys-postgres.test.mjs",
+              "packages/ts/tests/composite_keys-sqlite.test.mjs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "test": "packages/ts/tests/composite_keys-mysql.test.mjs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8132,7 +8065,7 @@
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "test": "packages/ts/tests/composite_keys-postgres.test.mjs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8142,7 +8075,7 @@
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "test": "packages/ts/tests/composite_keys-sqlite.test.mjs",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8154,17 +8087,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_composite_keys.py"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json"
+              "packages/python/tests/test_composite_keys_mysql.py",
+              "packages/python/tests/test_composite_keys_postgres.py",
+              "packages/python/tests/test_composite_keys_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "test": "packages/python/tests/test_composite_keys_mysql.py",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8174,7 +8105,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "test": "packages/python/tests/test_composite_keys_postgres.py",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8184,7 +8115,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "test": "packages/python/tests/test_composite_keys_sqlite.py",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -8196,41 +8127,45 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php"
-            ],
-            "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/composite_key_collision.json",
-              "packages/php/tests/CoverageCompositeKeysCase.php"
+              "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testMysql"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testPostgres"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "test": "packages/php-ext/tests/CompositeKeysRecipeTestExtensionTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testSqlite"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8788,7 +8723,6 @@
         "packages/go/model/chunk_test.go",
         "packages/rust/tests/tests/integration_program/main.rs",
         "packages/php/tests/RelationKeysTest.php",
-        "packages/php/tests/ParentSlotPaddingTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/tests/tests/integration/result_chains.rs",
@@ -8852,11 +8786,10 @@
         },
         {
           "id": "chunking-php-keys",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php packages/php/tests/ParentSlotPaddingTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RelationKeysTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/RelationKeysTest.php",
-            "packages/php/tests/ParentSlotPaddingTest.php"
+            "packages/php/tests/RelationKeysTest.php"
           ]
         },
         {
@@ -9260,7 +9193,6 @@
       ],
       "parity": [
         "client-query-relation",
-        "coverage-composite-keys-composite-key-rows",
         "coverage-constraints-and-relations-immutable-write",
         "coverage-constraints-and-relations-constraint-errors",
         "constraints_and_relations-mysql",
@@ -9390,7 +9322,6 @@
         "kind": "database",
         "cases": [
           "constraint_errors",
-          "composite_key_rows",
           "external_relation",
           "immutable_write"
         ],
@@ -9398,8 +9329,7 @@
           "go": {
             "part": "packages/go",
             "tests": [
-              "packages/go/model/coverage_constraints_and_relations_test.go",
-              "packages/go/model/coverage_composite_keys_test.go"
+              "packages/go/model/coverage_constraints_and_relations_test.go"
             ],
             "commands": {
               "mysql": [
@@ -9415,17 +9345,6 @@
                     "constraint_errors": "TestCoverageConstraintErrors",
                     "external_relation": "TestCoverageExternalRelation",
                     "immutable_write": "TestCoverageImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9445,17 +9364,6 @@
                     "immutable_write": "TestCoverageImmutableWrite"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9471,17 +9379,6 @@
                     "constraint_errors": "TestCoverageConstraintErrors",
                     "external_relation": "TestCoverageExternalRelation",
                     "immutable_write": "TestCoverageImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "go",
-                  "test": "packages/go/model/coverage_composite_keys_test.go",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "TestCoverageCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9496,8 +9393,7 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-              "packages/php/tests/CoverageCompositeKeysTest.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
             ],
             "commands": {
               "mysql": [
@@ -9513,17 +9409,6 @@
                     "constraint_errors": "testConstraintErrors",
                     "external_relation": "testExternalRelation",
                     "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9543,17 +9428,6 @@
                     "immutable_write": "testImmutableWrite"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9569,17 +9443,6 @@
                     "constraint_errors": "testConstraintErrors",
                     "external_relation": "testExternalRelation",
                     "immutable_write": "testImmutableWrite"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "testCompositeKeyRows"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9595,8 +9458,7 @@
           "rust": {
             "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-              "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
+              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs"
             ],
             "commands": {
               "mysql": [
@@ -9612,17 +9474,6 @@
                     "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
                     "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
                     "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
-                  },
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9642,17 +9493,6 @@
                     "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
-                  },
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9668,17 +9508,6 @@
                     "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
                     "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
                     "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
-                  },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "symbols": {
-                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9694,8 +9523,7 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_constraints_and_relations.mjs",
-              "packages/ts/tests/coverage_composite_keys.mjs"
+              "packages/ts/tests/coverage_constraints_and_relations.mjs"
             ],
             "commands": {
               "mysql": [
@@ -9706,14 +9534,6 @@
                     "constraint_errors",
                     "external_relation",
                     "immutable_write"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
-                  "cases": [
-                    "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9728,14 +9548,6 @@
                     "immutable_write"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9746,14 +9558,6 @@
                     "constraint_errors",
                     "external_relation",
                     "immutable_write"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "node",
-                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
-                  "cases": [
-                    "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9769,8 +9573,7 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_constraints_and_relations.py",
-              "packages/python/tests/coverage_composite_keys.py"
+              "packages/python/tests/coverage_constraints_and_relations.py"
             ],
             "commands": {
               "mysql": [
@@ -9781,14 +9584,6 @@
                     "constraint_errors",
                     "external_relation",
                     "immutable_write"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
-                  "cases": [
-                    "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -9803,14 +9598,6 @@
                     "immutable_write"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9821,14 +9608,6 @@
                     "constraint_errors",
                     "external_relation",
                     "immutable_write"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "python",
-                  "test": "packages/python/tests/coverage_composite_keys.py",
-                  "cases": [
-                    "composite_key_rows"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -9845,8 +9624,7 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
-              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php"
+              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
             ],
             "inputs": [
               "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
@@ -9871,14 +9649,6 @@
                     "immutable_write": "testImmutableWrite"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
@@ -9896,14 +9666,6 @@
                     "immutable_write": "testImmutableWrite"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
@@ -9920,14 +9682,6 @@
                     "external_relation": "testExternalRelation",
                     "immutable_write": "testImmutableWrite"
                   },
-                  "dsn_env": "BENCH_SQLITE_DSN"
-                },
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-                  "cases": [
-                    "composite_key_rows"
-                  ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -12610,7 +12364,9 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
-        "packages/python/tests/coverage_request_hook.py",
+        "packages/python/tests/test_request_hook_mysql.py",
+        "packages/python/tests/test_request_hook_postgres.py",
+        "packages/python/tests/test_request_hook_sqlite.py",
         "packages/php-ext/tests/RequestHookTestExtensionTest.php"
       ],
       "docs": [
@@ -13163,18 +12919,19 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_request_hook.py"
+              "packages/python/tests/test_request_hook_mysql.py",
+              "packages/python/tests/test_request_hook_postgres.py",
+              "packages/python/tests/test_request_hook_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/test_request_hook.py",
-              "packages/python/tests/case_database.py",
+              "contracts/fixtures/request_hook/request_hook.json",
               "contracts/fixtures/request_hook/request_hook.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_mysql.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13197,7 +12954,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_postgres.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13220,7 +12977,7 @@
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_request_hook.py",
+                  "test": "packages/python/tests/test_request_hook_sqlite.py",
                   "cases": [
                     "without_hook",
                     "read_filter",
@@ -13384,8 +13141,8 @@
       "title": "Complex product search",
       "title_ko": "복합 상품 검색",
       "status": "implemented",
-      "description": "CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime uses its own seeded fixture database on MySQL, PostgreSQL, and SQLite; SQLite rejects full-text operators before issuing a statement.",
-      "description_ko": "CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.",
+      "description": "CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime runs the one recipe on MySQL, PostgreSQL, and SQLite in a case database of its own; SQLite rejects full-text operators before issuing a statement.",
+      "description_ko": "CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 자기 case 데이터베이스로 같은 recipe를 실행하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.",
       "inputs": {
         "type": "ProductSearchInput",
         "fields": [
@@ -13409,7 +13166,7 @@
         ]
       },
       "state": [
-        "connect to the runtime-owned, preseeded database",
+        "create the fixture rows in the run-owned case database",
         "compile the public generated-model query",
         "read the ordered root and count results",
         "load the six declared relations"
@@ -13421,7 +13178,9 @@
         }
       ],
       "parity": [
-        "complex-query-product-search",
+        "complex_query-mysql",
+        "complex_query-postgres",
+        "complex_query-sqlite",
         "fulltext-search-recipe-mysql",
         "fulltext-search-recipe-postgres",
         "fulltext-search-recipe-sqlite"
@@ -13431,12 +13190,22 @@
         "contracts/fixtures/complex_query/complex_query.json"
       ],
       "tests": [
-        "packages/go/complexquery/coverage_complex_query_test.go",
-        "packages/php/tests/ComplexQueryDbTest.php",
-        "packages/php-ext/tests/ComplexQueryNativeTest.php",
-        "packages/ts/tests/coverage_complex_query.mjs",
-        "packages/python/tests/coverage_complex_query.py",
-        "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+        "packages/go/orm/recipe_complex_query_test.go",
+        "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+        "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+        "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
+        "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
+        "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
+        "packages/python/tests/test_complex_query_mysql.py",
+        "packages/python/tests/test_complex_query_postgres.py",
+        "packages/python/tests/test_complex_query_sqlite.py",
+        "packages/rust/tests/tests/complex_query_mysql.rs",
+        "packages/rust/tests/tests/complex_query_postgres.rs",
+        "packages/rust/tests/tests/complex_query_sqlite.rs",
+        "packages/ts/tests/complex_query-mysql.test.mjs",
+        "packages/ts/tests/complex_query-postgres.test.mjs",
+        "packages/ts/tests/complex_query-sqlite.test.mjs",
         "packages/go/orm/recipe_fulltext_search_test.go",
         "packages/php/tests/FulltextSearchRecipeTest.php",
         "packages/php-ext/tests/FulltextSearchRecipeTestExtensionTest.php",
@@ -13449,7 +13218,6 @@
         "packages/rust/tests/tests/fulltext_search_recipe_mysql.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_postgres.rs",
         "packages/rust/tests/tests/fulltext_search_recipe_sqlite.rs",
-        "packages/ts/tests/complex-query.mjs",
         "packages/rust/orm/src/request.rs"
       ],
       "docs": [
@@ -13458,29 +13226,11 @@
       ],
       "verification": [
         {
-          "id": "complex-query-go-plan",
-          "command": "make complex-query-go-plan-check",
+          "id": "complex-query",
+          "command": "make complex-query-check",
           "shard": "other",
           "inputs": [
-            "packages/go/complexquery/public_plan_test.go"
-          ]
-        },
-        {
-          "id": "complex-query-php-owner",
-          "command": "make complex-query-php-db-check",
-          "shard": "other",
-          "inputs": [
-            "packages/php/tests/ComplexQueryDbTest.php",
-            "packages/php/tests/ComplexQueryDbCase.php"
-          ]
-        },
-        {
-          "id": "complex-query-php-extension-owner",
-          "command": "make complex-query-php-extension-db-check",
-          "shard": "other",
-          "inputs": [
-            "packages/php-ext/tests/ComplexQueryNativeTest.php",
-            "packages/php/tests/ComplexQueryDbCase.php"
+            "contracts/fixtures/complex_query/complex_query.json"
           ]
         },
         {
@@ -13508,159 +13258,110 @@
           "inputs": [
             "packages/python/tests/test_complex_query.py"
           ]
-        },
-        {
-          "id": "complex-query-rust-plan",
-          "command": "make complex-query-rust-plan-check",
-          "shard": "rust",
-          "inputs": [
-            "packages/rust/tests/tests/integration/coverage_complex_query.rs"
-          ]
         }
       ],
       "coverage": {
         "kind": "database",
         "cases": [
-          "complex_query_product_search"
+          "product_search_page"
         ],
         "owners": {
+          "rust": {
+            "part": "packages/rust/tests",
+            "tests": [
+              "packages/rust/tests/tests/complex_query_mysql.rs",
+              "packages/rust/tests/tests/complex_query_postgres.rs",
+              "packages/rust/tests/tests/complex_query_sqlite.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/complex_query_mysql.rs",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "complex_query_mysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/complex_query_postgres.rs",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "complex_query_postgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/complex_query_sqlite.rs",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "complex_query_sqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
           "go": {
-            "part": "packages/go/complexquery",
+            "part": "packages/go/orm",
             "tests": [
-              "packages/go/complexquery/coverage_complex_query_test.go"
+              "packages/go/orm/recipe_complex_query_test.go"
+            ],
+            "inputs": [
+              "contracts/fixtures/complex_query/complex_query.dbs",
+              "contracts/fixtures/complex_query/complex_query.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
-                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "test": "packages/go/orm/recipe_complex_query_test.go",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_GO_MYSQL_DSN",
                   "symbols": {
-                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
-                  }
+                    "product_search_page": "TestRecipeComplexQueryMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "go",
-                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "test": "packages/go/orm/recipe_complex_query_test.go",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_GO_POSTGRES_DSN",
                   "symbols": {
-                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
-                  }
+                    "product_search_page": "TestRecipeComplexQueryPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "go",
-                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "test": "packages/go/orm/recipe_complex_query_test.go",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_GO_SQLITE_DSN",
                   "symbols": {
-                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
-                  }
-                }
-              ]
-            }
-          },
-          "php": {
-            "part": "packages/php/tests",
-            "tests": [
-              "packages/php/tests/ComplexQueryDbTest.php"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/ComplexQueryDbTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_MYSQL_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPage"
-                  }
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/ComplexQueryDbTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_POSTGRES_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPage"
-                  }
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "php",
-                  "test": "packages/php/tests/ComplexQueryDbTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_SQLITE_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPage"
-                  }
-                }
-              ]
-            }
-          },
-          "php-extension": {
-            "part": "packages/php-ext/tests",
-            "tests": [
-              "packages/php-ext/tests/ComplexQueryNativeTest.php"
-            ],
-            "commands": {
-              "mysql": [
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_MYSQL_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
-                  }
-                }
-              ],
-              "postgres": [
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_POSTGRES_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
-                  }
-                }
-              ],
-              "sqlite": [
-                {
-                  "runner": "php",
-                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-                  "cases": [
-                    "complex_query_product_search"
-                  ],
-                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_SQLITE_DSN",
-                  "symbols": {
-                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
-                  }
+                    "product_search_page": "TestRecipeComplexQuerySqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
@@ -13668,37 +13369,43 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_complex_query.mjs"
+              "packages/ts/tests/complex_query-mysql.test.mjs",
+              "packages/ts/tests/complex_query-postgres.test.mjs",
+              "packages/ts/tests/complex_query-sqlite.test.mjs"
+            ],
+            "inputs": [
+              "contracts/fixtures/complex_query/complex_query.dbs",
+              "contracts/fixtures/complex_query/complex_query.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "test": "packages/ts/tests/complex_query-mysql.test.mjs",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_MYSQL_DSN"
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "test": "packages/ts/tests/complex_query-postgres.test.mjs",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_POSTGRES_DSN"
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "node",
-                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "test": "packages/ts/tests/complex_query-sqlite.test.mjs",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN"
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
@@ -13706,84 +13413,149 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_complex_query.py"
+              "packages/python/tests/test_complex_query_mysql.py",
+              "packages/python/tests/test_complex_query_postgres.py",
+              "packages/python/tests/test_complex_query_sqlite.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/complex_query/complex_query.dbs",
+              "contracts/fixtures/complex_query/complex_query.json"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "test": "packages/python/tests/test_complex_query_mysql.py",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_PYTHON_MYSQL_DSN"
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "test": "packages/python/tests/test_complex_query_postgres.py",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_PYTHON_POSTGRES_DSN"
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "test": "packages/python/tests/test_complex_query_sqlite.py",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_PYTHON_SQLITE_DSN"
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
           },
-          "rust": {
-            "part": "packages/rust/tests",
+          "php": {
+            "part": "packages/php/tests",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_complex_query.rs"
+              "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
+              "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
+              "packages/php/tests/ComplexQuerySqliteRecipeTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/complex_query/complex_query.dbs",
+              "contracts/fixtures/complex_query/complex_query.json"
             ],
             "commands": {
               "mysql": [
                 {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQueryMysqlRecipeTest.php",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_RUST_MYSQL_DSN",
                   "symbols": {
-                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
-                  }
+                    "product_search_page": "testMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
               "postgres": [
                 {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQueryPostgresRecipeTest.php",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_RUST_POSTGRES_DSN",
                   "symbols": {
-                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
-                  }
+                    "product_search_page": "testPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
               "sqlite": [
                 {
-                  "runner": "cargo",
-                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQuerySqliteRecipeTest.php",
                   "cases": [
-                    "complex_query_product_search"
+                    "product_search_page"
                   ],
-                  "dsn_env": "COMPLEX_QUERY_RUST_SQLITE_DSN",
                   "symbols": {
-                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
-                  }
+                    "product_search_page": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+              "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/complex_query/complex_query.dbs",
+              "contracts/fixtures/complex_query/complex_query.json"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQueryMysqlRecipeTestExtensionTest.php",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "testMysql"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQueryPostgresRecipeTestExtensionTest.php",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "testPostgres"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQuerySqliteRecipeTestExtensionTest.php",
+                  "cases": [
+                    "product_search_page"
+                  ],
+                  "symbols": {
+                    "product_search_page": "testSqlite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
@@ -14038,8 +13810,7 @@
         "packages/python/tests/test_statement_runner.py",
         "packages/rust/orm/tests/statement_runner.rs",
         "packages/php-ext/tests/StatementRunnerExtensionTest.php",
-        "packages/ts/tests/statement-runner-run.mjs",
-        "packages/python/tests/coverage_statement_runner.py"
+        "packages/ts/tests/statement-runner-run.mjs"
       ],
       "docs": [
         "docs/spec/interfaces.md"
@@ -14343,13 +14114,15 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_statement_runner.py"
+              "packages/python/tests/test_statement_runner_mysql.py",
+              "packages/python/tests/test_statement_runner_postgres.py",
+              "packages/python/tests/test_statement_runner_sqlite.py"
             ],
             "commands": {
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_sqlite.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14359,7 +14132,7 @@
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_mysql.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -14369,7 +14142,7 @@
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_statement_runner.py",
+                  "test": "packages/python/tests/test_statement_runner_postgres.py",
                   "cases": [
                     "statement_runner"
                   ],
@@ -15034,10 +14807,10 @@
         "packages/go/testcase/event_recorder.go"
       ],
       "tests": [
-        "packages/go/complexquery/complex_query_test.go",
+        "packages/go/complexquery/page_plan_steps_test.go",
         "packages/go/model/coverage_model_writes_test.go"
       ],
-      "command": "node scripts/features/coverage.mts --feature complex_query --part owner/go && node scripts/features/coverage.mts --feature model_writes --part owner/go"
+      "command": "make get-page-plan-steps-check/go && node scripts/features/coverage.mts --feature model_writes --part owner/go"
     },
     {
       "id": "rust-clock-integration-test-support",

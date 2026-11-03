@@ -2,7 +2,9 @@
   "$schema": "../../../scripts/features/schema/recipe.schema.json",
   "requirements": [
     "PLN-44",
-    "PRT-76"
+    "PRT-35",
+    "PRT-76",
+    "CFG-28"
   ],
   "fixture": "contracts/fixtures/parameter_chunking/dbspec-set.json",
   "cases": [
@@ -119,6 +121,432 @@
             }
           },
           "connection": "db"
+        }
+      ]
+    },
+    {
+      "id": "split_root_null_identity",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE chunk_author",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE chunk_author (seq BIGINT NULL, name VARCHAR(32) NOT NULL, batch_no BIGINT NULL)",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name, batch_no) VALUES (NULL, 'a', 1)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "split_root_composite_null_identity",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "DROP TABLE chunk_pair",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "CREATE TABLE chunk_pair (tenant_id BIGINT NOT NULL, enabled BOOLEAN NULL, label VARCHAR(32) NOT NULL, batch_no BIGINT NOT NULL)",
+          "reason": "A .dbs declares a primary key, which holds no NULL; only this table without it gives the merge of a split root in list a row whose identity is NULL (PRT-35)."
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_pair (tenant_id, enabled, label, batch_no) VALUES (0, NULL, '', 1)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkPair",
+          "columns": [
+            "tenant_id"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "error": "CODEC_DECODE"
+            },
+            "postgres": {
+              "error": "CODEC_DECODE"
+            },
+            "sqlite": {
+              "error": "CODEC_DECODE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "split_root_retains_falsey_identities",
+      "requirements": [
+        "PRT-35",
+        "PRT-76"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_author (seq, name, batch_no) VALUES (0, '', 1), (1, 'a', 2)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq",
+            "name"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "text": ""
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "text": ""
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "text": ""
+                  }
+                ],
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "a"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "sql": "INSERT INTO chunk_pair (tenant_id, enabled, label, batch_no) VALUES (0, FALSE, '', 1), (0, TRUE, '', 2)",
+          "reason": "seeds rows with the identities of the case, each with its batch_no in the IN list"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkPair",
+          "columns": [
+            "tenant_id",
+            "batch_no"
+          ],
+          "where": {
+            "batch_no": {
+              "array": [
+                {
+                  "sequence": {
+                    "from": 1,
+                    "count": 70000
+                  }
+                }
+              ]
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "1"
+                  }
+                ],
+                [
+                  {
+                    "int": "0"
+                  },
+                  {
+                    "int": "2"
+                  }
+                ]
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "model_parameter_after_schema_change",
+      "requirements": [
+        "CFG-28"
+      ],
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "sql.exec",
+          "reason": "a row whose text the new column type reads",
+          "sql": "INSERT INTO chunk_author (seq, name) VALUES (7, '7')"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "op": "sql.exec",
+          "only": [
+            "postgres"
+          ],
+          "reason": "changes the type of the column the statement the model read prepared compares with its parameter",
+          "sql": "ALTER TABLE chunk_author ALTER COLUMN name TYPE INTEGER USING name::integer"
+        },
+        {
+          "op": "model.query",
+          "connection": "db",
+          "model": "ChunkAuthor",
+          "columns": [
+            "seq"
+          ],
+          "order": [
+            "seq"
+          ],
+          "where": {
+            "name": {
+              "text": "7"
+            }
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "7"
+                  }
+                ]
+              ]
+            }
+          }
         }
       ]
     }

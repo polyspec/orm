@@ -220,6 +220,376 @@
             }
           },
           "connection": "db"
+        },
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "base"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "base",
+          "as": "recorder"
+        },
+        {
+          "op": "hook.install",
+          "connection": "base",
+          "as": "hooked",
+          "hooks": [
+            {
+              "action": "scope",
+              "kinds": "reads",
+              "column": "part",
+              "value": {
+                "text": "a"
+              },
+              "nested": false
+            }
+          ]
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "connection": "hooked",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "2"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "2"
+              }
+            }
+          }
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "connection": "base",
+          "expect": {
+            "mysql": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "postgres": {
+              "value": {
+                "int": "3"
+              }
+            },
+            "sqlite": {
+              "value": {
+                "int": "3"
+              }
+            }
+          }
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `hook_item` AS `a` WHERE `a`.`part` = ?"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM `hook_item` AS `a`"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = $1"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"hook_item\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"hook_item\" AS \"a\" WHERE \"a\".\"part\" = ?"
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": [
+                            {
+                              "text": "a"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  },
+                  {
+                    "object": [
+                      [
+                        "sql",
+                        {
+                          "text": "SELECT COUNT(*) FROM \"hook_item\" AS \"a\""
+                        }
+                      ],
+                      [
+                        "binds",
+                        {
+                          "array": []
+                        }
+                      ],
+                      [
+                        "kind",
+                        {
+                          "text": "select"
+                        }
+                      ],
+                      [
+                        "tables",
+                        {
+                          "array": [
+                            {
+                              "text": "hook_item"
+                            }
+                          ]
+                        }
+                      ],
+                      [
+                        "transaction",
+                        {
+                          "null": "int"
+                        }
+                      ],
+                      [
+                        "error",
+                        {
+                          "null": "text"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -282,14 +652,10 @@
         },
         {
           "op": "model.query",
+          "connection": "db",
           "model": "HookItem",
           "where": {},
-          "columns": [
-            "part",
-            "label"
-          ],
           "compile": true,
-          "connection": "db",
           "expect": {
             "mysql": {
               "json": {
@@ -784,7 +1150,8 @@
             "columns": [
               "part",
               "label"
-            ]
+            ],
+            "connect": true
           },
           "expect": {
             "mysql": {
@@ -1011,7 +1378,8 @@
             "columns": [
               "part",
               "label"
-            ]
+            ],
+            "connect": true
           },
           "expect": {
             "mysql": {
@@ -1155,7 +1523,8 @@
             "columns": [
               "part",
               "label"
-            ]
+            ],
+            "connect": true
           },
           "expect": {
             "mysql": {
@@ -1230,6 +1599,173 @@
               "text": "a1"
             }
           },
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "label",
+                "label"
+              ]
+            ],
+            "many": false,
+            "columns": [
+              "part",
+              "label"
+            ],
+            "connect": true
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "where": {},
+          "relation": {
+            "model": "HookItem",
+            "match": [
+              [
+                "label",
+                "label"
+              ]
+            ],
+            "many": true,
+            "columns": [
+              "part",
+              "label"
+            ]
+          },
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  },
+                  {
+                    "text": "a"
+                  },
+                  {
+                    "text": "a1"
+                  }
+                ]
+              ]
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "model.query",
+          "model": "HookEntry",
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "where": {},
           "relation": {
             "model": "HookItem",
             "match": [
@@ -2599,6 +3135,102 @@
       ]
     },
     {
+      "id": "invalid_param",
+      "requirements": [
+        "PRT-65"
+      ],
+      "seed": {
+        "rows": {
+          "hook_item": [
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a1"
+              }
+            },
+            {
+              "part": {
+                "text": "a"
+              },
+              "label": {
+                "text": "a2"
+              }
+            },
+            {
+              "part": {
+                "text": "b"
+              },
+              "label": {
+                "text": "b1"
+              }
+            }
+          ]
+        }
+      },
+      "steps": [
+        {
+          "op": "model.connect",
+          "pool_size": 1,
+          "as": "db"
+        },
+        {
+          "op": "events.subscribe",
+          "connection": "db",
+          "as": "recorder"
+        },
+        {
+          "op": "hook.install",
+          "hooks": [
+            {
+              "action": "invalid_param",
+              "kinds": "reads",
+              "column": "part"
+            }
+          ],
+          "connection": "db"
+        },
+        {
+          "op": "model.count",
+          "model": "HookItem",
+          "expect": {
+            "mysql": {
+              "error": "IR_INVALID"
+            },
+            "postgres": {
+              "error": "IR_INVALID"
+            },
+            "sqlite": {
+              "error": "IR_INVALID"
+            }
+          },
+          "connection": "db"
+        },
+        {
+          "op": "events.captured",
+          "ref": "recorder",
+          "expect": {
+            "mysql": {
+              "value": {
+                "array": []
+              }
+            },
+            "postgres": {
+              "value": {
+                "array": []
+              }
+            },
+            "sqlite": {
+              "value": {
+                "array": []
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "restore_rewritten_key",
       "requirements": [
         "DIA-161"
@@ -2666,7 +3298,7 @@
           "op": "hook.install",
           "hooks": [
             {
-              "action": "rebind",
+              "action": "rewrite",
               "kinds": [
                 "restore"
               ],
@@ -2873,15 +3505,14 @@
           "op": "hook.install",
           "hooks": [
             {
-              "action": "assign",
+              "action": "assign_first",
               "kinds": [
                 "restore"
               ],
               "column": "part",
               "value": {
                 "text": "a"
-              },
-              "first": true
+              }
             }
           ],
           "connection": "db"
@@ -3072,7 +3703,7 @@
           "op": "hook.install",
           "hooks": [
             {
-              "action": "rebind",
+              "action": "rewrite",
               "kinds": [
                 "restore"
               ],
@@ -3213,40 +3844,10 @@
       ]
     },
     {
-      "id": "invalid_param",
+      "id": "reads_params",
       "requirements": [
-        "PRT-65"
+        "INT-78"
       ],
-      "seed": {
-        "rows": {
-          "hook_item": [
-            {
-              "part": {
-                "text": "a"
-              },
-              "label": {
-                "text": "a1"
-              }
-            },
-            {
-              "part": {
-                "text": "a"
-              },
-              "label": {
-                "text": "a2"
-              }
-            },
-            {
-              "part": {
-                "text": "b"
-              },
-              "label": {
-                "text": "b1"
-              }
-            }
-          ]
-        }
-      },
       "steps": [
         {
           "op": "model.connect",
@@ -3254,57 +3855,168 @@
           "as": "db"
         },
         {
-          "op": "events.subscribe",
-          "connection": "db",
-          "as": "recorder"
-        },
-        {
           "op": "hook.install",
+          "connection": "db",
           "hooks": [
             {
-              "action": "bad_param",
+              "action": "record_param",
               "kinds": [
-                "count"
+                "insert"
               ],
-              "column": "part"
+              "column": "label"
             }
-          ],
-          "connection": "db"
+          ]
         },
         {
-          "op": "model.count",
+          "op": "model.create",
           "model": "HookItem",
-          "expect": {
-            "mysql": {
-              "error": "IR_INVALID"
+          "values": {
+            "part": {
+              "text": "r"
             },
-            "postgres": {
-              "error": "IR_INVALID"
-            },
-            "sqlite": {
-              "error": "IR_INVALID"
+            "label": {
+              "text": "read"
             }
           },
           "connection": "db"
         },
         {
-          "op": "events.captured",
-          "ref": "recorder",
+          "op": "hook.records",
           "expect": {
             "mysql": {
               "value": {
-                "array": []
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "param",
+                        {
+                          "text": "read"
+                        }
+                      ]
+                    ]
+                  }
+                ]
               }
             },
             "postgres": {
               "value": {
-                "array": []
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "param",
+                        {
+                          "text": "read"
+                        }
+                      ]
+                    ]
+                  }
+                ]
               }
             },
             "sqlite": {
               "value": {
-                "array": []
+                "array": [
+                  {
+                    "object": [
+                      [
+                        "kind",
+                        {
+                          "text": "insert"
+                        }
+                      ],
+                      [
+                        "entity",
+                        {
+                          "text": "hook_item"
+                        }
+                      ],
+                      [
+                        "param",
+                        {
+                          "text": "read"
+                        }
+                      ]
+                    ]
+                  }
+                ]
               }
+            }
+          }
+        },
+        {
+          "op": "model.query",
+          "model": "HookItem",
+          "where": {},
+          "columns": [
+            "part",
+            "label"
+          ],
+          "order": [
+            "id"
+          ],
+          "connection": "db",
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  },
+                  {
+                    "text": "read"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  },
+                  {
+                    "text": "read"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "text": "r"
+                  },
+                  {
+                    "text": "read"
+                  }
+                ]
+              ]
             }
           }
         }
