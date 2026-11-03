@@ -146,7 +146,7 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
       return error.lines;
     }
   };
-  assert.deepEqual(read(JSON.parse(readFileSync(new URL('../../contracts/fixtures/planner.json', import.meta.url), 'utf8'))), []);
+  assert.deepEqual(read(JSON.parse(readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'))), []);
   assert.notDeepEqual(read({ cases: [{ id: 'a', operation: 'o', expected: 1 }] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
@@ -163,10 +163,8 @@ caseTest('the composite-key rows fixture has distinct bounded tuples with equal 
     ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
     'composite_keys declares all six client owners',
   );
-  const owners = Object.values(coverageOwners);
-  for (const owner of owners) {
-    assert.ok(owner.inputs?.includes(fixturePath), `${owner.part} declares the shared input fixture`);
-  }
+  // No owner declares the fixture as an input: the owners run the recipe composite_keys; the reader of the fixture is
+  // CompositeKeysNativeTest of the PHP extension (PRT-40a), whose check target declares it in contracts/check-inputs.json.
   const fixtureSchema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
   const fixtureValue = parseJson<unknown>(
     readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'),

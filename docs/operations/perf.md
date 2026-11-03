@@ -41,7 +41,7 @@ The check measures the generated client and an equivalent native result in one p
 
 The SQL projection and binds and the expected PK and ordered results are the case `core_projected_reads` of `conformance_verification` on the three databases. It does not time the queries and does not replace the measurement cases.
 
-The separate Go and PHP checks under `make perf-check` read the seeded MySQL bench database from `ORM_BENCH_MYSQL_DSN`. The timing of feature coverage reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`. A check fails when its required DSN is absent; neither path substitutes an unrequested local or alternate database.
+The separate Go and PHP checks under `make perf-check` read the seeded MySQL bench database from `ORM_BENCH_MYSQL_DSN`. The Go measurement that `make perf-check` also runs, and the timing of feature coverage, read `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and `BENCH_SQLITE_DSN`. A check fails when its required DSN is absent; neither path substitutes an unrequested local or alternate database.
 
 With the converted baseline, PHP 8.4.25 on the local socket measures a PK ratio of 1.20–1.31 and a 100-row ratio of 1.06–1.12 across runs; the PK ratio is dominated by the fixed request build and plan cost of about 10.5µs per query.
 
