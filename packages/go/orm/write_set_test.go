@@ -18,7 +18,7 @@ func TestBackendWaitingForLockReportsPostgresWaiter(t *testing.T) {
 	dsn := newDatabase(t, "postgres")
 	db := connectInstalled(t, dsn, s)
 	defer testcase.Close(t, db)
-	ent := rowEntity("clock_event", s, clockColumns...)
+	ent := rowEntity("clock_event", s, "seq", "label", "created_ts")
 	var seq int64
 	if err := db.Transaction(func() error {
 		row := orm.NewCore(ent)

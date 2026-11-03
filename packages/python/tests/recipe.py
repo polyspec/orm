@@ -87,6 +87,7 @@ from .case_database import case_database
 from .recipe_apply import apply_ops
 from .coverage_case import native_query, native_session
 from .recipe_generator import check_generated_files, check_refused_generation, check_generator
+from .recipe_introspect import _introspect_refusal, _op_dbspec_introspect
 from .server_database import with_database
 from .recipe_keys import check_keys
 from .recipe_model import model_ops
@@ -1590,6 +1591,7 @@ _DBSPEC_OPS = (
     "dbspec.emit_plan",
     "dbspec.diff",
     "dbspec.plan_steps",
+    "dbspec.introspect_refusal",
     "dbspec.add_tables_steps",
     "dbspec.chain",
     "dbspec.compare",
@@ -1612,6 +1614,8 @@ def _dbspec(step: dict, bound: dict, database: str) -> None:
         got = {"diagnostics": _rows(diagnostics, False)}
     elif op == "dbspec.emit_plan":
         got = {"text": emit_plan(_dbspec_value(step["plan"], bound, "plan"))}
+    elif op == "dbspec.introspect_refusal":
+        got = _introspect_refusal(step["dialect"])
     elif op == "dbspec.plan_steps" and step["dialect"] not in ("mysql", "postgres", "sqlite"):
         got = _dialect_refusal(
             step["dialect"],
@@ -3845,6 +3849,7 @@ _DATABASE_OPS = {
     "catalog.delete_row": _op_delete_row,
     "session.end": _op_session_end,
     "dbspec.ddl_behavior": _op_ddl_behavior,
+    "dbspec.introspect": _op_dbspec_introspect,
     "sql.exec": _op_sql_exec,
     "events.subscribe": _op_events_subscribe,
     "events.fail_subscriber": _op_events_fail_subscriber,
