@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python owner of `conformance_verification` is the recipe of that name on each database; the Python coverage file of it is removed, and the requirements it was bound to are bound to the cases `conditions_values`, `creates_and_save`, `functions` and `relations`.
 - The round trip and rotation of an ordered-json AES column (COD-7) are a case of the aes_rotation recipe in all six runtimes, with the stored cell read past the codec; the native tests are gone.
 - A process deadline reports a process that has ended, and its case holds that the pid is gone (#T334-3-4-22)
 - The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.

@@ -10022,7 +10022,9 @@
         "packages/python/tests/conformance_mysql.py",
         "packages/python/tests/conformance_postgres.py",
         "packages/python/tests/conformance_sqlite.py",
-        "packages/python/tests/coverage_conformance_verification.py",
+        "packages/python/tests/test_conformance_verification_mysql.py",
+        "packages/python/tests/test_conformance_verification_postgres.py",
+        "packages/python/tests/test_conformance_verification_sqlite.py",
         "packages/python/tests/conformance_result.py",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/rust/orm/src/value.rs",
@@ -10412,43 +10414,30 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_conformance_verification.py"
-            ],
-            "inputs": [
-              "tests/conformance/vectors.json",
-              "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json",
-              "packages/python/testing/conformance/runner_python.py"
+              "packages/python/tests/test_conformance_verification_mysql.py",
+              "packages/python/tests/test_conformance_verification_postgres.py",
+              "packages/python/tests/test_conformance_verification_sqlite.py"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_conformance_verification.py",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "test": "packages/python/tests/test_conformance_verification_mysql.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "postgres": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_conformance_verification.py",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "test": "packages/python/tests/test_conformance_verification_postgres.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ],
               "sqlite": [
                 {
                   "runner": "python",
-                  "test": "packages/python/tests/coverage_conformance_verification.py",
-                  "cases": [
-                    "conformance_vector"
-                  ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+                  "recipe": "contracts/fixtures/conformance_verification/conformance_verification.json"
                 }
               ]
             }

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d37c4683a41b40e6060473b2f6c8e49943b30f1f7dc28887169607fec6ae2b02 -->
+<!-- source-sha256: 09625173652147d0b59a3c0cc19ab50f96cfc2b103e958e8a156860e74c10305 -->
 # 변경 이력
 
 ## Unreleased
 
+- `conformance_verification`의 Python owner는 각 database에서 그 이름의 recipe다. 그 Python coverage 파일을 없앴고, 거기에 묶였던 요구사항은 사례 `conditions_values`, `creates_and_save`, `functions`, `relations`에 묶인다.
 - ordered-json AES 열의 왕복과 회전(COD-7)을 저장된 셀까지 읽는 aes_rotation recipe 사례로 여섯 runtime에 옮겼고 native 시험을 지웠다.
 - 프로세스 기한은 끝난 프로세스를 보고하고, 그 case는 pid가 없음을 확인한다 (#T334-3-4-22)
 - 생성 메서드 conformance 본문과 고정 시계 본문을 recipe conformance_verification과 fixed_clock.json으로 비교한다. 고정 시계 본문은 이제 정확한 시계를 적는다.

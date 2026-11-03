@@ -12891,8 +12891,13 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "functions"
         },
         {
           "implementation": "rust",
@@ -26683,8 +26688,23 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "conditions_values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "creates_and_save"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "functions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_conformance_verification_sqlite.py",
+          "id": "relations"
         },
         {
           "implementation": "rust",
