@@ -24,7 +24,7 @@ class MysqlTlsParametersTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "CONFIG", f"{dsn}: {raised.exception}")
         self.assertIn(wanted, str(raised.exception), dsn)
 
-    # Requirements: CFG-17, CFG-19, CFG-20.
+    # Requirements: CFG-19, CFG-20.
     def test_parameters(self):
         self.refused(
             "mysql://root@db.local/orm_example?charset=latin1",
@@ -44,15 +44,6 @@ class MysqlTlsParametersTest(unittest.TestCase):
         )
         self.refused(
             "sqlite:///tmp/orm-tls.sqlite?cache=shared", "unknown parameter cache"
-        )
-        for host in ("127.0.0.1", "[::1]"):
-            self.refused(
-                f"mysql://root@{host}/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
-                "host name",
-            )
-        self.refused(
-            "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
-            "socket",
         )
         parsed = parse_dsn(
             "mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem"

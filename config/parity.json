@@ -4109,33 +4109,183 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLS"
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_address_literal"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_ipv6_literal"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_socket"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_ipv6_literal_without_port"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_address_literal_encoded_ca"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/recipe_dsn_reject_test.go",
+          "id": "TestRecipeDsnRejectNone/mysql_tls_socket_on_a_host_name"
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_address_literal\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_ipv6_literal\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_socket\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_ipv6_literal_without_port\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_address_literal_encoded_ca\""
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnRejectRecipeTest.php",
+          "id": "DsnRejectRecipeTest::testNone with data set \"mysql_tls_socket_on_a_host_name\""
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
-          "id": "OrmExceptionNativeTest::testNativeMysqlTlsRejectsAddressLiteralsForIdentityVerification"
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_address_literal\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_ipv6_literal\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_socket\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_ipv6_literal_without_port\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_address_literal_encoded_ca\""
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DsnRejectRecipeTestExtensionTest.php",
+          "id": "DsnRejectRecipeTestExtensionTest::testNone with data set \"mysql_tls_socket_on_a_host_name\""
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_address_literal"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_ipv6_literal"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_socket"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_ipv6_literal_without_port"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_address_literal_encoded_ca"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn_reject-none.test.mjs",
+          "id": "mysql_tls_socket_on_a_host_name"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_address_literal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_ipv6_literal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_socket"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_ipv6_literal_without_port"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_address_literal_encoded_ca"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dsn_reject_none.py",
+          "id": "mysql_tls_socket_on_a_host_name"
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_requires_a_host_name_and_tcp"
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_address_literal"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_ipv6_literal"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_socket"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_ipv6_literal_without_port"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_address_literal_encoded_ca"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/dsn_reject_none.rs",
+          "id": "dsn_reject_none::mysql_tls_socket_on_a_host_name"
         }
       ]
     },
@@ -4221,6 +4371,11 @@
           "id": "TestParseDSN"
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/mysql_tls_test.go",
+          "id": "TestParseDSNMySQLTLS"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
           "id": "MysqlTlsTest::testParameters"
@@ -4229,6 +4384,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
           "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeMysqlTlsKeepsTheCaPathOfAHostName"
         },
         {
           "implementation": "typescript",

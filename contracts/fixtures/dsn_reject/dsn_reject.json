@@ -248,6 +248,57 @@
       ]
     },
     {
+      "id": "mysql_tls_ipv6_literal_without_port",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@[::1]/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_address_literal_encoded_ca",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "mysql_tls_socket_on_a_host_name",
+      "requirements": [
+        "CFG-17"
+      ],
+      "steps": [
+        {
+          "op": "dsn.connect",
+          "dsn": "mysql://root@db.example/orm_example?socket=%2Ftmp%2Fmysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem",
+          "expect": {
+            "none": {
+              "error": "CONFIG"
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": "scheme_mysqlx",
       "requirements": [
         "CFG-1"

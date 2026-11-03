@@ -15,22 +15,14 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestParseDSNMySQLTLS checks that TLS identity verification requires a host name and TCP.
-// Requirements: CFG-17.
+// TestParseDSNMySQLTLS checks that a host name with the TLS parameters parses to its CA and host, with no ssl parameter
+// in the native DSN. The refused forms are cases of contracts/fixtures/dsn_reject.
+// Requirements: CFG-19.
 func TestParseDSNMySQLTLS(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
 	if err != nil || parsed.sslCA != "/tmp/ca.pem" || parsed.sslHost != "db.local" || strings.Contains(parsed.native, "ssl") {
 		t.Fatalf("parseDSN() = %+v, %v; want the CA /tmp/ca.pem for db.local and no ssl parameter in the native DSN", parsed, err)
-	}
-	for input, wanted := range map[string]string{
-		"mysql://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem":                        "host name",
-		"mysql://root@[::1]:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem":                       "host name",
-		"mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem": "socket",
-	} {
-		t.Run(input, func(t *testing.T) {
-			assertMySQLTLSConfigError(t, input, wanted)
-		})
 	}
 }
 

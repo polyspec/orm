@@ -8,23 +8,6 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
 
 #[test]
-// Requirements: CFG-17.
-fn verify_identity_requires_a_host_name_and_tcp() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for dsn in [
-        "mysql://root@127.0.0.1/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem",
-        "mysql://root@[::1]/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem",
-        "mysql://root@db.example/app?socket=%2Ftmp%2Fmysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem",
-    ] {
-        let error = match polyspec_orm::db::parse_dsn(dsn) {
-            Ok(_) => panic!("TLS identity accepted a non-hostname or non-TCP DSN: {dsn}"),
-            Err(error) => error,
-        };
-        assert_eq!(error.code(), polyspec_orm::codes::CONFIG, "{dsn}: {error}");
-    }
-}
-
-#[test]
 // Rust passes TLS options through to sqlx, whose accepted parameters differ from the other clients.
 // Requirements: CFG-18.
 fn tls_options_follow_sqlx_parameter_support() {

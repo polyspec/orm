@@ -22,7 +22,7 @@ use Polyspec\Orm\OrmException;
 #[Medium]
 final class MysqlTlsTest extends TestCase
 {
-    // Requirements: CFG-17, CFG-19, CFG-20.
+    // Requirements: CFG-19, CFG-20.
     public function testParameters(): void
     {
         MysqlTlsCases::assertRefused(
@@ -42,16 +42,6 @@ final class MysqlTlsTest extends TestCase
             'unknown parameter ssl-mode'
         );
         MysqlTlsCases::assertRefused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-        foreach (['127.0.0.1', '[::1]'] as $host) {
-            MysqlTlsCases::assertRefused(
-                "mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
-                'host name'
-            );
-        }
-        MysqlTlsCases::assertRefused(
-            'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem',
-            'socket'
-        );
         $parsed = Orm::parseDsn(
             'mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem'
         );

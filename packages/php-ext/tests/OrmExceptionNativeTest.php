@@ -124,18 +124,9 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-17.
-    public function testNativeMysqlTlsRejectsAddressLiteralsForIdentityVerification(): void
+    // Requirements: CFG-19.
+    public function testNativeMysqlTlsKeepsTheCaPathOfAHostName(): void
     {
-        foreach (['127.0.0.1', '[::1]'] as $host) {
-            try {
-                Orm::parseDsn("mysql://$host/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem");
-                Assert::fail("TLS identity verification must reject address literal $host");
-            } catch (OrmException $error) {
-                Assert::assertSame(Code::CONFIG, $error->code_);
-                Assert::assertStringContainsString('needs a host name, not the address', $error->getMessage());
-            }
-        }
         Assert::assertSame('/tmp/ca.pem', Orm::parseDsn(
             'mysql://db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem'
         )[5]);

@@ -27,7 +27,7 @@ function refuseDsn(failures, dsn, wanted) {
 }
 
 // A parameter case is a parse in memory.
-// Requirements: CFG-17, CFG-19, CFG-20.
+// Requirements: CFG-19, CFG-20.
 caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?charset=latin1', 'unknown parameter charset');
@@ -35,8 +35,6 @@ caseTest('mysql_tls/parameters', COMPUTE, () => {
   refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?application_name=orm', 'unknown parameter application_name');
   refuseDsn(failures, 'postgres://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
   refuseDsn(failures, 'sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-  for (const host of ['127.0.0.1', '[::1]']) refuseDsn(failures, `mysql://root@${host}/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem`, 'host name');
-  refuseDsn(failures, 'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem', 'socket');
   const parsed = parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
   if (parsed.driver !== 'mysql' || parsed.sslCa !== '/tmp/ca.pem') failures.push(`parsed ${JSON.stringify(parsed)}`);
   for (const dsn of ['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', 'postgres:///orm_example?host=/tmp', 'sqlite:///tmp/orm-tls.sqlite?_pragma=busy_timeout(5000)&timezone=UTC',
