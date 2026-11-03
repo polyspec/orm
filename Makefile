@@ -3071,7 +3071,7 @@ parameter-chunking-check/typescript: lease-tool orm-codes-typescript
 
 # request-hook-check/python runs the recipe contracts/fixtures/request_hook/request_hook.json on the three databases in Python
 # (docs/spec/feature-coverage.md FCV-3 and FCV-4), with the native cases that a declarative step cannot observe in
-# test_request_hook.py (feature coverage, not this check).
+# test_request_hook.py (a native owner, not this check).
 .PHONY: request-hook-check/python
 request-hook-check/python: lease-tool python-venv-check
 	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.test_request_hook_mysql
@@ -3621,7 +3621,7 @@ request-hook-relation-scope-check: RUN_DIR = $(abspath .runtime/run)/request-hoo
 request-hook-relation-scope-check: php-vendor-check php-models python-venv-check lease-tool typescript-build
 	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestRequestHook$$/^relation_scope$$' -count=1
 	$(NODE) --test-name-pattern='^request-hook/relation_scope$$' packages/ts/tests/request_hook.mjs
-	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook.RequestHookTest.test_relation_scope
+	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_request_hook_sqlite
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter relation_scope packages/php/tests/RequestHookTest.php
 	$(call php_ext_build,$(PHP_EXTENSION_LIBRARY),release)
 	$(PHP_EXTENSION_TESTS) --filter relation_scope packages/php/tests/RequestHookTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
