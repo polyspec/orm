@@ -169,78 +169,33 @@ static bool cat_mysql_connection_id(zval *pdo, zend_long *id)
     return true;
 }
 
-/* Opens a connection to the database of a catalog, through which a statement of another connection is killed. */
-static bool cat_kill_connect(zval *owner, zval *killer)
-{
-    zval rv_dsn, *dsn = catalog_prop(owner, "dsn", &rv_dsn);
-    zval config, args[2];
-    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
-    ZVAL_COPY_VALUE(&args[0], dsn);
-    ZVAL_COPY_VALUE(&args[1], &config);
-    bool connected = scall("Polyspec\\Orm\\Orm::connect", killer, 2, args);
-    zval_ptr_dtor(&config);
-    return connected;
-}
-
-/* Runs KILL QUERY for a connection id on an open connection. */
-static bool cat_kill_exec(zval *killer, zend_long id)
-{
-    zval pdo;
-    if (!pdo_call(killer, "pdo", &pdo, 0, NULL, NULL)) return false;
-    char sql[64];
-    snprintf(sql, sizeof(sql), "KILL QUERY %ld", (long)id);
-    bool ok = cat_try_exec(&pdo, sql);
-    zval_ptr_dtor(&pdo);
-    return ok && EG(exception) == NULL;
-}
-
-/* Closes and releases a connection opened by cat_kill_connect; an exception already pending stays the one reported. */
-static void cat_kill_close(zval *killer)
-{
-    zend_object *pending = EG(exception);
-    EG(exception) = NULL;
-    zval ret;
-    if (pdo_call(killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
-    zval_ptr_dtor(killer);
-    ZVAL_UNDEF(killer);
-    if (pending != NULL) {
-        zend_clear_exception();
-        EG(exception) = pending;
-    }
-}
-
 /* Kills the running query of a connection id through a connection of its own, which ends with the kill: the killed query ends
  * with an error on its own connection, which keeps the connection that the stop rolls back. */
 static bool cat_kill_thread(zval *owner, zend_long id)
 {
-    zval killer;
-    if (!cat_kill_connect(owner, &killer)) return false;
-    bool ok = cat_kill_exec(&killer, id);
-    zval ret;
+    zval rv_dsn, *dsn = catalog_prop(owner, "dsn", &rv_dsn);
+    zval config, args[2], killer, pdo, ret;
+    if (!newobj("Polyspec\\Orm\\Config", &config, 0, NULL)) return false;
+    ZVAL_COPY_VALUE(&args[0], dsn);
+    ZVAL_COPY_VALUE(&args[1], &config);
+    bool connected = scall("Polyspec\\Orm\\Orm::connect", &killer, 2, args);
+    zval_ptr_dtor(&config);
+    if (!connected) return false;
+    bool ok = pdo_call(&killer, "pdo", &pdo, 0, NULL, NULL);
+    if (ok) {
+        char sql[64];
+        snprintf(sql, sizeof(sql), "KILL QUERY %ld", (long)id);
+        ok = cat_try_exec(&pdo, sql);
+        zval_ptr_dtor(&pdo);
+    }
     if (pdo_call(&killer, "close", &ret, 0, NULL, NULL)) zval_ptr_dtor(&ret);
     zval_ptr_dtor(&killer);
     return ok && EG(exception) == NULL;
 }
 
-/* Opens the connection that stops a read of a caller's statement on MySQL (CFG-35), before that statement: closing a
- * statement that still streams reads the rest of its result, and only a kill ends it, so a read that could not be stopped
- * does not start. Any other dialect has no such connection, and stopper stays undefined. */
-static bool cat_stopper_open(zval *self, const char *dialect, zval *stopper)
+/* Kills the query that runs on the connection id of the PDO connection of a catalog's Db. */
+static bool cat_kill_query(zval *db, zend_long id)
 {
-    ZVAL_UNDEF(stopper);
-    return strcmp(dialect, "mysql") != 0 || cat_kill_connect(self, stopper);
-}
-
-static void cat_stopper_close(zval *stopper)
-{
-    if (!Z_ISUNDEF_P(stopper)) cat_kill_close(stopper);
-}
-
-/* Kills the query that runs on the connection id of the PDO connection of a catalog's Db: through stopper, when the read
- * opened one, and otherwise through a connection opened for the kill. */
-static bool cat_kill_query(zval *db, zend_long id, zval *stopper)
-{
-    if (stopper != NULL && !Z_ISUNDEF_P(stopper)) return cat_kill_exec(stopper, id);
     zval rv_s, *state = catalog_prop(db, "state", &rv_s);
     zval rv_o, *owner = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "catalogOwner", sizeof("catalogOwner") - 1, true, &rv_o);
     if (Z_TYPE_P(owner) != IS_OBJECT) {
@@ -471,7 +426,7 @@ static bool cat_bind_typed(zval *st, zval *args)
  * streams its rows unbuffered, and a budget stop kills it by its connection id; a PostgreSQL statement without parameters
  * reads through a cursor. */
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *stopper);
+                           zval *names, zval *types, zval *rows, cat_row_convert convert);
 
 /* A PostgreSQL statement with parameters is rewritten: PDO binds only ? placeholders, so each $n becomes ? and its parameter
  * follows in the order of the placeholders (a repeated $n binds its value again). */
@@ -518,8 +473,8 @@ static bool cat_has_pg_placeholder(const char *sql)
 }
 
 /* A bounded result as the PHP client's query(), with the PostgreSQL placeholders of a statement with parameters rewritten. */
-static bool cat_query_stopped(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                              zval *names, zval *types, zval *rows, cat_row_convert convert, zval *stopper)
+static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
+                      zval *names, zval *types, zval *rows, cat_row_convert convert)
 {
     array_init(names);
     array_init(types);
@@ -535,7 +490,7 @@ static bool cat_query_stopped(zval *db, zval *pdo, const char *sql, zval *args, 
     bool postgres = Z_TYPE(driver) == IS_STRING && zend_string_equals_literal(Z_STR_P(&driver), "postgres");
     zval_ptr_dtor(&driver);
     if (!postgres || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0 || !cat_has_pg_placeholder(sql)) {
-        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, stopper);
+        return cat_query_body(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert);
     }
     zend_string *source = zend_string_init(sql, strlen(sql), 0);
     zend_string *rewritten = NULL;
@@ -548,21 +503,14 @@ static bool cat_query_stopped(zval *db, zval *pdo, const char *sql, zval *args, 
         zval_ptr_dtor(rows);
         return false;
     }
-    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert, stopper);
+    bool ok = cat_query_body(db, pdo, ZSTR_VAL(rewritten), &rewritten_args, max_rows, max_bytes, names, types, rows, convert);
     zend_string_release(rewritten);
     zval_ptr_dtor(&rewritten_args);
     return ok;
 }
 
-/* A bounded result of a statement of the catalog itself: its result is small, so a stop opens its connection when it needs one. */
-static bool cat_query(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                      zval *names, zval *types, zval *rows, cat_row_convert convert)
-{
-    return cat_query_stopped(db, pdo, sql, args, max_rows, max_bytes, names, types, rows, convert, NULL);
-}
-
 static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                           zval *names, zval *types, zval *rows, cat_row_convert convert, zval *stopper)
+                           zval *names, zval *types, zval *rows, cat_row_convert convert)
 {
     zval driver;
     if (!pdo_call(db, "driver", &driver, 0, NULL, NULL)) goto driver;
@@ -612,7 +560,7 @@ static bool cat_query_body(zval *db, zval *pdo, const char *sql, zval *args, zen
                 failure = EG(exception);
                 EG(exception) = NULL;
             }
-            if (mysql && connection_id > 0 && !cat_kill_query(db, connection_id, stopper)) {
+            if (mysql && connection_id > 0 && !cat_kill_query(db, connection_id)) {
                 if (failure != NULL) OBJ_RELEASE(failure);
                 zval_ptr_dtor(&st);
                 goto driver;
@@ -2424,16 +2372,15 @@ static bool cat_grid_pdo_cursor(zval *db, zval *pdo, zval *sql, zend_long max_ro
     return true;
 }
 
-static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows,
-                           zval *stopper);
+static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows);
 
 static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
-                         zval *names, zval *rows, zval *stopper)
+                         zval *names, zval *rows)
 {
     array_init(names);
     array_init(rows);
     if (strcmp(dialect, "mysql") == 0) {
-        return cat_grid_mysql(db, pdo, sql, args, max_rows, max_bytes, names, rows, stopper);
+        return cat_grid_mysql(db, pdo, sql, args, max_rows, max_bytes, names, rows);
     }
     if (strcmp(dialect, "postgres") == 0 && zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
         return cat_grid_pdo_cursor(db, pdo, sql, max_rows, max_bytes, names, rows);
@@ -2748,8 +2695,7 @@ static bool cat_mysql_grid_columns(zval *db, zval *pdo, zval *sql, zval *args, z
 
 /* Reads a MySQL grid query on the PDO connection: it streams the rows, so that a budget stops the read before the rest of the
  * result, and a stop kills the query, whose cursor then ends with an interrupted error that is the expected end of a stop. */
-static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows,
-                           zval *stopper)
+static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes, zval *names, zval *rows)
 {
     cat_mysql_column *columns = NULL;
     zend_long count = 0;
@@ -2805,7 +2751,7 @@ static bool cat_grid_mysql(zval *db, zval *pdo, zval *sql, zval *args, zend_long
         zend_object *failure = EG(exception);
         EG(exception) = NULL;
         zval r;
-        if (!ok && failure != NULL && cat_code_is(failure, "CATALOG_LIMIT") && !cat_kill_query(db, connection_id, stopper)) {
+        if (!ok && failure != NULL && cat_code_is(failure, "CATALOG_LIMIT") && !cat_kill_query(db, connection_id)) {
             zend_clear_exception();
         }
         if (pdo_call(&st, "closeCursor", &r, 0, NULL, NULL)) zval_ptr_dtor(&r);
@@ -4703,27 +4649,19 @@ static bool cat_query_row(zval *row, zval *types, const char *dialect, zval *cel
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
 {
     CAT_PARSE_READ_ONLY_INPUTS();
-    zval stopper;
-    if (!cat_stopper_open(ZEND_THIS, ZSTR_VAL(dialect), &stopper)) {
-        zval_ptr_dtor(&args);
-        return;
-    }
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
         zval_ptr_dtor(&args);
-        cat_stopper_close(&stopper);
         return;
     }
     zval names, types, rows, converted, result;
-    if (!cat_query_stopped(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows, cat_query_row, &stopper)) {
+    if (!cat_query(db, &pdo, ZSTR_VAL(sql), &args, max_rows, max_bytes, &names, &types, &rows, cat_query_row)) {
         zval_ptr_dtor(&args);
         cat_abort(db, &pdo);
         zval_ptr_dtor(&pdo);
-        cat_stopper_close(&stopper);
         return;
     }
-    cat_stopper_close(&stopper);
     zval_ptr_dtor(&args);
     zval_ptr_dtor(&types);
     ZVAL_COPY_VALUE(&converted, &rows);
@@ -4750,22 +4688,14 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
     ZVAL_STR_COPY(&sql_zv, sql);
     zval names, rows, result;
     bool ok;
-    zval stopper;
-    if (!cat_stopper_open(ZEND_THIS, ZSTR_VAL(dialect), &stopper)) {
-        zval_ptr_dtor(&args);
-        zval_ptr_dtor(&sql_zv);
-        return;
-    }
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
         zval_ptr_dtor(&args);
         zval_ptr_dtor(&sql_zv);
-        cat_stopper_close(&stopper);
         return;
     }
-    ok = cat_grid_pdo(db, ZSTR_VAL(dialect), &pdo, &sql_zv, &args, max_rows, max_bytes, &names, &rows, &stopper);
-    cat_stopper_close(&stopper);
+    ok = cat_grid_pdo(db, ZSTR_VAL(dialect), &pdo, &sql_zv, &args, max_rows, max_bytes, &names, &rows);
     zval_ptr_dtor(&args);
     zval_ptr_dtor(&sql_zv);
     if (ok) {

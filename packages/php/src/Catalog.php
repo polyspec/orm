@@ -72,9 +72,6 @@ final class Catalog
 
     private bool $closed = false;
 
-    /** The connection that stops the running read of a caller's statement on MySQL (CFG-35). */
-    private ?Db $stopper = null;
-
     private function __construct(
         private readonly Db $db,
         private readonly string $dialect,
@@ -123,15 +120,10 @@ final class Catalog
 
     /**
      * Stops the statement that a budget ended on the server: KILL QUERY on a second connection, so that the
-     * budgeted connection stays usable. The catalog is not poisoned, unlike a Cancellation signal. A read of a caller's
-     * statement kills through the connection it opened before that statement.
+     * budgeted connection stays usable. The catalog is not poisoned, unlike a Cancellation signal.
      */
     private function killQuery(int $connectionId): void
     {
-        if ($this->stopper !== null) {
-            $this->stopper->pdo()->exec('KILL QUERY ' . $connectionId);
-            return;
-        }
         $killer = Orm::connect($this->dsn, new Config());
         try {
             $killer->pdo()->exec('KILL QUERY ' . $connectionId);
@@ -309,21 +301,6 @@ final class Catalog
         foreach (array_values($params) as $param) {
             $args[] = self::param($param);
         }
-        $this->assertOpen();
-        // CFG-35: closing a statement that still streams reads the rest of its result, and only a kill ends it. The
-        // connection of that kill opens before the statement, so a read that could not be stopped does not start.
-        $this->stopper = $this->dialect === 'mysql' ? Orm::connect($this->dsn, new Config()) : null;
-        try {
-            return $this->readOnlySession($sql, $args, $maxRows, $maxBytes, $grid);
-        } finally {
-            $this->stopper?->close();
-            $this->stopper = null;
-        }
-    }
-
-    /** @param list<mixed> $args */
-    private function readOnlySession(string $sql, array $args, int $maxRows, int $maxBytes, bool $grid): CatalogResult
-    {
         return $this->session(true, function (\PDO $pdo) use ($sql, $args, $maxRows, $maxBytes, $grid): CatalogResult {
             if ($grid) {
                 try {
