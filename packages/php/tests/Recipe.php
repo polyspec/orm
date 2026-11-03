@@ -154,6 +154,10 @@ final class Recipe
                     self::planStep($step, $path, $database);
                     continue;
                 }
+                if ($step['op'] === 'generator.check') {
+                    RecipeGenerator::checkFiles($step, dirname(__DIR__, 3) . '/' . dirname($path));
+                    continue;
+                }
                 if ($step['op'] === 'ir.param_uses') {
                     self::paramUsesStep($step, $path, $database);
                     continue;

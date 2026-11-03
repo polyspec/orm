@@ -652,6 +652,12 @@
       "options",
       "schema"
     ],
+    "generator.check": [
+      "changed",
+      "document_set",
+      "op",
+      "unchanged"
+    ],
     "dbspec.export_mermaid": [
       "as",
       "document",
