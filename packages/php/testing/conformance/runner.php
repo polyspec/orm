@@ -982,6 +982,7 @@ vector('clock_truncate_write', function () use ($db): array {
     $row->delete();
     $at6 = $row->getAt6();
     return [
+        'at6_fixed' => $at6->format('Y-m-d H:i:s.u') === '2026-06-01 12:34:56.999999',
         'p0_truncated' => $row->getAt0()->format('Y-m-d H:i:s.u') === $at6->format('Y-m-d H:i:s') . '.000000',
         'p3_truncated' => $row->getAt3()->format('Y-m-d H:i:s.u') === $at6->format('Y-m-d H:i:s.v') . '000',
     ];

@@ -1,5 +1,5 @@
 <!-- doc-id: feature-coverage -->
-<!-- source-sha256: 1f638c07b3d7e1bab9d8d59bc9a38c5e63fad76bb33f9a699de0eaa91de5cac3 -->
+<!-- source-sha256: bd181030477059862e5a61e4f3cfa74632cd40f8b8bfa82be057aea0c03ac9ba -->
 # 기능 coverage 검증
 
 - **FCV-1** `contracts/features.json`의 각 기능은 `coverage.kind`, 중복되지 않는 `coverage.cases`, `coverage.owners`, `coverage.dependents`를 선언한다. 데이터베이스를 읽거나 바꾸는 동작에는 `database`, 그 외에는 `independent`를 쓴다. 상태가 `pass` 또는 `partial`인 모든 client는 `packages/<runtime>` 아래에 `part`, `tests`, 필요한 각 데이터베이스(`mysql`, `postgres`, `sqlite`) 또는 `none` 한 칸의 언어별 테스트 명령을 선언한다. 각 사용 부분은 자기 디렉터리에 별도 사례와 테스트를 선언한다. 선언이 빠지거나 선언한 부분 밖의 경로이면 `make feature-check`가 실패한다.
@@ -14,6 +14,8 @@
   - `dbspec-set-bench`(SCH-1)는 `generator-takes-the-documents-only-from-the-set-file`과 같은 이유로 모든 runtime에서 native로 남는다. 이 단위는 set 파일과 그 언어의 생성 출력으로 bench set을 읽고, `generator.generate`는 schema를 받는다.
   - `generated-external-model-reads-its-table`(DBS-110, DBS-173)는 모든 runtime에서 native로 남는다. 외부 텍스트를 담는 생성 schema 값은 그 언어의 소스이므로, 사용하는 외부 테이블의 모델이 자기 테이블을 읽는다는 것은 그 언어의 생성 모듈을 불러오거나 컴파일해 연결해야만 드러난다.
   - `generated-manifest-text-and-hash-match`(DBS-104, DBS-111, DBS-120)는 모든 runtime에서 native로 남는다. 언어의 생성된 module을 불러오고 manifest와 어긋나는 module을 거부하기 때문이다. `generator` recipe의 `generated-code-carries-the-manifest-hash` 사례가 모든 runtime에서 DBS-103의 hash를 검사한다.
+  - 생성 메서드를 호출하는 conformance 본문(`terminal_by`, `terminal_reuse`, `relation_empty`, `aes_values`, `hex_malformed`, `empty_reads`)은 모든 runtime에서 native로 남는다. 생성 메서드는 언어의 source이고 recipe step은 일반 builder를 호출하기 때문이다. `conformance-generated-methods-check`는 recipe `conformance_verification`의 fixture와 seed에서 이 본문을 실행하고 출력을 같은 이름의 case expect와 비교하므로 두 경로가 어긋날 수 없다.
+  - 고정 시계 본문 `clock_truncate_write`와 `clock_compare_six_digits`는 모든 runtime에서 native로 남는다. FixClock이 시험 진입점이기 때문이다(PRT-53). `conformance-fixed-clock-check`는 이 본문을 `tests/conformance/check/fixed_clock.json`과 비교하며, 이 파일은 client가 쓰는 곳의 정확한 시계를 적는다. 시간 창 형식(F16)은 대신할 수 없다. 그 형식은 database 시계에 가까운 시간임을 확인할 뿐 여섯 자리 값과 그 절삭을 확인하지 않는다.
   - `static-model-chain-generation`(INT-27), `dynamic-model-chain-resolution`(INT-28), `dynamic-vs-scanned-model-chain-dispatch`(PLN-40), `dynamic-model-new-output-name-rejects-stored-column`(DSL-160)은 native로 남는다. 각각 정적 또는 동적 runtime 쪽 동작이며 반대쪽에는 그 호출이 없다. `generator-orders-sets-by-imports`(DSL-157)는 Go만의 것이다.
   - `dsl-50-operator-value-shapes`와 `chain-null-on-a-non-null-column`(DSL-49, DSL-50)은 컴파일러가 거부하는 사용에 대해 Go, TypeScript, Rust에서 FCV-2의 compile-fail fixture로 native로 남는다. Go `TestChainArgumentTypes`, TypeScript `chain argument types`, Rust compiler fixture `dsl49-nonnull-null-e0277`과 `dsl50-ordering-list-e0277`이다. 실행되는 동작은 recipe `dsl`과 `dsl-dynamic`에 있다.
   - `statement-runner-non-text-statement`와 `statement-runner-frame-after-its-transaction-ended`(INT-150a, INT-150b)는 compiler가 거부하는 사용이므로 FCV-2에 따라 native로 남는다. 타입이 있는 Go와 Rust의 `run`은 텍스트가 아닌 statement를 받지 않고, Rust frame은 그것을 빌린 callback보다 오래 살 수 없다. 실행되는 동작은 recipe `statement_runner`에 있다.

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The conformance bodies with generated methods and the fixed-clock bodies are compared with the recipe conformance_verification and fixed_clock.json, and the fixed-clock bodies now state the exact clock.
 - `docs/spec/interfaces.md` states the savepoint of the `transaction_send` form of the Rust crate as INT-46a, and the native transactions coverage of Go, PHP and Rust is gone; the recipe `transactions` holds it.
 - The recipe `transactions` holds what the native transaction tests held: a model on no connection, the four row locks, every isolation level, a read-only write, `timeoutMs`, retry attempts, the default retry, a retry of 0, a real two-flow deadlock and the SQLite busy writer.
 - The recipe `parameter_chunking` holds that a limit on a split list fails with `IR_INVALID` before any statement (PRT-76), not only its code.

@@ -1490,6 +1490,35 @@ conformance-refusal-check/rust: lease-tool
 conformance-refusal-check/rust-fixtures: lease-tool
 	cd packages/rust && $(CARGO_TEST) conformance-refusal-rust-fixtures -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm --test compiler_fixtures -- --test-threads=1 compiler_fixtures::refusal-
 
+# conformance-generated-methods-check runs the conformance bodies that call generated methods on a database that holds the
+# fixture and seed of the recipe conformance_verification, and compares them with the expects of its cases (T334-3-5-1).
+# conformance-fixed-clock-check runs the fixed-clock bodies against tests/conformance/check/fixed_clock.json
+# (T334-3-5-3). Each runs one target per runtime on the three databases of the test servers.
+RECIPE_VECTORS_LANGUAGES = go typescript python php php-extension rust
+RECIPE_VECTORS_RUN = for database in sqlite mysql postgres; do node tests/conformance/check/recipe_vectors.mts $(1) --language $(2) --database $$database || exit 1; done
+.PHONY: conformance-generated-methods-check conformance-fixed-clock-check conformance-recipe-vectors-unit
+conformance-generated-methods-check: conformance-recipe-vectors-unit $(addprefix conformance-generated-methods-check/,$(RECIPE_VECTORS_LANGUAGES))
+conformance-fixed-clock-check: conformance-recipe-vectors-unit $(addprefix conformance-fixed-clock-check/,$(RECIPE_VECTORS_LANGUAGES))
+conformance-recipe-vectors-unit:
+	$(NODE) --test tests/conformance/check/recipe_vectors.test.mts
+define RECIPE_VECTORS_TARGETS
+.PHONY: conformance-$(1)-check/go conformance-$(1)-check/typescript conformance-$(1)-check/python conformance-$(1)-check/php conformance-$(1)-check/php-extension conformance-$(1)-check/rust
+conformance-$(1)-check/go: typescript-build
+	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),go)
+conformance-$(1)-check/typescript: typescript-build
+	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),typescript)
+conformance-$(1)-check/python: typescript-build conformance-python-models
+	@$$(WITH_TEST_ENV) export ORM_PYTHON=$$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$$(CONFORMANCE_PY_MODELS); $$(call RECIPE_VECTORS_RUN,$(2),python)
+conformance-$(1)-check/php: typescript-build php-vendor-check php-models
+	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),php)
+conformance-$(1)-check/php-extension: typescript-build php-vendor-check php-models build-php-ext
+	@$$(WITH_TEST_ENV) export POLYSPEC_ORM_EXTENSION="$$(abspath var/php-ext/polyspec_orm.so)"; $$(call RECIPE_VECTORS_RUN,$(2),php-extension)
+conformance-$(1)-check/rust: typescript-build lease-tool
+	@$$(WITH_TEST_ENV) $$(call RECIPE_VECTORS_RUN,$(2),rust)
+endef
+$(eval $(call RECIPE_VECTORS_TARGETS,generated-methods,generated))
+$(eval $(call RECIPE_VECTORS_TARGETS,fixed-clock,fixed-clock))
+
 # feature-go-unit runs one native Go test of a feature for one database, as a parity binding names it: the make variables
 # FEATURE_DATABASE, FEATURE_DSN_ENV, FEATURE_TEST and FEATURE_PACKAGE are passed by config/parity.json. The binding runs from
 # the package that holds the test and names this target through the checkout root, so the path does not depend on that directory.
