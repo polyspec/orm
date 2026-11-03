@@ -4220,6 +4220,28 @@
         "packages/**"
       ]
     },
+    "conformance-refusal-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "tests/conformance/vectors.sqlite.json",
+        "packages/go/model/refusal_test.go",
+        "packages/php/tests/RefusalBeforeRequestTest.php",
+        "packages/php-ext/tests/RefusalBeforeRequestExtensionTest.php",
+        "packages/ts/tests/refusal-before-request.mjs",
+        "packages/python/tests/test_refusal.py",
+        "packages/rust/tests/tests/refusal_before_request.rs",
+        "packages/rust/testing/compiler-fixtures/cases.json"
+      ]
+    },
     "recipe-unknown-key-check": {
       "scope": "owner",
       "needs": [
