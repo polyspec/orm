@@ -1458,7 +1458,7 @@
               "rows": [
                 [
                   {
-                    "null": true
+                    "null": "datetime"
                   }
                 ]
               ]
@@ -1541,10 +1541,10 @@
               "rows": [
                 [
                   {
-                    "null": true
+                    "null": "datetime"
                   },
                   {
-                    "null": true
+                    "null": "time"
                   }
                 ]
               ]
@@ -6700,7 +6700,8 @@
       "steps": [
         {
           "op": "sql.exec",
-          "sql": "CREATE TABLE refused_row (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)"
+          "sql": "CREATE TABLE refused_row (seq INTEGER PRIMARY KEY, name TEXT NOT NULL)",
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "sql.exec",
@@ -6708,7 +6709,8 @@
             "mysql": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'refused'",
             "postgres": "CREATE FUNCTION refused_row_refuse() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'refused'; END$$",
             "sqlite": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row BEGIN SELECT RAISE(ROLLBACK, 'refused'); END"
-          }
+          },
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "sql.exec",
@@ -6716,7 +6718,8 @@
             "mysql": "SELECT 1",
             "postgres": "CREATE TRIGGER refused_row_insert BEFORE INSERT ON refused_row FOR EACH ROW EXECUTE FUNCTION refused_row_refuse()",
             "sqlite": "SELECT 1"
-          }
+          },
+          "reason": "dbspec declares no trigger that refuses a write, so only the native driver creates it"
         },
         {
           "op": "catalog.describe_table",
@@ -6811,26 +6814,29 @@
           "op": "sql.exec",
           "refused": true,
           "refused_message": "precision",
-          "sql": {
-            "mysql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))"
-          },
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))",
+          "only": [
+            "mysql"
+          ],
           "reason": "dbspec declares a precision from 0 to 6, so only a native statement reaches the refusal of a TIME(7) by the MySQL server (DIA-54)"
         },
         {
           "op": "sql.exec",
           "refused": true,
           "refused_message": "precision",
-          "sql": {
-            "mysql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t DATETIME(7))"
-          },
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t DATETIME(7))",
+          "only": [
+            "mysql"
+          ],
           "reason": "dbspec declares a precision from 0 to 6, so only a native statement reaches the refusal of a DATETIME(7) by the MySQL server (DIA-54)"
         },
         {
           "op": "sql.exec",
-          "sql": {
-            "postgres": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))",
-            "sqlite": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))"
-          },
+          "sql": "CREATE TABLE precision_limit (id BIGINT PRIMARY KEY, t TIME(7))",
+          "only": [
+            "postgres",
+            "sqlite"
+          ],
           "reason": "dbspec declares a precision from 0 to 6, so only a native statement declares a TIME(7), which PostgreSQL caps at 6 and SQLite keeps as its type text (DIA-54)"
         },
         {
@@ -6845,6 +6851,10 @@
                 "id",
                 "t"
               ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": true,
               "native_types": [
                 "bigint",
                 "time(6) without time zone"
@@ -6855,6 +6865,10 @@
                 "id",
                 "t"
               ],
+              "primary_key": [
+                "id"
+              ],
+              "reliable_row_identity": false,
               "native_types": [
                 "BIGINT",
                 "TIME(7)"
@@ -7067,6 +7081,15 @@
           ],
           "expect": {
             "mysql": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
               "has_more": false,
               "rows": [
                 [
@@ -7083,6 +7106,15 @@
               ]
             },
             "postgres": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
               "has_more": false,
               "rows": [
                 [
@@ -7099,6 +7131,15 @@
               ]
             },
             "sqlite": {
+              "columns": [
+                "tenant_id",
+                "account_id",
+                "name"
+              ],
+              "order_by": [
+                "tenant_id",
+                "account_id"
+              ],
               "has_more": false,
               "rows": [
                 [
@@ -7395,7 +7436,54 @@
                 "text": "gone"
               }
             ]
-          ]
+          ],
+          "expect": {
+            "mysql": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            },
+            "postgres": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            },
+            "sqlite": {
+              "rows": [
+                [
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "int": "1"
+                  },
+                  {
+                    "text": "gone"
+                  }
+                ]
+              ]
+            }
+          }
         },
         {
           "op": "catalog.table_page",
