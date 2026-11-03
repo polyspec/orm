@@ -113,6 +113,9 @@ type databaseStep struct {
 	Hooks      []json.RawMessage `json:"hooks"`
 	AESKeyring *aesKeyringSpec   `json:"aes_keyring"`
 	Keyring    *aesKeyringSpec   `json:"keyring"`
+	// The audit ops (FCV-4): the audit source of a model.connect and the audit values of a transaction.
+	AuditSource *auditSourceSpec `json:"audit_source"`
+	Audit       json.RawMessage  `json:"audit"`
 }
 
 // bound is what a step bound with `as`: the API value that a later argument takes, the fields of its result that a dotted
@@ -800,6 +803,13 @@ func databaseOp(s databaseStep, c *databaseContext) (outcome, error) {
 		}
 		if s.ReadOnly {
 			options = append(options, orm.ReadOnly())
+		}
+		if s.Audit != nil {
+			values, err := auditValues(s.Audit, c)
+			if err != nil {
+				return outcome{}, err
+			}
+			options = append(options, orm.Audit(values))
 		}
 		err = db.Transaction(func() error {
 			if err := runNested(s.Steps, c); err != nil {

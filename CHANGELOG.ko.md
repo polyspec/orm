@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8b38a176ae36900384676721ed4674bb433c8b5654bc505a403d24431eac162 -->
+<!-- source-sha256: 5cd29542238f3c5fcc1d9734000bfb9ad642e483498829f3158e083d4f9d2429 -->
 # 변경 이력
 
 ## Unreleased
 
+- audit 트랜잭션, 선택한 audit 컬럼, soft delete된 행의 복원은 레시피 `audit_triggers`의 케이스가 되어 여섯 런타임이 MySQL, PostgreSQL, SQLite에서 실행한다. 수기 테스트는 없어졌고, audit source의 Go context(CFG-8a)와 Rust의 트랜잭션 형태(INT-44a)는 native로 남는다(T334-3-4-11).
 - 생성기 scan unit 여덟 개는 `generator-scan` recipe의 case가 되었고, 다섯 runtime에서 그 native 시험을 지웠다. TypeScript는 자기만의 위치 규칙인 첫 줄 parse error 시험을 유지한다.
 - Go 동작만 확인하는 Go test는 `config/parity.json`에 이유를 적은 internal test 파일에 있고, `TestGenerateUsesRequestedGoPackageName`은 Go 전용 generator unit에 묶인다.
 - `make client-db-rust-check`는 다른 target이 소유하지 않은 case만 실행하고, crate의 public connection 시험은 외부 변수가 필요 없으며, compiler fixture는 순서대로 실행되고, generate.mjs는 임시 디렉터리를 남기지 않는다.

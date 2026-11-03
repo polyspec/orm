@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The audit transactions, the selected audit columns and the restore of a soft-deleted row are the cases of the recipe `audit_triggers`, which all six runtimes run on MySQL, PostgreSQL and SQLite; their hand-written tests are gone, and the Go context of the audit source (CFG-8a) and the Rust transaction forms (INT-44a) stay native (T334-3-4-11).
 - The eight generator scan units are the cases of the `generator-scan` recipe, and their native tests are gone from the five runtimes; TypeScript keeps its test of a parse error on the first line, the one position rule of its own.
 - The Go tests that assert only Go mechanics lie in internal test files with their reasons in `config/parity.json`, and `TestGenerateUsesRequestedGoPackageName` is bound to the Go-only generator unit.
 - `make client-db-rust-check` runs only the cases that no other target owns, the crate's public connection test needs no outside variable, the compiler fixtures run in order, and generate.mjs leaves no temporary directory.

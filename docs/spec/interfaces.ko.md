@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 32e43954dd0cfe7d9266206b71fe93cb97c642c378b03ca1ac7188a36ac74a52 -->
+<!-- source-sha256: 2445366fe438ed74793aebc808a2383ee9d03a98576928f4d20932221d5436fc -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -165,6 +165,8 @@ classDiagram
 - **INT-42** `timeoutMs`: 양의 정수. PostgreSQL은 `statement_timeout`을 적용하고 MySQL과 SQLite는 `CAPABILITY_UNSUPPORTED`를 반환
 - **INT-43** `retry`: 교착 재시도 횟수, 기본값 `3`. 재시도마다 콜백 전체를 다시 실행하며 `0`은 재시도를 끈다
 - **INT-44** `audit`: 작업 단위 audit 기록의 컬럼 이름에서 값으로 가는 map. 트랜잭션은 감사 대상 테이블에 처음 쓰기 직전에, 시도마다, 연결 audit source의 값에 이 값을 더해(값이 이긴다) audit 기록 테이블에 삽입하므로 감사 대상 row를 쓰지 않는 트랜잭션은 삽입하지 않고, 트랜잭션 안의 모든 감사 대상 쓰기는 그 기록의 key를 쓴다([사용법](../operations/usage.ko.md#audited-writes))
+- **INT-44a** Rust는 트랜잭션의 각 형태 `transaction`, `transaction_send`, `transaction_once`에서 `audit`을 받고, 중첩된 `transaction_once`의 `audit`은 `CONFIG`로 거부한다.
+- **INT-44b** `polyspec/orm-php-ext` 패키지의 PHP 확장은 audit 호출 `transaction`, `get`, `update`, `delete`, `restore`를 native 클래스의 내부 메서드로 실행한다.
 
 연결 설정은 현재 요청의 audit 값을 돌려주는 함수 `auditSource`를 받는다([설정](config.ko.md)). source 없는 연결에서 `audit`을 가진 트랜잭션, audit 기록 테이블의 컬럼이 아닌 값, `audit` 없는 감사 대상 쓰기는 `CONFIG`로 실패하고, source의 오류는 트랜잭션을 실패시킨다. 중첩 트랜잭션은 바깥 audit을 유지하며 `audit`을 받지 않는다.
 

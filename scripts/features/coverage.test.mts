@@ -423,38 +423,6 @@ caseTest('KSTD-7-4 PHP owner commands select their declared methods', 1000, () =
       feature: 'statement_events', language: 'php-extension', test: 'packages/php-ext/tests/CoverageStatementEventsTest.php',
       cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
     },
-    {
-      feature: 'constraints_and_relations', language: 'php', test: 'packages/php/tests/CoverageAuditTriggersTest.php',
-      cases: { soft_delete_restore: 'testSoftDeleteRestore' }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
-    },
-    {
-      feature: 'constraints_and_relations', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
-      cases: { soft_delete_restore: 'testSoftDeleteRestore' }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
-    },
-    {
-      feature: 'audit_triggers', language: 'php', test: 'packages/php/tests/CoverageAuditTriggersTest.php',
-      cases: {
-        audit_history: 'testAuditHistory',
-        audit_transaction_entry_points: 'testAuditTransactionEntryPoints',
-        soft_delete_restore: 'testSoftDeleteRestore',
-      }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
-    },
-    {
-      feature: 'audit_triggers', language: 'php', test: 'packages/php/tests/CoverageAuditColumnsTest.php',
-      cases: { audit_selected_columns: 'testAuditSelectedColumns' }, source: 'packages/php/tests/CoverageAuditColumnsTest.php',
-    },
-    {
-      feature: 'audit_triggers', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
-      cases: {
-        audit_history: 'testAuditHistory',
-        audit_transaction_entry_points: 'testAuditTransactionEntryPoints',
-        soft_delete_restore: 'testSoftDeleteRestore',
-      }, source: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
-    },
-    {
-      feature: 'audit_triggers', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
-      cases: { audit_selected_columns: 'testAuditSelectedColumns' }, source: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
-    },
   ] as const;
   for (const shape of shapes) {
     const feature = manifest.features.find(item => item.id === shape.feature);

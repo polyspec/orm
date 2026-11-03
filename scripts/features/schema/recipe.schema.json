@@ -1204,16 +1204,8 @@
             "$ref": "#/$defs/expect"
           },
           "audit": {
-            "type": "object",
-            "required": [
-              "request_id"
-            ],
-            "additionalProperties": false,
-            "properties": {
-              "request_id": {
-                "type": "string"
-              }
-            }
+            "description": "The audit values of the transaction, column names of the audit record table and their values; an empty object is an audit transaction with no value of its own (CFG-8, DSL-126).",
+            "$ref": "#/$defs/columnValues"
           },
           "retry": {
             "type": "integer",
@@ -1277,6 +1269,21 @@
           },
           "aes_keyring": {
             "$ref": "#/$defs/aesKeyring"
+          },
+          "audit_source": {
+            "description": "The audit source of the connection (CFG-8): the values it returns, or fail, a source whose own error fails the transaction.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "values": {
+                "$ref": "#/$defs/columnValues"
+              },
+              "fail": {
+                "const": true
+              }
+            },
+            "minProperties": 1,
+            "maxProperties": 1
           }
         }
       },
@@ -4850,8 +4857,24 @@
             "type": "object",
             "minProperties": 1,
             "additionalProperties": {
-              "$ref": "#/$defs/outcomes/error"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/outcomes/error"
+                },
+                {
+                  "$ref": "#/$defs/outcomes/rows"
+                }
+              ]
             }
+          },
+          "columns": {
+            "description": "The columns of the restored row that the rows expect compares.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
           }
         }
       }
